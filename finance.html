@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#050506">
+<meta name="color-scheme" content="dark">
+<title>Finance — Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="topbar.js" defer></script>
+<style>
+:root {
+  --bg: #050506;
+  --bg-card: rgba(255,255,255,0.04);
+  --bg-secondary: rgba(255,255,255,0.035);
+  --bg-input: rgba(0,0,0,0.28);
+  --border: rgba(255,255,255,0.06);
+  --border-soft: rgba(255,255,255,0.04);
+  --border-strong: rgba(255,255,255,0.12);
+  --text-primary: #FAFAFA;
+  --text-secondary: #B8B6B0;
+  --text-tertiary: #76746E;
+  --accent: #1D9E75;
+  --accent-glow: rgba(29,158,117,0.35);
+  --warning: #FF8A4D;
+  --danger: #FF6B6B;
+  --font: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text-secondary);font-family:var(--font);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;}
+body{min-height:100vh;position:relative;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(60% 50% at 82% 14%,rgba(224,118,88,0.16) 0%,transparent 60%),radial-gradient(50% 40% at 18% 90%,rgba(180,180,200,0.06) 0%,transparent 60%);filter:blur(40px);pointer-events:none;z-index:0;animation:drift 36s ease-in-out infinite alternate;}
+body::after{content:'';position:fixed;inset:0;background-image:radial-gradient(rgba(255,255,255,0.014) 1px,transparent 1px);background-size:3px 3px;pointer-events:none;z-index:1;}
+@keyframes drift{0%{transform:translate(0,0);}100%{transform:translate(-2%,2%);}}
+main{position:relative;z-index:2;max-width:720px;margin:0 auto;padding:56px 20px 120px;padding-top:max(56px,env(safe-area-inset-top,56px));}
+
+.section-title{font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-tertiary);margin:0 4px 14px;display:flex;align-items:center;gap:12px;}
+.section-title::before{content:'≡';font-size:14px;opacity:0.5;}
+
+.card{background:var(--bg-card);border-radius:16px;padding:22px;backdrop-filter:blur(24px) saturate(1.2);-webkit-backdrop-filter:blur(24px) saturate(1.2);box-shadow:0 12px 40px rgba(0,0,0,0.45);margin-bottom:12px;}
+
+/* Net Worth */
+.nw-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+.nw-left{min-width:0;}
+.nw-eyebrow{font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:4px;}
+.nw-total{font-size:38px;font-weight:800;letter-spacing:-0.03em;color:var(--text-primary);line-height:1;font-variant-numeric:tabular-nums;}
+.nw-currency{font-size:20px;color:var(--text-tertiary);font-weight:600;}
+
+/* Pie chart */
+.pie-wrap{flex-shrink:0;position:relative;width:96px;height:96px;}
+.pie-wrap svg{width:100%;height:100%;transform:rotate(-90deg);}
+.pie-center{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;}
+.pie-pct{font-size:11px;font-weight:700;color:var(--text-primary);font-variant-numeric:tabular-nums;}
+
+/* Accounts */
+.acct-list{margin-top:18px;display:flex;flex-direction:column;gap:8px;}
+.acct-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:var(--bg-secondary);border:1px solid transparent;transition:background 0.2s;}
+.acct-item:hover{background:rgba(255,255,255,0.05);}
+.acct-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.acct-name{flex:1;font-size:14px;font-weight:600;color:var(--text-primary);}
+.acct-balance{font-family:var(--font-mono);font-size:13px;font-weight:700;color:var(--text-primary);font-variant-numeric:tabular-nums;}
+.acct-cur{font-size:11px;color:var(--text-tertiary);margin-left:3px;}
+.acct-del{background:none;border:none;color:var(--text-tertiary);cursor:pointer;font-size:16px;padding:2px 4px;line-height:1;opacity:0.5;transition:opacity 0.2s;}
+.acct-del:hover{opacity:1;color:var(--danger);}
+
+/* Add row */
+.add-row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+.fin-input{flex:1;min-width:90px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--text-primary);font-family:var(--font);outline:none;transition:border-color 0.2s;}
+.fin-input:focus{border-color:rgba(255,255,255,0.2);}
+.fin-input::placeholder{color:var(--text-tertiary);}
+.fin-select{background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--text-secondary);font-family:var(--font);outline:none;cursor:pointer;}
+.fin-btn{background:rgba(255,255,255,0.07);border:1px solid var(--border-strong);border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;color:var(--text-primary);cursor:pointer;font-family:var(--font);white-space:nowrap;transition:background 0.2s;}
+.fin-btn:hover{background:rgba(255,255,255,0.12);}
+.fin-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+.fin-btn.primary:hover{background:#22c55e;}
+
+/* Subscriptions */
+.sub-item{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;background:var(--bg-secondary);margin-bottom:7px;border:1px solid transparent;transition:background 0.2s,border-color 0.2s,box-shadow 0.2s;}
+.sub-item:hover{background:rgba(255,255,255,0.05);}
+@keyframes pulse-red{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.4);}50%{box-shadow:0 0 0 8px rgba(239,68,68,0);}}
+.sub-item.danger{border-color:rgba(239,68,68,0.45);animation:pulse-red 1.5s ease-in-out infinite;}
+.sub-icon{font-size:20px;flex-shrink:0;}
+.sub-body{flex:1;min-width:0;}
+.sub-name{font-size:14px;font-weight:600;color:var(--text-primary);line-height:1.2;}
+.sub-meta{font-size:11px;color:var(--text-tertiary);margin-top:2px;}
+.sub-right{text-align:right;flex-shrink:0;}
+.sub-amount{font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--text-primary);font-variant-numeric:tabular-nums;}
+.sub-charge{font-size:11px;color:var(--text-tertiary);margin-top:2px;}
+.sub-del{background:none;border:none;color:var(--text-tertiary);cursor:pointer;font-size:16px;padding:2px 6px;line-height:1;opacity:0.5;transition:opacity 0.2s;margin-left:4px;}
+.sub-del:hover{opacity:1;color:var(--danger);}
+
+/* Orders */
+.order-item{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;background:var(--bg-secondary);margin-bottom:7px;border:1px solid transparent;}
+.order-body{flex:1;min-width:0;}
+.order-name{font-size:14px;font-weight:600;color:var(--text-primary);}
+.order-meta{font-size:11px;color:var(--text-tertiary);margin-top:2px;}
+.order-right{text-align:right;flex-shrink:0;}
+.order-amount{font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--text-primary);font-variant-numeric:tabular-nums;}
+.order-days{font-size:11px;margin-top:2px;font-weight:600;}
+.order-days.soon{color:var(--warning);}
+.order-days.here{color:var(--accent);}
+.order-del{background:none;border:none;color:var(--text-tertiary);cursor:pointer;font-size:16px;padding:2px 6px;opacity:0.5;transition:opacity 0.2s;margin-left:4px;}
+.order-del:hover{opacity:1;color:var(--danger);}
+
+/* Wishlist */
+.wish-item{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;background:var(--bg-secondary);margin-bottom:7px;}
+.wish-body{flex:1;min-width:0;}
+.wish-name{font-size:14px;font-weight:600;color:var(--text-primary);}
+.wish-pct{font-size:11px;color:var(--text-tertiary);margin-top:2px;}
+.wish-right{text-align:right;flex-shrink:0;}
+.wish-amount{font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--text-primary);font-variant-numeric:tabular-nums;}
+.wish-del{background:none;border:none;color:var(--text-tertiary);cursor:pointer;font-size:16px;padding:2px 6px;opacity:0.5;transition:opacity 0.2s;margin-left:4px;}
+.wish-del:hover{opacity:1;color:var(--danger);}
+
+/* Activity */
+.act-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;background:var(--bg-secondary);margin-bottom:6px;}
+.act-icon{font-size:16px;flex-shrink:0;}
+.act-body{flex:1;min-width:0;}
+.act-desc{font-size:13px;color:var(--text-primary);font-weight:500;}
+.act-date{font-size:11px;color:var(--text-tertiary);}
+.act-amount{font-family:var(--font-mono);font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;}
+.act-amount.out{color:var(--danger);}
+.act-amount.in{color:var(--accent);}
+
+.empty{text-align:center;color:var(--text-tertiary);font-size:13px;padding:20px 0;}
+
+@media(max-width:480px){
+  .nw-total{font-size:30px;}
+  .add-row{flex-direction:column;}
+  .fin-input,.fin-select,.fin-btn{width:100%;}
+}
+</style>
+</head>
+<body>
+<main>
+
+  <!-- NET WORTH -->
+  <div style="margin-bottom:24px;">
+    <div class="section-title">Net Worth</div>
+    <div class="card">
+      <div class="nw-header">
+        <div class="nw-left">
+          <div class="nw-eyebrow">Total Net Worth</div>
+          <div class="nw-total"><span id="nwCurrency">$</span><span id="nwTotal">0</span></div>
+        </div>
+        <div class="pie-wrap">
+          <svg viewBox="0 0 36 36" id="pieChart"><circle cx="18" cy="18" r="14" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="6"/></svg>
+          <div class="pie-center"><span class="pie-pct" id="pieLabel">—</span></div>
+        </div>
+      </div>
+      <div class="acct-list" id="acctList"></div>
+      <div class="add-row" style="margin-top:14px;">
+        <input class="fin-input" id="acctName" placeholder="Account name" maxlength="40">
+        <input class="fin-input" id="acctBalance" type="number" placeholder="Balance" min="0" step="0.01" style="max-width:120px;">
+        <select class="fin-select" id="acctCurrency">
+          <option value="USD">USD $</option>
+          <option value="EUR">EUR €</option>
+          <option value="GBP">GBP £</option>
+          <option value="ILS">ILS ₪</option>
+          <option value="BTC">BTC ₿</option>
+        </select>
+        <button class="fin-btn primary" onclick="addAccount()">Add</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUBSCRIPTIONS -->
+  <div style="margin-bottom:24px;">
+    <div class="section-title">Subscriptions</div>
+    <div id="subList"></div>
+    <div class="card">
+      <div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:10px;">Add Subscription</div>
+      <div class="add-row">
+        <input class="fin-input" id="subName" placeholder="Name (e.g. Netflix)" maxlength="40">
+        <input class="fin-input" id="subAmount" type="number" placeholder="$/month" min="0" step="0.01" style="max-width:110px;">
+        <input class="fin-input" id="subDay" type="number" placeholder="Charge day" min="1" max="31" style="max-width:110px;">
+      </div>
+      <div class="add-row" style="margin-top:8px;">
+        <select class="fin-select" id="subAccount">
+          <option value="">No auto-deduct</option>
+        </select>
+        <select class="fin-select" id="subCurrency">
+          <option value="USD">USD $</option>
+          <option value="EUR">EUR €</option>
+          <option value="GBP">GBP £</option>
+          <option value="ILS">ILS ₪</option>
+        </select>
+        <button class="fin-btn primary" onclick="addSub()">Add</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ORDERS -->
+  <div style="margin-bottom:24px;">
+    <div class="section-title">Orders</div>
+    <div id="orderList"></div>
+    <div class="card">
+      <div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:10px;">Add Order</div>
+      <div class="add-row">
+        <input class="fin-input" id="orderName" placeholder="Item (e.g. iPhone)" maxlength="60">
+        <input class="fin-input" id="orderAmount" type="number" placeholder="Amount" min="0" step="0.01" style="max-width:110px;">
+        <input class="fin-input" id="orderDays" type="number" placeholder="Days to arrive" min="0" style="max-width:120px;">
+      </div>
+      <div class="add-row" style="margin-top:8px;">
+        <select class="fin-select" id="orderAccount">
+          <option value="">No deduction</option>
+        </select>
+        <select class="fin-select" id="orderCurrency">
+          <option value="USD">USD $</option>
+          <option value="EUR">EUR €</option>
+          <option value="GBP">GBP £</option>
+          <option value="ILS">ILS ₪</option>
+        </select>
+        <button class="fin-btn primary" onclick="addOrder()">Add</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WISHLIST -->
+  <div style="margin-bottom:24px;">
+    <div class="section-title">Wishlist</div>
+    <div id="wishList"></div>
+    <div class="card">
+      <div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:10px;">Add to Wishlist</div>
+      <div class="add-row">
+        <input class="fin-input" id="wishName" placeholder="Item (e.g. BMW)" maxlength="60">
+        <input class="fin-input" id="wishAmount" type="number" placeholder="Price" min="0" step="1" style="max-width:120px;">
+        <select class="fin-select" id="wishCurrency">
+          <option value="USD">USD $</option>
+          <option value="EUR">EUR €</option>
+          <option value="GBP">GBP £</option>
+          <option value="ILS">ILS ₪</option>
+        </select>
+        <button class="fin-btn primary" onclick="addWish()">Add</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RECENT ACTIVITY -->
+  <div style="margin-bottom:24px;">
+    <div class="section-title">Recent Activity</div>
+    <div class="card">
+      <div id="actList"><div class="empty">No activity yet</div></div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+const ACCT_KEY   = 'finance_accounts_v1';
+const SUB_KEY    = 'finance_subs_v1';
+const ORDER_KEY  = 'finance_orders_v1';
+const WISH_KEY   = 'finance_wishlist_v1';
+const ACT_KEY    = 'finance_activity_v1';
+
+const PIE_COLORS = ['#6366f1','#06b6d4','#f59e0b','#10b981','#f43f5e','#8b5cf6','#ec4899','#14b8a6','#f97316','#3b82f6'];
+
+const SYMBOLS = {USD:'$',EUR:'€',GBP:'£',ILS:'₪',BTC:'₿'};
+function sym(c){return SYMBOLS[c]||c+' ';}
+
+function load(key){try{return JSON.parse(localStorage.getItem(key)||'[]');}catch{return [];}}
+function save(key,data){localStorage.setItem(key,JSON.stringify(data));}
+function uid(){return Math.random().toString(36).slice(2,10);}
+
+function fmtMoney(n,cur){
+  const s=sym(cur||'USD');
+  if(cur==='BTC') return s+(+n).toFixed(4);
+  return s+Number(n).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2});
+}
+
+// ── Net Worth ─────────────────────────────────────────────────────────────────
+function getNetWorth(){
+  const accts=load(ACCT_KEY);
+  const usd=accts.filter(a=>a.currency==='USD'||!a.currency).reduce((s,a)=>s+(+a.balance||0),0);
+  return {total:usd, accts};
+}
+
+function renderNetWorth(){
+  const accts=load(ACCT_KEY);
+  const total=accts.reduce((s,a)=>s+(+a.balance||0),0);
+  document.getElementById('nwTotal').textContent=Number(total).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2});
+
+  // Pie
+  const svg=document.getElementById('pieChart');
+  const R=14,C=2*Math.PI*R;
+  const slices=svg.querySelectorAll('.pie-slice');
+  slices.forEach(s=>s.remove());
+  let offset=0;
+  accts.forEach((a,i)=>{
+    if(!a.balance||+a.balance<=0) return;
+    const pct=total>0?(+a.balance/total):0;
+    const dash=pct*C;
+    const sl=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    sl.setAttribute('cx','18');sl.setAttribute('cy','18');sl.setAttribute('r','14');
+    sl.setAttribute('fill','none');
+    sl.setAttribute('stroke',PIE_COLORS[i%PIE_COLORS.length]);
+    sl.setAttribute('stroke-width','6');
+    sl.setAttribute('stroke-dasharray',`${dash} ${C-dash}`);
+    sl.setAttribute('stroke-dashoffset',`${-offset}`);
+    sl.classList.add('pie-slice');
+    svg.appendChild(sl);
+    offset+=dash;
+  });
+  document.getElementById('pieLabel').textContent=accts.length?accts.length+'act':'—';
+
+  // List
+  const el=document.getElementById('acctList');
+  el.innerHTML='';
+  if(!accts.length){el.innerHTML='<div class="empty">No accounts yet</div>';return;}
+  accts.forEach((a,i)=>{
+    const div=document.createElement('div');div.className='acct-item';
+    const pct=total>0?Math.round((+a.balance/total)*100):0;
+    div.innerHTML=`
+      <div class="acct-dot" style="background:${PIE_COLORS[i%PIE_COLORS.length]}"></div>
+      <div class="acct-name">${a.name}</div>
+      <div>
+        <span class="acct-balance">${fmtMoney(a.balance,a.currency)}</span>
+        <span class="acct-cur">${a.currency||'USD'} · ${pct}%</span>
+      </div>
+      <button class="acct-del" onclick="delAccount('${a.id}')">×</button>`;
+    el.appendChild(div);
+  });
+}
+
+function addAccount(){
+  const name=document.getElementById('acctName').value.trim();
+  const balance=parseFloat(document.getElementById('acctBalance').value)||0;
+  const currency=document.getElementById('acctCurrency').value;
+  if(!name) return;
+  const accts=load(ACCT_KEY);
+  accts.push({id:uid(),name,balance,currency});
+  save(ACCT_KEY,accts);
+  document.getElementById('acctName').value='';
+  document.getElementById('acctBalance').value='';
+  refreshAll();
+  logActivity(`Added account: ${name}`,0,'in');
+}
+
+function delAccount(id){
+  const accts=load(ACCT_KEY).filter(a=>a.id!==id);
+  save(ACCT_KEY,accts);
+  refreshAll();
+}
+
+// ── Subscriptions ─────────────────────────────────────────────────────────────
+function daysUntil(day){
+  const now=new Date();
+  const next=new Date(now.getFullYear(),now.getMonth(),day);
+  if(next<=now) next.setMonth(next.getMonth()+1);
+  return Math.ceil((next-now)/(1000*60*60*24));
+}
+
+function renderSubs(){
+  const subs=load(SUB_KEY);
+  const accts=load(ACCT_KEY);
+  const el=document.getElementById('subList');
+  el.innerHTML='';
+  if(!subs.length) return;
+  subs.forEach(s=>{
+    const days=daysUntil(s.chargeDay||1);
+    const isDanger=days<=5;
+    const acct=accts.find(a=>a.id===s.accountId);
+    const div=document.createElement('div');
+    div.className='card sub-item'+(isDanger?' danger':'');
+    div.innerHTML=`
+      <div class="sub-icon">💳</div>
+      <div class="sub-body">
+        <div class="sub-name">${s.name}</div>
+        <div class="sub-meta">${acct?'Auto-deduct from '+acct.name:'No auto-deduct'}</div>
+      </div>
+      <div class="sub-right">
+        <div class="sub-amount">${fmtMoney(s.amount,s.currency)}<span style="font-size:11px;color:var(--text-tertiary)">/mo</span></div>
+        <div class="sub-charge" style="${isDanger?'color:var(--danger);font-weight:700':''}">In ${days} day${days===1?'':'s'}</div>
+      </div>
+      <button class="sub-del" onclick="delSub('${s.id}')">×</button>`;
+    el.appendChild(div);
+  });
+
+  // populate account dropdown
+  const sel=document.getElementById('subAccount');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">No auto-deduct</option>';
+  accts.forEach(a=>sel.innerHTML+=`<option value="${a.id}"${a.id===cur?' selected':''}>${a.name}</option>`);
+}
+
+function addSub(){
+  const name=document.getElementById('subName').value.trim();
+  const amount=parseFloat(document.getElementById('subAmount').value)||0;
+  const chargeDay=parseInt(document.getElementById('subDay').value)||1;
+  const accountId=document.getElementById('subAccount').value;
+  const currency=document.getElementById('subCurrency').value;
+  if(!name||!amount) return;
+  const subs=load(SUB_KEY);
+  subs.push({id:uid(),name,amount,chargeDay,accountId,currency});
+  save(SUB_KEY,subs);
+  document.getElementById('subName').value='';
+  document.getElementById('subAmount').value='';
+  document.getElementById('subDay').value='';
+  refreshAll();
+  logActivity(`Subscription: ${name}`,amount,'out');
+}
+
+function delSub(id){
+  save(SUB_KEY,load(SUB_KEY).filter(s=>s.id!==id));
+  refreshAll();
+}
+
+// ── Orders ────────────────────────────────────────────────────────────────────
+function renderOrders(){
+  const orders=load(ORDER_KEY);
+  const accts=load(ACCT_KEY);
+  const el=document.getElementById('orderList');
+  el.innerHTML='';
+  if(!orders.length) return;
+  const now=Date.now();
+  orders.forEach(o=>{
+    const ms=o.deliveryTs-now;
+    const days=Math.ceil(ms/(1000*60*60*24));
+    let daysStr,daysClass='';
+    if(days<=0){daysStr='Delivered';daysClass='here';}
+    else if(days<=3){daysStr=`In ${days} day${days===1?'':'s'}`;daysClass='soon';}
+    else{daysStr=`In ${days} days`;}
+    const acct=accts.find(a=>a.id===o.accountId);
+    const nw=getNetWorth().total;
+    const pct=nw>0?((+o.amount/nw)*100).toFixed(2):0;
+    const div=document.createElement('div');
+    div.className='card order-item';
+    div.innerHTML=`
+      <div style="font-size:20px">📦</div>
+      <div class="order-body">
+        <div class="order-name">${o.name}</div>
+        <div class="order-meta">${acct?'Deducted from '+acct.name:'No account'} · ${pct}% of net worth</div>
+      </div>
+      <div class="order-right">
+        <div class="order-amount">${fmtMoney(o.amount,o.currency)}</div>
+        <div class="order-days ${daysClass}">${daysStr}</div>
+      </div>
+      <button class="order-del" onclick="delOrder('${o.id}')">×</button>`;
+    el.appendChild(div);
+  });
+
+  const sel=document.getElementById('orderAccount');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">No deduction</option>';
+  accts.forEach(a=>sel.innerHTML+=`<option value="${a.id}"${a.id===cur?' selected':''}>${a.name}</option>`);
+}
+
+function addOrder(){
+  const name=document.getElementById('orderName').value.trim();
+  const amount=parseFloat(document.getElementById('orderAmount').value)||0;
+  const days=parseInt(document.getElementById('orderDays').value)||0;
+  const accountId=document.getElementById('orderAccount').value;
+  const currency=document.getElementById('orderCurrency').value;
+  if(!name||!amount) return;
+  const deliveryTs=Date.now()+(days*24*60*60*1000);
+  const orders=load(ORDER_KEY);
+  orders.push({id:uid(),name,amount,deliveryTs,accountId,currency});
+  save(ORDER_KEY,orders);
+
+  // deduct from account
+  if(accountId){
+    const accts=load(ACCT_KEY);
+    const a=accts.find(a=>a.id===accountId);
+    if(a){a.balance=Math.max(0,(+a.balance||0)-amount);save(ACCT_KEY,accts);}
+  }
+
+  document.getElementById('orderName').value='';
+  document.getElementById('orderAmount').value='';
+  document.getElementById('orderDays').value='';
+  refreshAll();
+  logActivity(`Ordered: ${name}`,amount,'out');
+}
+
+function delOrder(id){
+  save(ORDER_KEY,load(ORDER_KEY).filter(o=>o.id!==id));
+  refreshAll();
+}
+
+// ── Wishlist ──────────────────────────────────────────────────────────────────
+function renderWishlist(){
+  const wishes=load(WISH_KEY);
+  const nw=load(ACCT_KEY).reduce((s,a)=>s+(+a.balance||0),0);
+  const el=document.getElementById('wishList');
+  el.innerHTML='';
+  if(!wishes.length) return;
+  wishes.forEach(w=>{
+    const pct=nw>0?((+w.amount/nw)*100).toFixed(2):0;
+    const div=document.createElement('div');
+    div.className='card wish-item';
+    div.innerHTML=`
+      <div style="font-size:20px">⭐</div>
+      <div class="wish-body">
+        <div class="wish-name">${w.name}</div>
+        <div class="wish-pct">${pct}% of your net worth</div>
+      </div>
+      <div class="wish-right">
+        <div class="wish-amount">${fmtMoney(w.amount,w.currency)}</div>
+      </div>
+      <button class="wish-del" onclick="delWish('${w.id}')">×</button>`;
+    el.appendChild(div);
+  });
+}
+
+function addWish(){
+  const name=document.getElementById('wishName').value.trim();
+  const amount=parseFloat(document.getElementById('wishAmount').value)||0;
+  const currency=document.getElementById('wishCurrency').value;
+  if(!name||!amount) return;
+  const wishes=load(WISH_KEY);
+  wishes.push({id:uid(),name,amount,currency});
+  save(WISH_KEY,wishes);
+  document.getElementById('wishName').value='';
+  document.getElementById('wishAmount').value='';
+  refreshAll();
+}
+
+function delWish(id){
+  save(WISH_KEY,load(WISH_KEY).filter(w=>w.id!==id));
+  refreshAll();
+}
+
+// ── Activity ──────────────────────────────────────────────────────────────────
+function logActivity(desc,amount,type){
+  const acts=load(ACT_KEY);
+  acts.unshift({id:uid(),desc,amount,type,date:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'})});
+  if(acts.length>50) acts.splice(50);
+  save(ACT_KEY,acts);
+  renderActivity();
+}
+
+function renderActivity(){
+  const acts=load(ACT_KEY);
+  const el=document.getElementById('actList');
+  if(!acts.length){el.innerHTML='<div class="empty">No activity yet</div>';return;}
+  el.innerHTML='';
+  acts.slice(0,20).forEach(a=>{
+    const div=document.createElement('div');div.className='act-item';
+    div.innerHTML=`
+      <div class="act-icon">${a.type==='out'?'💸':'💰'}</div>
+      <div class="act-body">
+        <div class="act-desc">${a.desc}</div>
+        <div class="act-date">${a.date}</div>
+      </div>
+      ${a.amount?`<div class="act-amount ${a.type}">${a.type==='out'?'-':'+'} ${fmtMoney(a.amount,'USD')}</div>`:''}`;
+    el.appendChild(div);
+  });
+}
+
+function refreshAll(){
+  renderNetWorth();
+  renderSubs();
+  renderOrders();
+  renderWishlist();
+  renderActivity();
+}
+
+refreshAll();
+</script>
+</body>
+</html>

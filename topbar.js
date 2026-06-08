@@ -259,6 +259,9 @@ body.topbar-modal-open { overflow: hidden; touch-action: none; }
     <a href="health.html" class="tb-pill" aria-label="Health">
       <span class="tb-pill-icon">&#x2764;&#xFE0F;</span>
     </a>
+    <a href="finance.html" class="tb-pill" aria-label="Finance">
+      <span class="tb-pill-icon">&#x1F4B0;</span>
+    </a>
     <a href="index.html" class="tb-pill" aria-label="Main">
       <span class="tb-pill-icon">&#x1F4CB;</span>
     </a>
