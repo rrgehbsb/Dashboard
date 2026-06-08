@@ -179,10 +179,13 @@ body.topbar-modal-open { overflow: hidden; touch-action: none; }
     const p = (window.location.pathname || '').toLowerCase();
     return p.endsWith('/finance.html') || p.endsWith('finance.html');
   }
+  function isHomePage() {
+    const p = (window.location.pathname || '').toLowerCase();
+    return p.endsWith('/index.html') || p.endsWith('index.html') || p.endsWith('/');
+  }
   function isEmbedded() {
     try { return window.self !== window.top; } catch (e) { return true; }
   }
-  function shouldShowChrome() { return !isFinancePage() && !isEmbedded(); }
   function currentPageKey() {
     const p = (window.location.pathname || '').toLowerCase();
     if (p.endsWith('health.html')) return 'health';
@@ -191,23 +194,28 @@ body.topbar-modal-open { overflow: hidden; touch-action: none; }
   }
 
   function injectStyleAndHTML() {
-    if (document.getElementById('topbar') || document.getElementById('bottombar')) return;
-    if (!shouldShowChrome()) return;
+    if (isEmbedded() || isFinancePage()) return;
     const style = document.createElement('style');
     style.id = 'topbar-style';
     style.textContent = css;
     document.head.appendChild(style);
-    const topWrap = document.createElement('div');
-    topWrap.innerHTML = topbarHtml.trim();
-    document.body.insertBefore(topWrap.firstChild, document.body.firstChild);
-    const bottomWrap = document.createElement('div');
-    bottomWrap.innerHTML = bottombarHtml.trim();
-    document.body.appendChild(bottomWrap.firstChild);
-    const active = currentPageKey();
-    document.querySelectorAll('.bottombar-tab').forEach((t) => {
-      t.classList.toggle('active', t.getAttribute('data-page') === active);
-    });
-    document.body.classList.add('has-bottombar');
+    // Topbar (water + finance) only on home page
+    if (isHomePage() && !document.getElementById('topbar')) {
+      const topWrap = document.createElement('div');
+      topWrap.innerHTML = topbarHtml.trim();
+      document.body.insertBefore(topWrap.firstChild, document.body.firstChild);
+    }
+    // Bottom tabs on all non-finance, non-iframe pages
+    if (!document.getElementById('bottombar')) {
+      const bottomWrap = document.createElement('div');
+      bottomWrap.innerHTML = bottombarHtml.trim();
+      document.body.appendChild(bottomWrap.firstChild);
+      const active = currentPageKey();
+      document.querySelectorAll('.bottombar-tab').forEach((t) => {
+        t.classList.toggle('active', t.getAttribute('data-page') === active);
+      });
+      document.body.classList.add('has-bottombar');
+    }
   }
 
   function calendarDateKey() {
