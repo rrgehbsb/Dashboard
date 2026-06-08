@@ -5,7 +5,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="topbar.js" defer></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mum Dashboard</title>
+<title>My Dashboard</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -286,6 +286,58 @@ body::after{
   .day-ring-percent{font-size:32px;}
   .day-ring-status{font-size:13px;}
 }
+/* Day ring gear button */
+.day-ring-gear{
+  position:absolute;top:10px;right:10px;
+  width:32px;height:32px;
+  background:rgba(255,255,255,0.05);
+  border:1px solid rgba(255,255,255,0.09);
+  border-radius:8px;color:var(--text-tertiary);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:15px;
+  transition:background 0.15s,color 0.15s;
+  -webkit-tap-highlight-color:transparent;
+  flex-shrink:0;
+}
+.day-ring-gear:hover{background:rgba(255,255,255,0.10);color:var(--text-primary);}
+/* Schedule modal */
+.schedule-modal-bg{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,0.65);backdrop-filter:blur(6px);
+  z-index:200;align-items:center;justify-content:center;padding:20px;
+}
+.schedule-modal-bg.show{display:flex;}
+.schedule-modal{
+  width:100%;max-width:340px;
+  background:rgba(15,15,18,0.98);
+  border:1px solid rgba(255,255,255,0.12);
+  border-radius:16px;padding:22px;
+}
+.schedule-modal h3{margin:0 0 16px;font-size:16px;font-weight:700;color:#FAFAFA;}
+.schedule-field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+.schedule-field label{font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-tertiary);}
+.schedule-field input[type="time"]{
+  background:rgba(0,0,0,0.28);
+  border:1px solid rgba(255,255,255,0.12);
+  color:#FAFAFA;font-family:inherit;font-size:15px;
+  padding:10px 12px;border-radius:10px;outline:none;
+  color-scheme:dark;
+}
+.schedule-field input[type="time"]:focus{border-color:rgba(255,255,255,0.35);}
+.schedule-modal-actions{display:flex;gap:8px;margin-top:18px;}
+.schedule-save-btn{
+  flex:1;padding:11px;
+  background:linear-gradient(180deg,#fff 0%,#e8e5dd 100%);
+  color:#0a0a0b;border:none;border-radius:10px;
+  font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;
+}
+.schedule-cancel-btn{
+  padding:11px 16px;
+  background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.10);
+  color:#FAFAFA;border-radius:10px;
+  font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;
+}
 </style>
 </head>
 <body>
@@ -293,7 +345,7 @@ body::after{
 <div class="bg-wash bg-wash-warm"></div>
 <div class="bg-wash bg-wash-cool"></div>
 
-<h1 class="dash-title">Mum Dashboard</h1>
+<h1 class="dash-title">My Dashboard</h1>
 
 <div class="ticker-row">
   <div class="goal-ticker" id="goalTicker" aria-live="polite" aria-atomic="true">
@@ -310,6 +362,7 @@ body::after{
 </div>
 
 <div class="day-ring-card">
+  <button class="day-ring-gear" id="dayRingGear" aria-label="Edit schedule">⚙</button>
   <div class="day-ring-svg-wrap">
     <svg viewBox="0 0 120 120" width="168" height="168">
       <defs>
@@ -333,7 +386,26 @@ body::after{
   <div class="day-ring-info">
     <div class="day-ring-status" id="ringStatus">😴 Still sleeping</div>
     <div class="day-ring-remaining" id="ringRemaining">—</div>
-    <div class="day-ring-hours">8:00 AM – 12:00 AM</div>
+    <div class="day-ring-hours" id="ringHours">8:00 AM – 12:00 AM</div>
+  </div>
+</div>
+
+<!-- Schedule settings modal -->
+<div class="schedule-modal-bg" id="scheduleModalBg">
+  <div class="schedule-modal">
+    <h3>⚙ Schedule</h3>
+    <div class="schedule-field">
+      <label>Wake up</label>
+      <input type="time" id="scheduleWakeInput" value="08:00">
+    </div>
+    <div class="schedule-field">
+      <label>Sleep / bedtime</label>
+      <input type="time" id="scheduleSleepInput" value="00:00">
+    </div>
+    <div class="schedule-modal-actions">
+      <button class="schedule-cancel-btn" id="scheduleCancelBtn">Cancel</button>
+      <button class="schedule-save-btn" id="scheduleSaveBtn">Save</button>
+    </div>
   </div>
 </div>
 
@@ -389,8 +461,29 @@ body::after{
 
 <script>
 const ANTHROPIC_API_KEY = '';
-const WAKE_HOUR = 8;
-const SLEEP_HOUR = 24;
+
+function loadSchedule() {
+  const s = storeGet('day_schedule');
+  return { wake: (s && s.wake != null) ? s.wake : 8, sleep: (s && s.sleep != null) ? s.sleep : 24 };
+}
+function saveSchedule(wake, sleep) {
+  storeSet('day_schedule', { wake, sleep });
+}
+function fmtScheduleHour(h) {
+  if (h === 24 || h === 0) return '12:00 AM';
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const hh = h % 12 || 12;
+  return `${hh}:00 ${ampm}`;
+}
+function hourToTimeValue(h) {
+  if (h >= 24) return '00:00';
+  return String(Math.floor(h)).padStart(2, '0') + ':00';
+}
+function timeValueToHour(v) {
+  const [hh, mm] = v.split(':').map(Number);
+  const h = hh + mm / 60;
+  return (h === 0) ? 24 : h;
+}
 
 // Storage
 function storeGet(key){try{return JSON.parse(localStorage.getItem(key));}catch{return null;}}
@@ -482,10 +575,12 @@ function formatClock(now){
   return `${h}:${m} ${ampm}`;
 }
 function updateDayBar(){
+  const {wake: WAKE_HOUR, sleep: SLEEP_HOUR} = loadSchedule();
   const now=new Date();
   const hours=now.getHours()+now.getMinutes()/60+now.getSeconds()/3600;
   const rf=document.getElementById('ringFill');
   document.getElementById('ringClock').textContent=formatClock(now);
+  document.getElementById('ringHours').textContent=`${fmtScheduleHour(WAKE_HOUR)} – ${fmtScheduleHour(SLEEP_HOUR)}`;
   if(hours<WAKE_HOUR){
     rf.setAttribute('stroke','#4D4B47');
     rf.setAttribute('stroke-dashoffset',CIRCUMFERENCE);
@@ -518,6 +613,28 @@ function updateDayBar(){
     document.getElementById('ringRemaining').textContent=`${Math.floor(mins/60)}h ${mins%60}m awake time left`;
   }
 }
+
+// Schedule modal
+document.getElementById('dayRingGear').addEventListener('click', () => {
+  const {wake, sleep} = loadSchedule();
+  document.getElementById('scheduleWakeInput').value = hourToTimeValue(wake);
+  document.getElementById('scheduleSleepInput').value = hourToTimeValue(sleep);
+  document.getElementById('scheduleModalBg').classList.add('show');
+});
+document.getElementById('scheduleCancelBtn').addEventListener('click', () => {
+  document.getElementById('scheduleModalBg').classList.remove('show');
+});
+document.getElementById('scheduleModalBg').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('scheduleModalBg'))
+    document.getElementById('scheduleModalBg').classList.remove('show');
+});
+document.getElementById('scheduleSaveBtn').addEventListener('click', () => {
+  const wake = timeValueToHour(document.getElementById('scheduleWakeInput').value);
+  const sleep = timeValueToHour(document.getElementById('scheduleSleepInput').value);
+  saveSchedule(wake, sleep);
+  document.getElementById('scheduleModalBg').classList.remove('show');
+  updateDayBar();
+});
 
 // Ticker
 let cycleIdx=0;
