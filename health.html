@@ -560,6 +560,131 @@ main {
 .tab[aria-current="page"]{color:var(--text-primary);background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.10);}
 .tab-icon{width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;}
 .tab-icon svg{width:100%;height:100%;display:block;}
+
+/* ===== MEAL PREP (mp-) ===== */
+.mp-section { margin-top: 32px; }
+.mp-section-head {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;
+}
+.mp-today-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 16px; padding: 16px; margin-bottom: 12px;
+}
+.mp-progress-row {
+  display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;
+}
+.mp-progress-text { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.mp-progress-pct { font-size: 12px; color: var(--text-tertiary); }
+.mp-stats-row {
+  display: flex; gap: 16px; margin-bottom: 10px;
+  font-size: 12px; color: var(--text-tertiary);
+}
+.mp-stats-row span { font-weight: 700; color: var(--text-secondary); }
+.mp-progress-track {
+  height: 4px; background: rgba(255,255,255,0.06);
+  border-radius: 9999px; overflow: hidden; margin-bottom: 14px;
+}
+.mp-progress-fill {
+  height: 100%; background: var(--accent);
+  border-radius: 9999px; transition: width 0.4s ease; width: 0%;
+}
+.mp-meal-list { display: flex; flex-direction: column; gap: 0; }
+.mp-meal-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 2px; border-bottom: 1px solid var(--border-soft);
+}
+.mp-meal-row:last-child { border-bottom: none; }
+.mp-checkbox {
+  width: 22px; height: 22px; min-width: 22px; border-radius: 7px;
+  border: 1.5px solid var(--border); background: transparent;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s; font-size: 13px; color: transparent;
+}
+.mp-checkbox.checked { background: var(--accent); border-color: var(--accent); color: #fff; }
+.mp-meal-info { flex: 1; min-width: 0; }
+.mp-meal-name {
+  font-size: 14px; font-weight: 600; color: var(--text-primary); transition: opacity 0.15s;
+}
+.mp-meal-row.eaten .mp-meal-name {
+  opacity: 0.4; text-decoration: line-through;
+  text-decoration-color: var(--text-tertiary);
+}
+.mp-meal-meta {
+  font-size: 11px; color: var(--text-tertiary); margin-top: 2px;
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+.mp-meal-edit-btn {
+  background: none; border: none; color: var(--text-tertiary);
+  font-size: 14px; cursor: pointer; padding: 4px 6px;
+  border-radius: 6px; transition: background 0.15s; flex-shrink: 0;
+}
+.mp-meal-edit-btn:hover { background: rgba(255,255,255,0.06); color: var(--text-secondary); }
+.mp-section-btns { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.mp-btn {
+  background: rgba(255,255,255,0.06); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text-secondary); font-size: 12px;
+  cursor: pointer; padding: 0 12px; height: 30px;
+  display: flex; align-items: center; gap: 4px; transition: background 0.15s;
+}
+.mp-btn:hover { background: rgba(255,255,255,0.1); }
+/* MP Modals */
+.mp-modal-bg {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  z-index: 200; display: flex; align-items: flex-end; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+.mp-modal-bg.show { opacity: 1; pointer-events: all; }
+.mp-modal {
+  background: #0f0f12; border: 1px solid var(--border);
+  border-radius: 20px 20px 0 0; padding: 22px 20px;
+  width: 100%; max-width: 520px; max-height: 88vh; overflow-y: auto;
+}
+.mp-modal h3 { margin: 0 0 16px; font-size: 17px; font-weight: 700; color: var(--text-primary); }
+.mp-field { margin-bottom: 12px; }
+.mp-field label {
+  display: block; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-tertiary); margin-bottom: 4px;
+}
+.mp-field input {
+  width: 100%; background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border); border-radius: 9px;
+  color: var(--text-primary); font-size: 15px; padding: 9px 12px;
+  outline: none; font-family: var(--font); transition: border-color 0.15s;
+}
+.mp-field input:focus { border-color: rgba(255,255,255,0.2); }
+.mp-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.mp-modal-btns { display: flex; gap: 8px; margin-top: 16px; }
+.mp-btn-primary {
+  flex: 1; padding: 11px; border-radius: 10px;
+  background: var(--accent); border: none;
+  color: #fff; font-size: 14px; font-weight: 700;
+  cursor: pointer; transition: opacity 0.15s;
+}
+.mp-btn-primary:hover { opacity: 0.85; }
+.mp-btn-cancel {
+  padding: 11px 18px; border-radius: 10px;
+  background: transparent; border: 1px solid var(--border);
+  color: var(--text-tertiary); font-size: 14px; cursor: pointer;
+}
+.mp-btn-danger {
+  padding: 11px 18px; border-radius: 10px;
+  background: rgba(255,138,138,0.08); border: 1px solid rgba(255,138,138,0.2);
+  color: #ff8a8a; font-size: 14px; cursor: pointer;
+}
+.mp-manage-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.mp-manage-input {
+  flex: 1; background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text-primary); font-size: 14px; padding: 7px 10px; outline: none;
+}
+.mp-add-row { display: flex; gap: 8px; margin-top: 10px; }
+.mp-add-input {
+  flex: 1; background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text-primary); font-size: 14px; padding: 7px 10px; outline: none;
+}
+.mp-divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 </style>
 </head>
 <body>
@@ -654,6 +779,29 @@ main {
       <svg class="spark-svg" id="sparkSvg" viewBox="0 0 280 70" preserveAspectRatio="none"></svg>
     </div>
     <div id="histList" style="margin-top:14px"></div>
+  </div>
+
+  <!-- MEAL PREP TRACKER -->
+  <div class="mp-section" id="mpSection">
+    <div class="mp-section-head">
+      <div class="section-title" style="margin-top:0;margin-bottom:0">Daily Meal Prep</div>
+      <button class="mp-btn" id="mpManageBtn">Edit meals</button>
+    </div>
+    <div class="mp-today-card">
+      <div class="mp-progress-row">
+        <span class="mp-progress-text" id="mpProgressText">0 / 0 meals eaten</span>
+        <span class="mp-progress-pct" id="mpProgressPct">0%</span>
+      </div>
+      <div class="mp-stats-row" id="mpStatsRow" style="display:none">
+        <div>Kcal: <span id="mpKcalTotal">0</span></div>
+        <div>Protein: <span id="mpProteinTotal">0</span> g</div>
+      </div>
+      <div class="mp-progress-track"><div class="mp-progress-fill" id="mpProgressFill"></div></div>
+      <div class="mp-meal-list" id="mpMealList"></div>
+    </div>
+    <div class="mp-section-btns">
+      <button class="mp-btn" id="mpResetTodayBtn">↺ Reset today</button>
+    </div>
   </div>
 
   <div class="attribution">// editable template · all data stays in your browser</div>
@@ -1631,6 +1779,199 @@ main {
 })();
 </script>
 
+<!-- MP: Log Meal Modal -->
+<div class="mp-modal-bg" id="mpLogModal">
+  <div class="mp-modal">
+    <h3 id="mpLogTitle">Log Meal</h3>
+    <input type="hidden" id="mpLogMealId">
+    <div class="mp-field-row">
+      <div class="mp-field"><label>Kcal</label><input type="number" id="mpLogKcal" placeholder="0" min="0"></div>
+      <div class="mp-field"><label>Protein (g)</label><input type="number" id="mpLogProtein" placeholder="0" min="0"></div>
+    </div>
+    <div class="mp-field"><label>Time</label><input type="time" id="mpLogTime"></div>
+    <div class="mp-field"><label>Notes</label><input type="text" id="mpLogNotes" placeholder="What did you eat?"></div>
+    <div class="mp-modal-btns">
+      <button class="mp-btn-cancel" id="mpLogCancel">Cancel</button>
+      <button class="mp-btn-primary" id="mpLogSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- MP: Manage Meals Modal -->
+<div class="mp-modal-bg" id="mpManageModal">
+  <div class="mp-modal">
+    <h3>Manage Meals</h3>
+    <div id="mpManageList"></div>
+    <div class="mp-add-row">
+      <input class="mp-add-input" type="text" id="mpNewMealName" placeholder="New meal name">
+      <button class="mp-btn-primary" id="mpAddMealBtn" style="flex:0 0 auto;padding:7px 16px">Add</button>
+    </div>
+    <hr class="mp-divider">
+    <div style="display:flex;gap:8px">
+      <button class="mp-btn-danger" id="mpResetAllBtn">Reset all data</button>
+      <button class="mp-btn-cancel" id="mpManageClose" style="margin-left:auto">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+const MP_TPL='dashboard:meal:v1:template', MP_DAYS='dashboard:meal:v1:days';
+
+const MP_DEFAULT=[
+  {id:'m1',name:'Breakfast',             kcal:0,protein:0,notes:''},
+  {id:'m2',name:'Snack / School meal',   kcal:0,protein:0,notes:''},
+  {id:'m3',name:'Lunch',                 kcal:0,protein:0,notes:''},
+  {id:'m4',name:'Pre-workout / Shake',   kcal:0,protein:0,notes:''},
+  {id:'m5',name:'Dinner',                kcal:0,protein:0,notes:''},
+  {id:'m6',name:'Before bed / Extra',    kcal:0,protein:0,notes:''},
+];
+
+function mpG(k){try{return JSON.parse(localStorage.getItem(k));}catch{return null;}}
+function mpS(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function uid(){return 'm_'+Date.now()+'_'+Math.random().toString(36).slice(2,5);}
+function todayKey(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+
+function getTpl(){const t=mpG(MP_TPL);if(!t||!Array.isArray(t)||!t.length){mpS(MP_TPL,MP_DEFAULT);return MP_DEFAULT;}return t;}
+function saveTpl(t){mpS(MP_TPL,t);}
+function getDays(){return mpG(MP_DAYS)||{};}
+function saveDays(d){mpS(MP_DAYS,d);}
+
+function renderAll(){
+  const tpl=getTpl(),days=getDays(),dk=todayKey(),dayLog=days[dk]||{};
+  const meals=tpl;
+  let eaten=0,kcal=0,protein=0,hasNutrition=false;
+  meals.forEach(m=>{
+    const log=dayLog[m.id]||{};
+    if(log.eaten)eaten++;
+    if(log.kcal>0){kcal+=parseInt(log.kcal)||0;hasNutrition=true;}
+    if(log.protein>0){protein+=parseInt(log.protein)||0;hasNutrition=true;}
+  });
+  const pct=meals.length?Math.round(eaten/meals.length*100):0;
+  document.getElementById('mpProgressText').textContent=`${eaten} / ${meals.length} meals eaten`;
+  document.getElementById('mpProgressPct').textContent=pct+'%';
+  document.getElementById('mpProgressFill').style.width=pct+'%';
+  const statsRow=document.getElementById('mpStatsRow');
+  if(hasNutrition){
+    statsRow.style.display='flex';
+    document.getElementById('mpKcalTotal').textContent=kcal;
+    document.getElementById('mpProteinTotal').textContent=protein;
+  } else {
+    statsRow.style.display='none';
+  }
+  renderList(meals,dayLog);
+}
+
+function renderList(meals,dayLog){
+  const c=document.getElementById('mpMealList');if(!c)return;
+  c.innerHTML='';
+  meals.forEach(m=>{
+    const log=dayLog[m.id]||{};
+    const row=document.createElement('div');
+    row.className='mp-meal-row'+(log.eaten?' eaten':'');
+    const meta=[];
+    if(log.time)meta.push(log.time);
+    if(log.kcal>0)meta.push(log.kcal+' kcal');
+    if(log.protein>0)meta.push(log.protein+'g protein');
+    if(log.notes)meta.push(esc(log.notes));
+    row.innerHTML=`
+      <div class="mp-checkbox${log.eaten?' checked':''}" data-meal-id="${m.id}" role="checkbox" aria-checked="${!!log.eaten}" tabindex="0">✓</div>
+      <div class="mp-meal-info">
+        <div class="mp-meal-name">${esc(m.name)}</div>
+        ${meta.length?`<div class="mp-meal-meta">${meta.join(' · ')}</div>`:''}
+      </div>
+      <button class="mp-meal-edit-btn" data-log-meal="${m.id}" title="Log details">✎</button>`;
+    row.querySelector('[data-meal-id]').addEventListener('click',()=>toggleEaten(m.id));
+    row.querySelector('[data-meal-id]').addEventListener('keydown',e=>{if(e.key===' '||e.key==='Enter')toggleEaten(m.id);});
+    row.querySelector('[data-log-meal]').addEventListener('click',()=>openLogModal(m.id));
+    c.appendChild(row);
+  });
+}
+
+function toggleEaten(mealId){
+  const days=getDays(),dk=todayKey();
+  if(!days[dk])days[dk]={};
+  if(!days[dk][mealId])days[dk][mealId]={};
+  days[dk][mealId].eaten=!days[dk][mealId].eaten;
+  saveDays(days);renderAll();
+}
+
+function openLogModal(mealId){
+  const tpl=getTpl(),m=tpl.find(x=>x.id===mealId);if(!m)return;
+  const days=getDays(),dk=todayKey(),log=(days[dk]||{})[mealId]||{};
+  document.getElementById('mpLogTitle').textContent='Log: '+m.name;
+  document.getElementById('mpLogMealId').value=mealId;
+  document.getElementById('mpLogKcal').value=log.kcal||'';
+  document.getElementById('mpLogProtein').value=log.protein||'';
+  document.getElementById('mpLogTime').value=log.time||'';
+  document.getElementById('mpLogNotes').value=log.notes||'';
+  document.getElementById('mpLogModal').classList.add('show');
+}
+
+document.getElementById('mpLogSave').addEventListener('click',()=>{
+  const mealId=document.getElementById('mpLogMealId').value;
+  const days=getDays(),dk=todayKey();
+  if(!days[dk])days[dk]={};
+  if(!days[dk][mealId])days[dk][mealId]={};
+  const log=days[dk][mealId];
+  log.kcal=parseInt(document.getElementById('mpLogKcal').value)||0;
+  log.protein=parseInt(document.getElementById('mpLogProtein').value)||0;
+  log.time=document.getElementById('mpLogTime').value;
+  log.notes=document.getElementById('mpLogNotes').value.trim();
+  saveDays(days);
+  document.getElementById('mpLogModal').classList.remove('show');
+  renderAll();
+});
+document.getElementById('mpLogCancel').addEventListener('click',()=>document.getElementById('mpLogModal').classList.remove('show'));
+document.getElementById('mpLogModal').addEventListener('click',e=>{if(e.target.id==='mpLogModal')document.getElementById('mpLogModal').classList.remove('show');});
+
+document.getElementById('mpManageBtn').addEventListener('click',()=>{renderManageList();document.getElementById('mpManageModal').classList.add('show');});
+document.getElementById('mpManageClose').addEventListener('click',()=>document.getElementById('mpManageModal').classList.remove('show'));
+document.getElementById('mpManageModal').addEventListener('click',e=>{if(e.target.id==='mpManageModal')document.getElementById('mpManageModal').classList.remove('show');});
+
+document.getElementById('mpAddMealBtn').addEventListener('click',()=>{
+  const name=document.getElementById('mpNewMealName').value.trim();if(!name)return;
+  const t=getTpl();t.push({id:uid(),name,kcal:0,protein:0,notes:''});saveTpl(t);
+  document.getElementById('mpNewMealName').value='';renderManageList();renderAll();
+});
+
+document.getElementById('mpResetTodayBtn').addEventListener('click',()=>{
+  if(!confirm('Clear all meal logs for today?'))return;
+  const d=getDays();delete d[todayKey()];saveDays(d);renderAll();
+});
+
+document.getElementById('mpResetAllBtn').addEventListener('click',()=>{
+  if(!confirm('Delete ALL meal prep data (template + all logs)? Cannot be undone.'))return;
+  [MP_TPL,MP_DAYS].forEach(k=>localStorage.removeItem(k));
+  document.getElementById('mpManageModal').classList.remove('show');renderAll();
+});
+
+function renderManageList(){
+  const tpl=getTpl(),c=document.getElementById('mpManageList');
+  c.innerHTML=tpl.map(m=>`<div class="mp-manage-row" data-meal-id="${m.id}">
+    <input class="mp-manage-input" type="text" value="${esc(m.name)}" data-meal-id="${m.id}">
+    <button class="mp-btn" style="height:34px;padding:0 10px;color:#ff8a8a;border-color:rgba(255,138,138,0.2)" data-del-meal="${m.id}" title="Remove">×</button>
+  </div>`).join('');
+  c.querySelectorAll('.mp-manage-input').forEach(inp=>{
+    inp.addEventListener('change',()=>{
+      const t=getTpl(),m=t.find(x=>x.id===inp.dataset.mealId);
+      if(m){m.name=inp.value.trim()||m.name;saveTpl(t);renderAll();}
+    });
+  });
+  c.querySelectorAll('[data-del-meal]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      if(!confirm('Remove this meal from the template?'))return;
+      const t=getTpl(),idx=t.findIndex(x=>x.id===btn.dataset.delMeal);
+      if(idx!==-1){t.splice(idx,1);saveTpl(t);renderManageList();renderAll();}
+    });
+  });
+}
+
+renderAll();
+})();
+</script>
 
 </body>
 </html>

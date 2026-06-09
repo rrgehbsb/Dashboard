@@ -1261,6 +1261,206 @@ img, video, canvas, svg { max-width: 100%; }
 }
 
 .hidden { display: none !important; }
+
+/* ===== WORKOUT TRACKER (gt- prefix) ===== */
+.gt-wrap { margin-bottom: 8px; }
+.gt-section-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px; gap: 8px;
+}
+.gt-title {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-3);
+}
+.gt-section-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.gt-icon-btn {
+  background: rgba(255,255,255,0.06); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text-2); font-size: 12px;
+  cursor: pointer; padding: 0 10px; height: 30px;
+  display: flex; align-items: center; gap: 4px;
+  transition: background 0.15s; white-space: nowrap;
+}
+.gt-icon-btn:hover { background: rgba(255,255,255,0.1); }
+.gt-today-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 14px 16px 12px; margin-bottom: 14px;
+}
+.gt-today-head {
+  display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;
+}
+.gt-today-date { font-size: 12px; color: var(--text-3); }
+.gt-today-day { font-size: 16px; font-weight: 700; color: var(--text-1); }
+.gt-progress-bar {
+  height: 5px; background: rgba(255,255,255,0.07);
+  border-radius: 9999px; overflow: hidden; margin-bottom: 7px;
+}
+.gt-progress-fill {
+  height: 100%; background: var(--good); border-radius: 9999px;
+  transition: width 0.4s ease; width: 0%;
+}
+.gt-progress-stats { font-size: 11px; color: var(--text-3); }
+.gt-day-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.gt-day-tab {
+  padding: 5px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;
+  border: 1px solid var(--border); background: transparent; color: var(--text-3);
+  cursor: pointer; transition: all 0.15s;
+}
+.gt-day-tab:hover { background: rgba(255,255,255,0.06); color: var(--text-2); }
+.gt-day-tab.active {
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.22); color: var(--text-1);
+}
+.gt-table-wrap {
+  overflow-x: auto; border: 1px solid var(--border);
+  border-radius: 14px; margin-bottom: 10px;
+}
+.gt-table-head,
+.gt-table-row {
+  display: grid;
+  grid-template-columns: minmax(150px,2fr) 120px 80px 1fr 1.2fr 105px;
+  align-items: center;
+}
+.gt-table-head {
+  background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border);
+}
+.gt-table-row { border-bottom: 1px solid var(--border); }
+.gt-table-row:last-child { border-bottom: none; }
+.gt-th {
+  padding: 9px 10px; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3);
+}
+.gt-td { padding: 8px 10px; }
+.gt-ex-name {
+  font-weight: 600; color: var(--text-1); font-size: 13px;
+  cursor: pointer; border-bottom: 1px dotted transparent; transition: border-color 0.15s;
+}
+.gt-ex-name:hover { border-color: var(--text-3); }
+.gt-ex-detail { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+.gt-target-chip { font-size: 12px; font-family: var(--font-mono); color: var(--text-2); }
+.gt-sets-cell { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+.gt-set-input {
+  width: 52px; background: transparent;
+  border: 1px solid rgba(255,255,255,0.08); border-radius: 7px;
+  color: var(--text-2); font-size: 13px; padding: 5px 4px;
+  font-family: var(--font-mono); text-align: center; outline: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+.gt-set-input::placeholder { color: var(--text-4); }
+.gt-set-input:focus { border-color: rgba(255,255,255,0.22); background: rgba(255,255,255,0.04); }
+.gt-set-input.has-value { color: var(--text-1); border-color: rgba(255,255,255,0.14); }
+.gt-notes-input {
+  width: 100%; background: transparent; border: none;
+  color: var(--text-3); font-size: 12px; padding: 5px 0; outline: none;
+}
+.gt-notes-input::placeholder { color: var(--text-4); }
+.gt-coach-chip {
+  display: inline-block; padding: 3px 9px; border-radius: 12px;
+  font-size: 11px; font-weight: 700; white-space: nowrap;
+}
+.gt-coach-chip.upgrade  { background: rgba(110,231,183,0.12); color: var(--good); }
+.gt-coach-chip.hold     { background: rgba(255,255,255,0.06); color: var(--text-2); }
+.gt-coach-chip.lower    { background: rgba(255,138,138,0.12); color: var(--bad); }
+.gt-coach-chip.nodata   { background: transparent; color: var(--text-4); font-size: 10px; }
+.gt-cards { display: none; }
+.gt-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 14px; margin-bottom: 10px;
+}
+.gt-card-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  margin-bottom: 6px; gap: 8px;
+}
+.gt-card-name { font-weight: 700; font-size: 14px; color: var(--text-1); }
+.gt-card-meta { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 10px; }
+.gt-meta-chip {
+  font-size: 11px; padding: 2px 8px; border-radius: 8px;
+  background: rgba(255,255,255,0.07); color: var(--text-3);
+}
+.gt-sets-row { display: grid; gap: 6px; margin-bottom: 8px; }
+.gt-set-cell { display: flex; flex-direction: column; gap: 3px; align-items: center; }
+.gt-set-label {
+  font-size: 10px; color: var(--text-4); font-weight: 700;
+  letter-spacing: 0.04em; text-transform: uppercase;
+}
+.gt-set-input-mobile {
+  width: 100%; background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;
+  color: var(--text-2); font-size: 15px; padding: 8px 6px;
+  font-family: var(--font-mono); text-align: center; outline: none;
+  transition: border-color 0.15s;
+}
+.gt-set-input-mobile::placeholder { color: var(--text-4); }
+.gt-set-input-mobile:focus { border-color: rgba(255,255,255,0.2); }
+.gt-set-input-mobile.has-value { color: var(--text-1); border-color: rgba(255,255,255,0.14); }
+.gt-card-notes {
+  width: 100%; background: transparent;
+  border: 1px solid rgba(255,255,255,0.06); border-radius: 8px;
+  color: var(--text-3); font-size: 12px; padding: 6px 9px;
+  outline: none; margin-bottom: 8px; font-family: var(--font);
+}
+.gt-card-notes::placeholder { color: var(--text-4); }
+.gt-card-footer { display: flex; justify-content: flex-end; }
+.gt-days-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+.gt-day-name-input {
+  flex: 1; background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text-1); font-size: 14px; padding: 7px 10px; outline: none;
+}
+.gt-add-day-row { display: flex; gap: 8px; margin-top: 10px; }
+.gt-add-day-input {
+  flex: 1; background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text-1); font-size: 14px; padding: 7px 10px; outline: none;
+}
+.gt-modal-bg {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  z-index: 200; display: flex; align-items: flex-end; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+.gt-modal-bg.show { opacity: 1; pointer-events: all; }
+.gt-modal {
+  background: #1a1a1e; border: 1px solid var(--border-strong);
+  border-radius: 20px 20px 0 0; padding: 22px 20px;
+  width: 100%; max-width: 520px; max-height: 88vh; overflow-y: auto;
+}
+.gt-modal h3 { margin: 0 0 16px; font-size: 17px; font-weight: 700; color: var(--text-1); }
+.gt-field { margin-bottom: 12px; }
+.gt-field label {
+  display: block; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); margin-bottom: 4px;
+}
+.gt-field input {
+  width: 100%; background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border); border-radius: 9px;
+  color: var(--text-1); font-size: 15px; padding: 9px 12px;
+  outline: none; font-family: var(--font); transition: border-color 0.15s;
+}
+.gt-field input:focus { border-color: rgba(255,255,255,0.25); }
+.gt-field-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.gt-modal-btns { display: flex; gap: 8px; margin-top: 16px; }
+.gt-btn-primary {
+  flex: 1; padding: 11px; border-radius: 10px;
+  background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.14);
+  color: var(--text-1); font-size: 14px; font-weight: 700;
+  cursor: pointer; transition: background 0.15s;
+}
+.gt-btn-primary:hover { background: rgba(255,255,255,0.18); }
+.gt-btn-cancel {
+  padding: 11px 18px; border-radius: 10px;
+  background: transparent; border: 1px solid var(--border);
+  color: var(--text-3); font-size: 14px; cursor: pointer;
+}
+.gt-btn-danger {
+  padding: 11px 18px; border-radius: 10px;
+  background: rgba(255,138,138,0.08); border: 1px solid rgba(255,138,138,0.2);
+  color: var(--bad); font-size: 14px; cursor: pointer;
+}
+.gt-divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+.gt-manage-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+@media (max-width: 600px) {
+  .gt-table-wrap { display: none; }
+  .gt-cards { display: block; }
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="topbar.js" defer></script>
@@ -1273,6 +1473,43 @@ img, video, canvas, svg { max-width: 100%; }
     <span class="po-day-sep">·</span>
     <span class="po-day-split" id="dayPillSplit">—</span>
   </button>
+
+  <!-- ===== WORKOUT TRACKER ===== -->
+  <div class="gt-wrap" id="gymTracker">
+    <div class="gt-section-head">
+      <span class="gt-title">Workout Tracker</span>
+      <div class="gt-section-actions">
+        <button class="gt-icon-btn" id="gtResetTodayBtn" title="Clear today's set logs">↺ Reset today</button>
+        <button class="gt-icon-btn" id="gtManageDaysBtn">⊞ Days</button>
+        <button class="gt-icon-btn" id="gtAddExBtn">+ Exercise</button>
+      </div>
+    </div>
+
+    <div class="gt-today-card">
+      <div class="gt-today-head">
+        <span class="gt-today-date" id="gtTodayDate">—</span>
+        <span class="gt-today-day" id="gtTodayDay">—</span>
+      </div>
+      <div class="gt-progress-bar"><div class="gt-progress-fill" id="gtProgressFill"></div></div>
+      <div class="gt-progress-stats" id="gtProgressStats">—</div>
+    </div>
+
+    <div class="gt-day-tabs" id="gtDayTabs"></div>
+
+    <div class="gt-table-wrap">
+      <div class="gt-table-head">
+        <div class="gt-th">Exercise</div>
+        <div class="gt-th">Sets · Reps</div>
+        <div class="gt-th">Target</div>
+        <div class="gt-th">Set inputs</div>
+        <div class="gt-th">Notes</div>
+        <div class="gt-th">Coach</div>
+      </div>
+      <div id="gtTableRows"></div>
+    </div>
+
+    <div class="gt-cards" id="gtCards"></div>
+  </div>
 
   <!-- WEIGHT + PROGRESS PHOTOS -->
   <div class="wt-section">
@@ -1580,6 +1817,63 @@ img, video, canvas, svg { max-width: 100%; }
         <span class="po-tw-past-arrow" id="poTwPastArrow">▾</span>
       </button>
       <div class="po-tw-past-body" id="poTwPastBody" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<!-- GT: Edit Exercise Modal -->
+<div class="gt-modal-bg" id="gtEditModal">
+  <div class="gt-modal">
+    <h3>Edit Exercise</h3>
+    <input type="hidden" id="gtEditExId">
+    <input type="hidden" id="gtEditDayId">
+    <div class="gt-field"><label>Name</label><input type="text" id="gtEditName" placeholder="Exercise name"></div>
+    <div class="gt-field-row">
+      <div class="gt-field"><label>Sets</label><input type="number" id="gtEditSets" min="1" max="8" value="3"></div>
+      <div class="gt-field"><label>Rep min</label><input type="number" id="gtEditRepMin" min="1" value="8"></div>
+      <div class="gt-field"><label>Rep max</label><input type="number" id="gtEditRepMax" min="1" value="12"></div>
+    </div>
+    <div class="gt-field"><label>Target weight</label><input type="text" id="gtEditTarget" placeholder="e.g. 55 kg"></div>
+    <div class="gt-field"><label>Notes</label><input type="text" id="gtEditNotes" placeholder="Optional"></div>
+    <div class="gt-modal-btns">
+      <button class="gt-btn-danger" id="gtEditDelete">Delete</button>
+      <button class="gt-btn-cancel" id="gtEditCancel">Cancel</button>
+      <button class="gt-btn-primary" id="gtEditSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- GT: Add Exercise Modal -->
+<div class="gt-modal-bg" id="gtAddModal">
+  <div class="gt-modal">
+    <h3>Add Exercise</h3>
+    <div class="gt-field"><label>Name</label><input type="text" id="gtAddName" placeholder="Exercise name"></div>
+    <div class="gt-field-row">
+      <div class="gt-field"><label>Sets</label><input type="number" id="gtAddSets" min="1" max="8" value="3"></div>
+      <div class="gt-field"><label>Rep min</label><input type="number" id="gtAddRepMin" min="1" value="8"></div>
+      <div class="gt-field"><label>Rep max</label><input type="number" id="gtAddRepMax" min="1" value="12"></div>
+    </div>
+    <div class="gt-field"><label>Target weight</label><input type="text" id="gtAddTarget" placeholder="e.g. 55 kg"></div>
+    <div class="gt-modal-btns">
+      <button class="gt-btn-cancel" id="gtAddCancel">Cancel</button>
+      <button class="gt-btn-primary" id="gtAddSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- GT: Manage Days Modal -->
+<div class="gt-modal-bg" id="gtDaysModal">
+  <div class="gt-modal">
+    <h3>Manage Workout Days</h3>
+    <div id="gtDaysList"></div>
+    <div class="gt-add-day-row">
+      <input class="gt-add-day-input" type="text" id="gtNewDayName" placeholder="New day, e.g. Upper B">
+      <button class="gt-btn-primary" id="gtAddDayBtn" style="flex:0 0 auto;padding:7px 16px">Add</button>
+    </div>
+    <hr class="gt-divider">
+    <div class="gt-manage-btns">
+      <button class="gt-btn-danger" id="gtResetAllBtn">Reset all data</button>
+      <button class="gt-btn-cancel" id="gtDaysClose" style="margin-left:auto">Close</button>
     </div>
   </div>
 </div>
@@ -3466,6 +3760,338 @@ img, video, canvas, svg { max-width: 100%; }
 })();
 </script>
 
+<script>
+(function(){
+'use strict';
+const GT_TPL='dashboard:gym:v1:template', GT_LOG='dashboard:gym:v1:logs', GT_ACT='dashboard:gym:v1:activeDay';
+
+const GT_DEFAULT=[
+  {id:'upper',name:'Upper',exercises:[
+    {id:'ex_u1',name:'Cable Lateral Raise',    sets:3,repMin:12,repMax:20,target:'7.5 kg',notes:''},
+    {id:'ex_u2',name:'Lat Pulldown',           sets:3,repMin:8, repMax:12,target:'55 kg', notes:''},
+    {id:'ex_u3',name:'Unilateral Pec Deck',    sets:3,repMin:8, repMax:12,target:'36 kg', notes:''},
+    {id:'ex_u4',name:'Seated Cable Row',       sets:3,repMin:8, repMax:12,target:'45 kg', notes:''},
+    {id:'ex_u5',name:'Machine Shoulder Press', sets:3,repMin:8, repMax:10,target:'32 kg', notes:''},
+    {id:'ex_u6',name:'Preacher Curl',          sets:3,repMin:8, repMax:12,target:'20 kg', notes:''},
+    {id:'ex_u7',name:'Cuff Tricep Extension',  sets:3,repMin:10,repMax:12,target:'10 kg', notes:''},
+  ]},
+  {id:'legs',name:'Legs',exercises:[
+    {id:'ex_l1',name:'Leg Extension', sets:3,repMin:12,repMax:15,target:'90 kg',notes:''},
+    {id:'ex_l2',name:'Hack Squat',    sets:3,repMin:8, repMax:12,target:'45 kg',notes:''},
+    {id:'ex_l3',name:'SLDL / RDL',   sets:3,repMin:8, repMax:12,target:'10 kg',notes:''},
+    {id:'ex_l4',name:'Hamstring Curl',sets:3,repMin:10,repMax:15,target:'55 kg',notes:''},
+    {id:'ex_l5',name:'Hip Adductors', sets:3,repMin:12,repMax:20,target:'',     notes:''},
+    {id:'ex_l6',name:'Calf Raises',   sets:3,repMin:12,repMax:20,target:'45 kg',notes:''},
+  ]},
+  {id:'push',name:'Push',exercises:[
+    {id:'ex_p1',name:'Incline Smith Press',      sets:3,repMin:8, repMax:10,target:'25 kg',  notes:''},
+    {id:'ex_p2',name:'Machine Chest Press',      sets:3,repMin:10,repMax:12,target:'23 kg',  notes:''},
+    {id:'ex_p3',name:'Cable Chest Fly',          sets:3,repMin:12,repMax:15,target:'7.5 kg', notes:''},
+    {id:'ex_p4',name:'Cable Lateral Raise',      sets:3,repMin:15,repMax:20,target:'6 kg',   notes:''},
+    {id:'ex_p5',name:'Machine Shoulder Press',   sets:3,repMin:10,repMax:12,target:'27 kg',  notes:''},
+    {id:'ex_p6',name:'Unilateral Rope Pushdown', sets:3,repMin:10,repMax:12,target:'8.5 kg', notes:''},
+  ]},
+  {id:'pull',name:'Pull',exercises:[
+    {id:'ex_pu1',name:'Lat Pulldown',              sets:3,repMin:8, repMax:12,target:'55 kg',   notes:''},
+    {id:'ex_pu2',name:'Chest-Supported T-Bar Row', sets:3,repMin:8, repMax:12,target:'22.5 kg', notes:''},
+    {id:'ex_pu3',name:'Single Arm Cable Row',      sets:3,repMin:10,repMax:12,target:'17.5 kg', notes:''},
+    {id:'ex_pu4',name:'Straight Arm Pulldown',     sets:3,repMin:12,repMax:15,target:'17.5 kg', notes:''},
+    {id:'ex_pu5',name:'Recline Preacher Curl',     sets:3,repMin:8, repMax:10,target:'20 kg',   notes:''},
+    {id:'ex_pu6',name:'Hammer Curl',               sets:3,repMin:12,repMax:15,target:'11 kg',   notes:''},
+  ]},
+  {id:'upperb',name:'Upper B',exercises:[
+    {id:'ex_b1',name:'Incline Machine Press', sets:3,repMin:10,repMax:12,target:'22.5 kg',notes:''},
+    {id:'ex_b2',name:'Cable Lateral Raise',   sets:3,repMin:15,repMax:25,target:'4.5 kg', notes:''},
+    {id:'ex_b3',name:'Rear Delt Cable Fly',   sets:3,repMin:15,repMax:20,target:'27 kg',  notes:''},
+    {id:'ex_b4',name:'Cable Curl',            sets:3,repMin:10,repMax:12,target:'15 kg',  notes:''},
+    {id:'ex_b5',name:'Rope Pushdown / Dips',  sets:3,repMin:10,repMax:15,target:'20 kg',  notes:''},
+  ]},
+];
+
+function gtG(k){try{return JSON.parse(localStorage.getItem(k));}catch{return null;}}
+function gtS(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function uid(){return 'ex_'+Date.now()+'_'+Math.random().toString(36).slice(2,5);}
+function todayKey(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function fmtDate(d){return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()]+', '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]+' '+d.getDate();}
+
+function getTpl(){const t=gtG(GT_TPL);if(!t||!Array.isArray(t)||!t.length){gtS(GT_TPL,GT_DEFAULT);return GT_DEFAULT;}return t;}
+function saveTpl(t){gtS(GT_TPL,t);}
+function getLogs(){return gtG(GT_LOG)||{};}
+function saveLogs(l){gtS(GT_LOG,l);}
+function getActive(){const s=gtG(GT_ACT),t=getTpl();if(s&&t.find(d=>d.id===s))return s;return t[0]?t[0].id:null;}
+function saveActive(id){gtS(GT_ACT,id);}
+
+function parseRep(txt){
+  if(!txt||!txt.trim())return null;
+  const n=parseFloat(txt);if(!isNaN(n))return n;
+  const m=txt.match(/(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/i);if(m)return parseFloat(m[2]);
+  const pts=txt.match(/\d+(?:\.\d+)?/g);if(pts&&pts.length)return pts.reduce((a,b)=>a+parseFloat(b),0)/pts.length;
+  return null;
+}
+
+function coachChip(ex,dayLogs,allLogs){
+  if(!ex.target||!ex.target.trim())return{cls:'nodata',label:'— set target'};
+  const reps=[];
+  Object.keys(allLogs).sort().slice(-10).forEach(dk=>{
+    const el=(allLogs[dk]||{})[ex.id]||{};
+    for(let i=0;i<ex.sets;i++){const v=parseRep(el['set'+i]);if(v!==null)reps.push(v);}
+  });
+  if(reps.length<2)return{cls:'nodata',label:'log more'};
+  const avg=reps.reduce((a,b)=>a+b,0)/reps.length;
+  if(avg>=ex.repMax)return{cls:'upgrade',label:'↑ add weight'};
+  if(avg>=ex.repMin)return{cls:'hold',label:'✓ hold'};
+  return{cls:'lower',label:'↓ reduce weight'};
+}
+
+function exDone(ex,exLog){
+  if(!exLog)return{s:false,c:false};
+  let f=0;for(let i=0;i<ex.sets;i++)if((exLog['set'+i]||'').trim())f++;
+  return{s:f>0,c:f>=ex.sets};
+}
+
+function renderAll(){const t=getTpl(),a=getActive();renderTabs(t,a);renderWorkout(t,a);}
+
+function renderTabs(t,a){
+  const c=document.getElementById('gtDayTabs');if(!c)return;
+  c.innerHTML=t.map(d=>`<button class="gt-day-tab${d.id===a?' active':''}" data-day="${d.id}">${esc(d.name)}</button>`).join('');
+  c.querySelectorAll('.gt-day-tab').forEach(b=>b.addEventListener('click',()=>{saveActive(b.dataset.day);renderAll();}));
+}
+
+function renderWorkout(t,a){
+  document.getElementById('gtTodayDate').textContent=fmtDate(new Date());
+  const day=t.find(d=>d.id===a);
+  if(!day){
+    document.getElementById('gtTodayDay').textContent='—';
+    document.getElementById('gtProgressStats').textContent='Select a day above';
+    document.getElementById('gtProgressFill').style.width='0%';
+    document.getElementById('gtTableRows').innerHTML='';
+    document.getElementById('gtCards').innerHTML='';
+    return;
+  }
+  document.getElementById('gtTodayDay').textContent=day.name;
+  const allL=getLogs(),dk=todayKey(),dayL=allL[dk]||{},exs=day.exercises||[];
+  let done=0,started=0;
+  exs.forEach(ex=>{const p=exDone(ex,dayL[ex.id]);if(p.c)done++;if(p.s)started++;});
+  const pct=exs.length?Math.round(done/exs.length*100):0;
+  document.getElementById('gtProgressStats').textContent=`${done}/${exs.length} complete · ${started-done} in progress · ${pct}%`;
+  document.getElementById('gtProgressFill').style.width=pct+'%';
+  renderRows(day,dayL,allL,dk);
+  renderCards(day,dayL,allL,dk);
+}
+
+function renderRows(day,dayL,allL,dk){
+  const c=document.getElementById('gtTableRows');if(!c)return;
+  const exs=day.exercises||[];
+  c.innerHTML=exs.map(ex=>{
+    const el=dayL[ex.id]||{};
+    const sets=[];for(let i=0;i<ex.sets;i++)sets.push(el['set'+i]||'');
+    const chip=coachChip(ex,dayL,allL);
+    const inputs=sets.map((v,i)=>`<input class="gt-set-input${v?' has-value':''}" type="text" inputmode="decimal" placeholder="—" value="${esc(v)}" data-exid="${ex.id}" data-set="${i}" autocomplete="off">`).join('');
+    return `<div class="gt-table-row">
+      <div class="gt-td"><div class="gt-ex-name" data-edit-ex="${ex.id}" data-day="${day.id}" tabindex="0" role="button">${esc(ex.name)}</div>${ex.notes?`<div class="gt-ex-detail">${esc(ex.notes)}</div>`:''}</div>
+      <div class="gt-td" style="color:var(--text-3);font-size:12px">${ex.sets}× ${ex.repMin}–${ex.repMax}</div>
+      <div class="gt-td"><span class="gt-target-chip">${esc(ex.target||'—')}</span></div>
+      <div class="gt-td"><div class="gt-sets-cell">${inputs}</div></div>
+      <div class="gt-td"><input class="gt-notes-input" type="text" placeholder="notes…" value="${esc(el.notes||'')}" data-exid="${ex.id}" autocomplete="off"></div>
+      <div class="gt-td"><span class="gt-coach-chip ${chip.cls}">${chip.label}</span></div>
+    </div>`;
+  }).join('');
+
+  c.querySelectorAll('.gt-set-input').forEach(inp=>{
+    inp.addEventListener('input',()=>{
+      inp.classList.toggle('has-value',!!inp.value.trim());
+      saveSetVal(inp.dataset.exid,inp.dataset.set,inp.value);
+      updateProgress(day);
+      const row=inp.closest('.gt-table-row');
+      if(row){
+        const allI=Array.from(row.querySelectorAll('.gt-set-input'));
+        const exDat=(day.exercises||[]).find(e=>e.id===inp.dataset.exid);
+        if(exDat){
+          const lg={};allI.forEach((ii,n)=>{lg['set'+n]=ii.value;});
+          const nc=coachChip(exDat,{[exDat.id]:lg},getLogs());
+          const ce=row.querySelector('.gt-coach-chip');
+          if(ce){ce.className='gt-coach-chip '+nc.cls;ce.textContent=nc.label;}
+        }
+      }
+    });
+  });
+  c.querySelectorAll('.gt-notes-input').forEach(inp=>inp.addEventListener('input',()=>saveNotes(inp.dataset.exid,inp.value)));
+  c.querySelectorAll('[data-edit-ex]').forEach(el=>{
+    el.addEventListener('click',()=>openEdit(el.dataset.editEx,el.dataset.day));
+    el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' ')openEdit(el.dataset.editEx,el.dataset.day);});
+  });
+}
+
+function renderCards(day,dayL,allL,dk){
+  const c=document.getElementById('gtCards');if(!c)return;
+  c.innerHTML='';
+  (day.exercises||[]).forEach(ex=>{
+    const el=dayL[ex.id]||{};
+    const sets=[];for(let i=0;i<ex.sets;i++)sets.push(el['set'+i]||'');
+    const chip=coachChip(ex,dayL,allL);
+    const cols=Math.min(ex.sets,4);
+    const setCols=sets.map((v,i)=>`<div class="gt-set-cell"><span class="gt-set-label">Set ${i+1}</span><input class="gt-set-input-mobile${v?' has-value':''}" type="text" inputmode="decimal" placeholder="—" value="${esc(v)}" data-exid="${ex.id}" data-set="${i}" autocomplete="off"></div>`).join('');
+    const card=document.createElement('div');
+    card.className='gt-card';
+    card.innerHTML=`<div class="gt-card-header">
+      <div class="gt-card-name">${esc(ex.name)}</div>
+      <div style="display:flex;gap:4px">
+        <button class="gt-icon-btn" style="width:28px;height:28px;padding:0;justify-content:center;font-size:12px" data-edit-ex="${ex.id}" data-day="${day.id}" title="Edit">✎</button>
+        <button class="gt-icon-btn" style="width:28px;height:28px;padding:0;justify-content:center;font-size:15px;color:var(--bad)" data-del-ex="${ex.id}" data-day="${day.id}" title="Remove">×</button>
+      </div></div>
+    <div class="gt-card-meta">
+      <span class="gt-meta-chip">${ex.sets} sets</span>
+      <span class="gt-meta-chip">${ex.repMin}–${ex.repMax} reps</span>
+      ${ex.target?`<span class="gt-meta-chip">${esc(ex.target)}</span>`:''}
+    </div>
+    <div class="gt-sets-row" style="grid-template-columns:repeat(${cols},1fr)">${setCols}</div>
+    <input class="gt-card-notes" type="text" placeholder="Notes…" value="${esc(el.notes||'')}" data-exid="${ex.id}" autocomplete="off">
+    <div class="gt-card-footer"><span class="gt-coach-chip ${chip.cls}">${chip.label}</span></div>`;
+
+    card.querySelectorAll('.gt-set-input-mobile').forEach(inp=>{
+      inp.addEventListener('input',()=>{
+        inp.classList.toggle('has-value',!!inp.value.trim());
+        saveSetVal(inp.dataset.exid,inp.dataset.set,inp.value);
+        updateProgress(day);
+        const allI=Array.from(card.querySelectorAll('.gt-set-input-mobile'));
+        const lg={};allI.forEach((ii,n)=>{lg['set'+n]=ii.value;});
+        const nc=coachChip(ex,{[ex.id]:lg},getLogs());
+        const ce=card.querySelector('.gt-coach-chip');
+        if(ce){ce.className='gt-coach-chip '+nc.cls;ce.textContent=nc.label;}
+      });
+    });
+    card.querySelector('.gt-card-notes').addEventListener('input',e=>saveNotes(ex.id,e.target.value));
+    card.querySelector('[data-edit-ex]').addEventListener('click',()=>openEdit(ex.id,day.id));
+    card.querySelector('[data-del-ex]').addEventListener('click',()=>delEx(ex.id,day.id));
+    c.appendChild(card);
+  });
+}
+
+function updateProgress(day){
+  const allL=getLogs(),dk=todayKey(),dayL=allL[dk]||{},exs=day.exercises||[];
+  let done=0,started=0;
+  exs.forEach(ex=>{const p=exDone(ex,dayL[ex.id]);if(p.c)done++;if(p.s)started++;});
+  const pct=exs.length?Math.round(done/exs.length*100):0;
+  document.getElementById('gtProgressStats').textContent=`${done}/${exs.length} complete · ${started-done} in progress · ${pct}%`;
+  document.getElementById('gtProgressFill').style.width=pct+'%';
+}
+
+function saveSetVal(exId,idx,val){
+  const l=getLogs(),dk=todayKey();
+  if(!l[dk])l[dk]={};if(!l[dk][exId])l[dk][exId]={};
+  l[dk][exId]['set'+idx]=val;saveLogs(l);
+}
+function saveNotes(exId,val){
+  const l=getLogs(),dk=todayKey();
+  if(!l[dk])l[dk]={};if(!l[dk][exId])l[dk][exId]={};
+  l[dk][exId].notes=val;saveLogs(l);
+}
+function delEx(exId,dayId){
+  if(!confirm('Remove this exercise?'))return;
+  const t=getTpl(),d=t.find(x=>x.id===dayId);if(!d)return;
+  d.exercises=(d.exercises||[]).filter(e=>e.id!==exId);saveTpl(t);renderAll();
+}
+
+function openEdit(exId,dayId){
+  const t=getTpl(),day=t.find(d=>d.id===dayId);if(!day)return;
+  const ex=(day.exercises||[]).find(e=>e.id===exId);if(!ex)return;
+  document.getElementById('gtEditExId').value=exId;
+  document.getElementById('gtEditDayId').value=dayId;
+  document.getElementById('gtEditName').value=ex.name;
+  document.getElementById('gtEditSets').value=ex.sets;
+  document.getElementById('gtEditRepMin').value=ex.repMin;
+  document.getElementById('gtEditRepMax').value=ex.repMax;
+  document.getElementById('gtEditTarget').value=ex.target||'';
+  document.getElementById('gtEditNotes').value=ex.notes||'';
+  document.getElementById('gtEditModal').classList.add('show');
+}
+
+document.getElementById('gtEditSave').addEventListener('click',()=>{
+  const exId=document.getElementById('gtEditExId').value;
+  const dayId=document.getElementById('gtEditDayId').value;
+  const t=getTpl(),day=t.find(d=>d.id===dayId);if(!day)return;
+  const ex=(day.exercises||[]).find(e=>e.id===exId);if(!ex)return;
+  ex.name=document.getElementById('gtEditName').value.trim()||ex.name;
+  ex.sets=Math.max(1,parseInt(document.getElementById('gtEditSets').value)||3);
+  ex.repMin=parseInt(document.getElementById('gtEditRepMin').value)||ex.repMin;
+  ex.repMax=parseInt(document.getElementById('gtEditRepMax').value)||ex.repMax;
+  ex.target=document.getElementById('gtEditTarget').value.trim();
+  ex.notes=document.getElementById('gtEditNotes').value.trim();
+  saveTpl(t);document.getElementById('gtEditModal').classList.remove('show');renderAll();
+});
+document.getElementById('gtEditDelete').addEventListener('click',()=>{
+  const exId=document.getElementById('gtEditExId').value,dayId=document.getElementById('gtEditDayId').value;
+  document.getElementById('gtEditModal').classList.remove('show');delEx(exId,dayId);
+});
+document.getElementById('gtEditCancel').addEventListener('click',()=>document.getElementById('gtEditModal').classList.remove('show'));
+document.getElementById('gtEditModal').addEventListener('click',e=>{if(e.target.id==='gtEditModal')document.getElementById('gtEditModal').classList.remove('show');});
+
+document.getElementById('gtAddExBtn').addEventListener('click',()=>{
+  ['gtAddName','gtAddTarget'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('gtAddSets').value='3';
+  document.getElementById('gtAddRepMin').value='';
+  document.getElementById('gtAddRepMax').value='';
+  document.getElementById('gtAddModal').classList.add('show');
+  setTimeout(()=>document.getElementById('gtAddName').focus(),100);
+});
+document.getElementById('gtAddSave').addEventListener('click',()=>{
+  const name=document.getElementById('gtAddName').value.trim();if(!name)return;
+  const a=getActive(),t=getTpl(),day=t.find(d=>d.id===a);if(!day)return;
+  day.exercises=day.exercises||[];
+  day.exercises.push({id:uid(),name,
+    sets:Math.max(1,parseInt(document.getElementById('gtAddSets').value)||3),
+    repMin:parseInt(document.getElementById('gtAddRepMin').value)||8,
+    repMax:parseInt(document.getElementById('gtAddRepMax').value)||12,
+    target:document.getElementById('gtAddTarget').value.trim(),notes:''});
+  saveTpl(t);document.getElementById('gtAddModal').classList.remove('show');renderAll();
+});
+document.getElementById('gtAddCancel').addEventListener('click',()=>document.getElementById('gtAddModal').classList.remove('show'));
+document.getElementById('gtAddModal').addEventListener('click',e=>{if(e.target.id==='gtAddModal')document.getElementById('gtAddModal').classList.remove('show');});
+
+document.getElementById('gtResetTodayBtn').addEventListener('click',()=>{
+  if(!confirm('Clear all set logs for today?'))return;
+  const l=getLogs();delete l[todayKey()];saveLogs(l);renderAll();
+});
+
+document.getElementById('gtManageDaysBtn').addEventListener('click',()=>{renderDaysList();document.getElementById('gtDaysModal').classList.add('show');});
+document.getElementById('gtDaysClose').addEventListener('click',()=>document.getElementById('gtDaysModal').classList.remove('show'));
+document.getElementById('gtDaysModal').addEventListener('click',e=>{if(e.target.id==='gtDaysModal')document.getElementById('gtDaysModal').classList.remove('show');});
+document.getElementById('gtAddDayBtn').addEventListener('click',()=>{
+  const name=document.getElementById('gtNewDayName').value.trim();if(!name)return;
+  const t=getTpl();t.push({id:'day_'+Date.now(),name,exercises:[]});saveTpl(t);
+  document.getElementById('gtNewDayName').value='';renderDaysList();renderAll();
+});
+document.getElementById('gtResetAllBtn').addEventListener('click',()=>{
+  if(!confirm('Delete ALL workout tracker data (template + all logs)? Cannot be undone.'))return;
+  [GT_TPL,GT_LOG,GT_ACT].forEach(k=>localStorage.removeItem(k));
+  document.getElementById('gtDaysModal').classList.remove('show');renderAll();
+});
+
+function renderDaysList(){
+  const t=getTpl(),c=document.getElementById('gtDaysList');
+  c.innerHTML=t.map(d=>`<div class="gt-days-row" data-day-id="${d.id}">
+    <input class="gt-day-name-input" type="text" value="${esc(d.name)}" data-day-id="${d.id}">
+    <button class="gt-icon-btn" style="width:30px;height:30px;padding:0;justify-content:center;font-size:15px;color:var(--bad)" data-del-day="${d.id}" title="Delete">×</button>
+  </div>`).join('');
+  c.querySelectorAll('.gt-day-name-input').forEach(inp=>{
+    inp.addEventListener('change',()=>{
+      const t2=getTpl(),d=t2.find(x=>x.id===inp.dataset.dayId);
+      if(d){d.name=inp.value.trim()||d.name;saveTpl(t2);renderAll();}
+    });
+  });
+  c.querySelectorAll('[data-del-day]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      if(!confirm('Delete this workout day and all its exercises?'))return;
+      const t2=getTpl(),idx=t2.findIndex(x=>x.id===btn.dataset.delDay);
+      if(idx!==-1){t2.splice(idx,1);saveTpl(t2);renderDaysList();renderAll();}
+    });
+  });
+}
+
+renderAll();
+})();
+</script>
 
 </body>
 </html>
