@@ -470,14 +470,19 @@ function saveSchedule(wake, sleep) {
   storeSet('day_schedule', { wake, sleep });
 }
 function fmtScheduleHour(h) {
-  if (h === 24 || h === 0) return '12:00 AM';
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  const hh = h % 12 || 12;
-  return `${hh}:00 ${ampm}`;
+  const totalMins = Math.round((h % 24) * 60);
+  const hh24 = Math.floor(totalMins / 60) % 24;
+  const mm = totalMins % 60;
+  if (hh24 === 0 && mm === 0) return '12:00 AM';
+  const ampm = hh24 >= 12 ? 'PM' : 'AM';
+  const hh12 = hh24 % 12 || 12;
+  return `${hh12}:${String(mm).padStart(2, '0')} ${ampm}`;
 }
 function hourToTimeValue(h) {
-  if (h >= 24) return '00:00';
-  return String(Math.floor(h)).padStart(2, '0') + ':00';
+  const totalMins = Math.round((h % 24) * 60);
+  const hh = Math.floor(totalMins / 60) % 24;
+  const mm = totalMins % 60;
+  return String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0');
 }
 function timeValueToHour(v) {
   const [hh, mm] = v.split(':').map(Number);
