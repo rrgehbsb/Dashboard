@@ -685,6 +685,44 @@ main {
   color: var(--text-primary); font-size: 14px; padding: 7px 10px; outline: none;
 }
 .mp-divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+.mp-macro-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;
+}
+.mp-macro-cell {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;
+}
+.mp-macro-val {
+  font-size: 22px; font-weight: 700; color: var(--text-primary); line-height: 1.1; margin-bottom: 2px;
+}
+.mp-macro-unit { font-size: 13px; font-weight: 400; color: var(--text-tertiary); margin-left: 2px; }
+.mp-macro-range { font-size: 10px; color: var(--text-tertiary); margin-bottom: 6px; line-height: 1.3; }
+.mp-macro-track { height: 3px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; }
+.mp-macro-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s ease; }
+.mp-quick-add { margin-top: 12px; margin-bottom: 4px; }
+.mp-quick-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-tertiary); margin-bottom: 7px;
+}
+.mp-quick-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.mp-quick-btn {
+  background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text-secondary); font-size: 12px; padding: 6px 11px; cursor: pointer; transition: background 0.15s;
+}
+.mp-quick-btn:hover { background: rgba(255,255,255,0.1); }
+.mp-details {
+  margin-top: 10px; background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 10px; overflow: hidden;
+}
+.mp-details-summary {
+  font-size: 12px; color: var(--text-tertiary); padding: 10px 14px;
+  cursor: pointer; list-style: none; user-select: none;
+}
+.mp-details-summary::-webkit-details-marker { display: none; }
+.mp-details-summary::before { content: '▸ '; }
+details[open] .mp-details-summary::before { content: '▾ '; }
+.mp-details-body { font-size: 12px; color: var(--text-secondary); padding: 0 14px 12px; line-height: 1.6; }
+.mp-meal-default { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; font-style: italic; }
+.mp-extras-row { background: rgba(255,255,255,0.02); }
 </style>
 </head>
 <body>
@@ -785,20 +823,49 @@ main {
   <div class="mp-section" id="mpSection">
     <div class="mp-section-head">
       <div class="section-title" style="margin-top:0;margin-bottom:0">Daily Meal Prep</div>
-      <button class="mp-btn" id="mpManageBtn">Edit meals</button>
+      <div style="display:flex;gap:8px">
+        <button class="mp-btn" id="mpTargetBtn">Targets</button>
+        <button class="mp-btn" id="mpManageBtn">Edit meals</button>
+      </div>
+    </div>
+    <div class="mp-macro-grid">
+      <div class="mp-macro-cell">
+        <div class="mp-macro-val"><span id="mpKcalVal">0</span></div>
+        <div class="mp-macro-range" id="mpKcalRange">/ — kcal</div>
+        <div class="mp-macro-track"><div class="mp-macro-fill" id="mpKcalFill" style="width:0%"></div></div>
+      </div>
+      <div class="mp-macro-cell">
+        <div class="mp-macro-val"><span id="mpProtVal">0</span><span class="mp-macro-unit">g</span></div>
+        <div class="mp-macro-range" id="mpProtRange">/ — protein</div>
+        <div class="mp-macro-track"><div class="mp-macro-fill" id="mpProtFill" style="width:0%"></div></div>
+      </div>
+      <div class="mp-macro-cell">
+        <div class="mp-macro-val"><span id="mpCarbsVal">0</span><span class="mp-macro-unit">g</span></div>
+        <div class="mp-macro-range" id="mpCarbsRange">/ — carbs</div>
+        <div class="mp-macro-track"><div class="mp-macro-fill" id="mpCarbsFill" style="width:0%"></div></div>
+      </div>
+      <div class="mp-macro-cell">
+        <div class="mp-macro-val"><span id="mpFatVal">0</span><span class="mp-macro-unit">g</span></div>
+        <div class="mp-macro-range" id="mpFatRange">/ — fat</div>
+        <div class="mp-macro-track"><div class="mp-macro-fill" id="mpFatFill" style="width:0%"></div></div>
+      </div>
     </div>
     <div class="mp-today-card">
       <div class="mp-progress-row">
-        <span class="mp-progress-text" id="mpProgressText">0 / 0 meals eaten</span>
+        <span class="mp-progress-text" id="mpProgressText">0 / 6 meals eaten</span>
         <span class="mp-progress-pct" id="mpProgressPct">0%</span>
-      </div>
-      <div class="mp-stats-row" id="mpStatsRow" style="display:none">
-        <div>Kcal: <span id="mpKcalTotal">0</span></div>
-        <div>Protein: <span id="mpProteinTotal">0</span> g</div>
       </div>
       <div class="mp-progress-track"><div class="mp-progress-fill" id="mpProgressFill"></div></div>
       <div class="mp-meal-list" id="mpMealList"></div>
     </div>
+    <div class="mp-quick-add">
+      <div class="mp-quick-label">Quick add</div>
+      <div class="mp-quick-btns" id="mpQuickBtns"></div>
+    </div>
+    <details class="mp-details">
+      <summary class="mp-details-summary">Bulking adjustment guide</summary>
+      <div class="mp-details-body">Weigh daily, use weekly average. If weekly gain is under 0.3kg, add +300 kcal/day. If 0.3–0.6kg, add +150 kcal/day. If 0.6–0.9kg, perfect. If over 1.1kg after week 2, remove 200 kcal/day.</div>
+    </details>
     <div class="mp-section-btns">
       <button class="mp-btn" id="mpResetTodayBtn">↺ Reset today</button>
     </div>
@@ -1788,6 +1855,10 @@ main {
       <div class="mp-field"><label>Kcal</label><input type="number" id="mpLogKcal" placeholder="0" min="0"></div>
       <div class="mp-field"><label>Protein (g)</label><input type="number" id="mpLogProtein" placeholder="0" min="0"></div>
     </div>
+    <div class="mp-field-row">
+      <div class="mp-field"><label>Carbs (g)</label><input type="number" id="mpLogCarbs" placeholder="0" min="0"></div>
+      <div class="mp-field"><label>Fat (g)</label><input type="number" id="mpLogFat" placeholder="0" min="0"></div>
+    </div>
     <div class="mp-field"><label>Time</label><input type="time" id="mpLogTime"></div>
     <div class="mp-field"><label>Notes</label><input type="text" id="mpLogNotes" placeholder="What did you eat?"></div>
     <div class="mp-modal-btns">
@@ -1814,79 +1885,179 @@ main {
   </div>
 </div>
 
+<!-- MP: Target Settings Modal -->
+<div class="mp-modal-bg" id="mpTargetModal">
+  <div class="mp-modal">
+    <h3>Macro Targets</h3>
+    <div class="mp-field-row">
+      <div class="mp-field"><label>Kcal min</label><input type="number" id="mpTgtKcalMin" min="0"></div>
+      <div class="mp-field"><label>Kcal max</label><input type="number" id="mpTgtKcalMax" min="0"></div>
+    </div>
+    <div class="mp-field-row">
+      <div class="mp-field"><label>Protein min (g)</label><input type="number" id="mpTgtProtMin" min="0"></div>
+      <div class="mp-field"><label>Protein max (g)</label><input type="number" id="mpTgtProtMax" min="0"></div>
+    </div>
+    <div class="mp-field-row">
+      <div class="mp-field"><label>Carbs min (g)</label><input type="number" id="mpTgtCarbMin" min="0"></div>
+      <div class="mp-field"><label>Carbs max (g)</label><input type="number" id="mpTgtCarbMax" min="0"></div>
+    </div>
+    <div class="mp-field-row">
+      <div class="mp-field"><label>Fat min (g)</label><input type="number" id="mpTgtFatMin" min="0"></div>
+      <div class="mp-field"><label>Fat max (g)</label><input type="number" id="mpTgtFatMax" min="0"></div>
+    </div>
+    <div class="mp-modal-btns">
+      <button class="mp-btn-cancel" id="mpTargetCancel">Cancel</button>
+      <button class="mp-btn-primary" id="mpTargetSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- MP: Edit Meal Template Modal -->
+<div class="mp-modal-bg" id="mpEditMealModal">
+  <div class="mp-modal">
+    <h3>Edit Meal Template</h3>
+    <input type="hidden" id="mpEditMealId">
+    <div class="mp-field"><label>Name</label><input type="text" id="mpEditMealName"></div>
+    <div class="mp-field"><label>Foods description</label><input type="text" id="mpEditMealFoods" placeholder="e.g. rice + chicken + olive oil"></div>
+    <div class="mp-field-row">
+      <div class="mp-field"><label>Kcal</label><input type="number" id="mpEditMealKcal" min="0"></div>
+      <div class="mp-field"><label>Protein (g)</label><input type="number" id="mpEditMealProtein" min="0"></div>
+    </div>
+    <div class="mp-field-row">
+      <div class="mp-field"><label>Carbs (g)</label><input type="number" id="mpEditMealCarbs" min="0"></div>
+      <div class="mp-field"><label>Fat (g)</label><input type="number" id="mpEditMealFat" min="0"></div>
+    </div>
+    <div class="mp-field"><label>Notes</label><input type="text" id="mpEditMealNotes" placeholder="timing, context..."></div>
+    <div class="mp-modal-btns">
+      <button class="mp-btn-cancel" id="mpEditMealCancel">Cancel</button>
+      <button class="mp-btn-primary" id="mpEditMealSave">Save</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (function(){
 'use strict';
-const MP_TPL='dashboard:meal:v1:template', MP_DAYS='dashboard:meal:v1:days';
+const MP_TPL='dashboard:mealPrep:v1:template';
+const MP_DAYS='dashboard:mealPrep:v1:daily';
+const MP_SETTINGS='dashboard:mealPrep:v1:settings';
 
 const MP_DEFAULT=[
-  {id:'m1',name:'Breakfast',             kcal:0,protein:0,notes:''},
-  {id:'m2',name:'Snack / School meal',   kcal:0,protein:0,notes:''},
-  {id:'m3',name:'Lunch',                 kcal:0,protein:0,notes:''},
-  {id:'m4',name:'Pre-workout / Shake',   kcal:0,protein:0,notes:''},
-  {id:'m5',name:'Dinner',                kcal:0,protein:0,notes:''},
-  {id:'m6',name:'Before bed / Extra',    kcal:0,protein:0,notes:''},
+  {id:'mp1',name:'Pre-gym',foods:'Banana + granola bar',kcal:300,protein:5,carbs:55,fat:5,notes:''},
+  {id:'mp2',name:'Post-gym shake',foods:'Milk + whey + oats + banana + PB + honey',kcal:950,protein:55,carbs:100,fat:25,notes:''},
+  {id:'mp3',name:'School meal',foods:'Pita + tuna + techina + fruit + pretzels',kcal:775,protein:40,carbs:90,fat:18,notes:''},
+  {id:'mp4',name:'After-school meal',foods:'Rice 400g + chicken 200g + olive oil',kcal:1075,protein:60,carbs:135,fat:20,notes:''},
+  {id:'mp5',name:'Dinner',foods:'Rice 400g + ground beef 200g + sauce',kcal:1150,protein:55,carbs:140,fat:25,notes:''},
+  {id:'mp6',name:'Night snack',foods:'PB&J or granola + milk',kcal:650,protein:15,carbs:90,fat:20,notes:''},
+];
+
+const TARGETS_DEFAULT={kcal:{min:4300,max:4600},protein:{min:170,max:220},carbs:{min:550,max:650},fat:{min:120,max:160}};
+
+const QUICK_ADD=[
+  {label:'+200g rice',kcal:260,protein:5,carbs:57,fat:1},
+  {label:'+2 tbsp PB',kcal:190,protein:8,carbs:7,fat:16},
+  {label:'+1 pita',kcal:225,protein:7,carbs:45,fat:2},
+  {label:'+40g oats',kcal:150,protein:5,carbs:27,fat:3},
+  {label:'+1 tbsp olive oil',kcal:120,protein:0,carbs:0,fat:14},
+  {label:'Banana + honey',kcal:175,protein:2,carbs:44,fat:0},
 ];
 
 function mpG(k){try{return JSON.parse(localStorage.getItem(k));}catch{return null;}}
 function mpS(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function uid(){return 'm_'+Date.now()+'_'+Math.random().toString(36).slice(2,5);}
+function uid(){return 'mp_'+Date.now()+'_'+Math.random().toString(36).slice(2,5);}
 function todayKey(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function fmtKcal(n){const r=Math.round(n||0);return r>=1000?r.toLocaleString():String(r);}
+function fmtN(n){return String(Math.round(n||0));}
 
 function getTpl(){const t=mpG(MP_TPL);if(!t||!Array.isArray(t)||!t.length){mpS(MP_TPL,MP_DEFAULT);return MP_DEFAULT;}return t;}
 function saveTpl(t){mpS(MP_TPL,t);}
 function getDays(){return mpG(MP_DAYS)||{};}
 function saveDays(d){mpS(MP_DAYS,d);}
+function getSettings(){const s=mpG(MP_SETTINGS);if(s&&s.kcal&&s.protein&&s.carbs&&s.fat)return s;return Object.assign({},TARGETS_DEFAULT);}
+function saveSettings(s){mpS(MP_SETTINGS,s);}
+
+function setMacro(prefix,valStr,rangeStr,val,maxTarget){
+  const pct=maxTarget?Math.min(100,Math.round(val/maxTarget*100)):0;
+  const el=document.getElementById(prefix+'Val');
+  const rangeEl=document.getElementById(prefix+'Range');
+  const fillEl=document.getElementById(prefix+'Fill');
+  if(el)el.textContent=valStr;
+  if(rangeEl)rangeEl.textContent=rangeStr;
+  if(fillEl)fillEl.style.width=pct+'%';
+}
 
 function renderAll(){
   const tpl=getTpl(),days=getDays(),dk=todayKey(),dayLog=days[dk]||{};
-  const meals=tpl;
-  let eaten=0,kcal=0,protein=0,hasNutrition=false;
-  meals.forEach(m=>{
+  const t=getSettings();
+  let eaten=0,kcal=0,prot=0,carbs=0,fat=0;
+  tpl.forEach(m=>{
     const log=dayLog[m.id]||{};
     if(log.eaten)eaten++;
-    if(log.kcal>0){kcal+=parseInt(log.kcal)||0;hasNutrition=true;}
-    if(log.protein>0){protein+=parseInt(log.protein)||0;hasNutrition=true;}
+    kcal+=parseInt(log.kcal)||0;
+    prot+=parseInt(log.protein)||0;
+    carbs+=parseInt(log.carbs)||0;
+    fat+=parseInt(log.fat)||0;
   });
-  const pct=meals.length?Math.round(eaten/meals.length*100):0;
-  document.getElementById('mpProgressText').textContent=`${eaten} / ${meals.length} meals eaten`;
+  (dayLog._extras||[]).forEach(e=>{kcal+=e.kcal||0;prot+=e.protein||0;carbs+=e.carbs||0;fat+=e.fat||0;});
+  const pct=tpl.length?Math.round(eaten/tpl.length*100):0;
+  document.getElementById('mpProgressText').textContent=`${eaten} / ${tpl.length} meals eaten`;
   document.getElementById('mpProgressPct').textContent=pct+'%';
   document.getElementById('mpProgressFill').style.width=pct+'%';
-  const statsRow=document.getElementById('mpStatsRow');
-  if(hasNutrition){
-    statsRow.style.display='flex';
-    document.getElementById('mpKcalTotal').textContent=kcal;
-    document.getElementById('mpProteinTotal').textContent=protein;
-  } else {
-    statsRow.style.display='none';
-  }
-  renderList(meals,dayLog);
+  setMacro('mpKcal',fmtKcal(kcal),`/ ${fmtKcal(t.kcal.min)}–${fmtKcal(t.kcal.max)} kcal`,kcal,t.kcal.max);
+  setMacro('mpProt',fmtN(prot),`/ ${t.protein.min}–${t.protein.max}g protein`,prot,t.protein.max);
+  setMacro('mpCarbs',fmtN(carbs),`/ ${t.carbs.min}–${t.carbs.max}g carbs`,carbs,t.carbs.max);
+  setMacro('mpFat',fmtN(fat),`/ ${t.fat.min}–${t.fat.max}g fat`,fat,t.fat.max);
+  renderList(tpl,dayLog);
 }
 
-function renderList(meals,dayLog){
+function renderList(tpl,dayLog){
   const c=document.getElementById('mpMealList');if(!c)return;
-  c.innerHTML='';
-  meals.forEach(m=>{
+  const extras=dayLog._extras||[];
+  let html=tpl.map(m=>{
     const log=dayLog[m.id]||{};
-    const row=document.createElement('div');
-    row.className='mp-meal-row'+(log.eaten?' eaten':'');
     const meta=[];
     if(log.time)meta.push(log.time);
-    if(log.kcal>0)meta.push(log.kcal+' kcal');
-    if(log.protein>0)meta.push(log.protein+'g protein');
+    const lk=parseInt(log.kcal)||0,lp=parseInt(log.protein)||0,lc=parseInt(log.carbs)||0,lf=parseInt(log.fat)||0;
+    if(lk)meta.push(fmtKcal(lk)+' kcal');
+    if(lp)meta.push(lp+'g p');
+    if(lc)meta.push(lc+'g c');
+    if(lf)meta.push(lf+'g f');
     if(log.notes)meta.push(esc(log.notes));
-    row.innerHTML=`
+    const hasLog=lk||lp||lc||lf;
+    const defMeta=!hasLog&&(m.kcal||m.protein)?`<div class="mp-meal-default">${m.kcal?fmtKcal(m.kcal)+' kcal':''} ${m.protein?m.protein+'g p':''}${m.foods?' · '+esc(m.foods):''}</div>`:'';
+    return`<div class="mp-meal-row${log.eaten?' eaten':''}">
       <div class="mp-checkbox${log.eaten?' checked':''}" data-meal-id="${m.id}" role="checkbox" aria-checked="${!!log.eaten}" tabindex="0">✓</div>
       <div class="mp-meal-info">
         <div class="mp-meal-name">${esc(m.name)}</div>
-        ${meta.length?`<div class="mp-meal-meta">${meta.join(' · ')}</div>`:''}
+        ${meta.length?`<div class="mp-meal-meta">${meta.join(' · ')}</div>`:defMeta}
       </div>
-      <button class="mp-meal-edit-btn" data-log-meal="${m.id}" title="Log details">✎</button>`;
-    row.querySelector('[data-meal-id]').addEventListener('click',()=>toggleEaten(m.id));
-    row.querySelector('[data-meal-id]').addEventListener('keydown',e=>{if(e.key===' '||e.key==='Enter')toggleEaten(m.id);});
-    row.querySelector('[data-log-meal]').addEventListener('click',()=>openLogModal(m.id));
-    c.appendChild(row);
+      <button class="mp-meal-edit-btn" data-log-meal="${m.id}" title="Log details">✎</button>
+    </div>`;
+  }).join('');
+  if(extras.length){
+    const ek=extras.reduce((a,e)=>a+(e.kcal||0),0);
+    const ep=extras.reduce((a,e)=>a+(e.protein||0),0);
+    html+=`<div class="mp-meal-row mp-extras-row">
+      <div class="mp-meal-info" style="flex:1">
+        <div class="mp-meal-name" style="color:var(--text-secondary);font-size:12px">Quick adds (${extras.length})</div>
+        <div class="mp-meal-meta">${fmtKcal(ek)} kcal · ${ep}g p</div>
+      </div>
+      <button class="mp-btn" id="mpClearExtrasBtn" style="font-size:11px;padding:4px 8px">✕</button>
+    </div>`;
+  }
+  c.innerHTML=html;
+  c.querySelectorAll('[data-meal-id]').forEach(el=>{
+    el.addEventListener('click',()=>toggleEaten(el.dataset.mealId));
+    el.addEventListener('keydown',e=>{if(e.key===' '||e.key==='Enter')toggleEaten(el.dataset.mealId);});
+  });
+  c.querySelectorAll('[data-log-meal]').forEach(btn=>btn.addEventListener('click',()=>openLogModal(btn.dataset.logMeal)));
+  const cb=c.querySelector('#mpClearExtrasBtn');
+  if(cb)cb.addEventListener('click',()=>{
+    if(!confirm('Clear quick-add items for today?'))return;
+    const d=getDays(),dk=todayKey();
+    if(d[dk])d[dk]._extras=[];
+    saveDays(d);renderAll();
   });
 }
 
@@ -1900,13 +2071,16 @@ function toggleEaten(mealId){
 
 function openLogModal(mealId){
   const tpl=getTpl(),m=tpl.find(x=>x.id===mealId);if(!m)return;
-  const days=getDays(),dk=todayKey(),log=(days[dk]||{})[mealId]||{};
+  const days=getDays(),dk=todayKey(),log=(days[dk]||{})[mealId];
   document.getElementById('mpLogTitle').textContent='Log: '+m.name;
   document.getElementById('mpLogMealId').value=mealId;
-  document.getElementById('mpLogKcal').value=log.kcal||'';
-  document.getElementById('mpLogProtein').value=log.protein||'';
-  document.getElementById('mpLogTime').value=log.time||'';
-  document.getElementById('mpLogNotes').value=log.notes||'';
+  const hasLog=log&&(log.kcal!=null||log.protein!=null||log.carbs!=null||log.fat!=null);
+  document.getElementById('mpLogKcal').value=hasLog?(log.kcal||''):(m.kcal||'');
+  document.getElementById('mpLogProtein').value=hasLog?(log.protein||''):(m.protein||'');
+  document.getElementById('mpLogCarbs').value=hasLog?(log.carbs||''):(m.carbs||'');
+  document.getElementById('mpLogFat').value=hasLog?(log.fat||''):(m.fat||'');
+  document.getElementById('mpLogTime').value=(log&&log.time)||'';
+  document.getElementById('mpLogNotes').value=(log&&log.notes)||'';
   document.getElementById('mpLogModal').classList.add('show');
 }
 
@@ -1918,8 +2092,11 @@ document.getElementById('mpLogSave').addEventListener('click',()=>{
   const log=days[dk][mealId];
   log.kcal=parseInt(document.getElementById('mpLogKcal').value)||0;
   log.protein=parseInt(document.getElementById('mpLogProtein').value)||0;
+  log.carbs=parseInt(document.getElementById('mpLogCarbs').value)||0;
+  log.fat=parseInt(document.getElementById('mpLogFat').value)||0;
   log.time=document.getElementById('mpLogTime').value;
   log.notes=document.getElementById('mpLogNotes').value.trim();
+  if(log.kcal||log.protein||log.carbs||log.fat)log.eaten=true;
   saveDays(days);
   document.getElementById('mpLogModal').classList.remove('show');
   renderAll();
@@ -1927,13 +2104,55 @@ document.getElementById('mpLogSave').addEventListener('click',()=>{
 document.getElementById('mpLogCancel').addEventListener('click',()=>document.getElementById('mpLogModal').classList.remove('show'));
 document.getElementById('mpLogModal').addEventListener('click',e=>{if(e.target.id==='mpLogModal')document.getElementById('mpLogModal').classList.remove('show');});
 
+// Quick add
+(function initQuickBtns(){
+  const c=document.getElementById('mpQuickBtns');if(!c)return;
+  c.innerHTML=QUICK_ADD.map((q,i)=>`<button class="mp-quick-btn" data-qi="${i}">${esc(q.label)}</button>`).join('');
+  c.querySelectorAll('.mp-quick-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const q=QUICK_ADD[parseInt(btn.dataset.qi)];if(!q)return;
+      const days=getDays(),dk=todayKey();
+      if(!days[dk])days[dk]={};
+      if(!days[dk]._extras)days[dk]._extras=[];
+      days[dk]._extras.push({label:q.label,kcal:q.kcal,protein:q.protein,carbs:q.carbs,fat:q.fat});
+      saveDays(days);renderAll();
+    });
+  });
+})();
+
+// Target settings modal
+document.getElementById('mpTargetBtn').addEventListener('click',()=>{
+  const t=getSettings();
+  document.getElementById('mpTgtKcalMin').value=t.kcal.min;
+  document.getElementById('mpTgtKcalMax').value=t.kcal.max;
+  document.getElementById('mpTgtProtMin').value=t.protein.min;
+  document.getElementById('mpTgtProtMax').value=t.protein.max;
+  document.getElementById('mpTgtCarbMin').value=t.carbs.min;
+  document.getElementById('mpTgtCarbMax').value=t.carbs.max;
+  document.getElementById('mpTgtFatMin').value=t.fat.min;
+  document.getElementById('mpTgtFatMax').value=t.fat.max;
+  document.getElementById('mpTargetModal').classList.add('show');
+});
+document.getElementById('mpTargetSave').addEventListener('click',()=>{
+  const t={
+    kcal:{min:parseInt(document.getElementById('mpTgtKcalMin').value)||4300,max:parseInt(document.getElementById('mpTgtKcalMax').value)||4600},
+    protein:{min:parseInt(document.getElementById('mpTgtProtMin').value)||170,max:parseInt(document.getElementById('mpTgtProtMax').value)||220},
+    carbs:{min:parseInt(document.getElementById('mpTgtCarbMin').value)||550,max:parseInt(document.getElementById('mpTgtCarbMax').value)||650},
+    fat:{min:parseInt(document.getElementById('mpTgtFatMin').value)||120,max:parseInt(document.getElementById('mpTgtFatMax').value)||160},
+  };
+  saveSettings(t);document.getElementById('mpTargetModal').classList.remove('show');renderAll();
+});
+document.getElementById('mpTargetCancel').addEventListener('click',()=>document.getElementById('mpTargetModal').classList.remove('show'));
+document.getElementById('mpTargetModal').addEventListener('click',e=>{if(e.target.id==='mpTargetModal')document.getElementById('mpTargetModal').classList.remove('show');});
+
+// Manage modal
 document.getElementById('mpManageBtn').addEventListener('click',()=>{renderManageList();document.getElementById('mpManageModal').classList.add('show');});
 document.getElementById('mpManageClose').addEventListener('click',()=>document.getElementById('mpManageModal').classList.remove('show'));
 document.getElementById('mpManageModal').addEventListener('click',e=>{if(e.target.id==='mpManageModal')document.getElementById('mpManageModal').classList.remove('show');});
 
 document.getElementById('mpAddMealBtn').addEventListener('click',()=>{
   const name=document.getElementById('mpNewMealName').value.trim();if(!name)return;
-  const t=getTpl();t.push({id:uid(),name,kcal:0,protein:0,notes:''});saveTpl(t);
+  const t=getTpl();t.push({id:uid(),name,foods:'',kcal:0,protein:0,carbs:0,fat:0,notes:''});saveTpl(t);
   document.getElementById('mpNewMealName').value='';renderManageList();renderAll();
 });
 
@@ -1944,22 +2163,21 @@ document.getElementById('mpResetTodayBtn').addEventListener('click',()=>{
 
 document.getElementById('mpResetAllBtn').addEventListener('click',()=>{
   if(!confirm('Delete ALL meal prep data (template + all logs)? Cannot be undone.'))return;
-  [MP_TPL,MP_DAYS].forEach(k=>localStorage.removeItem(k));
+  [MP_TPL,MP_DAYS,MP_SETTINGS].forEach(k=>localStorage.removeItem(k));
   document.getElementById('mpManageModal').classList.remove('show');renderAll();
 });
 
 function renderManageList(){
   const tpl=getTpl(),c=document.getElementById('mpManageList');
   c.innerHTML=tpl.map(m=>`<div class="mp-manage-row" data-meal-id="${m.id}">
-    <input class="mp-manage-input" type="text" value="${esc(m.name)}" data-meal-id="${m.id}">
-    <button class="mp-btn" style="height:34px;padding:0 10px;color:#ff8a8a;border-color:rgba(255,138,138,0.2)" data-del-meal="${m.id}" title="Remove">×</button>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:14px;font-weight:600;color:var(--text-primary)">${esc(m.name)}</div>
+      ${m.foods?`<div style="font-size:11px;color:var(--text-tertiary)">${esc(m.foods)}</div>`:''}
+    </div>
+    <button class="mp-btn" style="height:32px;padding:0 10px;font-size:12px" data-edit-meal="${m.id}">Edit</button>
+    <button class="mp-btn" style="height:32px;padding:0 10px;color:#ff8a8a;border-color:rgba(255,138,138,0.2)" data-del-meal="${m.id}" title="Remove">×</button>
   </div>`).join('');
-  c.querySelectorAll('.mp-manage-input').forEach(inp=>{
-    inp.addEventListener('change',()=>{
-      const t=getTpl(),m=t.find(x=>x.id===inp.dataset.mealId);
-      if(m){m.name=inp.value.trim()||m.name;saveTpl(t);renderAll();}
-    });
-  });
+  c.querySelectorAll('[data-edit-meal]').forEach(btn=>btn.addEventListener('click',()=>openEditMealModal(btn.dataset.editMeal)));
   c.querySelectorAll('[data-del-meal]').forEach(btn=>{
     btn.addEventListener('click',()=>{
       if(!confirm('Remove this meal from the template?'))return;
@@ -1968,6 +2186,35 @@ function renderManageList(){
     });
   });
 }
+
+// Edit meal template modal
+function openEditMealModal(mealId){
+  const tpl=getTpl(),m=tpl.find(x=>x.id===mealId);if(!m)return;
+  document.getElementById('mpEditMealId').value=mealId;
+  document.getElementById('mpEditMealName').value=m.name||'';
+  document.getElementById('mpEditMealFoods').value=m.foods||'';
+  document.getElementById('mpEditMealKcal').value=m.kcal||'';
+  document.getElementById('mpEditMealProtein').value=m.protein||'';
+  document.getElementById('mpEditMealCarbs').value=m.carbs||'';
+  document.getElementById('mpEditMealFat').value=m.fat||'';
+  document.getElementById('mpEditMealNotes').value=m.notes||'';
+  document.getElementById('mpEditMealModal').classList.add('show');
+}
+document.getElementById('mpEditMealSave').addEventListener('click',()=>{
+  const mealId=document.getElementById('mpEditMealId').value;
+  const tpl=getTpl(),m=tpl.find(x=>x.id===mealId);if(!m)return;
+  m.name=document.getElementById('mpEditMealName').value.trim()||m.name;
+  m.foods=document.getElementById('mpEditMealFoods').value.trim();
+  m.kcal=parseInt(document.getElementById('mpEditMealKcal').value)||0;
+  m.protein=parseInt(document.getElementById('mpEditMealProtein').value)||0;
+  m.carbs=parseInt(document.getElementById('mpEditMealCarbs').value)||0;
+  m.fat=parseInt(document.getElementById('mpEditMealFat').value)||0;
+  m.notes=document.getElementById('mpEditMealNotes').value.trim();
+  saveTpl(tpl);document.getElementById('mpEditMealModal').classList.remove('show');
+  renderManageList();renderAll();
+});
+document.getElementById('mpEditMealCancel').addEventListener('click',()=>document.getElementById('mpEditMealModal').classList.remove('show'));
+document.getElementById('mpEditMealModal').addEventListener('click',e=>{if(e.target.id==='mpEditMealModal')document.getElementById('mpEditMealModal').classList.remove('show');});
 
 renderAll();
 })();

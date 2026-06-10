@@ -1478,6 +1478,23 @@ img, video, canvas, svg { max-width: 100%; }
 .gt-coach-item-name { font-size: 13px; font-weight: 700; color: var(--text-1); }
 .gt-coach-item-note { font-size: 13px; color: var(--text-2); line-height: 1.45; }
 .gt-coach-item-compare { font-size: 11px; color: var(--text-3); margin-top: 5px; }
+.gt-coach-default {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px;
+}
+.gt-coach-default-day { font-size: 13px; font-weight: 700; color: var(--text-1); margin-bottom: 6px; }
+.gt-coach-default-focus { font-size: 12px; color: var(--text-3); line-height: 1.5; margin-bottom: 8px; }
+.gt-coach-default-what { font-size: 11px; color: var(--text-4); font-style: italic; }
+.gt-coach-compact-row {
+  font-size: 13px; padding: 7px 0; border-bottom: 1px solid var(--border);
+  display: flex; flex-wrap: wrap; align-items: baseline;
+}
+.gt-coach-compact-row:last-child { border-bottom: none; }
+.gt-coach-compact-row .gt-cname { font-weight: 600; color: var(--text-1); }
+.gt-coach-compact-row .gt-cinfo { color: var(--text-3); }
+.gt-coach-compact-row.upgrade .gt-cinfo { color: var(--good); }
+.gt-coach-compact-row.lower .gt-cinfo { color: var(--bad); }
+.gt-coach-compact-row.hold .gt-cinfo { color: var(--text-2); }
+.gt-coach-compact-row.nodata .gt-cname { color: var(--text-4); }
 .gt-bw-badge {
   display: inline-block; font-size: 9px; font-weight: 700; letter-spacing: 0.06em;
   text-transform: uppercase; color: var(--text-3); border: 1px solid var(--border);
@@ -3957,6 +3974,16 @@ function coachChip(ex,dayLogs,allLogs){
   return{cls:'lower',label:'↓ reduce weight'};
 }
 
+function dayFocus(dayName){
+  const n=(dayName||'').toLowerCase();
+  if(n==='upper b'||n.includes('upper b'))return'Focus: upper-body accessory progression, delts, rear delts, arms, chest.';
+  if(n.includes('upper'))return'Focus: balanced upper-body volume, lateral delts, back, arms, and pressing.';
+  if(n.includes('leg'))return'Focus: controlled leg volume, strong compounds, hamstrings, quads, calves.';
+  if(n.includes('push'))return'Focus: chest/shoulder/triceps progression, stable pressing, clean reps.';
+  if(n.includes('pull'))return'Focus: lats, upper back, rows, curls, controlled pulling volume.';
+  return'Log your sets and I\'ll compare reps, target weight, and fatigue patterns.';
+}
+
 function renderCoachNotes(day,dayL,allL,dk){
   const c=document.getElementById('gtCoachList');if(!c)return;
   const exs=day?day.exercises||[]:[];
@@ -3966,19 +3993,34 @@ function renderCoachNotes(day,dayL,allL,dk){
     for(let i=0;i<ex.sets;i++)if((el['set'+i]||'').trim())return true;
     return false;
   });
-  if(!hasAnyLog){c.innerHTML='<div class="gt-coach-empty">Log sets to see recommendations.</div>';return;}
-  c.innerHTML=exs.map(ex=>{
-    const analysis=analyzeExercise(ex,dayL[ex.id],allL,dk);
-    const bwBadge=ex.bw?'<span class="gt-bw-badge">BW</span>':'';
-    return `<div class="gt-coach-item ${analysis.level}">
-      <div class="gt-coach-item-head">
-        <span class="gt-coach-item-name">${esc(ex.name)}${bwBadge}</span>
-        <span class="gt-coach-chip ${analysis.level}">${{upgrade:'↑ add weight',hold:'✓ hold',lower:'↓ reduce',nodata:'—'}[analysis.level]||'—'}</span>
-      </div>
-      <div class="gt-coach-item-note">${analysis.note}</div>
-      ${analysis.compare?`<div class="gt-coach-item-compare">${analysis.compare}</div>`:''}
+  if(!hasAnyLog){
+    const focus=dayFocus(day.name);
+    const cnt=exs.length;
+    c.innerHTML=`<div class="gt-coach-default">
+      <div class="gt-coach-default-day">${esc(day.name)}&ensp;<span style="font-weight:400;color:var(--text-3)">${cnt} exercise${cnt!==1?'s':''}</span></div>
+      <div class="gt-coach-default-focus">${esc(focus)}</div>
+      <div class="gt-coach-default-what">Log sets above → coach reads reps, target weight, and fatigue patterns.</div>
     </div>`;
-  }).join('');
+    return;
+  }
+  const ACTIONS={upgrade:'Add weight',hold:'Hold weight',lower:'Reduce weight',nodata:'Set a target'};
+  const STATUS={upgrade:'above range',hold:'in range',lower:'below range',nodata:''};
+  c.innerHTML='<div class="gt-coach-compact-list">'+exs.map(ex=>{
+    const exLog=dayL[ex.id]||{};
+    const hasSets=Array.from({length:ex.sets},(_,i)=>(exLog['set'+i]||'').trim()).some(Boolean);
+    if(!hasSets)return`<div class="gt-coach-compact-row nodata"><span class="gt-cname">${esc(ex.name)}</span><span class="gt-cinfo"> — not logged yet</span></div>`;
+    const analysis=analyzeExercise(ex,exLog,allL,dk);
+    const parts=[];
+    for(let i=0;i<ex.sets;i++){
+      const raw=(exLog['set'+i]||'').trim();
+      if(raw){const p=parseSetText(raw);parts.push(p.parseable&&p.reps!==null?String(p.reps):raw.slice(0,8));}
+    }
+    const setsStr=parts.join('/');
+    const action=ACTIONS[analysis.level]||'';
+    const status=STATUS[analysis.level]||'';
+    const info=[action,setsStr?'· '+setsStr:'',status].filter(Boolean).join(' ');
+    return`<div class="gt-coach-compact-row ${analysis.level}"><span class="gt-cname">${esc(ex.name)}</span><span class="gt-cinfo"> — ${esc(info)}</span></div>`;
+  }).join('')+'</div>';
 }
 
 function exDone(ex,exLog){
