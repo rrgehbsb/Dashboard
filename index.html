@@ -799,8 +799,9 @@ function renderListInto(goals,listEl,emptyEl,key,readOnly){
   emptyEl.style.display=goals.length?'none':'block';
   const LIMIT=5;
   const showAll=listEl.dataset.showAll==='true';
-  // Undone first, done at bottom; preserve relative order within each group
-  const sorted=goals.map((g,i)=>({g,i})).sort((a,b)=>!!a.g.done-!!b.g.done);
+  // Polished (queued) first, then regular, then done at bottom
+  const rank=g=>g.done?2:g.queued?0:1;
+  const sorted=goals.map((g,i)=>({g,i})).sort((a,b)=>rank(a.g)-rank(b.g));
   const visible=(sorted.length>LIMIT&&!showAll)?sorted.slice(0,LIMIT):sorted;
   visible.forEach(({g,i})=>listEl.appendChild(buildGoalRow(g,i,goals,key,readOnly)));
   if(goals.length>LIMIT){
