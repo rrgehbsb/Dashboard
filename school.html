@@ -441,7 +441,10 @@ body{
   <div class="section-title">SUBJECTS</div>
   <div class="stack-card">
     <div class="sc-collapse-header" onclick="scToggleSubjectsCollapse()">
-      <span style="font-size:13px;color:var(--text-secondary);font-weight:600;">Manage subjects</span>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:13px;color:var(--text-secondary);font-weight:600;">Manage subjects</span>
+        <span id="scSubjectsCount" style="font-size:11px;color:var(--text-tertiary);font-family:var(--font-mono);"></span>
+      </div>
       <span class="sc-collapse-toggle" id="scSubjectsToggleLabel">Show</span>
     </div>
     <div class="sc-collapse-body" id="scSubjectsBody">
@@ -710,7 +713,9 @@ const SC_PRESET_COLORS = [
 function getSubjects(){
   const s = scGet(SK_SUBJECTS);
   if(s && s.length) return s;
-  return SC_DEFAULT_SUBJECTS.map(s=>({...s,hidden:false}));
+  const defaults = SC_DEFAULT_SUBJECTS.map(s=>({...s,hidden:false}));
+  scSet(SK_SUBJECTS, defaults);
+  return defaults;
 }
 function getAssignments(){return scGet(SK_ASSIGNMENTS)||[];}
 function getTests(){return scGet(SK_TESTS)||[];}
@@ -1131,6 +1136,8 @@ function scRenderSubjects(){
   const grid=document.getElementById('scSubjectsGrid');
   if(!grid) return;
   const subjects=getSubjects();
+  const countEl=document.getElementById('scSubjectsCount');
+  if(countEl) countEl.textContent=subjects.length+' subjects';
   grid.innerHTML=subjects.map(s=>`
     <div class="sc-subj-manage-chip">
       <span class="sc-subj-manage-dot" style="background:${esc(s.color)};"></span>
