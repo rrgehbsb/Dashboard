@@ -1166,7 +1166,7 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
   const SUPABASE_KEY='sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
   const APP_KEY='dashboard';
 
-  function isSynced(k){return k==='goal_streak_v1'||k.startsWith('goals:');}
+  function isSynced(k){return k==='goal_streak_v1'||k==='day_schedule'||k.startsWith('goals:');}
 
   function gatherLocal(){
     const s={};
@@ -1189,9 +1189,12 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
         const dateStr=k.slice(6);
         if(!remoteHasGoals||dateStr>=getActiveDateString()) continue;
       }
+      // Don't delete schedule if remote doesn't have it yet
+      if(k==='day_schedule') continue;
       _removeItem(k);
     }
     loadToday();loadTomorrow();renderStreak();
+    try{updateDayBar();}catch{}
     window.dispatchEvent(new CustomEvent('goals-changed'));
   }
 
