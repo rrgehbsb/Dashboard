@@ -450,7 +450,10 @@ body{
     <div class="sc-collapse-body" id="scSubjectsBody">
       <div style="height:14px;"></div>
       <div class="sc-subjects-grid" id="scSubjectsGrid"></div>
-      <button class="sc-add-btn" onclick="scOpenAddSubject()">+ Add Subject</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="sc-add-btn" onclick="scOpenAddSubject()" style="flex:1;min-width:120px;">+ Add Subject</button>
+        <button class="sc-add-btn" onclick="scRestoreDefaultSubjects()" style="flex:1;min-width:160px;background:rgba(255,255,255,0.04);color:var(--text-secondary);">↺ Restore all defaults</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1525,6 +1528,16 @@ function scAskDeleteSubject(id){
   });
 }
 window.scAskDeleteSubject=scAskDeleteSubject;
+
+function scRestoreDefaultSubjects(){
+  const existing=getSubjects();
+  const existingIds=new Set(existing.map(s=>s.id));
+  const missing=SC_DEFAULT_SUBJECTS.filter(s=>!existingIds.has(s.id)).map(s=>({...s,hidden:false}));
+  if(!missing.length){alert('All default subjects are already present.');return;}
+  scSet(SK_SUBJECTS,[...existing,...missing]);
+  scRenderAll();
+}
+window.scRestoreDefaultSubjects=scRestoreDefaultSubjects;
 
 // ===== DELETE CONFIRM MODAL =====
 let scDeleteCallback=null;
