@@ -67,7 +67,7 @@ body::after{
 }
 
 /* Ticker */
-.ticker-row{margin-bottom:18px;position:relative;z-index:1;}
+.ticker-row{margin-bottom:14px;position:relative;z-index:1;}
 .goal-ticker{
   display:flex;flex-direction:row;align-items:center;gap:10px;padding:7px 12px;
   border-radius:12px;
@@ -93,18 +93,13 @@ body::after{
   font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
   font-size:9.5px;font-weight:800;letter-spacing:0.18em;color:var(--text-tertiary);flex-shrink:0;
 }
-.goal-ticker-stage{flex:1;height:22px;position:relative;overflow:hidden;}
+.goal-ticker-stage{flex:1;overflow:hidden;}
 .goal-ticker-row{
-  display:flex;flex-direction:row;align-items:center;gap:8px;height:22px;
+  display:flex;flex-direction:row;align-items:center;gap:8px;
   font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
   font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums;
-  color:var(--text-primary);white-space:nowrap;
-  position:absolute;width:100%;top:0;left:0;
+  color:var(--text-primary);white-space:nowrap;overflow:hidden;
 }
-.goal-ticker-row.is-leaving{animation:ticker-leave 0.45s cubic-bezier(0.55,0,0.55,1) forwards;}
-.goal-ticker-row.is-entering{animation:ticker-enter 0.45s cubic-bezier(0.22,1,0.36,1) forwards;}
-@keyframes ticker-leave{from{opacity:1;transform:translateY(0);}to{opacity:0;transform:translateY(-100%);}}
-@keyframes ticker-enter{from{opacity:0;transform:translateY(100%);}to{opacity:1;transform:translateY(0);}}
 .goal-ticker-status{width:18px;flex-shrink:0;text-align:center;}
 .goal-ticker-status[data-status="done"]{color:var(--success);}
 .goal-ticker-status[data-status="pending"]{color:var(--text-tertiary);}
@@ -115,6 +110,69 @@ body::after{
   font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;
   letter-spacing:0.04em;color:var(--text-secondary);
   padding:3px 8px;border-radius:999px;background:rgba(255,255,255,0.04);flex-shrink:0;
+}
+
+/* Command Bar */
+.cmd-bar{
+  display:flex;flex-wrap:wrap;gap:6px;
+  margin-bottom:14px;position:relative;z-index:1;
+}
+.cmd-chip{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:5px 10px;border-radius:8px;
+  background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);
+  font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  font-size:11px;font-weight:600;color:var(--text-tertiary);
+  letter-spacing:0.04em;
+}
+.cmd-chip:empty{display:none;}
+
+/* Do Now Card */
+.do-now-card{
+  background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);
+  border-radius:14px;padding:14px 18px;
+  margin-bottom:14px;position:relative;z-index:1;
+  display:flex;align-items:center;gap:14px;
+}
+.do-now-label{
+  font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  font-size:9.5px;font-weight:800;letter-spacing:0.18em;
+  text-transform:uppercase;color:var(--text-tertiary);flex-shrink:0;
+}
+.do-now-text{
+  font-size:13px;font-weight:600;color:var(--text-primary);flex:1;
+}
+
+/* Dash Grid */
+.dash-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:8px;
+  margin-bottom:20px;position:relative;z-index:1;
+}
+.dash-mini-card{
+  background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);
+  border-radius:12px;padding:14px 14px 12px;
+  text-decoration:none;color:inherit;
+  transition:background 0.15s;
+}
+.dash-mini-card:hover{background:rgba(255,255,255,0.07);}
+.dm-eyebrow{
+  font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  font-size:9px;font-weight:800;letter-spacing:0.18em;
+  text-transform:uppercase;color:var(--text-tertiary);margin-bottom:6px;
+}
+.dm-value{
+  font-size:22px;font-weight:700;letter-spacing:-0.03em;
+  color:var(--text-primary);line-height:1.1;margin-bottom:3px;
+}
+.dm-sub{
+  font-size:11px;color:var(--text-tertiary);line-height:1.3;
+}
+@media(max-width:600px){
+  .dash-grid{grid-template-columns:repeat(2,1fr);}
+}
+@media(max-width:360px){
+  .dash-grid{grid-template-columns:1fr 1fr;gap:6px;}
+  .dm-value{font-size:18px;}
 }
 
 /* Day Ring */
@@ -352,13 +410,25 @@ body::after{
     <div class="goal-ticker-led"><span class="goal-ticker-led-dot"></span></div>
     <div class="goal-ticker-label">GOALS</div>
     <div class="goal-ticker-stage" id="goalTickerStage">
-      <div class="goal-ticker-row">
-        <span class="goal-ticker-status" data-status="">—</span>
-        <span class="goal-ticker-text">Loading…</span>
+      <div class="goal-ticker-row" id="goalTickerContent">
+        <span class="goal-ticker-status" id="goalTickerStatus" data-status="empty">—</span>
+        <span class="goal-ticker-text" id="goalTickerText">No goals set for today</span>
       </div>
     </div>
     <div class="goal-ticker-meta" id="goalTickerMeta">0/0</div>
   </div>
+</div>
+
+<div class="cmd-bar" id="cmdBar">
+  <span class="cmd-chip" id="cmdMeals"></span>
+  <span class="cmd-chip" id="cmdGym"></span>
+  <span class="cmd-chip" id="cmdSchool"></span>
+  <span class="cmd-chip" id="cmdWater"></span>
+</div>
+
+<div class="do-now-card" id="doNowCard">
+  <div class="do-now-label">DO THIS NOW</div>
+  <div class="do-now-text" id="doNowText">Loading…</div>
 </div>
 
 <div class="day-ring-card">
@@ -407,6 +477,29 @@ body::after{
       <button class="schedule-save-btn" id="scheduleSaveBtn">Save</button>
     </div>
   </div>
+</div>
+
+<div class="dash-grid" id="dashGrid">
+  <a href="health.html" class="dash-mini-card" id="dmMeals">
+    <div class="dm-eyebrow">MEALS</div>
+    <div class="dm-value" id="dmMealsVal">—</div>
+    <div class="dm-sub" id="dmMealsSub"></div>
+  </a>
+  <a href="gym.html" class="dash-mini-card" id="dmGym">
+    <div class="dm-eyebrow">GYM</div>
+    <div class="dm-value" id="dmGymVal">—</div>
+    <div class="dm-sub" id="dmGymSub"></div>
+  </a>
+  <a href="school.html" class="dash-mini-card" id="dmSchool">
+    <div class="dm-eyebrow">SCHOOL</div>
+    <div class="dm-value" id="dmSchoolVal">—</div>
+    <div class="dm-sub" id="dmSchoolSub"></div>
+  </a>
+  <a href="gym.html" class="dash-mini-card" id="dmWeight">
+    <div class="dm-eyebrow">WEIGHT</div>
+    <div class="dm-value" id="dmWeightVal">—</div>
+    <div class="dm-sub" id="dmWeightSub"></div>
+  </a>
 </div>
 
 <div class="section">
@@ -459,19 +552,6 @@ body::after{
   </div>
 </div>
 
-<div class="section" id="schoolSummarySection">
-  <div class="section-title">School</div>
-  <div class="gm-card" id="schoolSummaryCard">
-    <div class="gm-card-header">
-      <div>
-        <div class="gm-eyebrow">SCHOOL</div>
-        <div id="schoolSummaryLine" style="font-size:13px;color:var(--text-secondary);margin-top:4px;">No school tasks yet.</div>
-      </div>
-      <a href="school.html" style="font-size:12px;color:var(--text-tertiary);text-decoration:none;padding:6px 10px;border:1px solid var(--border,rgba(255,255,255,0.06));border-radius:8px;">Open →</a>
-    </div>
-    <div id="schoolSummaryTask" style="font-size:12px;color:var(--text-tertiary);margin-top:8px;"></div>
-  </div>
-</div>
 
 <script>
 const ANTHROPIC_API_KEY = '';
@@ -656,40 +736,31 @@ document.getElementById('scheduleSaveBtn').addEventListener('click', () => {
 });
 
 // Ticker
-let cycleIdx=0;
-function buildTickerItems(){
+function updateTicker(){
   const goals=storeGet(`goals:${getActiveDateString()}`)||[];
   const total=goals.length;
   const done=goals.filter(g=>g.done).length;
-  document.getElementById('goalTickerMeta').textContent=`${done}/${total}`;
-  if(total===0) return[{status:'empty',text:'No goals set for today — add one to get rolling.'}];
-  if(done===total) return[{status:'done',text:'✓ All goals done — solid day.'}];
-  return goals.filter(g=>!g.done).map(g=>({status:'pending',text:g.text}));
+  document.getElementById('goalTickerMeta').textContent=total?`${done}/${total}`:'0/0';
+  const statusEl=document.getElementById('goalTickerStatus');
+  const textEl=document.getElementById('goalTickerText');
+  if(!statusEl||!textEl) return;
+  const pending=goals.filter(g=>!g.done);
+  const queued=goals.filter(g=>g.queued&&!g.done);
+  if(total===0){
+    statusEl.dataset.status='empty';statusEl.textContent='—';
+    textEl.textContent='No goals set for today — add one to get rolling.';
+  } else if(done===total){
+    statusEl.dataset.status='done';statusEl.textContent='✓';
+    textEl.textContent='All done — great work!';
+  } else if(queued.length){
+    statusEl.dataset.status='pending';statusEl.textContent='⚡';
+    textEl.textContent=queued[0].text;
+  } else if(pending.length){
+    statusEl.dataset.status='pending';statusEl.textContent='○';
+    textEl.textContent=pending[0].text;
+  }
 }
-function makeTickerRow(item){
-  const row=document.createElement('div');
-  row.className='goal-ticker-row';
-  const glyph=item.status==='done'?'✓':item.status==='pending'?'○':'·';
-  const s=document.createElement('span');s.className='goal-ticker-status';s.dataset.status=item.status;s.textContent=glyph;
-  const t=document.createElement('span');t.className='goal-ticker-text';t.textContent=item.text;
-  row.appendChild(s);row.appendChild(t);
-  return row;
-}
-function tick(first){
-  const items=buildTickerItems();
-  if(!items.length) return;
-  const item=items[cycleIdx%items.length];
-  cycleIdx=(cycleIdx+1)%items.length;
-  const stage=document.getElementById('goalTickerStage');
-  const newRow=makeTickerRow(item);
-  if(first){stage.innerHTML='';stage.appendChild(newRow);return;}
-  const old=stage.querySelector('.goal-ticker-row');
-  newRow.classList.add('is-entering');
-  if(old){old.classList.add('is-leaving');setTimeout(()=>old.remove(),460);}
-  stage.appendChild(newRow);
-}
-function startTicker(){tick(true);setInterval(()=>tick(false),5000);}
-window.addEventListener('goals-changed',()=>{cycleIdx=0;tick(false);});
+window.addEventListener('goals-changed',()=>{updateTicker();});
 
 // Render
 function renderTodayHeader(){
@@ -902,6 +973,177 @@ makeAddHandlers(
   document.getElementById('tomorrowStatus'),loadTomorrow
 );
 
+// Command Bar
+function updateCmdBar(){
+  const today=getActiveDateString();
+  const mealEl=document.getElementById('cmdMeals');
+  if(mealEl){
+    try{
+      const tpl=JSON.parse(localStorage.getItem('dashboard:mealPrep:v1:template'))||[];
+      const days=JSON.parse(localStorage.getItem('dashboard:mealPrep:v1:daily'))||{};
+      const dayLog=days[today]||{};
+      const eaten=tpl.filter(m=>dayLog[m.id]&&dayLog[m.id].eaten).length;
+      if(tpl.length) mealEl.textContent=`🍽 ${eaten}/${tpl.length} meals`;
+      else mealEl.textContent='';
+    }catch{mealEl.textContent='';}
+  }
+  const gymEl=document.getElementById('cmdGym');
+  if(gymEl){
+    try{
+      const activeDay=JSON.parse(localStorage.getItem('dashboard:gym:v1:activeDay'));
+      const tpl=JSON.parse(localStorage.getItem('dashboard:gym:v1:template'))||[];
+      const day=tpl.find(d=>d.id===activeDay);
+      if(day) gymEl.textContent=`💪 ${day.name}`;
+      else gymEl.textContent='';
+    }catch{gymEl.textContent='';}
+  }
+  const schoolEl=document.getElementById('cmdSchool');
+  if(schoolEl){
+    try{
+      const assigns=JSON.parse(localStorage.getItem('dashboard:school:v1:assignments'))||[];
+      const tests=JSON.parse(localStorage.getItem('dashboard:school:v1:tests'))||[];
+      const todaySoon=new Date();todaySoon.setDate(todaySoon.getDate()+7);
+      const urgent=assigns.filter(a=>a.status!=='Done'&&a.dueDate&&a.dueDate<=today).length;
+      const soon=assigns.filter(a=>{if(a.status==='Done'||!a.dueDate)return false;const d=new Date(a.dueDate);return d>new Date(today)&&d<=todaySoon;}).length;
+      const testCount=tests.filter(t=>t.testDate&&t.testDate>=today&&new Date(t.testDate)<=todaySoon).length;
+      const parts=[];
+      if(urgent) parts.push(urgent+' due');
+      if(soon) parts.push(soon+' soon');
+      if(testCount) parts.push(testCount+' test'+(testCount>1?'s':''));
+      if(parts.length) schoolEl.textContent='📚 '+parts.join(' · ');
+      else schoolEl.textContent='';
+    }catch{schoolEl.textContent='';}
+  }
+  const waterEl=document.getElementById('cmdWater');
+  if(waterEl){
+    try{
+      const ws=JSON.parse(localStorage.getItem('po_water_v1'))||{};
+      const done=(ws.logs||{})[today]||0;
+      const profile=ws.profile||{weightKg:75};
+      const wKg=ws.weightUnit==='lb'?(profile.weightKg||0)/2.20462:(profile.weightKg||0);
+      const base=wKg*35;
+      const totalMl=base;
+      let unitVol=ws.unit==='glass'?(ws.glassMl||250):ws.unit==='ml'?1:ws.unit==='oz'?30:(ws.bottleMl||500);
+      const total=Math.max(1,Math.ceil(totalMl/unitVol));
+      if(done||total) waterEl.textContent=`💧 ${done}/${total}`;
+      else waterEl.textContent='';
+    }catch{waterEl.textContent='';}
+  }
+}
+
+// Do This Now
+function updateDoNow(){
+  const el=document.getElementById('doNowText');
+  if(!el) return;
+  const today=getActiveDateString();
+  const tomorrow=getTomorrowDateString();
+  try{
+    const assigns=(()=>{try{return JSON.parse(localStorage.getItem('dashboard:school:v1:assignments'))||[];}catch{return[];}})();
+    const overdue=assigns.filter(a=>a.status!=='Done'&&a.dueDate&&a.dueDate<today);
+    if(overdue.length){el.textContent=overdue[0].title+' — overdue!';return;}
+    const dueToday=assigns.filter(a=>a.status!=='Done'&&a.dueDate===today);
+    if(dueToday.length){el.textContent=dueToday[0].title+' — due today.';return;}
+    const tests=(()=>{try{return JSON.parse(localStorage.getItem('dashboard:school:v1:tests'))||[];}catch{return[];}})();
+    const soonTest=tests.filter(t=>t.testDate&&t.testDate>=today).sort((a,b)=>a.testDate.localeCompare(b.testDate))[0];
+    if(soonTest){
+      const days=Math.ceil((new Date(soonTest.testDate)-new Date(today))/86400000);
+      if(days<=3){el.textContent='Study for '+soonTest.name+' — test in '+days+' day'+(days!==1?'s':'')+'.';return;}
+    }
+    const goals=storeGet(`goals:${today}`)||[];
+    const queuedGoal=goals.find(g=>g.queued&&!g.done);
+    if(queuedGoal){el.textContent=queuedGoal.text;return;}
+    try{
+      const tpl=JSON.parse(localStorage.getItem('dashboard:mealPrep:v1:template'))||[];
+      const days2=JSON.parse(localStorage.getItem('dashboard:mealPrep:v1:daily'))||{};
+      const dayLog=days2[today]||{};
+      const eaten=tpl.filter(m=>dayLog[m.id]&&dayLog[m.id].eaten).length;
+      const h=new Date().getHours();
+      if(tpl.length&&eaten===0&&h>=10){const next=tpl[0];el.textContent='Eat '+next.name+' — first meal not logged.';return;}
+    }catch{}
+    try{
+      const logs=JSON.parse(localStorage.getItem('dashboard:gym:v1:logs'))||{};
+      if(!logs[today]||Object.keys(logs[today]).length===0){
+        const activeDay=JSON.parse(localStorage.getItem('dashboard:gym:v1:activeDay'));
+        const tpl=JSON.parse(localStorage.getItem('dashboard:gym:v1:template'))||[];
+        const day=tpl.find(d=>d.id===activeDay);
+        if(day&&new Date().getHours()>=14){el.textContent='Log today\'s '+day.name+' workout.';return;}
+      }
+    }catch{}
+    const tmrGoals=storeGet(`goals:${tomorrow}`)||[];
+    if(tmrGoals.length===0&&new Date().getHours()>=20){el.textContent='Plan tomorrow before bed.';return;}
+    const pendingGoals=goals.filter(g=>!g.done);
+    if(pendingGoals.length){el.textContent=pendingGoals[0].text;return;}
+    el.textContent='No urgent items — keep the streak. 🔥';
+  }catch(e){el.textContent='No urgent items right now.';}
+}
+
+// Dash Grid
+function updateDashGrid(){
+  const today=getActiveDateString();
+  try{
+    const tpl=JSON.parse(localStorage.getItem('dashboard:mealPrep:v1:template'))||[];
+    const days=JSON.parse(localStorage.getItem('dashboard:mealPrep:v1:daily'))||{};
+    const dayLog=days[today]||{};
+    const eaten=tpl.filter(m=>dayLog[m.id]&&dayLog[m.id].eaten).length;
+    const kcal=tpl.reduce((sum,m)=>{const l=dayLog[m.id]||{};return l.eaten?sum+(parseInt(l.kcal)||parseInt(m.kcal)||0):sum;},0);
+    if(tpl.length){
+      document.getElementById('dmMealsVal').textContent=`${eaten}/${tpl.length}`;
+      document.getElementById('dmMealsSub').textContent=kcal?`${kcal} kcal`:'meals eaten';
+    } else {
+      document.getElementById('dmMealsVal').textContent='—';
+      document.getElementById('dmMealsSub').textContent='No meals set';
+    }
+  }catch{document.getElementById('dmMealsVal').textContent='—';document.getElementById('dmMealsSub').textContent='';}
+  try{
+    const activeDay=JSON.parse(localStorage.getItem('dashboard:gym:v1:activeDay'));
+    const tpl=JSON.parse(localStorage.getItem('dashboard:gym:v1:template'))||[];
+    const logs=JSON.parse(localStorage.getItem('dashboard:gym:v1:logs'))||{};
+    const day=tpl.find(d=>d.id===activeDay);
+    if(day){
+      const dayLog=logs[today]||{};
+      const logged=day.exercises?day.exercises.filter(ex=>dayLog[ex.id]&&Object.keys(dayLog[ex.id]).some(k=>k.startsWith('set'))).length:0;
+      const total=day.exercises?day.exercises.length:0;
+      document.getElementById('dmGymVal').textContent=day.name;
+      document.getElementById('dmGymSub').textContent=total?`${logged}/${total} logged`:'';
+    } else {
+      document.getElementById('dmGymVal').textContent='—';
+      document.getElementById('dmGymSub').textContent='No day set';
+    }
+  }catch{document.getElementById('dmGymVal').textContent='—';document.getElementById('dmGymSub').textContent='';}
+  try{
+    const assigns=JSON.parse(localStorage.getItem('dashboard:school:v1:assignments'))||[];
+    const tests=JSON.parse(localStorage.getItem('dashboard:school:v1:tests'))||[];
+    const urgent=assigns.filter(a=>a.status!=='Done'&&a.dueDate&&a.dueDate<=today).length;
+    const testsSoon=tests.filter(t=>{if(!t.testDate)return false;const d=new Date(t.testDate);const td=new Date(today);const w=new Date(today);w.setDate(w.getDate()+7);return d>=td&&d<=w;}).length;
+    if(urgent){document.getElementById('dmSchoolVal').textContent=urgent+' due';document.getElementById('dmSchoolSub').textContent=testsSoon?testsSoon+' test'+(testsSoon>1?'s':'')+' soon':'check assignments';}
+    else if(testsSoon){document.getElementById('dmSchoolVal').textContent=testsSoon+' test'+(testsSoon>1?'s':'');document.getElementById('dmSchoolSub').textContent='this week';}
+    else if(assigns.length||tests.length){document.getElementById('dmSchoolVal').textContent='✓';document.getElementById('dmSchoolSub').textContent='Nothing urgent';}
+    else{document.getElementById('dmSchoolVal').textContent='—';document.getElementById('dmSchoolSub').textContent='No data yet';}
+  }catch{document.getElementById('dmSchoolVal').textContent='—';document.getElementById('dmSchoolSub').textContent='';}
+  try{
+    const weights=JSON.parse(localStorage.getItem('po_coach_weights'))||[];
+    if(weights.length){
+      const sorted=weights.slice().sort((a,b)=>b.date.localeCompare(a.date));
+      const latest=sorted[0];
+      const val=latest.weight!=null?latest.weight:'—';
+      const unit=latest.unit||'kg';
+      document.getElementById('dmWeightVal').textContent=`${val} ${unit}`;
+      const cutoff=new Date(today);cutoff.setDate(cutoff.getDate()-7);
+      const old=sorted.find(w=>new Date(w.date)<=cutoff);
+      if(old&&old.weight!=null&&latest.weight!=null){
+        const diff=(latest.weight-old.weight).toFixed(1);
+        const sign=diff>0?'+':'';
+        document.getElementById('dmWeightSub').textContent=`7d: ${sign}${diff} ${unit}`;
+      } else {
+        document.getElementById('dmWeightSub').textContent=latest.date===today?'logged today':'last: '+latest.date;
+      }
+    } else {
+      document.getElementById('dmWeightVal').textContent='—';
+      document.getElementById('dmWeightSub').textContent='Not logged';
+    }
+  }catch{document.getElementById('dmWeightVal').textContent='—';document.getElementById('dmWeightSub').textContent='';}
+}
+
 // Init
 runRollover();
 runStreakCheck();
@@ -910,7 +1152,12 @@ loadTomorrow();
 renderStreak();
 updateDayBar();
 setInterval(updateDayBar,60*1000);
-startTicker();
+updateTicker();
+updateCmdBar();
+updateDoNow();
+updateDashGrid();
+window.addEventListener('storage',()=>{ updateCmdBar(); updateDoNow(); updateDashGrid(); });
+window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashGrid(); });
 
 // ── Supabase sync — dashboard page ─────────────────────────────────────────────────────────────
 (function(){
@@ -1027,44 +1274,6 @@ startTicker();
 
   function waitForSupabase(){window.supabase?initSync():setTimeout(waitForSupabase,50);}
   waitForSupabase();
-})();
-</script>
-
-<script>
-// School summary card
-(function(){
-  function scGetQ(k){try{return JSON.parse(localStorage.getItem(k))||null;}catch{return null;}}
-  function todayStr(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-  function renderSchoolCard(){
-    const assignments=scGetQ('dashboard:school:v1:assignments')||[];
-    const tests=scGetQ('dashboard:school:v1:tests')||[];
-    const grades=scGetQ('dashboard:school:v1:grades')||[];
-    const today=todayStr();
-    const todaySoon=new Date();todaySoon.setDate(todaySoon.getDate()+7);
-    const dueTodayN=assignments.filter(a=>a.status!=='Done'&&a.dueDate===today).length;
-    const dueSoonN=assignments.filter(a=>{if(a.status==='Done'||!a.dueDate)return false;const d=new Date(a.dueDate);return d>=new Date(today)&&d<=todaySoon;}).length;
-    const testsThisWeek=tests.filter(t=>{if(!t.testDate)return false;const d=new Date(t.testDate);return d>=new Date(today)&&d<=todaySoon;}).length;
-    const lineEl=document.getElementById('schoolSummaryLine');
-    const taskEl=document.getElementById('schoolSummaryTask');
-    if(!lineEl)return;
-    if(!assignments.length&&!tests.length&&!grades.length){
-      lineEl.textContent='No school tasks yet.';
-      if(taskEl)taskEl.textContent='';
-      return;
-    }
-    const parts=[];
-    if(dueTodayN)parts.push(dueTodayN+' due today');
-    if(dueSoonN)parts.push(dueSoonN+' due soon');
-    if(testsThisWeek)parts.push(testsThisWeek+' test'+(testsThisWeek>1?'s':'')+' this week');
-    if(!parts.length)parts.push(grades.length+' grade'+(grades.length>1?'s':'')+' tracked');
-    lineEl.textContent=parts.join(' · ');
-    const urgent=assignments.filter(a=>a.status!=='Done'&&a.dueDate).sort((a,b)=>a.dueDate.localeCompare(b.dueDate))[0];
-    if(taskEl&&urgent)taskEl.textContent='Next: '+urgent.title+' — due '+(urgent.dueDate===today?'today':urgent.dueDate);
-    else if(taskEl)taskEl.textContent='';
-  }
-  renderSchoolCard();
-  window.addEventListener('storage',renderSchoolCard);
-  window.addEventListener('focus',renderSchoolCard);
 })();
 </script>
 
