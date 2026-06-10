@@ -1461,6 +1461,31 @@ img, video, canvas, svg { max-width: 100%; }
   .gt-table-wrap { display: none; }
   .gt-cards { display: block; }
 }
+/* ===== COACH NOTES (gt-coach-) ===== */
+.gt-coach-wrap { margin-top: 24px; }
+.gt-coach-hd { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; }
+.gt-coach-subtitle { font-size: 11px; color: var(--text-4); }
+.gt-coach-empty { font-size: 13px; color: var(--text-4); padding: 10px 0; }
+.gt-coach-item {
+  border-radius: 12px; padding: 12px 14px; margin-bottom: 8px;
+  background: var(--bg-card); border: 1px solid var(--border); border-left-width: 3px;
+}
+.gt-coach-item.upgrade { border-left-color: var(--good); }
+.gt-coach-item.lower   { border-left-color: var(--bad); }
+.gt-coach-item.hold    { border-left-color: rgba(255,255,255,0.18); }
+.gt-coach-item.nodata  { opacity: 0.5; border-left-color: var(--border); }
+.gt-coach-item-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+.gt-coach-item-name { font-size: 13px; font-weight: 700; color: var(--text-1); }
+.gt-coach-item-note { font-size: 13px; color: var(--text-2); line-height: 1.45; }
+.gt-coach-item-compare { font-size: 11px; color: var(--text-3); margin-top: 5px; }
+.gt-bw-badge {
+  display: inline-block; font-size: 9px; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--text-3); border: 1px solid var(--border);
+  border-radius: 4px; padding: 1px 5px; margin-left: 6px; vertical-align: middle;
+}
+.gt-field-check { display: flex; align-items: center; gap: 8px; padding-top: 20px; }
+.gt-field-check input[type="checkbox"] { width: 17px; height: 17px; cursor: pointer; accent-color: var(--good); }
+.gt-field-check label { font-size: 13px; color: var(--text-2); cursor: pointer; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="topbar.js" defer></script>
@@ -1509,6 +1534,15 @@ img, video, canvas, svg { max-width: 100%; }
     </div>
 
     <div class="gt-cards" id="gtCards"></div>
+
+    <!-- COACH NOTES -->
+    <div class="gt-coach-wrap" id="gtCoachWrap">
+      <div class="gt-coach-hd">
+        <span class="gt-title">Coach Notes</span>
+        <span class="gt-coach-subtitle">based on today's logs</span>
+      </div>
+      <div id="gtCoachList"><div class="gt-coach-empty">Log sets to see recommendations.</div></div>
+    </div>
   </div>
 
   <!-- WEIGHT + PROGRESS PHOTOS -->
@@ -1676,8 +1710,8 @@ img, video, canvas, svg { max-width: 100%; }
     </button>
   </div>
 
-  <div class="card">
-    <!-- Filters -->
+  <div class="card" style="display:none" aria-hidden="true">
+    <!-- Filters — hidden: workout logging moved to table above -->
     <div class="po-filters">
       <div class="po-seg-row">
         <span class="po-seg-label">Gym</span>
@@ -1834,6 +1868,10 @@ img, video, canvas, svg { max-width: 100%; }
       <div class="gt-field"><label>Rep max</label><input type="number" id="gtEditRepMax" min="1" value="12"></div>
     </div>
     <div class="gt-field"><label>Target weight</label><input type="text" id="gtEditTarget" placeholder="e.g. 55 kg"></div>
+    <div class="gt-field-row" style="grid-template-columns:1fr 1fr">
+      <div class="gt-field"><label>Step (kg)</label><input type="number" id="gtEditStep" step="0.25" min="0" placeholder="2.5"></div>
+      <div class="gt-field-check"><input type="checkbox" id="gtEditBw"><label for="gtEditBw">Bodyweight</label></div>
+    </div>
     <div class="gt-field"><label>Notes</label><input type="text" id="gtEditNotes" placeholder="Optional"></div>
     <div class="gt-modal-btns">
       <button class="gt-btn-danger" id="gtEditDelete">Delete</button>
@@ -1854,6 +1892,10 @@ img, video, canvas, svg { max-width: 100%; }
       <div class="gt-field"><label>Rep max</label><input type="number" id="gtAddRepMax" min="1" value="12"></div>
     </div>
     <div class="gt-field"><label>Target weight</label><input type="text" id="gtAddTarget" placeholder="e.g. 55 kg"></div>
+    <div class="gt-field-row" style="grid-template-columns:1fr 1fr">
+      <div class="gt-field"><label>Step (kg)</label><input type="number" id="gtAddStep" step="0.25" min="0" placeholder="2.5"></div>
+      <div class="gt-field-check"><input type="checkbox" id="gtAddBw"><label for="gtAddBw">Bodyweight</label></div>
+    </div>
     <div class="gt-modal-btns">
       <button class="gt-btn-cancel" id="gtAddCancel">Cancel</button>
       <button class="gt-btn-primary" id="gtAddSave">Save</button>
@@ -3767,7 +3809,7 @@ const GT_TPL='dashboard:gym:v1:template', GT_LOG='dashboard:gym:v1:logs', GT_ACT
 
 const GT_DEFAULT=[
   {id:'upper',name:'Upper',exercises:[
-    {id:'ex_u1',name:'Cable Lateral Raise',    sets:3,repMin:12,repMax:20,target:'7.5 kg',notes:''},
+    {id:'ex_u1',name:'Cable Lateral Raise',    sets:3,repMin:12,repMax:20,target:'7.5 kg',step:1.25,bw:false,notes:''},
     {id:'ex_u2',name:'Lat Pulldown',           sets:3,repMin:8, repMax:12,target:'55 kg', notes:''},
     {id:'ex_u3',name:'Unilateral Pec Deck',    sets:3,repMin:8, repMax:12,target:'36 kg', notes:''},
     {id:'ex_u4',name:'Seated Cable Row',       sets:3,repMin:8, repMax:12,target:'45 kg', notes:''},
@@ -3822,16 +3864,87 @@ function saveLogs(l){gtS(GT_LOG,l);}
 function getActive(){const s=gtG(GT_ACT),t=getTpl();if(s&&t.find(d=>d.id===s))return s;return t[0]?t[0].id:null;}
 function saveActive(id){gtS(GT_ACT,id);}
 
-function parseRep(txt){
-  if(!txt||!txt.trim())return null;
-  const n=parseFloat(txt);if(!isNaN(n))return n;
-  const m=txt.match(/(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/i);if(m)return parseFloat(m[2]);
-  const pts=txt.match(/\d+(?:\.\d+)?/g);if(pts&&pts.length)return pts.reduce((a,b)=>a+parseFloat(b),0)/pts.length;
-  return null;
+function parseSetText(txt){
+  if(!txt||!txt.trim())return{reps:null,weight:null,raw:txt||'',parseable:false};
+  const raw=txt.trim();
+  // "45kg x 10" or "55 x 12"
+  const wxr=raw.match(/(\d+(?:\.\d+)?)\s*(?:kg|lb)?\s*[x×]\s*(\d+(?:\.\d+)?)/i);
+  if(wxr)return{weight:parseFloat(wxr[1]),reps:parseFloat(wxr[2]),raw,parseable:true};
+  // "10 reps"
+  const ronly=raw.match(/^(\d+(?:\.\d+)?)\s*reps?$/i);
+  if(ronly)return{reps:parseFloat(ronly[1]),weight:null,raw,parseable:true};
+  // "12/each"
+  const peach=raw.match(/^(\d+(?:\.\d+)?)\s*\/\s*each$/i);
+  if(peach)return{reps:parseFloat(peach[1]),weight:null,raw,parseable:true};
+  // "8/right 7/left" or "8/r 7/l"
+  const bisi=raw.match(/(\d+(?:\.\d+)?)\s*\/\s*(?:right|left|r|l)\b.*?(\d+(?:\.\d+)?)\s*\/\s*(?:right|left|r|l)\b/i);
+  if(bisi)return{reps:(parseFloat(bisi[1])+parseFloat(bisi[2]))/2,weight:null,raw,parseable:true};
+  // plain number
+  const plain=raw.match(/^(\d+(?:\.\d+)?)$/);
+  if(plain)return{reps:parseFloat(plain[1]),weight:null,raw,parseable:true};
+  // last resort: any numbers
+  const nums=raw.match(/\d+(?:\.\d+)?/g);
+  if(nums&&nums.length===1)return{reps:parseFloat(nums[0]),weight:null,raw,parseable:true};
+  return{reps:null,weight:null,raw,parseable:false};
+}
+function parseRep(txt){return parseSetText(txt).reps;} // backward compat
+
+function analyzeExercise(ex,exLog,allLogs,todayDk){
+  const isBW=!!ex.bw;
+  const todaySets=[];
+  for(let i=0;i<ex.sets;i++)todaySets.push(parseSetText((exLog||{})['set'+i]||''));
+  const todayReps=todaySets.filter(s=>s.parseable&&s.reps!==null).map(s=>s.reps);
+  const nonEmpty=todaySets.filter(s=>s.raw&&s.raw.trim()).length;
+
+  if(todayReps.length===0&&nonEmpty>0)
+    return{level:'nodata',note:'Need clean data — try "12", "45kg x 10", or "8/right 7/left".',compare:null};
+  if(todayReps.length===0){
+    if(!ex.target||!ex.target.trim())return{level:'nodata',note:'Add target weight to track progress.',compare:null};
+    return{level:'nodata',note:'Log your sets to get coaching feedback.',compare:null};
+  }
+  if(!isBW&&(!ex.target||!ex.target.trim()))
+    return{level:'nodata',note:'Add target weight to get coaching feedback.',compare:null};
+
+  // Previous session comparison
+  const prevDates=Object.keys(allLogs).filter(d=>d<todayDk&&(allLogs[d]||{})[ex.id]).sort().reverse();
+  let compareNote=null;
+  if(prevDates.length>0){
+    const prevLog=allLogs[prevDates[0]][ex.id]||{};
+    const prevReps=[];
+    for(let i=0;i<ex.sets;i++){const p=parseSetText(prevLog['set'+i]||'');if(p.parseable&&p.reps!==null)prevReps.push(p.reps);}
+    if(prevReps.length>0){
+      const ta=todayReps.reduce((a,b)=>a+b,0)/todayReps.length;
+      const pa=prevReps.reduce((a,b)=>a+b,0)/prevReps.length;
+      const diff=ta-pa;
+      if(diff>=1.5)compareNote='↑ Up from last session ('+pa.toFixed(0)+' → '+ta.toFixed(0)+' avg reps)';
+      else if(diff<=-1.5)compareNote='↓ Down from last session ('+pa.toFixed(0)+' → '+ta.toFixed(0)+' avg reps)';
+      else compareNote='≈ Similar to last session (avg '+pa.toFixed(0)+' reps)';
+    }
+  }
+
+  const avg=todayReps.reduce((a,b)=>a+b,0)/todayReps.length;
+  const fatigue=todayReps.length>=2&&(todayReps[0]-todayReps[todayReps.length-1]>=3);
+  const step=ex.step||(()=>{const tw=parseFloat(ex.target);return(isNaN(tw)||tw>12)?2.5:1.25;})();
+
+  if(isBW){
+    if(avg>=ex.repMax)return{level:'upgrade',note:'Matched top rep range — add reps, slow tempo, or progress to harder variation.',compare:compareNote};
+    if(avg>=ex.repMin){
+      if(fatigue)return{level:'hold',note:'Good volume but reps dropped across sets. Hold and recover.',compare:compareNote};
+      return{level:'hold',note:'Bodyweight — within range. Push for '+(Math.ceil(avg)+1)+' reps next session.',compare:compareNote};
+    }
+    return{level:'lower',note:'Below rep range. Keep working toward '+ex.repMin+'+ reps.',compare:compareNote};
+  }
+  if(avg>=ex.repMax)return{level:'upgrade',note:'Matched top range on all sets. Try +'+step+' kg next session.',compare:compareNote};
+  if(avg>=ex.repMin){
+    if(fatigue)return{level:'hold',note:'Reps dropped across sets — fatigue limiting. Hold weight, focus on recovery.',compare:compareNote};
+    return{level:'hold',note:'Within target range. Hold weight, push for '+(Math.ceil(avg)+1)+' reps next time.',compare:compareNote};
+  }
+  if(avg<ex.repMin-2)return{level:'lower',note:'Below rep range. Keep same weight and focus on form.',compare:compareNote};
+  return{level:'hold',note:'Just below target — hold weight, aim for '+ex.repMin+'+ reps.',compare:compareNote};
 }
 
 function coachChip(ex,dayLogs,allLogs){
-  if(!ex.target||!ex.target.trim())return{cls:'nodata',label:'— set target'};
+  if(!ex.target&&!ex.bw)return{cls:'nodata',label:'— set target'};
   const reps=[];
   Object.keys(allLogs).sort().slice(-10).forEach(dk=>{
     const el=(allLogs[dk]||{})[ex.id]||{};
@@ -3842,6 +3955,30 @@ function coachChip(ex,dayLogs,allLogs){
   if(avg>=ex.repMax)return{cls:'upgrade',label:'↑ add weight'};
   if(avg>=ex.repMin)return{cls:'hold',label:'✓ hold'};
   return{cls:'lower',label:'↓ reduce weight'};
+}
+
+function renderCoachNotes(day,dayL,allL,dk){
+  const c=document.getElementById('gtCoachList');if(!c)return;
+  const exs=day?day.exercises||[]:[];
+  if(!exs.length){c.innerHTML='<div class="gt-coach-empty">Add exercises to get coaching notes.</div>';return;}
+  const hasAnyLog=exs.some(ex=>{
+    const el=dayL[ex.id]||{};
+    for(let i=0;i<ex.sets;i++)if((el['set'+i]||'').trim())return true;
+    return false;
+  });
+  if(!hasAnyLog){c.innerHTML='<div class="gt-coach-empty">Log sets to see recommendations.</div>';return;}
+  c.innerHTML=exs.map(ex=>{
+    const analysis=analyzeExercise(ex,dayL[ex.id],allL,dk);
+    const bwBadge=ex.bw?'<span class="gt-bw-badge">BW</span>':'';
+    return `<div class="gt-coach-item ${analysis.level}">
+      <div class="gt-coach-item-head">
+        <span class="gt-coach-item-name">${esc(ex.name)}${bwBadge}</span>
+        <span class="gt-coach-chip ${analysis.level}">${{upgrade:'↑ add weight',hold:'✓ hold',lower:'↓ reduce',nodata:'—'}[analysis.level]||'—'}</span>
+      </div>
+      <div class="gt-coach-item-note">${analysis.note}</div>
+      ${analysis.compare?`<div class="gt-coach-item-compare">${analysis.compare}</div>`:''}
+    </div>`;
+  }).join('');
 }
 
 function exDone(ex,exLog){
@@ -3867,6 +4004,8 @@ function renderWorkout(t,a){
     document.getElementById('gtProgressFill').style.width='0%';
     document.getElementById('gtTableRows').innerHTML='';
     document.getElementById('gtCards').innerHTML='';
+    const cl=document.getElementById('gtCoachList');
+    if(cl)cl.innerHTML='<div class="gt-coach-empty">Select a day to see coaching notes.</div>';
     return;
   }
   document.getElementById('gtTodayDay').textContent=day.name;
@@ -3878,6 +4017,7 @@ function renderWorkout(t,a){
   document.getElementById('gtProgressFill').style.width=pct+'%';
   renderRows(day,dayL,allL,dk);
   renderCards(day,dayL,allL,dk);
+  renderCoachNotes(day,dayL,allL,dk);
 }
 
 function renderRows(day,dayL,allL,dk){
@@ -3975,6 +4115,15 @@ function updateProgress(day){
   const pct=exs.length?Math.round(done/exs.length*100):0;
   document.getElementById('gtProgressStats').textContent=`${done}/${exs.length} complete · ${started-done} in progress · ${pct}%`;
   document.getElementById('gtProgressFill').style.width=pct+'%';
+  scheduleCoach(day);
+}
+let _coachTimer=null;
+function scheduleCoach(day){
+  clearTimeout(_coachTimer);
+  _coachTimer=setTimeout(()=>{
+    const allL=getLogs(),dk=todayKey(),dayL=allL[dk]||{};
+    renderCoachNotes(day,dayL,allL,dk);
+  },600);
 }
 
 function saveSetVal(exId,idx,val){
@@ -4003,6 +4152,8 @@ function openEdit(exId,dayId){
   document.getElementById('gtEditRepMin').value=ex.repMin;
   document.getElementById('gtEditRepMax').value=ex.repMax;
   document.getElementById('gtEditTarget').value=ex.target||'';
+  document.getElementById('gtEditStep').value=ex.step||'';
+  document.getElementById('gtEditBw').checked=!!ex.bw;
   document.getElementById('gtEditNotes').value=ex.notes||'';
   document.getElementById('gtEditModal').classList.add('show');
 }
@@ -4017,6 +4168,8 @@ document.getElementById('gtEditSave').addEventListener('click',()=>{
   ex.repMin=parseInt(document.getElementById('gtEditRepMin').value)||ex.repMin;
   ex.repMax=parseInt(document.getElementById('gtEditRepMax').value)||ex.repMax;
   ex.target=document.getElementById('gtEditTarget').value.trim();
+  ex.step=parseFloat(document.getElementById('gtEditStep').value)||null;
+  ex.bw=document.getElementById('gtEditBw').checked;
   ex.notes=document.getElementById('gtEditNotes').value.trim();
   saveTpl(t);document.getElementById('gtEditModal').classList.remove('show');renderAll();
 });
@@ -4028,10 +4181,11 @@ document.getElementById('gtEditCancel').addEventListener('click',()=>document.ge
 document.getElementById('gtEditModal').addEventListener('click',e=>{if(e.target.id==='gtEditModal')document.getElementById('gtEditModal').classList.remove('show');});
 
 document.getElementById('gtAddExBtn').addEventListener('click',()=>{
-  ['gtAddName','gtAddTarget'].forEach(id=>document.getElementById(id).value='');
+  ['gtAddName','gtAddTarget','gtAddStep'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('gtAddSets').value='3';
   document.getElementById('gtAddRepMin').value='';
   document.getElementById('gtAddRepMax').value='';
+  document.getElementById('gtAddBw').checked=false;
   document.getElementById('gtAddModal').classList.add('show');
   setTimeout(()=>document.getElementById('gtAddName').focus(),100);
 });
@@ -4043,7 +4197,10 @@ document.getElementById('gtAddSave').addEventListener('click',()=>{
     sets:Math.max(1,parseInt(document.getElementById('gtAddSets').value)||3),
     repMin:parseInt(document.getElementById('gtAddRepMin').value)||8,
     repMax:parseInt(document.getElementById('gtAddRepMax').value)||12,
-    target:document.getElementById('gtAddTarget').value.trim(),notes:''});
+    target:document.getElementById('gtAddTarget').value.trim(),
+    step:parseFloat(document.getElementById('gtAddStep').value)||null,
+    bw:document.getElementById('gtAddBw').checked,
+    notes:''});
   saveTpl(t);document.getElementById('gtAddModal').classList.remove('show');renderAll();
 });
 document.getElementById('gtAddCancel').addEventListener('click',()=>document.getElementById('gtAddModal').classList.remove('show'));
