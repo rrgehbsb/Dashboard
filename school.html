@@ -825,7 +825,7 @@ function scSetStatusFilter(val,btn){
 window.scSetStatusFilter=scSetStatusFilter;
 
 // ---- Subjects collapse state ----
-let scSubjectsOpen=false;
+let scSubjectsOpen=true;
 
 function scToggleSubjectsCollapse(){
   scSubjectsOpen=!scSubjectsOpen;
@@ -1138,6 +1138,10 @@ function scRenderSubjects(){
   const subjects=getSubjects();
   const countEl=document.getElementById('scSubjectsCount');
   if(countEl) countEl.textContent=subjects.length+' subjects';
+  const body=document.getElementById('scSubjectsBody');
+  const lbl=document.getElementById('scSubjectsToggleLabel');
+  if(body) body.classList.toggle('open',scSubjectsOpen);
+  if(lbl) lbl.textContent=scSubjectsOpen?'Hide':'Show';
   grid.innerHTML=subjects.map(s=>`
     <div class="sc-subj-manage-chip">
       <span class="sc-subj-manage-dot" style="background:${esc(s.color)};"></span>
