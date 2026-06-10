@@ -914,10 +914,17 @@ startTicker();
 
   function applyRemote(data){
     if(!data) return;
+    const remoteHasGoals=Object.keys(data).some(k=>k.startsWith('goals:'));
     Object.keys(data).forEach(k=>{if(isSynced(k)) _setItem(k,JSON.stringify(data[k]));});
     for(let i=localStorage.length-1;i>=0;i--){
       const k=localStorage.key(i);
-      if(k&&isSynced(k)&&!(k in data)) _removeItem(k);
+      if(!k||!isSynced(k)||k in data) continue;
+      // Don't delete today's/future goals if remote has no goals at all (remote is stale/empty)
+      if(k.startsWith('goals:')){
+        const dateStr=k.slice(6);
+        if(!remoteHasGoals||dateStr>=getActiveDateString()) continue;
+      }
+      _removeItem(k);
     }
     loadToday();loadTomorrow();renderStreak();
     window.dispatchEvent(new CustomEvent('goals-changed'));
@@ -969,6 +976,9 @@ startTicker();
           await client().from('app_state').upsert({key:APP_KEY,data:local,updated_at:new Date().toISOString()});
         }
       }
+      // Push local goals up if remote is missing today's data
+      const localNow=gatherLocal();
+      if(JSON.stringify(localNow)!==lastSyncedJson) scheduleSync();
       client().channel('db-dashboard')
         .on('postgres_changes',{event:'*',schema:'public',table:'app_state',filter:`key=eq.${APP_KEY}`},payload=>{
           try{
