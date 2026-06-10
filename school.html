@@ -1,0 +1,1560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="topbar.js" defer></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>School — Dashboard</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#050506;
+  --bg-card:rgba(255,255,255,0.04);
+  --bg-secondary:rgba(255,255,255,0.035);
+  --bg-input:rgba(0,0,0,0.28);
+  --border:rgba(255,255,255,0.06);
+  --border-strong:rgba(255,255,255,0.12);
+  --text-primary:#FAFAFA;
+  --text-secondary:#B8B6B0;
+  --text-tertiary:#76746E;
+  --text-quaternary:#4D4B47;
+  --accent:#1D9E75;
+  --warning:#FF8A4D;
+  --font:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Roboto,sans-serif;
+  --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+html{min-height:100%;}
+body{
+  min-height:100vh;
+  background:var(--bg);
+  color:var(--text-primary);
+  font-family:var(--font);
+  max-width:800px;
+  margin:0 auto;
+  padding:max(env(safe-area-inset-top,0px),20px) 20px 100px;
+}
+/* Section title */
+.section-title{
+  font-family:var(--font-mono);
+  font-size:11px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;
+  color:var(--text-tertiary);margin-bottom:10px;display:flex;align-items:center;gap:8px;
+}
+.section-title::before{content:'≡';font-size:14px;opacity:0.7;}
+
+/* Stack cards */
+.stack-card{
+  background:var(--bg-card);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:20px 22px;
+  box-shadow:0 12px 40px rgba(0,0,0,0.45);
+  margin-bottom:12px;
+}
+
+/* Header card */
+.sc-header-card{
+  background:var(--bg-card);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:22px 24px;
+  box-shadow:0 12px 40px rgba(0,0,0,0.45);
+  margin-bottom:20px;
+  display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+}
+.sc-header-left{}
+.sc-header-title{font-size:26px;font-weight:700;letter-spacing:-0.025em;line-height:1;}
+.sc-header-sub{font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);letter-spacing:0.08em;margin-top:4px;}
+.sc-header-date{font-family:var(--font-mono);font-size:11px;color:var(--text-quaternary);margin-top:3px;}
+.sc-header-summary{font-size:13px;color:var(--text-secondary);margin-top:10px;line-height:1.5;}
+
+/* Stat chips */
+.sc-stats-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;}
+.sc-stat-chip{
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  padding:10px 14px;
+  background:var(--bg-card);border:1px solid var(--border);border-radius:12px;
+  flex:1;min-width:80px;
+}
+.sc-stat-val{font-family:var(--font-mono);font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text-primary);}
+.sc-stat-label{font-family:var(--font-mono);font-size:9px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-tertiary);text-align:center;}
+
+/* Focus card */
+.sc-focus-list{list-style:none;display:flex;flex-direction:column;gap:6px;}
+.sc-focus-item{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 12px;
+  background:var(--bg-secondary);
+  border:1px solid var(--border);
+  border-radius:10px;
+}
+.sc-focus-title{flex:1;font-size:13px;color:var(--text-primary);}
+.sc-focus-urgency{font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:0.06em;padding:3px 8px;border-radius:6px;white-space:nowrap;}
+.sc-focus-urgency.critical{background:rgba(239,68,68,0.15);color:#EF4444;}
+.sc-focus-urgency.urgent{background:rgba(249,115,22,0.15);color:#F97316;}
+.sc-focus-urgency.high{background:rgba(234,179,8,0.15);color:#EAB308;}
+.sc-focus-urgency.medium{background:rgba(99,102,241,0.15);color:#6366F1;}
+.sc-focus-urgency.test{background:rgba(139,92,246,0.15);color:#8B5CF6;}
+
+/* Subject chips */
+.sc-subject-chip{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:2px 8px;border-radius:999px;
+  font-size:11px;font-weight:600;white-space:nowrap;flex-shrink:0;
+}
+
+/* Filter row */
+.sc-filter-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center;}
+.sc-filter-select{
+  background:var(--bg-input);border:1px solid var(--border-strong);border-radius:8px;
+  padding:6px 10px;color:var(--text-primary);font-family:var(--font);font-size:12px;
+  cursor:pointer;outline:none;
+}
+.sc-filter-select:focus{border-color:var(--accent);}
+.sc-filter-btn{
+  padding:6px 12px;border-radius:8px;font-size:12px;font-family:var(--font);font-weight:600;
+  border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-secondary);
+  cursor:pointer;transition:all 0.15s;
+}
+.sc-filter-btn.active{background:rgba(29,158,117,0.15);border-color:rgba(29,158,117,0.4);color:var(--accent);}
+.sc-filter-btn:hover:not(.active){background:rgba(255,255,255,0.06);}
+
+/* Assignment rows */
+.sc-assign-list{display:flex;flex-direction:column;gap:6px;}
+.sc-assign-row{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 12px;
+  background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;
+  transition:background 0.15s;
+}
+.sc-assign-row:hover{background:rgba(255,255,255,0.06);}
+.sc-assign-row.is-done{opacity:0.45;}
+.sc-assign-row.is-done .sc-assign-title{text-decoration:line-through;text-decoration-color:rgba(255,255,255,0.3);}
+.sc-assign-title{flex:1;font-size:13px;color:var(--text-primary);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sc-type-badge{
+  font-family:var(--font-mono);font-size:10px;padding:2px 7px;border-radius:6px;
+  background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--text-tertiary);
+  white-space:nowrap;
+}
+.sc-due-label{font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);white-space:nowrap;}
+.sc-due-label.overdue{color:#EF4444;}
+.sc-due-label.today{color:#F97316;}
+.sc-due-label.soon{color:#EAB308;}
+
+/* Priority dot */
+.sc-prio-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.sc-prio-dot.critical{background:#EF4444;box-shadow:0 0 6px rgba(239,68,68,0.6);}
+.sc-prio-dot.high{background:#F97316;}
+.sc-prio-dot.medium{background:#EAB308;}
+.sc-prio-dot.low{background:var(--text-quaternary);}
+
+/* Status badge */
+.sc-status-badge{
+  font-size:10px;font-weight:600;padding:2px 8px;border-radius:6px;white-space:nowrap;
+}
+.sc-status-badge.done{background:rgba(29,158,117,0.18);color:#1D9E75;}
+.sc-status-badge.inprogress{background:rgba(99,102,241,0.18);color:#818CF8;}
+.sc-status-badge.notstarted{background:rgba(255,255,255,0.06);color:var(--text-tertiary);}
+
+/* Edit button */
+.sc-edit-btn{
+  background:none;border:none;color:var(--text-tertiary);cursor:pointer;
+  font-size:14px;padding:4px 6px;border-radius:6px;opacity:0.5;transition:opacity 0.15s,background 0.15s;
+  flex-shrink:0;
+}
+.sc-edit-btn:hover{opacity:1;background:rgba(255,255,255,0.06);}
+
+/* Add button */
+.sc-add-btn{
+  display:flex;align-items:center;gap:6px;margin-top:12px;
+  padding:9px 16px;border-radius:10px;
+  background:rgba(29,158,117,0.12);border:1px solid rgba(29,158,117,0.3);
+  color:var(--accent);font-size:13px;font-weight:600;font-family:var(--font);
+  cursor:pointer;transition:background 0.15s,border-color 0.15s;width:100%;justify-content:center;
+}
+.sc-add-btn:hover{background:rgba(29,158,117,0.2);border-color:rgba(29,158,117,0.5);}
+
+/* Test rows */
+.sc-test-list{display:flex;flex-direction:column;gap:6px;}
+.sc-test-row{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 12px;
+  background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;
+  transition:background 0.15s;
+}
+.sc-test-row:hover{background:rgba(255,255,255,0.06);}
+.sc-test-name{flex:1;font-size:13px;color:var(--text-primary);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sc-test-date-label{font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);white-space:nowrap;}
+.sc-test-date-label.past{color:var(--text-quaternary);}
+.sc-test-date-label.soon{color:#EAB308;}
+.sc-test-date-label.today{color:#F97316;}
+.sc-confidence{display:flex;gap:2px;align-items:center;}
+.sc-star{font-size:12px;color:var(--text-quaternary);}
+.sc-star.filled{color:#EAB308;}
+.sc-study-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:6px;white-space:nowrap;}
+.sc-study-badge.notstarted{background:rgba(255,255,255,0.06);color:var(--text-tertiary);}
+.sc-study-badge.learning{background:rgba(59,130,246,0.18);color:#60A5FA;}
+.sc-study-badge.practicing{background:rgba(234,179,8,0.18);color:#EAB308;}
+.sc-study-badge.ready{background:rgba(29,158,117,0.18);color:#1D9E75;}
+.sc-study-badge.done{background:rgba(107,114,128,0.18);color:#9CA3AF;}
+.sc-importance-chip{font-size:10px;padding:2px 8px;border-radius:6px;font-weight:600;white-space:nowrap;}
+.sc-importance-chip.normal{display:none;}
+.sc-importance-chip.important{background:rgba(249,115,22,0.15);color:#F97316;}
+.sc-importance-chip.veryimportant{background:rgba(239,68,68,0.15);color:#EF4444;}
+
+/* Grade accordion */
+.sc-grade-accordion{}
+.sc-grade-subj-row{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 12px;
+  background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;
+  cursor:pointer;transition:background 0.15s;margin-bottom:4px;
+  user-select:none;
+}
+.sc-grade-subj-row:hover{background:rgba(255,255,255,0.06);}
+.sc-grade-subj-name{flex:1;font-size:13px;font-weight:600;color:var(--text-primary);}
+.sc-grade-avg{font-family:var(--font-mono);font-size:13px;font-weight:700;color:var(--text-primary);}
+.sc-grade-count{font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);}
+.sc-grade-expand-icon{font-size:12px;color:var(--text-tertiary);transition:transform 0.2s;flex-shrink:0;}
+.sc-grade-subj-row.open .sc-grade-expand-icon{transform:rotate(90deg);}
+.sc-grade-entries{display:none;padding-left:12px;margin-bottom:8px;}
+.sc-grade-subj-row.open+.sc-grade-entries{display:flex;flex-direction:column;gap:4px;}
+.sc-grade-entry{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 10px;
+  background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px;
+}
+.sc-grade-entry-name{flex:1;font-size:12px;color:var(--text-secondary);}
+.sc-grade-entry-val{font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--text-primary);}
+.sc-grade-entry-pct{font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);}
+.sc-grade-entry-type{font-size:10px;padding:2px 7px;border-radius:6px;background:rgba(255,255,255,0.06);color:var(--text-tertiary);}
+.sc-grade-entry-weight{font-family:var(--font-mono);font-size:10px;color:var(--text-quaternary);}
+
+/* Subjects management */
+.sc-subjects-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
+.sc-subj-manage-chip{
+  display:flex;align-items:center;gap:6px;
+  padding:6px 10px 6px 8px;border-radius:8px;
+  background:var(--bg-secondary);border:1px solid var(--border);
+}
+.sc-subj-manage-name{font-size:12px;font-weight:600;color:var(--text-primary);}
+.sc-subj-manage-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.sc-subj-edit-btn{background:none;border:none;color:var(--text-tertiary);cursor:pointer;font-size:12px;padding:0 2px;opacity:0.6;}
+.sc-subj-edit-btn:hover{opacity:1;}
+.sc-subj-del-btn{background:none;border:none;color:#EF4444;cursor:pointer;font-size:12px;padding:0 2px;opacity:0.4;}
+.sc-subj-del-btn:hover{opacity:1;}
+
+/* Collapse toggle */
+.sc-collapse-header{
+  display:flex;align-items:center;justify-content:space-between;cursor:pointer;
+  user-select:none;
+}
+.sc-collapse-toggle{
+  font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);
+  padding:4px 8px;border-radius:6px;background:rgba(255,255,255,0.04);
+  border:1px solid var(--border);
+}
+.sc-collapse-body{display:none;}
+.sc-collapse-body.open{display:block;}
+
+/* Empty state */
+.sc-empty{
+  padding:24px 0;text-align:center;
+  font-size:13px;color:var(--text-tertiary);font-style:italic;
+}
+
+/* Modals */
+.sc-modal-bg{
+  position:fixed;inset:0;background:rgba(0,0,0,0.7);
+  display:none;align-items:center;justify-content:center;z-index:200;
+}
+.sc-modal-bg.show{display:flex;}
+.sc-modal{
+  background:#0f0f11;border:1px solid rgba(255,255,255,0.1);border-radius:20px;
+  padding:28px;max-width:480px;width:90%;max-height:90vh;overflow-y:auto;
+  overscroll-behavior:contain;
+}
+.sc-modal-title{font-size:18px;font-weight:700;margin-bottom:20px;color:var(--text-primary);}
+.sc-form-group{margin-bottom:14px;}
+.sc-form-label{font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:6px;display:block;}
+.sc-input{
+  width:100%;background:var(--bg-input);border:1px solid var(--border-strong);border-radius:10px;
+  padding:10px 14px;color:var(--text-primary);font-family:var(--font);font-size:14px;outline:none;
+  transition:border-color 0.2s;
+}
+.sc-input::placeholder{color:var(--text-quaternary);}
+.sc-input:focus{border-color:var(--accent);}
+.sc-select{
+  width:100%;background:var(--bg-input);border:1px solid var(--border-strong);border-radius:10px;
+  padding:10px 14px;color:var(--text-primary);font-family:var(--font);font-size:14px;outline:none;
+  cursor:pointer;transition:border-color 0.2s;appearance:none;
+}
+.sc-select:focus{border-color:var(--accent);}
+.sc-textarea{
+  width:100%;background:var(--bg-input);border:1px solid var(--border-strong);border-radius:10px;
+  padding:10px 14px;color:var(--text-primary);font-family:var(--font);font-size:13px;outline:none;
+  transition:border-color 0.2s;resize:vertical;min-height:60px;
+}
+.sc-textarea:focus{border-color:var(--accent);}
+.sc-modal-actions{display:flex;gap:10px;margin-top:20px;justify-content:flex-end;}
+.sc-btn-primary{
+  background:var(--accent);color:#fff;border:none;border-radius:10px;
+  padding:10px 20px;font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer;
+  transition:background 0.15s;
+}
+.sc-btn-primary:hover{background:#18896a;}
+.sc-btn-secondary{
+  background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:10px;
+  padding:10px 16px;font-size:14px;font-weight:600;color:var(--text-secondary);
+  font-family:var(--font);cursor:pointer;transition:background 0.15s;
+}
+.sc-btn-secondary:hover{background:rgba(255,255,255,0.10);}
+.sc-btn-danger{
+  background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);border-radius:10px;
+  padding:10px 16px;font-size:14px;font-weight:600;color:#EF4444;
+  font-family:var(--font);cursor:pointer;transition:background 0.15s;margin-right:auto;
+}
+.sc-btn-danger:hover{background:rgba(239,68,68,0.2);}
+
+/* Color picker */
+.sc-color-grid{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
+.sc-color-swatch{
+  width:28px;height:28px;border-radius:8px;cursor:pointer;border:2px solid transparent;
+  transition:transform 0.1s,border-color 0.15s;flex-shrink:0;
+}
+.sc-color-swatch:hover{transform:scale(1.15);}
+.sc-color-swatch.selected{border-color:#fff;}
+
+/* Confidence stars */
+.sc-star-picker{display:flex;gap:4px;margin-top:6px;}
+.sc-star-pick-btn{
+  font-size:20px;cursor:pointer;background:none;border:none;line-height:1;
+  color:var(--text-quaternary);transition:color 0.1s,transform 0.1s;padding:0;
+}
+.sc-star-pick-btn:hover,.sc-star-pick-btn.lit{color:#EAB308;}
+.sc-star-pick-btn:hover{transform:scale(1.15);}
+
+/* Row action button inline */
+.sc-inline-done-btn{
+  background:none;border:1px solid var(--border);border-radius:6px;
+  color:var(--text-tertiary);font-size:11px;padding:2px 8px;cursor:pointer;
+  transition:all 0.15s;white-space:nowrap;
+}
+.sc-inline-done-btn:hover{background:rgba(29,158,117,0.15);border-color:rgba(29,158,117,0.4);color:var(--accent);}
+
+/* Section spacing */
+.sc-section{margin-bottom:24px;}
+
+@media (max-width:600px){
+  .sc-assign-row{flex-wrap:wrap;}
+  .sc-assign-title{width:100%;flex-basis:100%;order:-1;}
+  .sc-test-row{flex-wrap:wrap;}
+  .sc-test-name{width:100%;flex-basis:100%;order:-1;}
+  .sc-stats-row{gap:6px;}
+  .sc-stat-chip{padding:8px 10px;min-width:60px;}
+  .sc-stat-val{font-size:18px;}
+}
+@media (max-width:480px){
+  .sc-modal-bg{padding:0!important;align-items:stretch!important;justify-content:stretch!important;}
+  .sc-modal{
+    width:100%!important;max-width:100%!important;
+    max-height:100vh!important;height:100vh!important;
+    border-radius:0!important;
+    padding-top:max(20px,env(safe-area-inset-top))!important;
+    padding-bottom:max(28px,env(safe-area-inset-bottom))!important;
+    overflow-y:auto!important;
+  }
+}
+</style>
+</head>
+<body>
+
+<main>
+<!-- Header Card -->
+<div class="sc-header-card">
+  <div class="sc-header-left">
+    <div class="sc-header-title">School</div>
+    <div class="sc-header-sub">COMMAND CENTER</div>
+    <div class="sc-header-date" id="scHeaderDate"></div>
+    <div class="sc-header-summary" id="scHeaderSummary">Loading...</div>
+  </div>
+</div>
+
+<!-- Stats Row -->
+<div class="sc-stats-row" id="scStatsRow">
+  <div class="sc-stat-chip"><span class="sc-stat-val" id="statDueToday">0</span><span class="sc-stat-label">Due Today</span></div>
+  <div class="sc-stat-chip"><span class="sc-stat-val" id="statDueSoon">0</span><span class="sc-stat-label">Due Soon</span></div>
+  <div class="sc-stat-chip"><span class="sc-stat-val" id="statTestsWeek">0</span><span class="sc-stat-label">Tests This Week</span></div>
+  <div class="sc-stat-chip"><span class="sc-stat-val" id="statDoneToday">0</span><span class="sc-stat-label">Done Today</span></div>
+  <div class="sc-stat-chip"><span class="sc-stat-val" id="statAvg">—</span><span class="sc-stat-label">Avg</span></div>
+</div>
+
+<!-- Today's Focus -->
+<div class="sc-section">
+  <div class="section-title">TODAY'S FOCUS</div>
+  <div class="stack-card">
+    <ul class="sc-focus-list" id="scFocusList"></ul>
+    <div class="sc-empty" id="scFocusEmpty" style="display:none;">No urgent school work right now.</div>
+  </div>
+</div>
+
+<!-- Assignments -->
+<div class="sc-section">
+  <div class="section-title">ASSIGNMENTS</div>
+  <div class="stack-card">
+    <div class="sc-filter-row">
+      <select class="sc-filter-select" id="scAssignSubjFilter">
+        <option value="">All Subjects</option>
+      </select>
+      <button class="sc-filter-btn active" data-status="all" onclick="scSetStatusFilter('all',this)">All</button>
+      <button class="sc-filter-btn" data-status="active" onclick="scSetStatusFilter('active',this)">Active</button>
+      <button class="sc-filter-btn" data-status="done" onclick="scSetStatusFilter('done',this)">Done</button>
+    </div>
+    <div class="sc-assign-list" id="scAssignList"></div>
+    <div class="sc-empty" id="scAssignEmpty" style="display:none;">No assignments yet.</div>
+    <button class="sc-add-btn" onclick="scOpenAddAssign()">+ Add Assignment</button>
+  </div>
+</div>
+
+<!-- Tests & Exams -->
+<div class="sc-section">
+  <div class="section-title">TESTS &amp; EXAMS</div>
+  <div class="stack-card">
+    <div class="sc-test-list" id="scTestList"></div>
+    <div class="sc-empty" id="scTestEmpty" style="display:none;">No tests or exams yet.</div>
+    <button class="sc-add-btn" onclick="scOpenAddTest()">+ Add Test</button>
+  </div>
+</div>
+
+<!-- Grades -->
+<div class="sc-section">
+  <div class="section-title">GRADES</div>
+  <div class="stack-card">
+    <div class="sc-grade-accordion" id="scGradeAccordion"></div>
+    <div class="sc-empty" id="scGradeEmpty" style="display:none;">No grades tracked yet.</div>
+    <button class="sc-add-btn" onclick="scOpenAddGrade()">+ Add Grade</button>
+  </div>
+</div>
+
+<!-- Subjects -->
+<div class="sc-section">
+  <div class="section-title">SUBJECTS</div>
+  <div class="stack-card">
+    <div class="sc-collapse-header" onclick="scToggleSubjectsCollapse()">
+      <span style="font-size:13px;color:var(--text-secondary);font-weight:600;">Manage subjects</span>
+      <span class="sc-collapse-toggle" id="scSubjectsToggleLabel">Show</span>
+    </div>
+    <div class="sc-collapse-body" id="scSubjectsBody">
+      <div style="height:14px;"></div>
+      <div class="sc-subjects-grid" id="scSubjectsGrid"></div>
+      <button class="sc-add-btn" onclick="scOpenAddSubject()">+ Add Subject</button>
+    </div>
+  </div>
+</div>
+</main>
+
+<!-- ===== MODALS ===== -->
+
+<!-- Add/Edit Assignment Modal -->
+<div class="sc-modal-bg" id="scAssignModal">
+  <div class="sc-modal">
+    <div class="sc-modal-title" id="scAssignModalTitle">Add Assignment</div>
+    <div class="sc-form-group">
+      <label class="sc-form-label">Subject</label>
+      <select class="sc-select" id="scAssignSubject"></select>
+    </div>
+    <div class="sc-form-group">
+      <label class="sc-form-label">Title</label>
+      <input class="sc-input" id="scAssignTitle" placeholder="Assignment name" type="text">
+    </div>
+    <div class="sc-form-group">
+      <label class="sc-form-label">Type</label>
+      <select class="sc-select" id="scAssignType">
+        <option>Homework</option><option>Project</option><option>Worksheet</option>
+        <option>Reading</option><option>Study</option><option>Presentation</option>
+        <option>Essay</option><option>Lab</option><option>Quiz prep</option>
+        <option>Test prep</option><option>Other</option>
+      </select>
+    </div>
+    <div class="sc-form-group">
+      <label class="sc-form-label">Due Date</label>
+      <input class="sc-input" id="scAssignDueDate" type="date">
+    </div>
+    <div class="sc-form-group">
+      <label class="sc-form-label">Priority</label>
+      <select class="sc-select" id="scAssignPriority">
+        <option value="Auto">Auto (by due date)</option>
+        <option value="Low">Low</option>
+        <option value="Medium">Medium</option>
+        <option value="High">High</option>
+      </select>
+    </div>
+    <div class="sc-form-group">
+      <label class="sc-form-label">Status</label>
+      <select class="sc-select" id="scAssignStatus">
+        <option value="Not started">Not started</option>
+        <option value="In progress">In progress</option>
+        <option value="Done">Done</option>
+      </select>
+    </div>
+    <div class="sc-form-group">
+      <label class="sc-form-label">Estimated minutes</label>
+      <input class="sc-input" id="scAssignEstMin" placeholder="e.g. 45" type="number" min="0">
+    </div>
+    <div class="sc-form-group">
+      <label class="sc-form-label">Notes</label>
+      <textarea class="sc-textarea" id="scAssignNotes" placeholder="Optional notes…"></textarea>
+    </div>
+    <div class="sc-modal-actions">
+      <button class="sc-btn-danger" id="scAssignDeleteBtn" onclick="scDeleteAssign()" style="display:none;">Delete</button>
+      <button class="sc-btn-secondary" onclick="scCloseAssignModal()">Cancel</button>
+      <button class="sc-btn-primary" onclick="scSaveAssign()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Test Modal -->
+<div class="sc-modal-bg" id="scTestModal">
+  <div class="sc-modal">
+    <div class="sc-modal-title" id="scTestModalTitle">Add Test</div>
+    <div class="sc-form-group">
+      <label class="sc-form-label">Subject</label>
+      <select class="sc-select" id="scTestSubject"></select>
+    </div>
+    <div class="sc-form-group">
+      <label class="sc-form-label">Name</label>
+      <input class="sc-input" id="scTestName" placeholder="Test name" type="text">
+    </div>
+    <div class="sc-form-group">
+      <label class="sc-form-label">Date</label>
+      <input class="sc-input" id="scTestDate" type="date">
+    </div>
+    <div class="sc-form-group">
+      <label class="sc-form-label">Topics / chapters</label>
+      <input class="sc-input" id="scTestTopics" placeholder="e.g. Chapter 3–5, quadratic equations" type="text">
+    </div>
+    <div class="sc-form-group">
+      <label class="sc-form-label">Study status</label>
+      <select class="sc-select" id="scTestStudyStatus">
+        <option value="Not started">Not started</option>
+        <option value="Learning">Learning</option>
+        <option value="Practicing">Practicing</option>
+        <option value="Ready">Ready</option>
+        <option value="Done">Done</option>
+      </select>
+    </div>
+    <div class="sc-form-group">
+      <label class="sc-form-label">Confidence (1–5)</label>
+      <div class="sc-star-picker" id="scTestConfStars">
+        <button class="sc-star-pick-btn" data-v="1" onclick="scPickConf(1)">★</button>
+        <button class="sc-star-pick-btn" data-v="2" onclick="scPickConf(2)">★</button>
+        <button class="sc-star-pick-btn" data-v="3" onclick="scPickConf(3)">★</button>
+        <button class="sc-star-pick-btn" data-v="4" onclick="scPickConf(4)">★</button>
+        <button class="sc-star-pick-btn" data-v="5" onclick="scPickConf(5)">★</button>
+      </div>
+    </div>
+    <div class="sc-form-group">
+      <label class="sc-form-label">Importance</label>
+      <select class="sc-select" id="scTestImportance">
+        <option value="Normal">Normal</option>
+        <option value="Important">Important</option>
+        <option value="Very important">Very important</option>
+      </select>
+    </div>
+    <div class="sc-form-group">
+      <label class="sc-form-label">Grade (after test)</label>
+      <input class="sc-input" id="scTestGrade" placeholder="e.g. 92" type="number" min="0">
+    </div>
+    <div class="sc-form-group">
+      <label class="sc-form-label">Grade weight (%)</label>
+      <input class="sc-input" id="scTestGradeWeight" placeholder="e.g. 30" type="number" min="0" max="100">
+    </div>
+    <div class="sc-form-group">
+      <label class="sc-form-label">Notes</label>
+      <textarea class="sc-textarea" id="scTestNotes" placeholder="Optional notes…"></textarea>
+    </div>
+    <div class="sc-modal-actions">
+      <button class="sc-btn-danger" id="scTestDeleteBtn" onclick="scDeleteTest()" style="display:none;">Delete</button>
+      <button class="sc-btn-secondary" onclick="scCloseTestModal()">Cancel</button>
+      <button class="sc-btn-primary" onclick="scSaveTest()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Grade Modal -->
+<div class="sc-modal-bg" id="scGradeModal">
+  <div class="sc-modal">
+    <div class="sc-modal-title" id="scGradeModalTitle">Add Grade</div>
+    <div class="sc-form-group">
+      <label class="sc-form-label">Subject</label>
+      <select class="sc-select" id="scGradeSubject"></select>
+    </div>
+    <div class="sc-form-group">
+      <label class="sc-form-label">Name / description</label>
+      <input class="sc-input" id="scGradeName" placeholder="e.g. Chapter 4 Test" type="text">
+    </div>
+    <div class="sc-form-group">
+      <label class="sc-form-label">Type</label>
+      <select class="sc-select" id="scGradeType">
+        <option>Test</option><option>Quiz</option><option>Assignment</option>
+        <option>Project</option><option>Homework</option><option>Presentation</option>
+        <option>Participation</option><option>Other</option>
+      </select>
+    </div>
+    <div class="sc-form-group">
+      <label class="sc-form-label">Score</label>
+      <input class="sc-input" id="scGradeValue" placeholder="e.g. 87" type="number" min="0">
+    </div>
+    <div class="sc-form-group">
+      <label class="sc-form-label">Out of (max)</label>
+      <input class="sc-input" id="scGradeMax" placeholder="e.g. 100" type="number" min="1" value="100">
+    </div>
+    <div class="sc-form-group">
+      <label class="sc-form-label">Date</label>
+      <input class="sc-input" id="scGradeDate" type="date">
+    </div>
+    <div class="sc-form-group">
+      <label class="sc-form-label">Weight (optional, %)</label>
+      <input class="sc-input" id="scGradeWeight" placeholder="Leave blank if no weight" type="number" min="0" max="100">
+    </div>
+    <div class="sc-form-group">
+      <label class="sc-form-label">Notes</label>
+      <textarea class="sc-textarea" id="scGradeNotes" placeholder="Optional notes…"></textarea>
+    </div>
+    <div class="sc-modal-actions">
+      <button class="sc-btn-danger" id="scGradeDeleteBtn" onclick="scDeleteGrade()" style="display:none;">Delete</button>
+      <button class="sc-btn-secondary" onclick="scCloseGradeModal()">Cancel</button>
+      <button class="sc-btn-primary" onclick="scSaveGrade()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Manage Subject Modal -->
+<div class="sc-modal-bg" id="scSubjectModal">
+  <div class="sc-modal">
+    <div class="sc-modal-title" id="scSubjectModalTitle">Add Subject</div>
+    <div class="sc-form-group">
+      <label class="sc-form-label">Name</label>
+      <input class="sc-input" id="scSubjectName" placeholder="Subject name" type="text">
+    </div>
+    <div class="sc-form-group">
+      <label class="sc-form-label">Color</label>
+      <div class="sc-color-grid" id="scColorGrid"></div>
+    </div>
+    <div class="sc-modal-actions">
+      <button class="sc-btn-secondary" onclick="scCloseSubjectModal()">Cancel</button>
+      <button class="sc-btn-primary" onclick="scSaveSubject()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirm Modal -->
+<div class="sc-modal-bg" id="scDeleteModal">
+  <div class="sc-modal" style="max-width:380px;">
+    <div class="sc-modal-title" id="scDeleteModalMsg">Are you sure?</div>
+    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:20px;">This cannot be undone.</div>
+    <div class="sc-modal-actions">
+      <button class="sc-btn-secondary" onclick="scCloseDeleteModal()">Cancel</button>
+      <button class="sc-btn-danger" id="scDeleteConfirmBtn" onclick="scConfirmDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+// ---- Storage ----
+function scGet(k){try{return JSON.parse(localStorage.getItem(k))||null;}catch{return null;}}
+function scSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
+
+const SK_SUBJECTS   = 'dashboard:school:v1:subjects';
+const SK_ASSIGNMENTS= 'dashboard:school:v1:assignments';
+const SK_TESTS      = 'dashboard:school:v1:tests';
+const SK_GRADES     = 'dashboard:school:v1:grades';
+
+const SC_DEFAULT_SUBJECTS = [
+  {id:'math',name:'Math',color:'#3B82F6'},
+  {id:'english',name:'English',color:'#8B5CF6'},
+  {id:'hebrew',name:'Hebrew',color:'#EAB308'},
+  {id:'arabic',name:'Arabic',color:'#14B8A6'},
+  {id:'history',name:'History',color:'#F97316'},
+  {id:'science',name:'Science',color:'#10B981'},
+  {id:'biology',name:'Biology',color:'#22C55E'},
+  {id:'chemistry',name:'Chemistry',color:'#06B6D4'},
+  {id:'physics',name:'Physics',color:'#6366F1'},
+  {id:'literature',name:'Literature',color:'#EC4899'},
+  {id:'bible',name:'Bible',color:'#D97706'},
+  {id:'civics',name:'Civics',color:'#F59E0B'},
+  {id:'geography',name:'Geography',color:'#84CC16'},
+  {id:'cs',name:'Computer Science',color:'#0EA5E9'},
+  {id:'tech',name:'Technology',color:'#0369A1'},
+  {id:'robotics',name:'Robotics',color:'#7C3AED'},
+  {id:'pe',name:'Physical Education',color:'#EF4444'},
+  {id:'art',name:'Art',color:'#F43F5E'},
+  {id:'music',name:'Music',color:'#A855F7'},
+  {id:'theater',name:'Theater',color:'#DB2777'},
+  {id:'economics',name:'Economics',color:'#65A30D'},
+  {id:'business',name:'Business',color:'#78716C'},
+  {id:'social',name:'Social Studies',color:'#0891B2'},
+  {id:'language',name:'Language',color:'#D946EF'},
+  {id:'homeroom',name:'Homeroom',color:'#94A3B8'},
+  {id:'other',name:'Other',color:'#6B7280'},
+];
+
+const SC_PRESET_COLORS = [
+  '#3B82F6','#8B5CF6','#EAB308','#14B8A6','#F97316','#10B981',
+  '#22C55E','#06B6D4','#6366F1','#EC4899','#D97706','#EF4444',
+];
+
+function getSubjects(){
+  const s = scGet(SK_SUBJECTS);
+  if(s && s.length) return s;
+  return SC_DEFAULT_SUBJECTS.map(s=>({...s,hidden:false}));
+}
+function getAssignments(){return scGet(SK_ASSIGNMENTS)||[];}
+function getTests(){return scGet(SK_TESTS)||[];}
+function getGrades(){return scGet(SK_GRADES)||[];}
+
+function scId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+
+function todayStr(){
+  const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+function esc(s){
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ---- Priority logic ----
+function scCalcPriority(assignment){
+  if(assignment.priority !== 'Auto') return assignment.priority;
+  if(!assignment.dueDate) return 'Low';
+  const days = Math.ceil((new Date(assignment.dueDate) - new Date(todayStr())) / 86400000);
+  if(days < 0) return 'Critical';
+  if(days === 0) return 'High';
+  if(days <= 1) return 'High';
+  if(days <= 3) return 'Medium';
+  return 'Low';
+}
+
+// ---- Grade calculation ----
+function scCalcSubjectGrades(grades, subjectId){
+  const sg = grades.filter(g=>g.subjectId===subjectId);
+  if(!sg.length) return null;
+  const withWeight = sg.filter(g=>g.weight!=null&&g.weight>0);
+  const pct = g => (g.maxGrade > 0) ? (g.gradeValue/g.maxGrade)*100 : null;
+  let weightedAvg=null, totalWeight=0;
+  if(withWeight.length){
+    let sum=0;
+    withWeight.forEach(g=>{const p=pct(g);if(p!==null){sum+=p*g.weight;totalWeight+=g.weight;}});
+    if(totalWeight>0) weightedAvg=sum/totalWeight;
+  }
+  const allPct=sg.map(pct).filter(p=>p!==null);
+  const unweightedAvg=allPct.length?allPct.reduce((a,b)=>a+b,0)/allPct.length:null;
+  return{weightedAvg,totalWeight,unweightedAvg,count:sg.length,hasWeights:withWeight.length>0};
+}
+
+function scCalcOverallAvg(){
+  const grades=getGrades();
+  if(!grades.length) return null;
+  const subjects=getSubjects();
+  const results=[];
+  subjects.forEach(s=>{
+    const r=scCalcSubjectGrades(grades,s.id);
+    if(r) results.push(r);
+  });
+  if(!results.length) return null;
+  const weighted=results.filter(r=>r.weightedAvg!==null);
+  if(weighted.length){
+    const avg=weighted.reduce((s,r)=>s+r.weightedAvg,0)/weighted.length;
+    return{avg,partial:weighted.length<results.length};
+  }
+  const unw=results.filter(r=>r.unweightedAvg!==null);
+  if(unw.length){
+    const avg=unw.reduce((s,r)=>s+r.unweightedAvg,0)/unw.length;
+    return{avg,partial:false};
+  }
+  return null;
+}
+
+// ---- Subject helpers ----
+function getSubjectById(id){
+  return getSubjects().find(s=>s.id===id)||{id:'',name:'Unknown',color:'#6B7280'};
+}
+
+function subjectChip(subjectId){
+  const s=getSubjectById(subjectId);
+  const bg=s.color+'22';
+  const border=s.color+'44';
+  return `<span class="sc-subject-chip" style="background:${bg};border:1px solid ${border};color:${s.color};">${esc(s.name)}</span>`;
+}
+
+// ---- Date helpers ----
+function daysFromToday(dateStr){
+  if(!dateStr) return null;
+  return Math.ceil((new Date(dateStr) - new Date(todayStr())) / 86400000);
+}
+
+function formatDueLabel(dateStr){
+  if(!dateStr) return '';
+  const days=daysFromToday(dateStr);
+  if(days===null) return '';
+  if(days<0) return {text:'Overdue '+Math.abs(days)+'d',cls:'overdue'};
+  if(days===0) return {text:'Due today',cls:'today'};
+  if(days===1) return {text:'Due tomorrow',cls:'soon'};
+  return {text:'Due in '+days+'d',cls:''};
+}
+
+// ---- Status filter state ----
+let scStatusFilter='all';
+let scSubjectFilterVal='';
+
+function scSetStatusFilter(val,btn){
+  scStatusFilter=val;
+  document.querySelectorAll('[data-status]').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  scRenderAssignments();
+}
+window.scSetStatusFilter=scSetStatusFilter;
+
+// ---- Subjects collapse state ----
+let scSubjectsOpen=false;
+
+function scToggleSubjectsCollapse(){
+  scSubjectsOpen=!scSubjectsOpen;
+  const body=document.getElementById('scSubjectsBody');
+  const lbl=document.getElementById('scSubjectsToggleLabel');
+  if(body) body.classList.toggle('open',scSubjectsOpen);
+  if(lbl) lbl.textContent=scSubjectsOpen?'Hide':'Show';
+}
+window.scToggleSubjectsCollapse=scToggleSubjectsCollapse;
+
+// ---- Render header ----
+function scRenderHeader(){
+  const dateEl=document.getElementById('scHeaderDate');
+  const summaryEl=document.getElementById('scHeaderSummary');
+  const today=todayStr();
+  const d=new Date();
+  const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  if(dateEl) dateEl.textContent=days[d.getDay()]+', '+months[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear();
+  const assignments=getAssignments();
+  const tests=getTests();
+  const grades=getGrades();
+  if(!summaryEl) return;
+  if(!assignments.length&&!tests.length&&!grades.length){
+    summaryEl.textContent='Add your first assignment, test, or grade to start tracking school.';
+    return;
+  }
+  const overdue=assignments.filter(a=>a.status!=='Done'&&a.dueDate&&daysFromToday(a.dueDate)<0).length;
+  const urgent=assignments.filter(a=>a.status!=='Done'&&a.dueDate&&daysFromToday(a.dueDate)===0).length;
+  const week7=new Date(today);week7.setDate(week7.getDate()+7);
+  const testsWeek=tests.filter(t=>{if(!t.testDate)return false;const d=new Date(t.testDate);return d>=new Date(today)&&d<=week7;}).length;
+  const parts=[];
+  if(overdue) parts.push(overdue+' overdue');
+  if(urgent) parts.push(urgent+' due today');
+  if(testsWeek) parts.push(testsWeek+' test'+(testsWeek>1?'s':'')+' this week');
+  if(grades.length) parts.push(grades.length+' grade'+(grades.length>1?'s':'')+' tracked');
+  summaryEl.textContent=parts.length?parts.join(' · '):'All caught up!';
+}
+
+// ---- Render focus ----
+function scRenderFocus(){
+  const list=document.getElementById('scFocusList');
+  const empty=document.getElementById('scFocusEmpty');
+  if(!list) return;
+  const today=todayStr();
+  const week7=new Date(today);week7.setDate(week7.getDate()+7);
+  const assignments=getAssignments();
+  const tests=getTests();
+
+  const items=[];
+  assignments.forEach(a=>{
+    if(a.status==='Done') return;
+    const days=daysFromToday(a.dueDate);
+    if(days===null) return;
+    let urgency,urgencyCls,sortKey;
+    if(days<0){urgency='Overdue';urgencyCls='critical';sortKey=days-1000;}
+    else if(days===0){urgency='Due today';urgencyCls='urgent';sortKey=0;}
+    else if(days===1){urgency='Due tomorrow';urgencyCls='high';sortKey=1;}
+    else if(days<=7){urgency='Due in '+days+'d';urgencyCls='medium';sortKey=days;}
+    else return;
+    items.push({type:'assign',id:a.id,subjectId:a.subjectId,title:a.title,urgency,urgencyCls,sortKey});
+  });
+  tests.forEach(t=>{
+    if(!t.testDate) return;
+    const days=daysFromToday(t.testDate);
+    if(days===null||days<0||days>7) return;
+    let urgency='Test in '+days+'d';
+    if(days===0) urgency='Test today!';
+    if(days===1) urgency='Test tomorrow!';
+    items.push({type:'test',id:t.id,subjectId:t.subjectId,title:t.name,urgency,urgencyCls:'test',sortKey:days+0.5});
+  });
+
+  items.sort((a,b)=>a.sortKey-b.sortKey);
+  const show=items.slice(0,5);
+
+  if(!show.length){
+    list.innerHTML='';
+    if(empty) empty.style.display='';
+    return;
+  }
+  if(empty) empty.style.display='none';
+  list.innerHTML=show.map(item=>`
+    <li class="sc-focus-item">
+      ${subjectChip(item.subjectId)}
+      <span class="sc-focus-title">${esc(item.title)}</span>
+      <span class="sc-focus-urgency ${item.urgencyCls}">${esc(item.urgency)}</span>
+    </li>
+  `).join('');
+}
+
+// ---- Render stats ----
+function scRenderStats(){
+  const today=todayStr();
+  const week7=new Date(today);week7.setDate(week7.getDate()+7);
+  const assignments=getAssignments();
+  const tests=getTests();
+
+  const dueTodayN=assignments.filter(a=>a.status!=='Done'&&a.dueDate===today).length;
+  const dueSoonN=assignments.filter(a=>{
+    if(a.status==='Done'||!a.dueDate)return false;
+    const d=new Date(a.dueDate);return d>=new Date(today)&&d<=week7;
+  }).length;
+  const testsWeekN=tests.filter(t=>{
+    if(!t.testDate)return false;
+    const d=new Date(t.testDate);return d>=new Date(today)&&d<=week7;
+  }).length;
+  const doneTodayN=assignments.filter(a=>{
+    if(a.status!=='Done'||!a.completedAt)return false;
+    return a.completedAt.slice(0,10)===today;
+  }).length;
+  const avgResult=scCalcOverallAvg();
+
+  function setEl(id,val){const el=document.getElementById(id);if(el)el.textContent=val;}
+  setEl('statDueToday',String(dueTodayN));
+  setEl('statDueSoon',String(dueSoonN));
+  setEl('statTestsWeek',String(testsWeekN));
+  setEl('statDoneToday',String(doneTodayN));
+  if(avgResult){
+    const pct=Math.round(avgResult.avg);
+    setEl('statAvg',(avgResult.partial?'~':'')+pct+'%');
+  } else {
+    setEl('statAvg','—');
+  }
+}
+
+// ---- Populate subject dropdowns ----
+function scPopulateSubjectDropdowns(){
+  const subjects=getSubjects().filter(s=>!s.hidden);
+  const opts=subjects.map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');
+  ['scAssignSubject','scTestSubject','scGradeSubject'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.innerHTML=opts;
+  });
+  // Filter dropdown
+  const filterEl=document.getElementById('scAssignSubjFilter');
+  if(filterEl){
+    filterEl.innerHTML='<option value="">All Subjects</option>'+opts;
+    filterEl.value=scSubjectFilterVal;
+    filterEl.onchange=function(){scSubjectFilterVal=this.value;scRenderAssignments();};
+  }
+}
+
+// ---- Priority dot HTML ----
+function prioDot(p){
+  const cls={Critical:'critical',High:'high',Medium:'medium',Low:'low'}[p]||'low';
+  return `<span class="sc-prio-dot ${cls}" title="${esc(p)}"></span>`;
+}
+
+// ---- Status badge HTML ----
+function statusBadge(status){
+  if(status==='Done') return `<span class="sc-status-badge done">Done</span>`;
+  if(status==='In progress') return `<span class="sc-status-badge inprogress">In progress</span>`;
+  return `<span class="sc-status-badge notstarted">Not started</span>`;
+}
+
+// ---- Render assignments ----
+function scRenderAssignments(){
+  scPopulateSubjectDropdowns();
+  const list=document.getElementById('scAssignList');
+  const empty=document.getElementById('scAssignEmpty');
+  if(!list) return;
+  let assigns=getAssignments();
+  // Filter
+  if(scSubjectFilterVal) assigns=assigns.filter(a=>a.subjectId===scSubjectFilterVal);
+  if(scStatusFilter==='active') assigns=assigns.filter(a=>a.status!=='Done');
+  if(scStatusFilter==='done') assigns=assigns.filter(a=>a.status==='Done');
+  // Sort: by priority urgency then due date
+  const prioOrder={Critical:0,High:1,Medium:2,Low:3};
+  assigns=assigns.slice().sort((a,b)=>{
+    const pa=scCalcPriority(a), pb=scCalcPriority(b);
+    const oa=prioOrder[pa]??4, ob=prioOrder[pb]??4;
+    if(oa!==ob) return oa-ob;
+    if(a.dueDate&&b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+    if(a.dueDate) return -1;
+    if(b.dueDate) return 1;
+    return 0;
+  });
+  if(!assigns.length){
+    list.innerHTML='';
+    if(empty) empty.style.display='';
+    return;
+  }
+  if(empty) empty.style.display='none';
+  const today=todayStr();
+  list.innerHTML=assigns.map(a=>{
+    const prio=scCalcPriority(a);
+    const dueInfo=formatDueLabel(a.dueDate);
+    const dueHtml=dueInfo?`<span class="sc-due-label ${dueInfo.cls}">${esc(dueInfo.text)}</span>`:'';
+    const done=a.status==='Done';
+    return `<div class="sc-assign-row${done?' is-done':''}" data-id="${esc(a.id)}">
+      ${subjectChip(a.subjectId)}
+      <span class="sc-assign-title">${esc(a.title)}</span>
+      <span class="sc-type-badge">${esc(a.type||'')}</span>
+      ${dueHtml}
+      ${prioDot(prio)}
+      ${statusBadge(a.status)}
+      <button class="sc-edit-btn" onclick="scOpenEditAssign('${esc(a.id)}')" title="Edit">✎</button>
+    </div>`;
+  }).join('');
+}
+
+// ---- Render tests ----
+function scRenderTests(){
+  const list=document.getElementById('scTestList');
+  const empty=document.getElementById('scTestEmpty');
+  if(!list) return;
+  const tests=getTests().slice().sort((a,b)=>{
+    if(a.testDate&&b.testDate) return a.testDate.localeCompare(b.testDate);
+    if(a.testDate) return -1;
+    if(b.testDate) return 1;
+    return 0;
+  });
+  if(!tests.length){
+    list.innerHTML='';
+    if(empty) empty.style.display='';
+    return;
+  }
+  if(empty) empty.style.display='none';
+  const today=todayStr();
+  list.innerHTML=tests.map(t=>{
+    const days=daysFromToday(t.testDate);
+    let dateLbl='', dateCls='';
+    if(days===null) dateLbl='No date';
+    else if(days<0){dateLbl='Past ('+t.testDate+')';dateCls='past';}
+    else if(days===0){dateLbl='Today!';dateCls='today';}
+    else if(days===1){dateLbl='Tomorrow!';dateCls='soon';}
+    else{dateLbl='In '+days+'d ('+t.testDate+')';if(days<=7)dateCls='soon';}
+
+    const studyKey={'Not started':'notstarted','Learning':'learning','Practicing':'practicing','Ready':'ready','Done':'done'}[t.studyStatus]||'notstarted';
+    const importanceCls={'Normal':'normal','Important':'important','Very important':'veryimportant'}[t.importance]||'normal';
+
+    let starsHtml='';
+    const conf=parseInt(t.confidence)||0;
+    for(let i=1;i<=5;i++) starsHtml+=`<span class="sc-star${i<=conf?' filled':''}">★</span>`;
+
+    return `<div class="sc-test-row" data-id="${esc(t.id)}">
+      ${subjectChip(t.subjectId)}
+      <span class="sc-test-name">${esc(t.name)}</span>
+      <span class="sc-test-date-label ${dateCls}">${esc(dateLbl)}</span>
+      <span class="sc-confidence">${starsHtml}</span>
+      <span class="sc-study-badge ${studyKey}">${esc(t.studyStatus||'Not started')}</span>
+      <span class="sc-importance-chip ${importanceCls}">${esc(t.importance||'')}</span>
+      <button class="sc-edit-btn" onclick="scOpenEditTest('${esc(t.id)}')" title="Edit">✎</button>
+    </div>`;
+  }).join('');
+}
+
+// ---- Render grades ----
+function scRenderGrades(){
+  const accordion=document.getElementById('scGradeAccordion');
+  const empty=document.getElementById('scGradeEmpty');
+  if(!accordion) return;
+  const grades=getGrades();
+  const subjects=getSubjects();
+  // Only show subjects that have grades
+  const activeSubjIds=[...new Set(grades.map(g=>g.subjectId))];
+  if(!activeSubjIds.length){
+    accordion.innerHTML='';
+    if(empty) empty.style.display='';
+    return;
+  }
+  if(empty) empty.style.display='none';
+
+  let html='';
+  activeSubjIds.forEach(sid=>{
+    const subj=getSubjectById(sid);
+    const result=scCalcSubjectGrades(grades,sid);
+    if(!result) return;
+    const avgDisplay=result.weightedAvg!==null
+      ? Math.round(result.weightedAvg)+'%'
+      : result.unweightedAvg!==null
+        ? Math.round(result.unweightedAvg)+'%'
+        : '—';
+    const subjGrades=grades.filter(g=>g.subjectId===sid);
+    html+=`
+      <div class="sc-grade-subj-row" onclick="scToggleGradeAccordion(this)">
+        ${subjectChip(sid)}
+        <span class="sc-grade-subj-name">${esc(subj.name)}</span>
+        <span class="sc-grade-avg">${esc(avgDisplay)}</span>
+        <span class="sc-grade-count">${result.count} grade${result.count!==1?'s':''}</span>
+        <span class="sc-grade-expand-icon">▶</span>
+      </div>
+      <div class="sc-grade-entries">
+        ${subjGrades.map(g=>{
+          const pct=g.maxGrade>0?Math.round((g.gradeValue/g.maxGrade)*100)+'%':'';
+          return `<div class="sc-grade-entry">
+            <span class="sc-grade-entry-name">${esc(g.name)}</span>
+            <span class="sc-grade-entry-type">${esc(g.type||'')}</span>
+            <span class="sc-grade-entry-val">${esc(String(g.gradeValue||0))}/${esc(String(g.maxGrade||100))}</span>
+            <span class="sc-grade-entry-pct">${esc(pct)}</span>
+            ${g.weight!=null?`<span class="sc-grade-entry-weight">w:${esc(String(g.weight))}%</span>`:''}
+            <button class="sc-edit-btn" onclick="event.stopPropagation();scOpenEditGrade('${esc(g.id)}')" title="Edit">✎</button>
+          </div>`;
+        }).join('')}
+      </div>
+    `;
+  });
+  accordion.innerHTML=html;
+}
+
+function scToggleGradeAccordion(row){
+  row.classList.toggle('open');
+}
+window.scToggleGradeAccordion=scToggleGradeAccordion;
+
+// ---- Render subjects ----
+function scRenderSubjects(){
+  const grid=document.getElementById('scSubjectsGrid');
+  if(!grid) return;
+  const subjects=getSubjects();
+  grid.innerHTML=subjects.map(s=>`
+    <div class="sc-subj-manage-chip">
+      <span class="sc-subj-manage-dot" style="background:${esc(s.color)};"></span>
+      <span class="sc-subj-manage-name">${esc(s.name)}</span>
+      <button class="sc-subj-edit-btn" onclick="scOpenEditSubject('${esc(s.id)}')" title="Edit">✎</button>
+      <button class="sc-subj-del-btn" onclick="scAskDeleteSubject('${esc(s.id)}')" title="Delete">×</button>
+    </div>
+  `).join('');
+}
+
+// ---- Main render ----
+function scRenderAll(){
+  scRenderHeader();
+  scRenderFocus();
+  scRenderStats();
+  scRenderAssignments();
+  scRenderTests();
+  scRenderGrades();
+  scRenderSubjects();
+}
+
+// ===== ASSIGNMENT MODAL =====
+let scEditAssignId=null;
+
+function scOpenAddAssign(){
+  scEditAssignId=null;
+  scPopulateSubjectDropdowns();
+  document.getElementById('scAssignModalTitle').textContent='Add Assignment';
+  document.getElementById('scAssignTitle').value='';
+  document.getElementById('scAssignType').value='Homework';
+  document.getElementById('scAssignDueDate').value=todayStr();
+  document.getElementById('scAssignPriority').value='Auto';
+  document.getElementById('scAssignStatus').value='Not started';
+  document.getElementById('scAssignEstMin').value='';
+  document.getElementById('scAssignNotes').value='';
+  document.getElementById('scAssignDeleteBtn').style.display='none';
+  document.getElementById('scAssignModal').classList.add('show');
+}
+window.scOpenAddAssign=scOpenAddAssign;
+
+function scOpenEditAssign(id){
+  const a=getAssignments().find(x=>x.id===id);
+  if(!a) return;
+  scEditAssignId=id;
+  scPopulateSubjectDropdowns();
+  document.getElementById('scAssignModalTitle').textContent='Edit Assignment';
+  document.getElementById('scAssignSubject').value=a.subjectId||'';
+  document.getElementById('scAssignTitle').value=a.title||'';
+  document.getElementById('scAssignType').value=a.type||'Homework';
+  document.getElementById('scAssignDueDate').value=a.dueDate||'';
+  document.getElementById('scAssignPriority').value=a.priority||'Auto';
+  document.getElementById('scAssignStatus').value=a.status||'Not started';
+  document.getElementById('scAssignEstMin').value=a.estimatedMin||'';
+  document.getElementById('scAssignNotes').value=a.notes||'';
+  document.getElementById('scAssignDeleteBtn').style.display='';
+  document.getElementById('scAssignModal').classList.add('show');
+}
+window.scOpenEditAssign=scOpenEditAssign;
+
+function scCloseAssignModal(){
+  document.getElementById('scAssignModal').classList.remove('show');
+}
+window.scCloseAssignModal=scCloseAssignModal;
+
+function scSaveAssign(){
+  const title=(document.getElementById('scAssignTitle').value||'').trim();
+  if(!title){document.getElementById('scAssignTitle').focus();return;}
+  const assigns=getAssignments();
+  const now=new Date().toISOString();
+  const status=document.getElementById('scAssignStatus').value;
+  if(scEditAssignId){
+    const idx=assigns.findIndex(a=>a.id===scEditAssignId);
+    if(idx>=0){
+      const prev=assigns[idx];
+      assigns[idx]={
+        ...prev,
+        subjectId:document.getElementById('scAssignSubject').value,
+        title,
+        type:document.getElementById('scAssignType').value,
+        dueDate:document.getElementById('scAssignDueDate').value||null,
+        priority:document.getElementById('scAssignPriority').value,
+        status,
+        estimatedMin:parseInt(document.getElementById('scAssignEstMin').value)||null,
+        notes:document.getElementById('scAssignNotes').value.trim()||null,
+        updatedAt:now,
+        completedAt:(status==='Done'&&!prev.completedAt)?now:(status!=='Done'?null:prev.completedAt),
+      };
+    }
+  } else {
+    assigns.push({
+      id:scId(),
+      subjectId:document.getElementById('scAssignSubject').value,
+      title,
+      type:document.getElementById('scAssignType').value,
+      dueDate:document.getElementById('scAssignDueDate').value||null,
+      priority:document.getElementById('scAssignPriority').value,
+      status,
+      estimatedMin:parseInt(document.getElementById('scAssignEstMin').value)||null,
+      notes:document.getElementById('scAssignNotes').value.trim()||null,
+      createdAt:now,updatedAt:now,
+      completedAt:status==='Done'?now:null,
+    });
+  }
+  scSet(SK_ASSIGNMENTS,assigns);
+  scCloseAssignModal();
+  scRenderAll();
+}
+window.scSaveAssign=scSaveAssign;
+
+function scDeleteAssign(){
+  if(!scEditAssignId) return;
+  scOpenDeleteConfirm('Delete this assignment?',()=>{
+    const assigns=getAssignments().filter(a=>a.id!==scEditAssignId);
+    scSet(SK_ASSIGNMENTS,assigns);
+    scCloseAssignModal();
+    scRenderAll();
+  });
+}
+window.scDeleteAssign=scDeleteAssign;
+
+// ===== TEST MODAL =====
+let scEditTestId=null;
+let scTestConfValue=3;
+
+function scPickConf(v){
+  scTestConfValue=v;
+  document.querySelectorAll('.sc-star-pick-btn').forEach(btn=>{
+    btn.classList.toggle('lit',parseInt(btn.dataset.v)<=v);
+  });
+}
+window.scPickConf=scPickConf;
+
+function scOpenAddTest(){
+  scEditTestId=null;
+  scTestConfValue=3;
+  scPopulateSubjectDropdowns();
+  document.getElementById('scTestModalTitle').textContent='Add Test';
+  document.getElementById('scTestName').value='';
+  document.getElementById('scTestDate').value='';
+  document.getElementById('scTestTopics').value='';
+  document.getElementById('scTestStudyStatus').value='Not started';
+  document.getElementById('scTestImportance').value='Normal';
+  document.getElementById('scTestGrade').value='';
+  document.getElementById('scTestGradeWeight').value='';
+  document.getElementById('scTestNotes').value='';
+  document.getElementById('scTestDeleteBtn').style.display='none';
+  scPickConf(3);
+  document.getElementById('scTestModal').classList.add('show');
+}
+window.scOpenAddTest=scOpenAddTest;
+
+function scOpenEditTest(id){
+  const t=getTests().find(x=>x.id===id);
+  if(!t) return;
+  scEditTestId=id;
+  scTestConfValue=t.confidence||3;
+  scPopulateSubjectDropdowns();
+  document.getElementById('scTestModalTitle').textContent='Edit Test';
+  document.getElementById('scTestSubject').value=t.subjectId||'';
+  document.getElementById('scTestName').value=t.name||'';
+  document.getElementById('scTestDate').value=t.testDate||'';
+  document.getElementById('scTestTopics').value=t.topics||'';
+  document.getElementById('scTestStudyStatus').value=t.studyStatus||'Not started';
+  document.getElementById('scTestImportance').value=t.importance||'Normal';
+  document.getElementById('scTestGrade').value=t.grade!=null?t.grade:'';
+  document.getElementById('scTestGradeWeight').value=t.gradeWeight!=null?t.gradeWeight:'';
+  document.getElementById('scTestNotes').value=t.notes||'';
+  document.getElementById('scTestDeleteBtn').style.display='';
+  scPickConf(t.confidence||3);
+  document.getElementById('scTestModal').classList.add('show');
+}
+window.scOpenEditTest=scOpenEditTest;
+
+function scCloseTestModal(){
+  document.getElementById('scTestModal').classList.remove('show');
+}
+window.scCloseTestModal=scCloseTestModal;
+
+function scSaveTest(){
+  const name=(document.getElementById('scTestName').value||'').trim();
+  if(!name){document.getElementById('scTestName').focus();return;}
+  const tests=getTests();
+  const now=new Date().toISOString();
+  const gradeRaw=document.getElementById('scTestGrade').value;
+  const gradeWeightRaw=document.getElementById('scTestGradeWeight').value;
+  const obj={
+    subjectId:document.getElementById('scTestSubject').value,
+    name,
+    testDate:document.getElementById('scTestDate').value||null,
+    topics:document.getElementById('scTestTopics').value.trim()||null,
+    studyStatus:document.getElementById('scTestStudyStatus').value,
+    confidence:scTestConfValue,
+    importance:document.getElementById('scTestImportance').value,
+    notes:document.getElementById('scTestNotes').value.trim()||null,
+    grade:gradeRaw!==''?parseFloat(gradeRaw):null,
+    gradeWeight:gradeWeightRaw!==''?parseFloat(gradeWeightRaw):null,
+    updatedAt:now,
+  };
+  if(scEditTestId){
+    const idx=tests.findIndex(t=>t.id===scEditTestId);
+    if(idx>=0) tests[idx]={...tests[idx],...obj};
+  } else {
+    tests.push({id:scId(),...obj,createdAt:now});
+  }
+  scSet(SK_TESTS,tests);
+  scCloseTestModal();
+  scRenderAll();
+}
+window.scSaveTest=scSaveTest;
+
+function scDeleteTest(){
+  if(!scEditTestId) return;
+  scOpenDeleteConfirm('Delete this test?',()=>{
+    const tests=getTests().filter(t=>t.id!==scEditTestId);
+    scSet(SK_TESTS,tests);
+    scCloseTestModal();
+    scRenderAll();
+  });
+}
+window.scDeleteTest=scDeleteTest;
+
+// ===== GRADE MODAL =====
+let scEditGradeId=null;
+
+function scOpenAddGrade(){
+  scEditGradeId=null;
+  scPopulateSubjectDropdowns();
+  document.getElementById('scGradeModalTitle').textContent='Add Grade';
+  document.getElementById('scGradeName').value='';
+  document.getElementById('scGradeType').value='Test';
+  document.getElementById('scGradeValue').value='';
+  document.getElementById('scGradeMax').value='100';
+  document.getElementById('scGradeDate').value=todayStr();
+  document.getElementById('scGradeWeight').value='';
+  document.getElementById('scGradeNotes').value='';
+  document.getElementById('scGradeDeleteBtn').style.display='none';
+  document.getElementById('scGradeModal').classList.add('show');
+}
+window.scOpenAddGrade=scOpenAddGrade;
+
+function scOpenEditGrade(id){
+  const g=getGrades().find(x=>x.id===id);
+  if(!g) return;
+  scEditGradeId=id;
+  scPopulateSubjectDropdowns();
+  document.getElementById('scGradeModalTitle').textContent='Edit Grade';
+  document.getElementById('scGradeSubject').value=g.subjectId||'';
+  document.getElementById('scGradeName').value=g.name||'';
+  document.getElementById('scGradeType').value=g.type||'Test';
+  document.getElementById('scGradeValue').value=g.gradeValue!=null?g.gradeValue:'';
+  document.getElementById('scGradeMax').value=g.maxGrade!=null?g.maxGrade:100;
+  document.getElementById('scGradeDate').value=g.date||'';
+  document.getElementById('scGradeWeight').value=g.weight!=null?g.weight:'';
+  document.getElementById('scGradeNotes').value=g.notes||'';
+  document.getElementById('scGradeDeleteBtn').style.display='';
+  document.getElementById('scGradeModal').classList.add('show');
+}
+window.scOpenEditGrade=scOpenEditGrade;
+
+function scCloseGradeModal(){
+  document.getElementById('scGradeModal').classList.remove('show');
+}
+window.scCloseGradeModal=scCloseGradeModal;
+
+function scSaveGrade(){
+  const name=(document.getElementById('scGradeName').value||'').trim();
+  if(!name){document.getElementById('scGradeName').focus();return;}
+  const gradeValueStr=document.getElementById('scGradeValue').value;
+  if(gradeValueStr===''){document.getElementById('scGradeValue').focus();return;}
+  const grades=getGrades();
+  const now=new Date().toISOString();
+  const weightRaw=document.getElementById('scGradeWeight').value;
+  const obj={
+    subjectId:document.getElementById('scGradeSubject').value,
+    name,
+    type:document.getElementById('scGradeType').value,
+    gradeValue:parseFloat(gradeValueStr)||0,
+    maxGrade:parseFloat(document.getElementById('scGradeMax').value)||100,
+    date:document.getElementById('scGradeDate').value||null,
+    weight:weightRaw!==''?parseFloat(weightRaw):null,
+    notes:document.getElementById('scGradeNotes').value.trim()||null,
+    updatedAt:now,
+  };
+  if(scEditGradeId){
+    const idx=grades.findIndex(g=>g.id===scEditGradeId);
+    if(idx>=0) grades[idx]={...grades[idx],...obj};
+  } else {
+    grades.push({id:scId(),...obj,createdAt:now});
+  }
+  scSet(SK_GRADES,grades);
+  scCloseGradeModal();
+  scRenderAll();
+}
+window.scSaveGrade=scSaveGrade;
+
+function scDeleteGrade(){
+  if(!scEditGradeId) return;
+  scOpenDeleteConfirm('Delete this grade?',()=>{
+    const grades=getGrades().filter(g=>g.id!==scEditGradeId);
+    scSet(SK_GRADES,grades);
+    scCloseGradeModal();
+    scRenderAll();
+  });
+}
+window.scDeleteGrade=scDeleteGrade;
+
+// ===== SUBJECT MODAL =====
+let scEditSubjectId=null;
+let scSubjectColorVal=SC_PRESET_COLORS[0];
+
+function scBuildColorGrid(selected){
+  const grid=document.getElementById('scColorGrid');
+  if(!grid) return;
+  grid.innerHTML=SC_PRESET_COLORS.map(c=>`
+    <div class="sc-color-swatch${c===selected?' selected':''}"
+      style="background:${c};"
+      onclick="scPickColor('${c}')"
+      title="${c}"></div>
+  `).join('');
+}
+
+function scPickColor(c){
+  scSubjectColorVal=c;
+  document.querySelectorAll('.sc-color-swatch').forEach(sw=>{
+    sw.classList.toggle('selected',sw.style.background===c||sw.style.backgroundColor===c);
+  });
+}
+window.scPickColor=scPickColor;
+
+function scOpenAddSubject(){
+  scEditSubjectId=null;
+  scSubjectColorVal=SC_PRESET_COLORS[0];
+  document.getElementById('scSubjectModalTitle').textContent='Add Subject';
+  document.getElementById('scSubjectName').value='';
+  scBuildColorGrid(scSubjectColorVal);
+  document.getElementById('scSubjectModal').classList.add('show');
+}
+window.scOpenAddSubject=scOpenAddSubject;
+
+function scOpenEditSubject(id){
+  const s=getSubjects().find(x=>x.id===id);
+  if(!s) return;
+  scEditSubjectId=id;
+  scSubjectColorVal=s.color||SC_PRESET_COLORS[0];
+  document.getElementById('scSubjectModalTitle').textContent='Edit Subject';
+  document.getElementById('scSubjectName').value=s.name||'';
+  scBuildColorGrid(scSubjectColorVal);
+  document.getElementById('scSubjectModal').classList.add('show');
+}
+window.scOpenEditSubject=scOpenEditSubject;
+
+function scCloseSubjectModal(){
+  document.getElementById('scSubjectModal').classList.remove('show');
+}
+window.scCloseSubjectModal=scCloseSubjectModal;
+
+function scSaveSubject(){
+  const name=(document.getElementById('scSubjectName').value||'').trim();
+  if(!name){document.getElementById('scSubjectName').focus();return;}
+  const subjects=getSubjects();
+  const now=new Date().toISOString();
+  if(scEditSubjectId){
+    const idx=subjects.findIndex(s=>s.id===scEditSubjectId);
+    if(idx>=0){subjects[idx]={...subjects[idx],name,color:scSubjectColorVal};}
+  } else {
+    subjects.push({id:scId(),name,color:scSubjectColorVal,hidden:false});
+  }
+  scSet(SK_SUBJECTS,subjects);
+  scCloseSubjectModal();
+  scRenderAll();
+}
+window.scSaveSubject=scSaveSubject;
+
+function scAskDeleteSubject(id){
+  const s=getSubjects().find(x=>x.id===id);
+  if(!s) return;
+  scOpenDeleteConfirm('Delete subject "'+s.name+'"?',()=>{
+    const subjects=getSubjects().filter(x=>x.id!==id);
+    scSet(SK_SUBJECTS,subjects);
+    scRenderAll();
+  });
+}
+window.scAskDeleteSubject=scAskDeleteSubject;
+
+// ===== DELETE CONFIRM MODAL =====
+let scDeleteCallback=null;
+
+function scOpenDeleteConfirm(msg,cb){
+  scDeleteCallback=cb;
+  const msgEl=document.getElementById('scDeleteModalMsg');
+  if(msgEl) msgEl.textContent=msg||'Are you sure?';
+  document.getElementById('scDeleteModal').classList.add('show');
+}
+
+function scCloseDeleteModal(){
+  scDeleteCallback=null;
+  document.getElementById('scDeleteModal').classList.remove('show');
+}
+window.scCloseDeleteModal=scCloseDeleteModal;
+
+function scConfirmDelete(){
+  if(scDeleteCallback) scDeleteCallback();
+  scCloseDeleteModal();
+}
+window.scConfirmDelete=scConfirmDelete;
+
+// ===== Close modals on bg click =====
+document.querySelectorAll('.sc-modal-bg').forEach(bg=>{
+  bg.addEventListener('click',function(e){
+    if(e.target===this) this.classList.remove('show');
+  });
+});
+
+// ===== Keyboard ESC =====
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){
+    document.querySelectorAll('.sc-modal-bg.show').forEach(bg=>bg.classList.remove('show'));
+  }
+});
+
+// ===== Init =====
+document.addEventListener('DOMContentLoaded',scRenderAll);
+
+})();
+</script>
+</body>
+</html>
