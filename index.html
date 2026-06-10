@@ -799,8 +799,10 @@ function renderListInto(goals,listEl,emptyEl,key,readOnly){
   emptyEl.style.display=goals.length?'none':'block';
   const LIMIT=5;
   const showAll=listEl.dataset.showAll==='true';
-  const visible=(goals.length>LIMIT&&!showAll)?goals.slice(0,LIMIT):goals;
-  visible.forEach((g,i)=>listEl.appendChild(buildGoalRow(g,i,goals,key,readOnly)));
+  // Undone first, done at bottom; preserve relative order within each group
+  const sorted=goals.map((g,i)=>({g,i})).sort((a,b)=>!!a.g.done-!!b.g.done);
+  const visible=(sorted.length>LIMIT&&!showAll)?sorted.slice(0,LIMIT):sorted;
+  visible.forEach(({g,i})=>listEl.appendChild(buildGoalRow(g,i,goals,key,readOnly)));
   if(goals.length>LIMIT){
     const btn=document.createElement('button');btn.className='gm-show-more';
     if(!showAll){
