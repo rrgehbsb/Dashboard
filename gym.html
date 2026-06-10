@@ -1354,6 +1354,12 @@ img, video, canvas, svg { max-width: 100%; }
 .gt-uni-label-row { display: flex; gap: 3px; align-items: center; }
 .gt-uni-label-row .gt-set-input-mobile { flex: 1; }
 .gt-uni-mobile-pair { display: flex; flex-direction: column; gap: 3px; }
+.gt-reorder-btn {
+  background: none; border: none; color: var(--text-4); font-size: 13px;
+  padding: 1px 3px; cursor: pointer; line-height: 1; border-radius: 4px;
+}
+.gt-reorder-btn:hover { color: var(--text-2); background: rgba(255,255,255,0.06); }
+.gt-ex-reorder { display: flex; flex-direction: column; gap: 1px; }
 .gt-notes-input {
   width: 100%; background: transparent; border: none;
   color: var(--text-3); font-size: 12px; padding: 5px 0; outline: none;
@@ -4122,11 +4128,11 @@ function renderRows(day,dayL,allL,dk){
     const sets=[];for(let i=0;i<ex.sets;i++)sets.push(el['set'+i]||'');
     const chip=coachChip(ex,dayL,allL);
     const inputs=sets.map((v,i)=>{
-      if(ex.unilateral){const vR=el['set'+i+'R']||'';return`<div class="gt-uni-pair"><span class="gt-uni-label">L</span><input class="gt-set-input${v?' has-value':''}" type="text" inputmode="decimal" placeholder="—" value="${esc(v)}" data-exid="${ex.id}" data-set="${i}" data-side="L" autocomplete="off"><span class="gt-uni-label">R</span><input class="gt-set-input${vR?' has-value':''}" type="text" inputmode="decimal" placeholder="—" value="${esc(vR)}" data-exid="${ex.id}" data-set="${i}" data-side="R" autocomplete="off"></div>`;}
+      if(ex.unilateral){const vR=el['set'+i+'R']||'';return`<div class="gt-uni-pair"><span class="gt-uni-label">R</span><input class="gt-set-input${vR?' has-value':''}" type="text" inputmode="decimal" placeholder="—" value="${esc(vR)}" data-exid="${ex.id}" data-set="${i}" data-side="R" autocomplete="off"><span class="gt-uni-label">L</span><input class="gt-set-input${v?' has-value':''}" type="text" inputmode="decimal" placeholder="—" value="${esc(v)}" data-exid="${ex.id}" data-set="${i}" data-side="L" autocomplete="off"></div>`;}
       return`<input class="gt-set-input${v?' has-value':''}" type="text" inputmode="decimal" placeholder="—" value="${esc(v)}" data-exid="${ex.id}" data-set="${i}" autocomplete="off">`;
     }).join('');
     return `<div class="gt-table-row">
-      <div class="gt-td"><div class="gt-ex-name" data-edit-ex="${ex.id}" data-day="${day.id}" tabindex="0" role="button">${esc(ex.name)}</div>${ex.notes?`<div class="gt-ex-detail">${esc(ex.notes)}</div>`:''}</div>
+      <div class="gt-td" style="display:flex;align-items:center;gap:4px"><div style="flex:1;min-width:0"><div class="gt-ex-name" data-edit-ex="${ex.id}" data-day="${day.id}" tabindex="0" role="button">${esc(ex.name)}</div>${ex.notes?`<div class="gt-ex-detail">${esc(ex.notes)}</div>`:''}</div><div class="gt-ex-reorder"><button class="gt-reorder-btn" data-move-exid="${ex.id}" data-move-dir="up" data-day="${day.id}" title="Move up">↑</button><button class="gt-reorder-btn" data-move-exid="${ex.id}" data-move-dir="down" data-day="${day.id}" title="Move down">↓</button></div></div>
       <div class="gt-td" style="color:var(--text-3);font-size:12px">${ex.sets}× ${ex.repMin}–${ex.repMax}</div>
       <div class="gt-td"><span class="gt-target-chip">${esc(ex.target||'—')}</span></div>
       <div class="gt-td"><div class="gt-sets-cell">${inputs}</div></div>
@@ -4158,6 +4164,7 @@ function renderRows(day,dayL,allL,dk){
     el.addEventListener('click',()=>openEdit(el.dataset.editEx,el.dataset.day));
     el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' ')openEdit(el.dataset.editEx,el.dataset.day);});
   });
+  c.querySelectorAll('.gt-reorder-btn').forEach(btn=>btn.addEventListener('click',()=>moveEx(btn.dataset.moveExid,btn.dataset.day,btn.dataset.moveDir)));
 }
 
 function renderCards(day,dayL,allL,dk){
@@ -4169,14 +4176,16 @@ function renderCards(day,dayL,allL,dk){
     const chip=coachChip(ex,dayL,allL);
     const cols=Math.min(ex.sets,4);
     const setCols=sets.map((v,i)=>{
-      if(ex.unilateral){const vR=el['set'+i+'R']||'';return`<div class="gt-set-cell"><span class="gt-set-label">Set ${i+1}</span><div class="gt-uni-mobile-pair"><div class="gt-uni-label-row"><span class="gt-uni-label">L</span><input class="gt-set-input-mobile${v?' has-value':''}" type="text" inputmode="decimal" placeholder="—" value="${esc(v)}" data-exid="${ex.id}" data-set="${i}" data-side="L" autocomplete="off"></div><div class="gt-uni-label-row"><span class="gt-uni-label">R</span><input class="gt-set-input-mobile${vR?' has-value':''}" type="text" inputmode="decimal" placeholder="—" value="${esc(vR)}" data-exid="${ex.id}" data-set="${i}" data-side="R" autocomplete="off"></div></div></div>`;}
+      if(ex.unilateral){const vR=el['set'+i+'R']||'';return`<div class="gt-set-cell"><span class="gt-set-label">Set ${i+1}</span><div class="gt-uni-mobile-pair"><div class="gt-uni-label-row"><span class="gt-uni-label">R</span><input class="gt-set-input-mobile${vR?' has-value':''}" type="text" inputmode="decimal" placeholder="—" value="${esc(vR)}" data-exid="${ex.id}" data-set="${i}" data-side="R" autocomplete="off"></div><div class="gt-uni-label-row"><span class="gt-uni-label">L</span><input class="gt-set-input-mobile${v?' has-value':''}" type="text" inputmode="decimal" placeholder="—" value="${esc(v)}" data-exid="${ex.id}" data-set="${i}" data-side="L" autocomplete="off"></div></div></div>`;}
       return`<div class="gt-set-cell"><span class="gt-set-label">Set ${i+1}</span><input class="gt-set-input-mobile${v?' has-value':''}" type="text" inputmode="decimal" placeholder="—" value="${esc(v)}" data-exid="${ex.id}" data-set="${i}" autocomplete="off"></div>`;
     }).join('');
     const card=document.createElement('div');
     card.className='gt-card';
     card.innerHTML=`<div class="gt-card-header">
       <div class="gt-card-name">${esc(ex.name)}</div>
-      <div style="display:flex;gap:4px">
+      <div style="display:flex;gap:4px;align-items:center">
+        <button class="gt-reorder-btn" data-move-exid="${ex.id}" data-move-dir="up" data-day="${day.id}" title="Move up">↑</button>
+        <button class="gt-reorder-btn" data-move-exid="${ex.id}" data-move-dir="down" data-day="${day.id}" title="Move down">↓</button>
         <button class="gt-icon-btn" style="width:28px;height:28px;padding:0;justify-content:center;font-size:12px" data-edit-ex="${ex.id}" data-day="${day.id}" title="Edit">✎</button>
         <button class="gt-icon-btn" style="width:28px;height:28px;padding:0;justify-content:center;font-size:15px;color:var(--bad)" data-del-ex="${ex.id}" data-day="${day.id}" title="Remove">×</button>
       </div></div>
@@ -4204,6 +4213,7 @@ function renderCards(day,dayL,allL,dk){
     card.querySelector('.gt-card-notes').addEventListener('input',e=>saveNotes(ex.id,e.target.value));
     card.querySelector('[data-edit-ex]').addEventListener('click',()=>openEdit(ex.id,day.id));
     card.querySelector('[data-del-ex]').addEventListener('click',()=>delEx(ex.id,day.id));
+    card.querySelectorAll('.gt-reorder-btn').forEach(btn=>btn.addEventListener('click',()=>moveEx(btn.dataset.moveExid,btn.dataset.day,btn.dataset.moveDir)));
     c.appendChild(card);
   });
 }
@@ -4224,6 +4234,15 @@ function scheduleCoach(day){
     const allL=getLogs(),dk=todayKey(),dayL=allL[dk]||{};
     renderCoachNotes(day,dayL,allL,dk);
   },600);
+}
+
+function moveEx(exId,dayId,dir){
+  const t=getTpl(),day=t.find(d=>d.id===dayId);if(!day)return;
+  const exs=day.exercises||[],idx=exs.findIndex(e=>e.id===exId);if(idx===-1)return;
+  const ni=dir==='up'?idx-1:idx+1;
+  if(ni<0||ni>=exs.length)return;
+  [exs[idx],exs[ni]]=[exs[ni],exs[idx]];
+  saveTpl(t);renderAll();
 }
 
 function saveSetVal(exId,idx,val,side){
