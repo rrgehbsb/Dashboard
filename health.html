@@ -1993,11 +1993,13 @@ function renderAll(){
   let eaten=0,kcal=0,prot=0,carbs=0,fat=0;
   tpl.forEach(m=>{
     const log=dayLog[m.id]||{};
-    if(log.eaten)eaten++;
-    kcal+=parseInt(log.kcal)||0;
-    prot+=parseInt(log.protein)||0;
-    carbs+=parseInt(log.carbs)||0;
-    fat+=parseInt(log.fat)||0;
+    if(!log.eaten) return;
+    eaten++;
+    // Use logged override if present, otherwise fall back to template defaults
+    kcal+=parseInt(log.kcal)>=0&&log.kcal!==undefined&&log.kcal!==''?parseInt(log.kcal):parseInt(m.kcal)||0;
+    prot+=parseInt(log.protein)>=0&&log.protein!==undefined&&log.protein!==''?parseInt(log.protein):parseInt(m.protein)||0;
+    carbs+=parseInt(log.carbs)>=0&&log.carbs!==undefined&&log.carbs!==''?parseInt(log.carbs):parseInt(m.carbs)||0;
+    fat+=parseInt(log.fat)>=0&&log.fat!==undefined&&log.fat!==''?parseInt(log.fat):parseInt(m.fat)||0;
   });
   (dayLog._extras||[]).forEach(e=>{kcal+=e.kcal||0;prot+=e.protein||0;carbs+=e.carbs||0;fat+=e.fat||0;});
   const pct=tpl.length?Math.round(eaten/tpl.length*100):0;
