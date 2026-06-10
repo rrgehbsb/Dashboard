@@ -3634,7 +3634,10 @@ img, video, canvas, svg { max-width: 100%; }
   const SUPABASE_URL = 'https://mtuoqwbrujxutofhyahb.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
   const APP_KEY = 'po-coach';
-  const PC_SYNCED_KEYS = ['po_coach_v1', 'po_coach_workout_done', 'po_coach_weights', 'po_coach_photos'];
+  const PC_SYNCED_KEYS = [
+    'po_coach_v1', 'po_coach_workout_done', 'po_coach_weights', 'po_coach_photos',
+    'dashboard:gym:v1:template', 'dashboard:gym:v1:logs', 'dashboard:gym:v1:activeDay',
+  ];
 
   let pcSupa = null;
   let pcPushTimer = null;
@@ -3694,6 +3697,7 @@ img, video, canvas, svg { max-width: 100%; }
     try { renderAll(); } catch {}
     try { wtRender(); } catch {}
     try { photosRender(); } catch {}
+    try { if (window._gtRenderAll) window._gtRenderAll(); } catch {}
   }
 
   function pcApplyRemoteState(remote) {
@@ -4289,6 +4293,7 @@ function renderDaysList(){
 }
 
 renderAll();
+window._gtRenderAll = renderAll;
 })();
 </script>
 
