@@ -1348,6 +1348,12 @@ img, video, canvas, svg { max-width: 100%; }
 .gt-set-input::placeholder { color: var(--text-4); }
 .gt-set-input:focus { border-color: rgba(255,255,255,0.22); background: rgba(255,255,255,0.04); }
 .gt-set-input.has-value { color: var(--text-1); border-color: rgba(255,255,255,0.14); }
+.gt-uni-pair { display: flex; gap: 3px; align-items: center; }
+.gt-uni-label { font-size: 9px; font-weight: 700; color: var(--text-4); min-width: 7px; text-align: center; }
+.gt-uni-pair .gt-set-input { width: 36px; }
+.gt-uni-label-row { display: flex; gap: 3px; align-items: center; }
+.gt-uni-label-row .gt-set-input-mobile { flex: 1; }
+.gt-uni-mobile-pair { display: flex; flex-direction: column; gap: 3px; }
 .gt-notes-input {
   width: 100%; background: transparent; border: none;
   color: var(--text-3); font-size: 12px; padding: 5px 0; outline: none;
@@ -1889,6 +1895,7 @@ img, video, canvas, svg { max-width: 100%; }
       <div class="gt-field"><label>Step (kg)</label><input type="number" id="gtEditStep" step="0.25" min="0" placeholder="2.5"></div>
       <div class="gt-field-check"><input type="checkbox" id="gtEditBw"><label for="gtEditBw">Bodyweight</label></div>
     </div>
+    <div class="gt-field-check"><input type="checkbox" id="gtEditUnilateral"><label for="gtEditUnilateral">Unilateral — log left + right per set</label></div>
     <div class="gt-field"><label>Notes</label><input type="text" id="gtEditNotes" placeholder="Optional"></div>
     <div class="gt-modal-btns">
       <button class="gt-btn-danger" id="gtEditDelete">Delete</button>
@@ -1913,6 +1920,7 @@ img, video, canvas, svg { max-width: 100%; }
       <div class="gt-field"><label>Step (kg)</label><input type="number" id="gtAddStep" step="0.25" min="0" placeholder="2.5"></div>
       <div class="gt-field-check"><input type="checkbox" id="gtAddBw"><label for="gtAddBw">Bodyweight</label></div>
     </div>
+    <div class="gt-field-check"><input type="checkbox" id="gtAddUnilateral"><label for="gtAddUnilateral">Unilateral — log left + right per set</label></div>
     <div class="gt-modal-btns">
       <button class="gt-btn-cancel" id="gtAddCancel">Cancel</button>
       <button class="gt-btn-primary" id="gtAddSave">Save</button>
@@ -3916,12 +3924,32 @@ function parseSetText(txt){
 }
 function parseRep(txt){return parseSetText(txt).reps;} // backward compat
 
+function getExReps(ex,exLog){
+  const reps=[],log=exLog||{};
+  for(let i=0;i<ex.sets;i++){
+    if(ex.unilateral){
+      const pL=parseSetText(log['set'+i]||''),pR=parseSetText(log['set'+i+'R']||'');
+      const hasL=pL.parseable&&pL.reps!==null,hasR=pR.parseable&&pR.reps!==null;
+      if(hasL&&hasR)reps.push((pL.reps+pR.reps)/2);
+      else if(hasL)reps.push(pL.reps);
+      else if(hasR)reps.push(pR.reps);
+    }else{
+      const p=parseSetText(log['set'+i]||'');
+      if(p.parseable&&p.reps!==null)reps.push(p.reps);
+    }
+  }
+  return reps;
+}
+
 function analyzeExercise(ex,exLog,allLogs,todayDk){
   const isBW=!!ex.bw;
-  const todaySets=[];
-  for(let i=0;i<ex.sets;i++)todaySets.push(parseSetText((exLog||{})['set'+i]||''));
-  const todayReps=todaySets.filter(s=>s.parseable&&s.reps!==null).map(s=>s.reps);
-  const nonEmpty=todaySets.filter(s=>s.raw&&s.raw.trim()).length;
+  const todayReps=getExReps(ex,exLog);
+  const log2=exLog||{};
+  let nonEmpty=0;
+  for(let i=0;i<ex.sets;i++){
+    if((log2['set'+i]||'').trim())nonEmpty++;
+    if(ex.unilateral&&(log2['set'+i+'R']||'').trim())nonEmpty++;
+  }
 
   if(todayReps.length===0&&nonEmpty>0)
     return{level:'nodata',note:'Need clean data — try "12", "45kg x 10", or "8/right 7/left".',compare:null};
@@ -3937,8 +3965,7 @@ function analyzeExercise(ex,exLog,allLogs,todayDk){
   let compareNote=null;
   if(prevDates.length>0){
     const prevLog=allLogs[prevDates[0]][ex.id]||{};
-    const prevReps=[];
-    for(let i=0;i<ex.sets;i++){const p=parseSetText(prevLog['set'+i]||'');if(p.parseable&&p.reps!==null)prevReps.push(p.reps);}
+    const prevReps=getExReps(ex,prevLog);
     if(prevReps.length>0){
       const ta=todayReps.reduce((a,b)=>a+b,0)/todayReps.length;
       const pa=prevReps.reduce((a,b)=>a+b,0)/prevReps.length;
@@ -3974,8 +4001,8 @@ function coachChip(ex,dayLogs,allLogs){
   if(!ex.target&&!ex.bw)return{cls:'nodata',label:'— set target'};
   const reps=[];
   Object.keys(allLogs).sort().slice(-10).forEach(dk=>{
-    const el=(allLogs[dk]||{})[ex.id]||{};
-    for(let i=0;i<ex.sets;i++){const v=parseRep(el['set'+i]);if(v!==null)reps.push(v);}
+    const el=(allLogs[dk]||{})[ex.id];
+    if(el)getExReps(ex,el).forEach(v=>reps.push(v));
   });
   if(reps.length<2)return{cls:'nodata',label:'log more'};
   const avg=reps.reduce((a,b)=>a+b,0)/reps.length;
@@ -4000,7 +4027,10 @@ function renderCoachNotes(day,dayL,allL,dk){
   if(!exs.length){c.innerHTML='<div class="gt-coach-empty">Add exercises to get coaching notes.</div>';return;}
   const hasAnyLog=exs.some(ex=>{
     const el=dayL[ex.id]||{};
-    for(let i=0;i<ex.sets;i++)if((el['set'+i]||'').trim())return true;
+    for(let i=0;i<ex.sets;i++){
+      if((el['set'+i]||'').trim())return true;
+      if(ex.unilateral&&(el['set'+i+'R']||'').trim())return true;
+    }
     return false;
   });
   if(!hasAnyLog){
@@ -4017,15 +4047,23 @@ function renderCoachNotes(day,dayL,allL,dk){
   const STATUS={upgrade:'above range',hold:'in range',lower:'below range',nodata:''};
   c.innerHTML='<div class="gt-coach-compact-list">'+exs.map(ex=>{
     const exLog=dayL[ex.id]||{};
-    const hasSets=Array.from({length:ex.sets},(_,i)=>(exLog['set'+i]||'').trim()).some(Boolean);
+    const hasSets=Array.from({length:ex.sets},(_,i)=>(exLog['set'+i]||'').trim()||(ex.unilateral&&(exLog['set'+i+'R']||'').trim())).some(Boolean);
     if(!hasSets)return`<div class="gt-coach-compact-row nodata"><span class="gt-cname">${esc(ex.name)}</span><span class="gt-cinfo"> — not logged yet</span></div>`;
     const analysis=analyzeExercise(ex,exLog,allL,dk);
     const parts=[];
     for(let i=0;i<ex.sets;i++){
-      const raw=(exLog['set'+i]||'').trim();
-      if(raw){const p=parseSetText(raw);parts.push(p.parseable&&p.reps!==null?String(p.reps):raw.slice(0,8));}
+      const rawL=(exLog['set'+i]||'').trim();
+      const rawR=ex.unilateral?(exLog['set'+i+'R']||'').trim():'';
+      if(ex.unilateral&&(rawL||rawR)){
+        const pL=parseSetText(rawL||''),pR=parseSetText(rawR||'');
+        const l=rawL?(pL.parseable&&pL.reps!==null?String(pL.reps):rawL.slice(0,5)):'-';
+        const r=rawR?(pR.parseable&&pR.reps!==null?String(pR.reps):rawR.slice(0,5)):'-';
+        parts.push(l+'/'+r);
+      }else if(rawL){
+        const p=parseSetText(rawL);parts.push(p.parseable&&p.reps!==null?String(p.reps):rawL.slice(0,8));
+      }
     }
-    const setsStr=parts.join('/');
+    const setsStr=parts.join(' · ');
     const action=ACTIONS[analysis.level]||'';
     const status=STATUS[analysis.level]||'';
     const info=[action,setsStr?'· '+setsStr:'',status].filter(Boolean).join(' ');
@@ -4035,7 +4073,11 @@ function renderCoachNotes(day,dayL,allL,dk){
 
 function exDone(ex,exLog){
   if(!exLog)return{s:false,c:false};
-  let f=0;for(let i=0;i<ex.sets;i++)if((exLog['set'+i]||'').trim())f++;
+  let f=0;
+  for(let i=0;i<ex.sets;i++){
+    if(ex.unilateral){if((exLog['set'+i]||'').trim()||(exLog['set'+i+'R']||'').trim())f++;}
+    else{if((exLog['set'+i]||'').trim())f++;}
+  }
   return{s:f>0,c:f>=ex.sets};
 }
 
@@ -4079,7 +4121,10 @@ function renderRows(day,dayL,allL,dk){
     const el=dayL[ex.id]||{};
     const sets=[];for(let i=0;i<ex.sets;i++)sets.push(el['set'+i]||'');
     const chip=coachChip(ex,dayL,allL);
-    const inputs=sets.map((v,i)=>`<input class="gt-set-input${v?' has-value':''}" type="text" inputmode="decimal" placeholder="—" value="${esc(v)}" data-exid="${ex.id}" data-set="${i}" autocomplete="off">`).join('');
+    const inputs=sets.map((v,i)=>{
+      if(ex.unilateral){const vR=el['set'+i+'R']||'';return`<div class="gt-uni-pair"><span class="gt-uni-label">L</span><input class="gt-set-input${v?' has-value':''}" type="text" inputmode="decimal" placeholder="—" value="${esc(v)}" data-exid="${ex.id}" data-set="${i}" data-side="L" autocomplete="off"><span class="gt-uni-label">R</span><input class="gt-set-input${vR?' has-value':''}" type="text" inputmode="decimal" placeholder="—" value="${esc(vR)}" data-exid="${ex.id}" data-set="${i}" data-side="R" autocomplete="off"></div>`;}
+      return`<input class="gt-set-input${v?' has-value':''}" type="text" inputmode="decimal" placeholder="—" value="${esc(v)}" data-exid="${ex.id}" data-set="${i}" autocomplete="off">`;
+    }).join('');
     return `<div class="gt-table-row">
       <div class="gt-td"><div class="gt-ex-name" data-edit-ex="${ex.id}" data-day="${day.id}" tabindex="0" role="button">${esc(ex.name)}</div>${ex.notes?`<div class="gt-ex-detail">${esc(ex.notes)}</div>`:''}</div>
       <div class="gt-td" style="color:var(--text-3);font-size:12px">${ex.sets}× ${ex.repMin}–${ex.repMax}</div>
@@ -4093,14 +4138,14 @@ function renderRows(day,dayL,allL,dk){
   c.querySelectorAll('.gt-set-input').forEach(inp=>{
     inp.addEventListener('input',()=>{
       inp.classList.toggle('has-value',!!inp.value.trim());
-      saveSetVal(inp.dataset.exid,inp.dataset.set,inp.value);
+      saveSetVal(inp.dataset.exid,inp.dataset.set,inp.value,inp.dataset.side);
       updateProgress(day);
       const row=inp.closest('.gt-table-row');
       if(row){
         const allI=Array.from(row.querySelectorAll('.gt-set-input'));
         const exDat=(day.exercises||[]).find(e=>e.id===inp.dataset.exid);
         if(exDat){
-          const lg={};allI.forEach((ii,n)=>{lg['set'+n]=ii.value;});
+          const lg={};allI.forEach(ii=>{lg['set'+ii.dataset.set+(ii.dataset.side==='R'?'R':'')]=ii.value;});
           const nc=coachChip(exDat,{[exDat.id]:lg},getLogs());
           const ce=row.querySelector('.gt-coach-chip');
           if(ce){ce.className='gt-coach-chip '+nc.cls;ce.textContent=nc.label;}
@@ -4123,7 +4168,10 @@ function renderCards(day,dayL,allL,dk){
     const sets=[];for(let i=0;i<ex.sets;i++)sets.push(el['set'+i]||'');
     const chip=coachChip(ex,dayL,allL);
     const cols=Math.min(ex.sets,4);
-    const setCols=sets.map((v,i)=>`<div class="gt-set-cell"><span class="gt-set-label">Set ${i+1}</span><input class="gt-set-input-mobile${v?' has-value':''}" type="text" inputmode="decimal" placeholder="—" value="${esc(v)}" data-exid="${ex.id}" data-set="${i}" autocomplete="off"></div>`).join('');
+    const setCols=sets.map((v,i)=>{
+      if(ex.unilateral){const vR=el['set'+i+'R']||'';return`<div class="gt-set-cell"><span class="gt-set-label">Set ${i+1}</span><div class="gt-uni-mobile-pair"><div class="gt-uni-label-row"><span class="gt-uni-label">L</span><input class="gt-set-input-mobile${v?' has-value':''}" type="text" inputmode="decimal" placeholder="—" value="${esc(v)}" data-exid="${ex.id}" data-set="${i}" data-side="L" autocomplete="off"></div><div class="gt-uni-label-row"><span class="gt-uni-label">R</span><input class="gt-set-input-mobile${vR?' has-value':''}" type="text" inputmode="decimal" placeholder="—" value="${esc(vR)}" data-exid="${ex.id}" data-set="${i}" data-side="R" autocomplete="off"></div></div></div>`;}
+      return`<div class="gt-set-cell"><span class="gt-set-label">Set ${i+1}</span><input class="gt-set-input-mobile${v?' has-value':''}" type="text" inputmode="decimal" placeholder="—" value="${esc(v)}" data-exid="${ex.id}" data-set="${i}" autocomplete="off"></div>`;
+    }).join('');
     const card=document.createElement('div');
     card.className='gt-card';
     card.innerHTML=`<div class="gt-card-header">
@@ -4144,10 +4192,10 @@ function renderCards(day,dayL,allL,dk){
     card.querySelectorAll('.gt-set-input-mobile').forEach(inp=>{
       inp.addEventListener('input',()=>{
         inp.classList.toggle('has-value',!!inp.value.trim());
-        saveSetVal(inp.dataset.exid,inp.dataset.set,inp.value);
+        saveSetVal(inp.dataset.exid,inp.dataset.set,inp.value,inp.dataset.side);
         updateProgress(day);
         const allI=Array.from(card.querySelectorAll('.gt-set-input-mobile'));
-        const lg={};allI.forEach((ii,n)=>{lg['set'+n]=ii.value;});
+        const lg={};allI.forEach(ii=>{lg['set'+ii.dataset.set+(ii.dataset.side==='R'?'R':'')]=ii.value;});
         const nc=coachChip(ex,{[ex.id]:lg},getLogs());
         const ce=card.querySelector('.gt-coach-chip');
         if(ce){ce.className='gt-coach-chip '+nc.cls;ce.textContent=nc.label;}
@@ -4178,10 +4226,10 @@ function scheduleCoach(day){
   },600);
 }
 
-function saveSetVal(exId,idx,val){
+function saveSetVal(exId,idx,val,side){
   const l=getLogs(),dk=todayKey();
   if(!l[dk])l[dk]={};if(!l[dk][exId])l[dk][exId]={};
-  l[dk][exId]['set'+idx]=val;saveLogs(l);
+  l[dk][exId]['set'+idx+(side==='R'?'R':'')]=val;saveLogs(l);
 }
 function saveNotes(exId,val){
   const l=getLogs(),dk=todayKey();
@@ -4206,6 +4254,7 @@ function openEdit(exId,dayId){
   document.getElementById('gtEditTarget').value=ex.target||'';
   document.getElementById('gtEditStep').value=ex.step||'';
   document.getElementById('gtEditBw').checked=!!ex.bw;
+  document.getElementById('gtEditUnilateral').checked=!!ex.unilateral;
   document.getElementById('gtEditNotes').value=ex.notes||'';
   document.getElementById('gtEditModal').classList.add('show');
 }
@@ -4222,6 +4271,7 @@ document.getElementById('gtEditSave').addEventListener('click',()=>{
   ex.target=document.getElementById('gtEditTarget').value.trim();
   ex.step=parseFloat(document.getElementById('gtEditStep').value)||null;
   ex.bw=document.getElementById('gtEditBw').checked;
+  ex.unilateral=document.getElementById('gtEditUnilateral').checked;
   ex.notes=document.getElementById('gtEditNotes').value.trim();
   saveTpl(t);document.getElementById('gtEditModal').classList.remove('show');renderAll();
 });
@@ -4238,6 +4288,7 @@ document.getElementById('gtAddExBtn').addEventListener('click',()=>{
   document.getElementById('gtAddRepMin').value='';
   document.getElementById('gtAddRepMax').value='';
   document.getElementById('gtAddBw').checked=false;
+  document.getElementById('gtAddUnilateral').checked=false;
   document.getElementById('gtAddModal').classList.add('show');
   setTimeout(()=>document.getElementById('gtAddName').focus(),100);
 });
@@ -4252,6 +4303,7 @@ document.getElementById('gtAddSave').addEventListener('click',()=>{
     target:document.getElementById('gtAddTarget').value.trim(),
     step:parseFloat(document.getElementById('gtAddStep').value)||null,
     bw:document.getElementById('gtAddBw').checked,
+    unilateral:document.getElementById('gtAddUnilateral').checked,
     notes:''});
   saveTpl(t);document.getElementById('gtAddModal').classList.remove('show');renderAll();
 });
