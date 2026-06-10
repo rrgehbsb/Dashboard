@@ -1489,7 +1489,8 @@ details[open] .mp-details-summary::before { content: '▾ '; }
     const SUPABASE_KEY='sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
     const APP_KEY='health';
 
-    function isSynced(k){return k.startsWith('stack:')||k==='po_water_v1';}
+    const MP_KEYS=['dashboard:mealPrep:v1:template','dashboard:mealPrep:v1:daily','dashboard:mealPrep:v1:settings'];
+    function isSynced(k){return k.startsWith('stack:')||k==='po_water_v1'||k.startsWith('dashboard:mealPrep:v1:');}
 
     function gatherLocal(){
       const s={};
@@ -1504,13 +1505,18 @@ details[open] .mp-details-summary::before { content: '▾ '; }
 
     function applyRemote(data){
       if(!data) return;
+      const remoteHasMP=MP_KEYS.some(k=>k in data);
       Object.keys(data).forEach(k=>{if(isSynced(k))_raw.set(k,JSON.stringify(data[k]));});
       for(let i=localStorage.length-1;i>=0;i--){
         const k=localStorage.key(i);
-        if(k&&isSynced(k)&&!(k in data))_raw.remove(k);
+        if(!k||!isSynced(k)||k in data) continue;
+        // Don't wipe meal prep keys if remote has never seen them
+        if(k.startsWith('dashboard:mealPrep:v1:')&&!remoteHasMP) continue;
+        _raw.remove(k);
       }
       try{render();}catch(e){}
       try{if(typeof wRenderAll==='function')wRenderAll();}catch(e){}
+      try{if(typeof renderAll==='function')renderAll();}catch(e){}
     }
 
     let lastSyncedJson=null,pendingRemote=null,syncTimer=null,_sb=null;
@@ -1553,6 +1559,9 @@ details[open] .mp-details-summary::before { content: '▾ '; }
             await client().from('app_state').upsert({key:APP_KEY,data:local,updated_at:new Date().toISOString()});
           }
         }
+        // Push local data up if remote is missing keys we have locally
+        const localNow=gatherLocal();
+        if(JSON.stringify(localNow)!==lastSyncedJson) scheduleSync();
         client().channel('db-health')
           .on('postgres_changes',{event:'*',schema:'public',table:'app_state',filter:`key=eq.${APP_KEY}`},payload=>{
             try{
