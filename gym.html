@@ -3634,10 +3634,10 @@ img, video, canvas, svg { max-width: 100%; }
   const SUPABASE_URL = 'https://mtuoqwbrujxutofhyahb.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
   const APP_KEY = 'po-coach';
+  const PC_GT_KEYS = ['dashboard:gym:v1:template', 'dashboard:gym:v1:logs', 'dashboard:gym:v1:activeDay'];
   const PC_SYNCED_KEYS = [
     'po_coach_v1', 'po_coach_workout_done', 'po_coach_weights', 'po_coach_photos',
-    'dashboard:gym:v1:template', 'dashboard:gym:v1:logs', 'dashboard:gym:v1:activeDay',
-  ];
+  ].concat(PC_GT_KEYS);
 
   let pcSupa = null;
   let pcPushTimer = null;
@@ -3703,6 +3703,8 @@ img, video, canvas, svg { max-width: 100%; }
   function pcApplyRemoteState(remote) {
     if (!remote || typeof remote !== 'object') return false;
     pcSuppressSync = true;
+    // If remote has no GT keys it was pushed by old code — never wipe local GT data in that case
+    const remoteHasGT = PC_GT_KEYS.some(k => k in remote);
     let changed = false;
     try {
       for (const k of PC_SYNCED_KEYS) {
@@ -3711,6 +3713,7 @@ img, video, canvas, svg { max-width: 100%; }
           const local = localStorage.getItem(k);
           if (local !== incoming) { try { _pcOrigSet(k, incoming); changed = true; } catch {} }
         } else if (localStorage.getItem(k) != null) {
+          if (PC_GT_KEYS.indexOf(k) !== -1 && !remoteHasGT) continue; // old remote, keep local GT
           try { _pcOrigRemove(k); changed = true; } catch {}
         }
       }
@@ -3792,6 +3795,9 @@ img, video, canvas, svg { max-width: 100%; }
       if (!error && data && data.data && Object.keys(data.data).length > 0) {
         pcLastSyncedJson = JSON.stringify(data.data);
         pcMaybeApplyRemote(data.data);
+        // If local has keys the remote doesn't (e.g. GT data logged offline), push them up
+        const localNow = pcCollectState();
+        if (JSON.stringify(localNow) !== pcLastSyncedJson) pcSchedulePush();
       } else if (Object.keys(pcCollectState()).length > 0) {
         pcSchedulePush();
       }
