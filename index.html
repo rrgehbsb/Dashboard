@@ -691,10 +691,11 @@ function updateDayBar(){
   } else if(hours>=SLEEP_HOUR){
     rf.setAttribute('stroke','#E25D7A');
     rf.setAttribute('stroke-dashoffset',0);
-    document.getElementById('ringPercent').textContent='100%';
+    document.getElementById('ringPercent').textContent='ZZZ';
     document.getElementById('ringPhase').textContent='PAST BEDTIME';
-    document.getElementById('ringStatus').textContent='⚠️ Past bedtime';
-    document.getElementById('ringRemaining').textContent='Sleep!';
+    document.getElementById('ringStatus').textContent='🌙 Wind down now';
+    const overMins=Math.round((hours-SLEEP_HOUR)*60);
+    document.getElementById('ringRemaining').textContent=overMins>0?`${overMins}m past target bedtime`:'At target bedtime';
   } else {
     const pct=(hours-WAKE_HOUR)/(SLEEP_HOUR-WAKE_HOUR)*100;
     rf.setAttribute('stroke',getStrokeColor(pct));
@@ -1118,8 +1119,8 @@ function updateDashGrid(){
     if(urgent){document.getElementById('dmSchoolVal').textContent=urgent+' due';document.getElementById('dmSchoolSub').textContent=testsSoon?testsSoon+' test'+(testsSoon>1?'s':'')+' soon':'check assignments';}
     else if(testsSoon){document.getElementById('dmSchoolVal').textContent=testsSoon+' test'+(testsSoon>1?'s':'');document.getElementById('dmSchoolSub').textContent='this week';}
     else if(assigns.length||tests.length){document.getElementById('dmSchoolVal').textContent='✓';document.getElementById('dmSchoolSub').textContent='Nothing urgent';}
-    else{document.getElementById('dmSchoolVal').textContent='—';document.getElementById('dmSchoolSub').textContent='No data yet';}
-  }catch{document.getElementById('dmSchoolVal').textContent='—';document.getElementById('dmSchoolSub').textContent='';}
+    else{document.getElementById('dmSchoolVal').textContent='No tasks';document.getElementById('dmSchoolSub').textContent='Add school work →';}
+  }catch{document.getElementById('dmSchoolVal').textContent='No tasks';document.getElementById('dmSchoolSub').textContent='Add school work →';}
   try{
     const weights=JSON.parse(localStorage.getItem('po_coach_weights'))||[];
     if(weights.length){
@@ -1138,10 +1139,10 @@ function updateDashGrid(){
         document.getElementById('dmWeightSub').textContent=latest.date===today?'logged today':'last: '+latest.date;
       }
     } else {
-      document.getElementById('dmWeightVal').textContent='—';
-      document.getElementById('dmWeightSub').textContent='Not logged';
+      document.getElementById('dmWeightVal').textContent='Not logged';
+      document.getElementById('dmWeightSub').textContent='Add weight in Gym →';
     }
-  }catch{document.getElementById('dmWeightVal').textContent='—';document.getElementById('dmWeightSub').textContent='';}
+  }catch{document.getElementById('dmWeightVal').textContent='Not logged';document.getElementById('dmWeightSub').textContent='Add weight in Gym →';}
 }
 
 // Init
