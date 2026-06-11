@@ -1,0 +1,22 @@
+{
+  "name": "My Dashboard",
+  "short_name": "Dashboard",
+  "description": "Personal command center — goals, health, gym, school.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#050506",
+  "theme_color": "#050506",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    { "src": "/screenshot_home.png", "sizes": "1280x800", "type": "image/png" }
+  ]
+}
