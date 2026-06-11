@@ -1382,7 +1382,9 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
   const SUPABASE_KEY='sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
   const APP_KEY='dashboard';
 
-  function isSynced(k){return k==='goal_streak_v1'||k==='day_schedule'||k.startsWith('goals:');}
+  function isSynced(k){
+    return k==='goal_streak_v1'||k==='day_schedule'||k.startsWith('goals:')||k.startsWith('dashboard:reminders:');
+  }
 
   function gatherLocal(){
     const s={};
@@ -1396,17 +1398,17 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
   function applyRemote(data){
     if(!data) return;
     const remoteHasGoals=Object.keys(data).some(k=>k.startsWith('goals:'));
+    const remoteHasReminders=Object.keys(data).some(k=>k.startsWith('dashboard:reminders:'));
     Object.keys(data).forEach(k=>{if(isSynced(k)) _setItem(k,JSON.stringify(data[k]));});
     for(let i=localStorage.length-1;i>=0;i--){
       const k=localStorage.key(i);
       if(!k||!isSynced(k)||k in data) continue;
-      // Don't delete today's/future goals if remote has no goals at all (remote is stale/empty)
       if(k.startsWith('goals:')){
         const dateStr=k.slice(6);
         if(!remoteHasGoals||dateStr>=getActiveDateString()) continue;
       }
-      // Don't delete schedule if remote doesn't have it yet
       if(k==='day_schedule') continue;
+      if(k.startsWith('dashboard:reminders:')&&!remoteHasReminders) continue;
       _removeItem(k);
     }
     loadToday();loadTomorrow();renderStreak();
@@ -1510,7 +1512,7 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
 </script>
 
 <script>
-// ── Reminders ──────────────────────────────────────────────────────────────
+// ── Reminders (Stage 3 — server push) ─────────────────────────────────────
 (function(){
   const RM_KEY='dashboard:reminders:v1';
   const RM_SENT_KEY='dashboard:reminders:sent:v1';
@@ -1639,58 +1641,131 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
     saveRM(arr);closeModal();renderList();
   });
 
-  // Notification permission
+  // Push / notification helpers
   function notifOK(){return 'Notification' in window;}
+  function pushOK(){return 'PushManager' in window && 'serviceWorker' in navigator;}
   function notifGranted(){return notifOK()&&Notification.permission==='granted';}
   function isPWA(){return window.navigator.standalone===true||window.matchMedia('(display-mode: standalone)').matches;}
 
-  function updatePermBtn(){
+  function urlB64ToUint8(b64){
+    const pad='='.repeat((4-b64.length%4)%4);
+    const raw=atob((b64+pad).replace(/-/g,'+').replace(/_/g,'/'));
+    return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)));
+  }
+
+  async function subscribeToPush(){
+    try{
+      const reg=await navigator.serviceWorker.ready;
+      const r=await fetch('/api/vapid-key');
+      if(!r.ok) throw new Error('vapid-key endpoint not ready');
+      const {publicKey}=await r.json();
+      if(!publicKey) throw new Error('VAPID_PUBLIC_KEY not set in Vercel env vars');
+      const sub=await reg.pushManager.subscribe({
+        userVisibleOnly:true,
+        applicationServerKey:urlB64ToUint8(publicKey),
+      });
+      await fetch('/api/subscribe',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          subscription:sub.toJSON(),
+          timezone:Intl.DateTimeFormat().resolvedOptions().timeZone,
+        }),
+      });
+      return true;
+    }catch(e){
+      console.warn('Push subscribe failed:',e);
+      return false;
+    }
+  }
+
+  async function updatePermBtn(){
     const btn=document.getElementById('rmPermBtn');
     const status=document.getElementById('rmNotifStatus');
     if(!btn) return;
     if(!notifOK()){
       btn.style.display='none';
-      status.textContent='Notifications are not supported in this browser.';
+      if(status) status.textContent='Notifications not supported in this browser.';
       return;
     }
     const p=Notification.permission;
     if(p==='granted'){
-      btn.textContent='🔔 Notifications enabled';btn.classList.add('rm-btn-green');
-      status.textContent='';
+      if(pushOK()){
+        try{
+          const reg=await navigator.serviceWorker.ready;
+          const sub=await reg.pushManager.getSubscription();
+          btn.textContent=sub?'🔔 Push enabled':'🔔 Re-subscribe to push';
+          btn.className='rm-notif-btn'+(sub?' rm-btn-green':'');
+          if(status) status.textContent=sub?'':'Permission granted — tap to subscribe to push reminders.';
+          return;
+        }catch{}
+      }
+      btn.textContent='🔔 Notifications enabled';
+      btn.className='rm-notif-btn rm-btn-green';
+      if(status) status.textContent='';
     } else if(p==='denied'){
-      btn.textContent='🔕 Notifications blocked';btn.classList.remove('rm-btn-green');
-      status.textContent='Blocked by device settings — go to Settings → Safari → Notifications to allow.';
+      btn.textContent='🔕 Notifications blocked';
+      btn.className='rm-notif-btn';
+      if(status) status.textContent='Go to device Settings → Notifications to allow.';
     } else {
-      btn.textContent='🔔 Enable notifications';btn.classList.remove('rm-btn-green');
-      status.textContent=isPWA()?'':'For iPhone: add this dashboard to Home Screen first, then tap Enable.';
+      btn.textContent='🔔 Enable notifications';
+      btn.className='rm-notif-btn';
+      if(status) status.textContent=isPWA()||!pushOK()?'':'On iPhone: add to Home Screen first, then tap Enable.';
     }
   }
 
   document.getElementById('rmPermBtn').addEventListener('click',async()=>{
-    if(!notifOK()||Notification.permission==='granted') return;
+    const status=document.getElementById('rmNotifStatus');
+    if(!notifOK()) return;
+    // Already granted → just re-subscribe
+    if(Notification.permission==='granted'){
+      if(!pushOK()){status.textContent='Push not supported in this browser.';return;}
+      status.textContent='Subscribing…';
+      const ok=await subscribeToPush();
+      status.textContent=ok?'Push reminders enabled.':'Subscribe failed — check Vercel env vars.';
+      if(ok) setTimeout(()=>{if(status.textContent==='Push reminders enabled.')status.textContent='';},3000);
+      updatePermBtn();
+      return;
+    }
     try{
       const res=await Notification.requestPermission();
-      updatePermBtn();
-      const status=document.getElementById('rmNotifStatus');
       if(res==='granted'){
-        status.textContent='Notifications enabled.';
-        setTimeout(()=>{if(status.textContent==='Notifications enabled.')status.textContent='';},3000);
+        if(pushOK()){
+          status.textContent='Subscribing to push…';
+          const ok=await subscribeToPush();
+          status.textContent=ok?'Push reminders enabled.':'Permission granted, but subscribe failed — check Vercel env vars.';
+          if(ok) setTimeout(()=>{if(status.textContent==='Push reminders enabled.')status.textContent='';},3000);
+        } else {
+          status.textContent='Notifications enabled (in-app only — push not supported here).';
+        }
       } else if(res==='denied'){
-        status.textContent='Notifications were blocked. Change in your device settings.';
+        status.textContent='Notifications blocked. Go to device Settings to allow.';
       }
-    }catch{document.getElementById('rmNotifStatus').textContent='Could not request permission.';}
+      updatePermBtn();
+    }catch{if(status) status.textContent='Could not request permission.';}
   });
 
-  // Test notification
-  document.getElementById('rmTestBtn').addEventListener('click',()=>{
+  // Test button — calls server push API
+  document.getElementById('rmTestBtn').addEventListener('click',async()=>{
     const status=document.getElementById('rmNotifStatus');
-    if(!notifOK()){status.textContent='Notifications not supported in this browser.';return;}
     if(!notifGranted()){status.textContent='Enable notifications first.';return;}
+    status.textContent='Sending…';
     try{
-      new Notification('Dashboard reminder',{body:'Notifications are working.',icon:'/icon.svg'});
-      status.textContent='Test notification sent.';
-      setTimeout(()=>{if(status.textContent==='Test notification sent.')status.textContent='';},3000);
-    }catch{status.textContent='Could not show notification.';}
+      const r=await fetch('/api/send-push',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({title:'Dashboard reminder',body:'Push notifications are working.',url:'/'}),
+      });
+      const d=await r.json();
+      if(r.ok&&d.sent>0){
+        status.textContent='Test push sent! ✓';
+        setTimeout(()=>{if(status.textContent==='Test push sent! ✓')status.textContent='';},4000);
+      } else if(d.reason==='no subscriptions'){
+        status.textContent='No push subscription found — tap Enable first.';
+      } else {
+        status.textContent='Error: '+(d.error||JSON.stringify(d));
+      }
+    }catch{status.textContent='Could not reach push server — check Vercel env vars.';}
   });
 
   // In-app reminder checker (runs while page is open, checks every 30s)
