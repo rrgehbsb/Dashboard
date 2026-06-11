@@ -416,6 +416,125 @@ body::after{
 .install-card-sub{font-size:11px;color:var(--text-tertiary);line-height:1.4;}
 .install-card-close{background:none;border:none;color:var(--text-tertiary);font-size:18px;cursor:pointer;padding:0 4px;flex-shrink:0;line-height:1;}
 .install-card-close:hover{color:var(--text-primary);}
+
+/* ── Reminders ──────────────────────────────────────────── */
+.rm-card{
+  background:rgba(255,255,255,0.04);border-radius:16px;
+  backdrop-filter:blur(24px) saturate(1.2);-webkit-backdrop-filter:blur(24px) saturate(1.2);
+  box-shadow:0 12px 40px rgba(0,0,0,0.45);margin-bottom:12px;
+}
+.rm-card-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 20px 14px;gap:12px;
+}
+.rm-card-title-block{flex:1;min-width:0;}
+.rm-card-title{font-size:15px;font-weight:700;color:var(--text-primary);margin-bottom:3px;}
+.rm-card-sub{font-size:11px;color:var(--text-tertiary);}
+.rm-add-btn-top{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:8px 14px;border-radius:10px;
+  background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.10);
+  color:var(--text-primary);font-size:12px;font-weight:700;cursor:pointer;
+  font-family:inherit;transition:background 0.15s;white-space:nowrap;flex-shrink:0;
+}
+.rm-add-btn-top:hover{background:rgba(255,255,255,0.10);}
+.rm-list{padding:0 12px 12px;}
+.rm-row{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 10px;margin-bottom:4px;
+  background:rgba(255,255,255,0.035);
+  border-radius:12px;border:1px solid rgba(255,255,255,0.06);
+  transition:background 0.2s;
+}
+.rm-row:hover{background:rgba(255,255,255,0.06);}
+.rm-row.rm-disabled{opacity:0.45;}
+.rm-time{
+  font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;
+  color:var(--text-primary);flex-shrink:0;min-width:60px;
+}
+.rm-info{flex:1;min-width:0;}
+.rm-title{font-size:12.5px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rm-cat{
+  display:inline-flex;align-items:center;
+  padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;
+  letter-spacing:0.05em;text-transform:uppercase;margin-top:2px;
+}
+.rm-cat-meal{background:rgba(29,158,117,0.18);color:#6BE3A4;}
+.rm-cat-gym{background:rgba(242,192,99,0.18);color:#F2C063;}
+.rm-cat-sleep{background:rgba(123,91,176,0.25);color:#C4AAFF;}
+.rm-cat-school{background:rgba(59,130,246,0.18);color:#93C5FD;}
+.rm-cat-custom{background:rgba(255,255,255,0.08);color:var(--text-secondary);}
+.rm-toggle{position:relative;width:36px;height:20px;flex-shrink:0;cursor:pointer;display:inline-block;}
+.rm-toggle input{opacity:0;width:0;height:0;position:absolute;}
+.rm-toggle-track{position:absolute;inset:0;border-radius:10px;background:rgba(255,255,255,0.12);transition:background 0.2s;}
+.rm-toggle input:checked~.rm-toggle-track{background:rgba(107,227,164,0.60);}
+.rm-toggle-thumb{position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:7px;background:#FAFAFA;transition:transform 0.2s;}
+.rm-toggle input:checked~.rm-toggle-thumb{transform:translateX(16px);}
+.rm-edit-btn,.rm-del-btn{
+  background:none;border:none;cursor:pointer;padding:3px 5px;
+  color:var(--text-tertiary);font-size:15px;opacity:0;transition:opacity 0.15s,color 0.15s;
+  flex-shrink:0;line-height:1;
+}
+.rm-row:hover .rm-edit-btn,.rm-row:hover .rm-del-btn{opacity:0.6;}
+.rm-del-btn:hover{color:var(--danger)!important;opacity:1!important;}
+.rm-edit-btn:hover{color:var(--text-primary)!important;opacity:1!important;}
+.rm-notif-bar{
+  display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+  padding:12px 20px 14px;border-top:1px solid rgba(255,255,255,0.05);
+}
+.rm-notif-btn{
+  padding:8px 14px;border-radius:10px;
+  background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.10);
+  color:var(--text-primary);font-size:12px;font-weight:700;cursor:pointer;
+  font-family:inherit;transition:background 0.15s;
+}
+.rm-notif-btn:hover{background:rgba(255,255,255,0.10);}
+.rm-notif-btn.rm-btn-green{background:rgba(107,227,164,0.12);border-color:rgba(107,227,164,0.25);color:#6BE3A4;}
+.rm-notif-status{font-size:11px;color:var(--text-tertiary);flex:1 1 100%;line-height:1.5;min-height:16px;}
+.rm-stage3-note{font-size:10.5px;color:var(--text-tertiary);opacity:0.55;padding:0 20px 14px;line-height:1.5;}
+/* Reminder modal */
+.rm-modal-bg{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,0.65);backdrop-filter:blur(6px);
+  z-index:200;align-items:center;justify-content:center;padding:20px;
+}
+.rm-modal-bg.show{display:flex;}
+.rm-modal{
+  width:100%;max-width:360px;
+  background:rgba(15,15,18,0.98);
+  border:1px solid rgba(255,255,255,0.12);
+  border-radius:16px;padding:22px;
+  max-height:90vh;overflow-y:auto;
+}
+.rm-modal h3{margin:0 0 18px;font-size:16px;font-weight:700;color:#FAFAFA;}
+.rm-field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+.rm-field label{font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-tertiary);}
+.rm-field input[type="text"],
+.rm-field input[type="time"],
+.rm-field select,
+.rm-field textarea{
+  background:rgba(0,0,0,0.28);border:1px solid rgba(255,255,255,0.12);
+  color:#FAFAFA;font-family:inherit;font-size:14px;
+  padding:10px 12px;border-radius:10px;outline:none;
+  color-scheme:dark;width:100%;resize:none;
+}
+.rm-field input:focus,.rm-field select:focus,.rm-field textarea:focus{border-color:rgba(255,255,255,0.35);}
+.rm-field select option{background:#0f0f12;}
+.rm-field-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.rm-field-row>span{font-size:13px;font-weight:600;color:var(--text-primary);}
+.rm-modal-actions{display:flex;gap:8px;margin-top:18px;}
+.rm-modal-save{
+  flex:1;padding:11px;
+  background:linear-gradient(180deg,#fff 0%,#e8e5dd 100%);
+  color:#0a0a0b;border:none;border-radius:10px;
+  font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;
+}
+.rm-modal-cancel{
+  padding:11px 16px;
+  background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.10);
+  color:#FAFAFA;border-radius:10px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;
+}
 </style>
 </head>
 <body>
@@ -581,6 +700,74 @@ body::after{
   </div>
 </div>
 
+<div class="section" style="margin-top:20px;">
+  <div class="section-title">Reminders</div>
+  <div class="rm-card">
+    <div class="rm-card-header">
+      <div class="rm-card-title-block">
+        <div class="rm-card-title">Reminders</div>
+        <div class="rm-card-sub">Set meal, gym, school, and sleep reminders.</div>
+      </div>
+      <button class="rm-add-btn-top" id="rmAddBtn">+ Add</button>
+    </div>
+    <div class="rm-list" id="rmList"></div>
+    <div class="rm-notif-bar">
+      <button class="rm-notif-btn" id="rmPermBtn">🔔 Enable notifications</button>
+      <button class="rm-notif-btn" id="rmTestBtn">Send test</button>
+      <div class="rm-notif-status" id="rmNotifStatus"></div>
+    </div>
+    <div class="rm-stage3-note">⚠ Scheduled reminders when the app is closed require Stage 3 backend setup.</div>
+  </div>
+</div>
+
+<!-- Reminder add/edit modal -->
+<div class="rm-modal-bg" id="rmModalBg">
+  <div class="rm-modal">
+    <h3 id="rmModalTitle">Add Reminder</h3>
+    <div class="rm-field">
+      <label>Title</label>
+      <input type="text" id="rmFTitle" placeholder="e.g. Eat pre-gym meal" autocomplete="off">
+    </div>
+    <div class="rm-field">
+      <label>Message</label>
+      <textarea id="rmFMessage" rows="2" placeholder="Notification body text…"></textarea>
+    </div>
+    <div class="rm-field">
+      <label>Category</label>
+      <select id="rmFCategory">
+        <option value="meal">Meal</option>
+        <option value="gym">Gym</option>
+        <option value="sleep">Sleep</option>
+        <option value="school">School</option>
+        <option value="custom">Custom</option>
+      </select>
+    </div>
+    <div class="rm-field">
+      <label>Time</label>
+      <input type="time" id="rmFTime" value="08:00">
+    </div>
+    <div class="rm-field-row">
+      <span>Enabled</span>
+      <label class="rm-toggle">
+        <input type="checkbox" id="rmFEnabled" checked>
+        <div class="rm-toggle-track"></div>
+        <div class="rm-toggle-thumb"></div>
+      </label>
+    </div>
+    <div class="rm-field-row">
+      <span>Repeat daily</span>
+      <label class="rm-toggle">
+        <input type="checkbox" id="rmFRepeat" checked>
+        <div class="rm-toggle-track"></div>
+        <div class="rm-toggle-thumb"></div>
+      </label>
+    </div>
+    <div class="rm-modal-actions">
+      <button class="rm-modal-cancel" id="rmModalCancel">Cancel</button>
+      <button class="rm-modal-save" id="rmModalSave">Save</button>
+    </div>
+  </div>
+</div>
 
 <script>
 const ANTHROPIC_API_KEY = '';
@@ -1319,6 +1506,228 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
       if(card) card.style.display='flex';
     }
   })();
+})();
+</script>
+
+<script>
+// ── Reminders ──────────────────────────────────────────────────────────────
+(function(){
+  const RM_KEY='dashboard:reminders:v1';
+  const RM_SENT_KEY='dashboard:reminders:sent:v1';
+
+  const DEFAULTS=[
+    {id:'rm-meal-1',title:'Pre-gym meal',message:'Eat pre-gym meal.',category:'meal',time:'08:30',enabled:true,repeatDaily:true},
+    {id:'rm-meal-2',title:'Post-gym shake',message:'Drink post-gym shake.',category:'meal',time:'10:30',enabled:true,repeatDaily:true},
+    {id:'rm-meal-3',title:'School meal',message:'Eat school meal.',category:'meal',time:'12:30',enabled:true,repeatDaily:true},
+    {id:'rm-meal-4',title:'After-school meal',message:'Eat after-school meal.',category:'meal',time:'17:00',enabled:true,repeatDaily:true},
+    {id:'rm-meal-5',title:'Dinner',message:'Eat dinner.',category:'meal',time:'19:30',enabled:true,repeatDaily:true},
+    {id:'rm-meal-6',title:'Night snack',message:'Eat night snack.',category:'meal',time:'21:30',enabled:true,repeatDaily:true},
+    {id:'rm-sleep-1',title:'Wind down for sleep',message:'Wind down for sleep.',category:'sleep',time:'20:40',enabled:true,repeatDaily:true},
+    {id:'rm-gym-1',title:'Log today\'s workout',message:'Log today\'s workout.',category:'gym',time:'11:30',enabled:true,repeatDaily:true},
+  ];
+
+  function getRM(){try{return JSON.parse(localStorage.getItem(RM_KEY))||null;}catch{return null;}}
+  function saveRM(arr){localStorage.setItem(RM_KEY,JSON.stringify(arr));}
+
+  function initRM(){
+    let arr=getRM();
+    if(!arr){
+      const now=Date.now();
+      arr=DEFAULTS.map(r=>({...r,createdAt:now,updatedAt:now}));
+      saveRM(arr);
+    }
+    return arr;
+  }
+
+  function uid(){return 'rm-'+Date.now()+'-'+Math.random().toString(36).slice(2,7);}
+
+  function fmt12(t){
+    const[hh,mm]=t.split(':').map(Number);
+    const ampm=hh>=12?'PM':'AM';
+    return `${hh%12||12}:${String(mm).padStart(2,'0')} ${ampm}`;
+  }
+
+  const CAT_CLASS={meal:'rm-cat-meal',gym:'rm-cat-gym',sleep:'rm-cat-sleep',school:'rm-cat-school',custom:'rm-cat-custom'};
+  const CAT_LABEL={meal:'Meal',gym:'Gym',sleep:'Sleep',school:'School',custom:'Custom'};
+
+  function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+  function renderList(){
+    const list=document.getElementById('rmList');
+    if(!list) return;
+    const arr=(getRM()||[]).slice().sort((a,b)=>a.time.localeCompare(b.time));
+    list.innerHTML='';
+    if(!arr.length){
+      list.innerHTML='<div class="empty-state">No reminders yet — tap + Add to create one.</div>';
+      return;
+    }
+    arr.forEach(r=>{
+      const row=document.createElement('div');
+      row.className='rm-row'+(r.enabled?'':' rm-disabled');
+      row.innerHTML=`
+        <div class="rm-time">${fmt12(r.time)}</div>
+        <div class="rm-info">
+          <div class="rm-title">${esc(r.title)}</div>
+          <span class="rm-cat ${CAT_CLASS[r.category]||'rm-cat-custom'}">${CAT_LABEL[r.category]||r.category}</span>
+        </div>
+        <label class="rm-toggle" title="${r.enabled?'Enabled — click to disable':'Disabled — click to enable'}">
+          <input type="checkbox"${r.enabled?' checked':''}>
+          <div class="rm-toggle-track"></div>
+          <div class="rm-toggle-thumb"></div>
+        </label>
+        <button class="rm-edit-btn" title="Edit">✎</button>
+        <button class="rm-del-btn" title="Delete">×</button>
+      `;
+      row.querySelector('.rm-toggle input').addEventListener('change',function(){
+        const a=getRM()||[];
+        const i=a.findIndex(x=>x.id===r.id);
+        if(i!==-1){a[i].enabled=this.checked;a[i].updatedAt=Date.now();saveRM(a);}
+        renderList();
+      });
+      row.querySelector('.rm-edit-btn').addEventListener('click',()=>openModal(r));
+      row.querySelector('.rm-del-btn').addEventListener('click',()=>{
+        if(!confirm('Delete "'+r.title+'"?')) return;
+        saveRM((getRM()||[]).filter(x=>x.id!==r.id));
+        renderList();
+      });
+      list.appendChild(row);
+    });
+  }
+
+  // Modal
+  let editId=null;
+  function openModal(r){
+    editId=r?r.id:null;
+    document.getElementById('rmModalTitle').textContent=r?'Edit Reminder':'Add Reminder';
+    document.getElementById('rmFTitle').value=r?r.title:'';
+    document.getElementById('rmFMessage').value=r?r.message:'';
+    document.getElementById('rmFCategory').value=r?r.category:'meal';
+    document.getElementById('rmFTime').value=r?r.time:'08:00';
+    document.getElementById('rmFEnabled').checked=r?r.enabled:true;
+    document.getElementById('rmFRepeat').checked=r?r.repeatDaily:true;
+    document.getElementById('rmModalBg').classList.add('show');
+    setTimeout(()=>document.getElementById('rmFTitle').focus(),60);
+  }
+  function closeModal(){document.getElementById('rmModalBg').classList.remove('show');editId=null;}
+
+  document.getElementById('rmAddBtn').addEventListener('click',()=>openModal(null));
+  document.getElementById('rmModalCancel').addEventListener('click',closeModal);
+  document.getElementById('rmModalBg').addEventListener('click',e=>{
+    if(e.target===document.getElementById('rmModalBg')) closeModal();
+  });
+  document.getElementById('rmModalSave').addEventListener('click',()=>{
+    const title=document.getElementById('rmFTitle').value.trim();
+    if(!title){document.getElementById('rmFTitle').focus();return;}
+    const obj={
+      id:editId||uid(),
+      title,
+      message:document.getElementById('rmFMessage').value.trim()||title,
+      category:document.getElementById('rmFCategory').value,
+      time:document.getElementById('rmFTime').value||'08:00',
+      enabled:document.getElementById('rmFEnabled').checked,
+      repeatDaily:document.getElementById('rmFRepeat').checked,
+      updatedAt:Date.now(),
+    };
+    const arr=getRM()||[];
+    if(editId){
+      const i=arr.findIndex(x=>x.id===editId);
+      if(i!==-1){obj.createdAt=arr[i].createdAt;arr[i]=obj;}
+      else{obj.createdAt=Date.now();arr.push(obj);}
+    } else {
+      obj.createdAt=Date.now();arr.push(obj);
+    }
+    saveRM(arr);closeModal();renderList();
+  });
+
+  // Notification permission
+  function notifOK(){return 'Notification' in window;}
+  function notifGranted(){return notifOK()&&Notification.permission==='granted';}
+  function isPWA(){return window.navigator.standalone===true||window.matchMedia('(display-mode: standalone)').matches;}
+
+  function updatePermBtn(){
+    const btn=document.getElementById('rmPermBtn');
+    const status=document.getElementById('rmNotifStatus');
+    if(!btn) return;
+    if(!notifOK()){
+      btn.style.display='none';
+      status.textContent='Notifications are not supported in this browser.';
+      return;
+    }
+    const p=Notification.permission;
+    if(p==='granted'){
+      btn.textContent='🔔 Notifications enabled';btn.classList.add('rm-btn-green');
+      status.textContent='';
+    } else if(p==='denied'){
+      btn.textContent='🔕 Notifications blocked';btn.classList.remove('rm-btn-green');
+      status.textContent='Blocked by device settings — go to Settings → Safari → Notifications to allow.';
+    } else {
+      btn.textContent='🔔 Enable notifications';btn.classList.remove('rm-btn-green');
+      status.textContent=isPWA()?'':'For iPhone: add this dashboard to Home Screen first, then tap Enable.';
+    }
+  }
+
+  document.getElementById('rmPermBtn').addEventListener('click',async()=>{
+    if(!notifOK()||Notification.permission==='granted') return;
+    try{
+      const res=await Notification.requestPermission();
+      updatePermBtn();
+      const status=document.getElementById('rmNotifStatus');
+      if(res==='granted'){
+        status.textContent='Notifications enabled.';
+        setTimeout(()=>{if(status.textContent==='Notifications enabled.')status.textContent='';},3000);
+      } else if(res==='denied'){
+        status.textContent='Notifications were blocked. Change in your device settings.';
+      }
+    }catch{document.getElementById('rmNotifStatus').textContent='Could not request permission.';}
+  });
+
+  // Test notification
+  document.getElementById('rmTestBtn').addEventListener('click',()=>{
+    const status=document.getElementById('rmNotifStatus');
+    if(!notifOK()){status.textContent='Notifications not supported in this browser.';return;}
+    if(!notifGranted()){status.textContent='Enable notifications first.';return;}
+    try{
+      new Notification('Dashboard reminder',{body:'Notifications are working.',icon:'/icon.svg'});
+      status.textContent='Test notification sent.';
+      setTimeout(()=>{if(status.textContent==='Test notification sent.')status.textContent='';},3000);
+    }catch{status.textContent='Could not show notification.';}
+  });
+
+  // In-app reminder checker (runs while page is open, checks every 30s)
+  function todayStr(){
+    const n=new Date();
+    return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;
+  }
+  function checkReminders(){
+    if(!notifGranted()) return;
+    const now=new Date();
+    const curTime=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    const today=todayStr();
+    let sent;
+    try{sent=JSON.parse(localStorage.getItem(RM_SENT_KEY)||'{}');}catch{sent={};}
+    const daySent=sent[today]||{};
+    let changed=false;
+    (getRM()||[]).forEach(r=>{
+      if(!r.enabled||r.time!==curTime||daySent[r.id]) return;
+      try{
+        new Notification(r.title||'Dashboard reminder',{body:r.message||r.title,icon:'/icon.svg'});
+        daySent[r.id]=Date.now();changed=true;
+      }catch{}
+    });
+    if(changed){
+      sent[today]=daySent;
+      // prune entries older than 7 days
+      const cutoff=new Date();cutoff.setDate(cutoff.getDate()-7);
+      Object.keys(sent).forEach(d=>{if(new Date(d)<cutoff) delete sent[d];});
+      localStorage.setItem(RM_SENT_KEY,JSON.stringify(sent));
+    }
+  }
+
+  initRM();
+  renderList();
+  updatePermBtn();
+  setInterval(checkReminders,30*1000);
+  checkReminders();
 })();
 </script>
 
