@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Bash(Get-ChildItem *)",
+      "Bash(npx netlify-cli deploy *)",
+      "Bash(npx netlify-cli link *)",
+      "Bash(npx netlify-cli unlink)",
+      "Bash(npx netlify-cli login)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push)",
+      "PowerShell(git *)",
+      "PowerShell(node *)",
+      "PowerShell(npm *)",
+      "PowerShell(npx *)",
+      "PowerShell(cd *)"
+    ]
+  }
+}
