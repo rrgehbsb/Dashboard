@@ -1664,14 +1664,18 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
         userVisibleOnly:true,
         applicationServerKey:urlB64ToUint8(publicKey),
       });
+      const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
       await fetch('/api/subscribe',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          subscription:sub.toJSON(),
-          timezone:Intl.DateTimeFormat().resolvedOptions().timeZone,
-        }),
+        body:JSON.stringify({subscription:sub.toJSON(),timezone:tz}),
       });
+      // Also sync localStorage reminders to Supabase so the cron can read them
+      fetch('/api/sync-reminders',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({reminders:getRM()||[],timezone:tz}),
+      }).catch(()=>{});
       return true;
     }catch(e){
       console.warn('Push subscribe failed:',e);
