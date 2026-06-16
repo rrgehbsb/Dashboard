@@ -1545,6 +1545,42 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
   function getRM(){try{return JSON.parse(localStorage.getItem(RM_KEY))||null;}catch{return null;}}
   function saveRM(arr){localStorage.setItem(RM_KEY,JSON.stringify(arr));}
 
+  async function syncReminders(){
+    const arr=getRM()||[];
+    try{
+      await fetch('/api/sync-reminders',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({reminders:arr,timezone:Intl.DateTimeFormat().resolvedOptions().timeZone}),
+      });
+    }catch{}
+  }
+
+  async function loadFromCloud(){
+    try{
+      const r=await fetch('/api/get-reminders');
+      if(!r.ok) return;
+      const data=await r.json();
+      if(!data.ok) return;
+      const cloud=data.reminders;
+      if(cloud.length===0){
+        // Cloud empty — push local data up so other devices can get it
+        syncReminders();
+        return;
+      }
+      // Cloud has data — use it as source of truth, preserving local timestamps
+      const localMap={};
+      (getRM()||[]).forEach(r=>{localMap[r.id]=r;});
+      const merged=cloud.map(r=>({
+        ...r,
+        createdAt:localMap[r.id]?.createdAt||Date.now(),
+        updatedAt:localMap[r.id]?.updatedAt||Date.now(),
+      }));
+      saveRM(merged);
+      renderList();
+    }catch{}
+  }
+
   function initRM(){
     let arr=getRM();
     if(!arr){
@@ -1604,7 +1640,7 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
       row.querySelector('.rm-del-btn').addEventListener('click',()=>{
         if(!confirm('Delete "'+r.title+'"?')) return;
         saveRM((getRM()||[]).filter(x=>x.id!==r.id));
-        renderList();
+        renderList();syncReminders();
       });
       list.appendChild(row);
     });
@@ -1767,9 +1803,11 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
   initRM();
   renderList();
 
-  // Auto-schedule today's reminders on page load (once per day)
+  // Load reminders from Supabase so all devices stay in sync, then schedule ntfy
   const _autoTopic=getNtfyTopic();
-  if(_autoTopic) scheduleToday(_autoTopic,false).catch(()=>{});
+  loadFromCloud().then(()=>{
+    if(_autoTopic) scheduleToday(_autoTopic,false).catch(()=>{});
+  });
 
   setInterval(checkReminders,30*1000);
   checkReminders();
