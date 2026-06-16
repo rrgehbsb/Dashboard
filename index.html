@@ -481,16 +481,17 @@ body::after{
 .rm-edit-btn:hover{color:var(--text-primary)!important;opacity:1!important;}
 .rm-ntfy-bar{
   padding:14px 20px 16px;border-top:1px solid rgba(255,255,255,0.05);
-  display:flex;flex-direction:column;gap:12px;
+  display:flex;flex-direction:column;gap:10px;
 }
-.rm-ntfy-steps{font-size:11.5px;color:var(--text-secondary);line-height:1.7;}
-.rm-ntfy-steps strong{color:var(--text-primary);}
-.rm-ntfy-steps code{
-  font-family:monospace;font-size:11px;
-  background:rgba(255,255,255,0.07);border-radius:4px;padding:1px 5px;
+.rm-ntfy-topic-row{display:flex;gap:8px;align-items:center;}
+.rm-ntfy-label{font-size:11px;color:var(--text-tertiary);white-space:nowrap;}
+.rm-ntfy-input{
+  flex:1;min-width:0;
+  background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.10);
+  border-radius:8px;color:var(--text-primary);font-size:12px;font-family:monospace;
+  padding:7px 10px;outline:none;
 }
-.rm-ntfy-steps ol{margin:6px 0 0 18px;padding:0;}
-.rm-ntfy-steps li{margin-bottom:3px;}
+.rm-ntfy-input:focus{border-color:rgba(255,255,255,0.22);}
 .rm-ntfy-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
 .rm-notif-btn{
   padding:8px 14px;border-radius:10px;
@@ -719,16 +720,14 @@ body::after{
     </div>
     <div class="rm-list" id="rmList"></div>
     <div class="rm-ntfy-bar">
-      <div class="rm-ntfy-steps">
-        <strong>📱 Get notified on your phone</strong>
-        <ol>
-          <li>Install the free <strong>ntfy</strong> app (iPhone App Store or Android Google Play)</li>
-          <li>Open ntfy → tap <strong>+</strong> → enter the topic you set as <code>NTFY_TOPIC</code> in Vercel</li>
-          <li>That's it — reminders fire automatically at their scheduled times</li>
-        </ol>
+      <div class="rm-ntfy-topic-row">
+        <span class="rm-ntfy-label">ntfy topic</span>
+        <input class="rm-ntfy-input" id="rmNtfyTopic" type="text" placeholder="your-topic-name" autocomplete="off" spellcheck="false">
+        <button class="rm-notif-btn" id="rmNtfySave">Save</button>
       </div>
       <div class="rm-ntfy-actions">
-        <button class="rm-notif-btn" id="rmTestBtn">Send test notification</button>
+        <button class="rm-notif-btn" id="rmTestBtn">Send test</button>
+        <button class="rm-notif-btn" id="rmScheduleBtn">Schedule today</button>
         <div class="rm-notif-status" id="rmNotifStatus"></div>
       </div>
     </div>
@@ -1656,35 +1655,80 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
     saveRM(arr);closeModal();renderList();syncReminders();
   });
 
-  // Test button — sends via ntfy (no browser permission needed)
-  document.getElementById('rmTestBtn').addEventListener('click',async()=>{
+  // ── ntfy client-side scheduling ─────────────────────────────────────────────
+  const NTFY_KEY='dashboard:ntfy:topic';
+  const NTFY_SCHED_KEY='dashboard:ntfy:scheduled';
+
+  function getNtfyTopic(){return localStorage.getItem(NTFY_KEY)||'';}
+  function saveNtfyTopic(t){localStorage.setItem(NTFY_KEY,t.trim());}
+
+  async function ntfyPost(topic,title,body,atUnix){
+    const headers={'Content-Type':'text/plain',Title:title};
+    if(atUnix) headers['At']=String(atUnix);
+    return fetch(`https://ntfy.sh/${topic}`,{method:'POST',headers,body});
+  }
+
+  async function scheduleToday(topic,force){
+    const today=new Date().toISOString().slice(0,10);
+    if(!force&&localStorage.getItem(NTFY_SCHED_KEY)===today) return null;
+    const now=new Date();
+    const nowMins=now.getHours()*60+now.getMinutes();
+    const reminders=(getRM()||[]).filter(r=>r.enabled);
+    let scheduled=0,skipped=0;
+    for(const rm of reminders){
+      const[h,m]=rm.time.split(':').map(Number);
+      if(h*60+m<=nowMins){skipped++;continue;}
+      const at=new Date();at.setHours(h,m,0,0);
+      try{
+        await ntfyPost(topic,rm.title,rm.message||rm.title,Math.floor(at.getTime()/1000));
+        scheduled++;
+      }catch{}
+    }
+    localStorage.setItem(NTFY_SCHED_KEY,today);
+    return{scheduled,skipped};
+  }
+
+  // Save topic button
+  document.getElementById('rmNtfySave').addEventListener('click',()=>{
+    const val=document.getElementById('rmNtfyTopic').value.trim();
+    if(!val) return;
+    saveNtfyTopic(val);
     const status=document.getElementById('rmNotifStatus');
-    status.textContent='Sending…';
-    try{
-      const r=await fetch('/api/send-push',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({title:'Dashboard reminder',body:'Test notification is working!'}),
-      });
-      const d=await r.json();
-      if(r.ok&&d.ok){
-        status.textContent='Test sent! Check ntfy app. ✓';
-        setTimeout(()=>{if(status.textContent==='Test sent! Check ntfy app. ✓')status.textContent='';},5000);
-      } else {
-        status.textContent='Error: '+(d.error||JSON.stringify(d));
-      }
-    }catch{status.textContent='Could not reach server — is NTFY_TOPIC set in Vercel?';}
+    status.textContent='Topic saved.';
+    setTimeout(()=>{if(status.textContent==='Topic saved.')status.textContent='';},2000);
   });
 
-  // Sync localStorage reminders to Supabase so the cron has fresh data
-  function syncReminders(){
-    const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
-    fetch('/api/sync-reminders',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({reminders:getRM()||[],timezone:tz}),
-    }).catch(()=>{});
-  }
+  // Test button — instant notification, no At header
+  document.getElementById('rmTestBtn').addEventListener('click',async()=>{
+    const status=document.getElementById('rmNotifStatus');
+    const topic=getNtfyTopic();
+    if(!topic){status.textContent='Enter and save your ntfy topic first.';return;}
+    status.textContent='Sending…';
+    try{
+      const r=await ntfyPost(topic,'Dashboard reminder','Test notification is working!');
+      if(r.ok){
+        status.textContent='Sent! Check ntfy app. ✓';
+        setTimeout(()=>{if(status.textContent==='Sent! Check ntfy app. ✓')status.textContent='';},5000);
+      } else {
+        status.textContent=`ntfy error ${r.status} — check topic name.`;
+      }
+    }catch{status.textContent='Network error.';}
+  });
+
+  // Schedule today button — force reschedule
+  document.getElementById('rmScheduleBtn').addEventListener('click',async()=>{
+    const status=document.getElementById('rmNotifStatus');
+    const topic=getNtfyTopic();
+    if(!topic){status.textContent='Enter and save your ntfy topic first.';return;}
+    status.textContent='Scheduling…';
+    const result=await scheduleToday(topic,true);
+    if(result.scheduled===0&&result.skipped>0){
+      status.textContent='All reminders for today are already past.';
+    } else {
+      status.textContent=`Scheduled ${result.scheduled} reminder${result.scheduled!==1?'s':''} for today. ✓`;
+      setTimeout(()=>{if(status.textContent.startsWith('Scheduled'))status.textContent='';},5000);
+    }
+  });
 
   // In-app reminder checker (runs while page is open, checks every 30s)
   function todayStr(){
@@ -1716,9 +1760,17 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
     }
   }
 
+  // Pre-load saved topic into input
+  if(!getNtfyTopic()) saveNtfyTopic('tomay-dash-67xk');
+  document.getElementById('rmNtfyTopic').value=getNtfyTopic();
+
   initRM();
   renderList();
-  syncReminders();
+
+  // Auto-schedule today's reminders on page load (once per day)
+  const _autoTopic=getNtfyTopic();
+  if(_autoTopic) scheduleToday(_autoTopic,false).catch(()=>{});
+
   setInterval(checkReminders,30*1000);
   checkReminders();
 })();
