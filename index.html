@@ -479,10 +479,19 @@ body::after{
 .rm-row:hover .rm-edit-btn,.rm-row:hover .rm-del-btn{opacity:0.6;}
 .rm-del-btn:hover{color:var(--danger)!important;opacity:1!important;}
 .rm-edit-btn:hover{color:var(--text-primary)!important;opacity:1!important;}
-.rm-notif-bar{
-  display:flex;flex-wrap:wrap;gap:8px;align-items:center;
-  padding:12px 20px 14px;border-top:1px solid rgba(255,255,255,0.05);
+.rm-ntfy-bar{
+  padding:14px 20px 16px;border-top:1px solid rgba(255,255,255,0.05);
+  display:flex;flex-direction:column;gap:12px;
 }
+.rm-ntfy-steps{font-size:11.5px;color:var(--text-secondary);line-height:1.7;}
+.rm-ntfy-steps strong{color:var(--text-primary);}
+.rm-ntfy-steps code{
+  font-family:monospace;font-size:11px;
+  background:rgba(255,255,255,0.07);border-radius:4px;padding:1px 5px;
+}
+.rm-ntfy-steps ol{margin:6px 0 0 18px;padding:0;}
+.rm-ntfy-steps li{margin-bottom:3px;}
+.rm-ntfy-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
 .rm-notif-btn{
   padding:8px 14px;border-radius:10px;
   background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.10);
@@ -490,9 +499,7 @@ body::after{
   font-family:inherit;transition:background 0.15s;
 }
 .rm-notif-btn:hover{background:rgba(255,255,255,0.10);}
-.rm-notif-btn.rm-btn-green{background:rgba(107,227,164,0.12);border-color:rgba(107,227,164,0.25);color:#6BE3A4;}
-.rm-notif-status{font-size:11px;color:var(--text-tertiary);flex:1 1 100%;line-height:1.5;min-height:16px;}
-.rm-stage3-note{font-size:10.5px;color:var(--text-tertiary);opacity:0.55;padding:0 20px 14px;line-height:1.5;}
+.rm-notif-status{font-size:11px;color:var(--text-tertiary);line-height:1.5;min-height:16px;}
 /* Reminder modal */
 .rm-modal-bg{
   display:none;position:fixed;inset:0;
@@ -711,12 +718,20 @@ body::after{
       <button class="rm-add-btn-top" id="rmAddBtn">+ Add</button>
     </div>
     <div class="rm-list" id="rmList"></div>
-    <div class="rm-notif-bar">
-      <button class="rm-notif-btn" id="rmPermBtn">🔔 Enable notifications</button>
-      <button class="rm-notif-btn" id="rmTestBtn">Send test</button>
-      <div class="rm-notif-status" id="rmNotifStatus"></div>
+    <div class="rm-ntfy-bar">
+      <div class="rm-ntfy-steps">
+        <strong>📱 Get notified on your phone</strong>
+        <ol>
+          <li>Install the free <strong>ntfy</strong> app (iPhone App Store or Android Google Play)</li>
+          <li>Open ntfy → tap <strong>+</strong> → enter the topic you set as <code>NTFY_TOPIC</code> in Vercel</li>
+          <li>That's it — reminders fire automatically at their scheduled times</li>
+        </ol>
+      </div>
+      <div class="rm-ntfy-actions">
+        <button class="rm-notif-btn" id="rmTestBtn">Send test notification</button>
+        <div class="rm-notif-status" id="rmNotifStatus"></div>
+      </div>
     </div>
-    <div class="rm-stage3-note">⚠ Scheduled reminders when the app is closed require Stage 3 backend setup.</div>
   </div>
 </div>
 
@@ -1584,7 +1599,7 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
         const a=getRM()||[];
         const i=a.findIndex(x=>x.id===r.id);
         if(i!==-1){a[i].enabled=this.checked;a[i].updatedAt=Date.now();saveRM(a);}
-        renderList();
+        renderList();syncReminders();
       });
       row.querySelector('.rm-edit-btn').addEventListener('click',()=>openModal(r));
       row.querySelector('.rm-del-btn').addEventListener('click',()=>{
@@ -1638,139 +1653,38 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
     } else {
       obj.createdAt=Date.now();arr.push(obj);
     }
-    saveRM(arr);closeModal();renderList();
+    saveRM(arr);closeModal();renderList();syncReminders();
   });
 
-  // Push / notification helpers
-  function notifOK(){return 'Notification' in window;}
-  function pushOK(){return 'PushManager' in window && 'serviceWorker' in navigator;}
-  function notifGranted(){return notifOK()&&Notification.permission==='granted';}
-  function isPWA(){return window.navigator.standalone===true||window.matchMedia('(display-mode: standalone)').matches;}
-
-  function urlB64ToUint8(b64){
-    const pad='='.repeat((4-b64.length%4)%4);
-    const raw=atob((b64+pad).replace(/-/g,'+').replace(/_/g,'/'));
-    return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)));
-  }
-
-  async function subscribeToPush(){
-    try{
-      const reg=await navigator.serviceWorker.ready;
-      const r=await fetch('/api/vapid-key');
-      if(!r.ok) throw new Error('vapid-key endpoint not ready');
-      const {publicKey}=await r.json();
-      if(!publicKey) throw new Error('VAPID_PUBLIC_KEY not set in Vercel env vars');
-      const sub=await reg.pushManager.subscribe({
-        userVisibleOnly:true,
-        applicationServerKey:urlB64ToUint8(publicKey),
-      });
-      const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
-      await fetch('/api/subscribe',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({subscription:sub.toJSON(),timezone:tz}),
-      });
-      // Also sync localStorage reminders to Supabase so the cron can read them
-      fetch('/api/sync-reminders',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({reminders:getRM()||[],timezone:tz}),
-      }).catch(()=>{});
-      return true;
-    }catch(e){
-      console.warn('Push subscribe failed:',e);
-      return false;
-    }
-  }
-
-  async function updatePermBtn(){
-    const btn=document.getElementById('rmPermBtn');
-    const status=document.getElementById('rmNotifStatus');
-    if(!btn) return;
-    if(!notifOK()){
-      btn.style.display='none';
-      if(status) status.textContent='Notifications not supported in this browser.';
-      return;
-    }
-    const p=Notification.permission;
-    if(p==='granted'){
-      if(pushOK()){
-        try{
-          const reg=await navigator.serviceWorker.ready;
-          const sub=await reg.pushManager.getSubscription();
-          btn.textContent=sub?'🔔 Push enabled':'🔔 Re-subscribe to push';
-          btn.className='rm-notif-btn'+(sub?' rm-btn-green':'');
-          if(status) status.textContent=sub?'':'Permission granted — tap to subscribe to push reminders.';
-          return;
-        }catch{}
-      }
-      btn.textContent='🔔 Notifications enabled';
-      btn.className='rm-notif-btn rm-btn-green';
-      if(status) status.textContent='';
-    } else if(p==='denied'){
-      btn.textContent='🔕 Notifications blocked';
-      btn.className='rm-notif-btn';
-      if(status) status.textContent='Go to device Settings → Notifications to allow.';
-    } else {
-      btn.textContent='🔔 Enable notifications';
-      btn.className='rm-notif-btn';
-      if(status) status.textContent=isPWA()||!pushOK()?'':'On iPhone: add to Home Screen first, then tap Enable.';
-    }
-  }
-
-  document.getElementById('rmPermBtn').addEventListener('click',async()=>{
-    const status=document.getElementById('rmNotifStatus');
-    if(!notifOK()) return;
-    // Already granted → just re-subscribe
-    if(Notification.permission==='granted'){
-      if(!pushOK()){status.textContent='Push not supported in this browser.';return;}
-      status.textContent='Subscribing…';
-      const ok=await subscribeToPush();
-      status.textContent=ok?'Push reminders enabled.':'Subscribe failed — check Vercel env vars.';
-      if(ok) setTimeout(()=>{if(status.textContent==='Push reminders enabled.')status.textContent='';},3000);
-      updatePermBtn();
-      return;
-    }
-    try{
-      const res=await Notification.requestPermission();
-      if(res==='granted'){
-        if(pushOK()){
-          status.textContent='Subscribing to push…';
-          const ok=await subscribeToPush();
-          status.textContent=ok?'Push reminders enabled.':'Permission granted, but subscribe failed — check Vercel env vars.';
-          if(ok) setTimeout(()=>{if(status.textContent==='Push reminders enabled.')status.textContent='';},3000);
-        } else {
-          status.textContent='Notifications enabled (in-app only — push not supported here).';
-        }
-      } else if(res==='denied'){
-        status.textContent='Notifications blocked. Go to device Settings to allow.';
-      }
-      updatePermBtn();
-    }catch{if(status) status.textContent='Could not request permission.';}
-  });
-
-  // Test button — calls server push API
+  // Test button — sends via ntfy (no browser permission needed)
   document.getElementById('rmTestBtn').addEventListener('click',async()=>{
     const status=document.getElementById('rmNotifStatus');
-    if(!notifGranted()){status.textContent='Enable notifications first.';return;}
     status.textContent='Sending…';
     try{
       const r=await fetch('/api/send-push',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({title:'Dashboard reminder',body:'Push notifications are working.',url:'/'}),
+        body:JSON.stringify({title:'Dashboard reminder',body:'Test notification is working!'}),
       });
       const d=await r.json();
-      if(r.ok&&d.sent>0){
-        status.textContent='Test push sent! ✓';
-        setTimeout(()=>{if(status.textContent==='Test push sent! ✓')status.textContent='';},4000);
-      } else if(d.reason==='no subscriptions'){
-        status.textContent='No push subscription found — tap Enable first.';
+      if(r.ok&&d.ok){
+        status.textContent='Test sent! Check ntfy app. ✓';
+        setTimeout(()=>{if(status.textContent==='Test sent! Check ntfy app. ✓')status.textContent='';},5000);
       } else {
         status.textContent='Error: '+(d.error||JSON.stringify(d));
       }
-    }catch{status.textContent='Could not reach push server — check Vercel env vars.';}
+    }catch{status.textContent='Could not reach server — is NTFY_TOPIC set in Vercel?';}
   });
+
+  // Sync localStorage reminders to Supabase so the cron has fresh data
+  function syncReminders(){
+    const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
+    fetch('/api/sync-reminders',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({reminders:getRM()||[],timezone:tz}),
+    }).catch(()=>{});
+  }
 
   // In-app reminder checker (runs while page is open, checks every 30s)
   function todayStr(){
@@ -1778,7 +1692,7 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
     return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;
   }
   function checkReminders(){
-    if(!notifGranted()) return;
+    if(!('Notification' in window)||Notification.permission!=='granted') return;
     const now=new Date();
     const curTime=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
     const today=todayStr();
@@ -1804,7 +1718,7 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
 
   initRM();
   renderList();
-  updatePermBtn();
+  syncReminders();
   setInterval(checkReminders,30*1000);
   checkReminders();
 })();
