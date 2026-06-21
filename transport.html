@@ -35,21 +35,15 @@ body{
   font-family:var(--font);max-width:800px;margin:0 auto;
   padding:max(env(safe-area-inset-top,0px),20px) 18px 100px;
 }
-
-/* Page header */
 .page-header{margin-bottom:20px;}
 .page-title{font-size:26px;font-weight:800;letter-spacing:-0.025em;
   background:linear-gradient(180deg,#FFFFFF 0%,#A0C4FF 140%);
   -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
 .page-date{font-size:12px;color:var(--text-tertiary);margin-top:3px;}
-
-/* Section label */
 .sec{font-family:var(--font-mono);font-size:11px;font-weight:600;
   letter-spacing:0.18em;text-transform:uppercase;color:var(--text-tertiary);
   margin:18px 0 9px;display:flex;align-items:center;gap:8px;}
 .sec::before{content:'≡';font-size:14px;opacity:0.7;}
-
-/* Card */
 .card{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;
   box-shadow:0 12px 40px rgba(0,0,0,0.4);margin-bottom:14px;overflow:hidden;}
 
@@ -96,11 +90,9 @@ body{
 .bdg{font-size:10px;padding:2px 7px;border-radius:99px;
   background:rgba(255,255,255,0.07);color:var(--text-tertiary);}
 .bdg.soon{background:rgba(96,165,250,0.15);color:var(--accent);}
-.bdg.delay{background:rgba(239,68,68,0.14);color:#f87171;}
-.bdg.xfer{background:rgba(251,191,36,0.12);color:#fbbf24;}
 .t-empty{font-size:11px;color:var(--text-tertiary);padding:6px 0;line-height:1.6;}
 
-/* Card bottom bar */
+/* Card action bar */
 .cbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;
   padding:10px 16px 14px;border-top:1px solid var(--border);}
 .cbtn{padding:7px 13px;border-radius:8px;border:1px solid var(--border-mid);
@@ -109,7 +101,6 @@ body{
 .cbtn:hover{background:rgba(255,255,255,0.08);}
 .cbtn.prim{background:var(--accent-dim);border-color:var(--accent-border);color:var(--accent);}
 .cst{font-size:11px;color:var(--text-tertiary);}
-.cup{font-size:10px;color:var(--text-tertiary);margin-left:auto;}
 
 /* Full schedule list */
 .scard{padding:16px 18px;}
@@ -121,7 +112,7 @@ body{
 .srow.past{opacity:0.42;}
 .stime{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;min-width:46px;}
 .srow.nxt .stime{color:var(--accent);}
-.sinfo{flex:1;font-size:10px;color:var(--text-tertiary);line-height:1.5;}
+.sinfo{flex:1;font-size:10px;color:var(--text-tertiary);}
 .sbdg{font-size:10px;padding:2px 8px;border-radius:99px;}
 .sbdg.past{background:rgba(255,255,255,0.05);color:var(--text-tertiary);}
 .sbdg.nxt{background:var(--accent-dim);color:var(--accent);}
@@ -130,7 +121,7 @@ body{
 .sempty{font-size:12px;color:var(--text-tertiary);text-align:center;
   padding:22px 10px;line-height:1.8;}
 
-/* Inline edit panel */
+/* Inline edit */
 .edit-toggle{display:flex;align-items:center;justify-content:space-between;
   margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
 .edit-lbl{font-size:11px;color:var(--text-tertiary);}
@@ -143,12 +134,12 @@ body{
   border-radius:8px;color:var(--text-primary);font-size:12px;font-family:var(--font-mono);
   padding:8px 12px;outline:none;}
 .edit-input:focus{border-color:var(--accent-border);}
-.edit-hint{font-size:10px;color:var(--text-tertiary);margin-top:5px;}
+.edit-hint{font-size:10px;color:var(--text-tertiary);margin-top:5px;line-height:1.6;}
 .edit-save{margin-top:8px;padding:7px 16px;border-radius:8px;border:none;
   background:var(--accent-dim);color:var(--accent);
   font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);}
 
-/* Settings card */
+/* Settings */
 .set-card{padding:16px 18px;}
 .set-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
 .set-lbl{font-size:12px;color:var(--text-secondary);flex:1;}
@@ -159,23 +150,13 @@ body{
 .set-save{margin-top:8px;padding:8px 22px;border-radius:10px;border:none;
   background:var(--accent-dim);color:var(--accent);
   font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);}
-.set-note{font-size:10px;color:var(--text-tertiary);margin-top:12px;line-height:1.7;}
 
-/* Alerts card */
+/* Alerts */
 .al-card{padding:16px 18px;}
 .al-title{font-size:13px;font-weight:700;color:var(--text-primary);margin-bottom:4px;}
 .al-sub{font-size:11px;color:var(--text-tertiary);margin-bottom:14px;line-height:1.6;}
 .al-btns{display:flex;flex-wrap:wrap;gap:8px;}
 .al-st{margin-top:10px;font-size:11px;color:var(--text-tertiary);min-height:16px;}
-
-/* Refresh bar */
-.rbar{display:flex;align-items:center;gap:10px;
-  padding:10px 16px;border-top:1px solid var(--border);}
-.rbtn{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;
-  border:1px solid var(--border-mid);background:rgba(255,255,255,0.04);
-  color:var(--text-secondary);font-size:12px;cursor:pointer;font-family:var(--font);transition:background 0.15s;}
-.rbtn:hover{background:rgba(255,255,255,0.08);}
-.rup{font-size:10px;color:var(--text-tertiary);margin-left:auto;}
 </style>
 </head>
 <body>
@@ -185,13 +166,12 @@ body{
   <div class="page-date" id="pageDate"></div>
 </div>
 
-<!-- Direction toggle -->
 <div class="dir-row">
   <button class="dir-btn active" id="dirMorning">☀️ To School</button>
   <button class="dir-btn" id="dirAfternoon">🌆 Back Home</button>
 </div>
 
-<!-- ─── MORNING VIEW ────────────────────────────────────────────── -->
+<!-- ── MORNING ─────────────────────────────────────────────────── -->
 <div id="morningView">
 
   <div class="sec">Journey Planner</div>
@@ -218,16 +198,14 @@ body{
         <div id="minisBus"></div>
       </div>
       <div class="col">
-        <div class="col-title">🚂 Rakevet</div>
+        <div class="col-title">🚂 Train</div>
         <div class="col-stop">ראש העין צפון ← הרצליה</div>
         <div id="minisTrain"></div>
       </div>
     </div>
     <div class="cbar">
       <button class="cbtn prim" id="alertHeroBtn">🔔 Alert me</button>
-      <button class="cbtn" id="refreshHeroBtn">↻ Refresh</button>
       <span class="cst" id="heroSt"></span>
-      <span class="cup" id="heroUp"></span>
     </div>
   </div>
 
@@ -235,45 +213,72 @@ body{
   <div class="card">
     <div class="scard">
       <div class="scard-title">Morning departures · יהודה הלוי / הרב כלף (37557)</div>
-      <div class="slist" id="busSchedList"><div class="sempty">Add bus times below →</div></div>
+      <div class="slist" id="busSchedList"><div class="sempty">Add your bus times below →</div></div>
       <div class="edit-toggle">
-        <span class="edit-lbl">Morning bus times</span>
+        <span class="edit-lbl">Bus 74 morning times</span>
         <button class="edit-open" id="busEditBtn">Edit</button>
       </div>
       <div class="edit-panel" id="busEditPanel">
         <input class="edit-input" id="busTimesIn" type="text" placeholder="06:50,07:05,07:20,07:35,07:50,08:05" autocomplete="off" spellcheck="false">
-        <div class="edit-hint">All morning departures from your stop, comma-separated · format HH:MM</div>
+        <div class="edit-hint">All morning departures from your stop, comma-separated · HH:MM<br>Check the Egged/Dan/Kavim app for the exact times for line 74</div>
         <button class="edit-save" id="busSaveBtn">Save</button>
       </div>
     </div>
   </div>
 
-  <div class="sec">Live Train Times</div>
+  <div class="sec">Train Schedule</div>
   <div class="card">
     <div class="scard">
-      <div class="scard-title">ראש העין צפון → הרצליה · live departures</div>
-      <div class="slist" id="trainSchedList"><div class="sempty">Tap refresh to load live train times</div></div>
-    </div>
-    <div class="rbar">
-      <button class="rbtn" id="trainRefBtn">↻ Refresh trains</button>
-      <span class="rup" id="trainUp"></span>
+      <div class="scard-title">ראש העין צפון → הרצליה</div>
+      <div class="slist" id="trainSchedList"><div class="sempty">Add your train times below →</div></div>
+      <div class="edit-toggle">
+        <span class="edit-lbl">Train departure times</span>
+        <button class="edit-open" id="trainEditBtn">Edit</button>
+      </div>
+      <div class="edit-panel" id="trainEditPanel">
+        <input class="edit-input" id="trainTimesIn" type="text" placeholder="06:30,06:55,07:14,07:31,07:48,08:05" autocomplete="off" spellcheck="false">
+        <div class="edit-hint">Departure times from ראש העין צפון, comma-separated · HH:MM<br>Check <a href="https://www.rail.co.il" target="_blank" style="color:var(--accent)">rail.co.il</a> or the Rakevet app for the current timetable</div>
+        <button class="edit-save" id="trainSaveBtn">Save</button>
+      </div>
     </div>
   </div>
 
-</div><!-- /morningView -->
-
-<!-- ─── AFTERNOON VIEW ──────────────────────────────────────────── -->
-<div id="afternoonView" style="display:none">
-
-  <div class="sec">Live Return Trains</div>
+  <div class="sec">Train Arrival Times</div>
   <div class="card">
     <div class="scard">
-      <div class="scard-title">הרצליה → ראש העין צפון · live departures</div>
-      <div class="slist" id="returnTrainList"><div class="sempty">Tap refresh to load live train times</div></div>
+      <div class="scard-title">Arrive הרצליה — used for journey planner</div>
+      <div class="slist" id="trainArrList"><div class="sempty">Add arrival times below →</div></div>
+      <div class="edit-toggle">
+        <span class="edit-lbl">Arrival times at הרצליה</span>
+        <button class="edit-open" id="trainArrEditBtn">Edit</button>
+      </div>
+      <div class="edit-panel" id="trainArrEditPanel">
+        <input class="edit-input" id="trainArrIn" type="text" placeholder="07:05,07:30,07:49,08:06,08:23,08:40" autocomplete="off" spellcheck="false">
+        <div class="edit-hint">These should match the departure times above (same train, arrival time at הרצליה)</div>
+        <button class="edit-save" id="trainArrSaveBtn">Save</button>
+      </div>
     </div>
-    <div class="rbar">
-      <button class="rbtn" id="returnRefBtn">↻ Refresh trains</button>
-      <span class="rup" id="returnUp"></span>
+  </div>
+
+</div>
+
+<!-- ── AFTERNOON ────────────────────────────────────────────────── -->
+<div id="afternoonView" style="display:none">
+
+  <div class="sec">Return Train Schedule</div>
+  <div class="card">
+    <div class="scard">
+      <div class="scard-title">הרצליה → ראש העין צפון</div>
+      <div class="slist" id="returnTrainList"><div class="sempty">Add afternoon train times below →</div></div>
+      <div class="edit-toggle">
+        <span class="edit-lbl">Return train times</span>
+        <button class="edit-open" id="retTrainEditBtn">Edit</button>
+      </div>
+      <div class="edit-panel" id="retTrainEditPanel">
+        <input class="edit-input" id="retTrainIn" type="text" placeholder="13:00,13:30,14:00,14:30,15:00,15:30" autocomplete="off" spellcheck="false">
+        <div class="edit-hint">Departure times from הרצליה station, comma-separated · HH:MM</div>
+        <button class="edit-save" id="retTrainSaveBtn">Save</button>
+      </div>
     </div>
   </div>
 
@@ -281,7 +286,7 @@ body{
   <div class="card">
     <div class="scard">
       <div class="scard-title">From ראש העין צפון station → home</div>
-      <div class="slist" id="returnBusList"><div class="sempty">Add your afternoon bus times below</div></div>
+      <div class="slist" id="returnBusList"><div class="sempty">Add afternoon bus times below →</div></div>
       <div class="edit-toggle">
         <span class="edit-lbl">Afternoon bus times</span>
         <button class="edit-open" id="retBusEditBtn">Edit</button>
@@ -294,18 +299,17 @@ body{
     </div>
   </div>
 
-</div><!-- /afternoonView -->
+</div>
 
-<!-- ─── ALWAYS VISIBLE ──────────────────────────────────────────── -->
-
+<!-- ── ALWAYS VISIBLE ───────────────────────────────────────────── -->
 <div class="sec">Notifications</div>
 <div class="card">
   <div class="al-card">
     <div class="al-title">ntfy alerts</div>
-    <div class="al-sub">Sends a push notification to your phone before your bus. Uses the ntfy topic saved in the Reminders section.</div>
+    <div class="al-sub">Sends a notification to your phone before your bus. Uses the ntfy topic saved in the Reminders section.</div>
     <div class="al-btns">
       <button class="cbtn prim" id="alertNextBtn">🔔 Alert for next bus</button>
-      <button class="cbtn" id="alertAllBtn">📅 Schedule all buses today</button>
+      <button class="cbtn" id="alertAllBtn">📅 Schedule all today</button>
     </div>
     <div class="al-st" id="alertSt"></div>
   </div>
@@ -335,10 +339,6 @@ body{
       <span class="set-unit">min</span>
     </div>
     <button class="set-save" id="setSaveBtn">Save settings</button>
-    <div class="set-note">
-      Train data from Israel Railways API · Station IDs: ראש העין צפון = 2300, הרצליה = 8600<br>
-      If trains don't load the station IDs might need updating — let me know.
-    </div>
   </div>
 </div>
 
@@ -347,10 +347,12 @@ body{
   const KEY='dashboard:transport:v1';
   function load(){try{return JSON.parse(localStorage.getItem(KEY))||{};}catch{return {};}}
   function store(o){localStorage.setItem(KEY,JSON.stringify(o));}
-  const DEF={schoolTime:'07:40',walkToBus:5,busJourney:10,stationBuffer:5,walkToSchool:10,busTimes:'',returnBusTimes:''};
+  const DEF={
+    schoolTime:'07:40',walkToBus:5,busJourney:10,stationBuffer:5,walkToSchool:10,
+    busTimes:'',trainTimes:'',trainArrTimes:'',returnBusTimes:'',returnTrainTimes:'',
+  };
   function cfg(){return Object.assign({},DEF,load());}
 
-  // ── helpers ────────────────────────────────────────────────────────────────
   function t2m(hhmm){const[h,m]=hhmm.split(':').map(Number);return h*60+m;}
   function m2t(m){const h=Math.floor(m/60)%24,mn=m%60;return `${String(h).padStart(2,'0')}:${String(mn).padStart(2,'0')}`;}
   function nowM(){const n=new Date();return n.getHours()*60+n.getMinutes();}
@@ -358,178 +360,145 @@ body{
     if(!s) return [];
     return s.split(',').map(x=>x.trim()).filter(x=>/^\d{1,2}:\d{2}$/.test(x)).sort();
   }
-  function fmtUp(){const n=new Date();return `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;}
 
-  // ── date header ─────────────────────────────────────────────────────────────
+  // date header
   (function(){
-    const el=document.getElementById('pageDate');
-    if(!el) return;
+    const el=document.getElementById('pageDate');if(!el)return;
     const d=new Date();
     const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
     const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     el.textContent=`${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}`;
   })();
 
-  // ── mini lists (2-col in hero card) ─────────────────────────────────────────
-  function renderMiniBus(el,busTimes){
-    if(!el) return;
+  // mini list (4 items, 2-col hero)
+  function renderMini(el,times){
+    if(!el)return;
     const now=nowM();
-    const up=busTimes.map(t2m).filter(m=>m>=now-1).slice(0,4);
-    if(!up.length){el.innerHTML='<div class="t-empty">No more buses today</div>';return;}
+    const up=parseTimes(times).map(t2m).filter(m=>m>=now-1).slice(0,4);
+    if(!up.length){el.innerHTML='<div class="t-empty">No more today</div>';return;}
     el.innerHTML=up.map((m,i)=>{
-      const d=m-now;const soon=d<=12;
+      const d=m-now;const soon=d<=15;
       const b=d<=0?'now':d<60?`${d}m`:`${Math.floor(d/60)}h${d%60}m`;
       return `<div class="t-row"><div class="t-val${i===0?' nxt':''}">${m2t(m)}</div><span class="bdg${soon?' soon':''}">${b}</span></div>`;
     }).join('');
   }
-  function renderMiniTrain(el,trains){
-    if(!el) return;
-    if(!trains||!trains.length){el.innerHTML='<div class="t-empty">Tap ↻ Refresh</div>';return;}
-    const now=nowM();
-    el.innerHTML=trains.slice(0,4).map((t,i)=>{
-      const d=t2m(t.depart)-now;const soon=d<=15;
-      const b=d<=0?'left':d<60?`${d}m`:`${Math.floor(d/60)}h${d%60}m`;
-      const ex=(t.delay>0?`<span class="bdg delay">+${t.delay}m</span>`:'')+
-               (t.transfers>0?`<span class="bdg xfer">${t.transfers}x</span>`:'');
-      return `<div class="t-row"><div class="t-val${i===0?' nxt':''}">${t.depart}</div><span class="bdg${soon?' soon':''}">${b}</span>${ex}</div>`;
-    }).join('');
-  }
 
-  // ── full schedule list ───────────────────────────────────────────────────────
-  function renderSched(el,items,isTrains){
-    if(!el) return;
-    if(!items||!items.length){
-      el.innerHTML='<div class="sempty">No times yet.<br>'+(isTrains?'Tap ↻ refresh above.':'Add times using Edit button.')+'</div>';
-      return;
+  // full schedule list
+  function renderSched(el,times,arrivals){
+    if(!el)return;
+    const depArr=parseTimes(times);
+    const arrArr=arrivals?parseTimes(arrivals):[];
+    if(!depArr.length){
+      el.innerHTML='<div class="sempty">No times yet.<br>Add them using the Edit button.</div>';return;
     }
     const now=nowM();
-    let firstFutureIdx=-1;
-    items.forEach((x,i)=>{if(firstFutureIdx===-1&&t2m(isTrains?x.depart:x)>=now)firstFutureIdx=i;});
-    el.innerHTML=items.map((x,i)=>{
-      const ts=isTrains?x.depart:x;
-      const depM=t2m(ts);
+    let firstFuture=-1;
+    depArr.forEach((t,i)=>{if(firstFuture===-1&&t2m(t)>=now)firstFuture=i;});
+    el.innerHTML=depArr.map((t,i)=>{
+      const depM=t2m(t);
       const past=depM<now;
-      const isNxt=i===firstFutureIdx;
+      const isNxt=i===firstFuture;
       const diff=depM-now;
       let bc='ok',bt=diff<60?`${diff}m`:`${Math.floor(diff/60)}h${diff%60}m`;
       if(past){bc='past';bt='passed';}
       else if(isNxt){bc='nxt';bt='next';}
       else if(diff<=15){bc='soon';bt=`${diff}m`;}
-      let info='';
-      if(isTrains){
-        const ps=[];
-        if(x.arrive) ps.push(`→ ${x.arrive}`);
-        if(x.delay>0) ps.push(`<span style="color:#f87171">+${x.delay}m</span>`);
-        if(x.transfers>0) ps.push(`${x.transfers} change`);
-        if(x.platform) ps.push(`Plat. ${x.platform}`);
-        if(ps.length) info=`<div class="sinfo">${ps.join(' · ')}</div>`;
-      }
-      return `<div class="srow${isNxt?' nxt':''}${past?' past':''}"><div class="stime">${ts}</div>${info}<span class="sbdg ${bc}">${bt}</span></div>`;
+      const arr=arrArr[i]?`<div class="sinfo">→ arrives ${arrArr[i]}</div>`:'';
+      return `<div class="srow${isNxt?' nxt':''}${past?' past':''}"><div class="stime">${t}</div>${arr}<span class="sbdg ${bc}">${bt}</span></div>`;
     }).join('');
   }
 
-  // ── journey planner ──────────────────────────────────────────────────────────
-  function calcPlan(trains){
+  // journey planner
+  function calcPlan(){
     const s=cfg();
     const schoolM=t2m(s.schoolTime);
     const latestArr=schoolM-s.walkToSchool;
-    let best=null;
-    for(const t of(trains||[])) if(t.arrive&&t2m(t.arrive)<=latestArr) best=t;
-    if(!best) return null;
-    const needAtStation=t2m(best.depart)-s.stationBuffer;
+    // Find trains that arrive at Herzliya in time
+    const depTimes=parseTimes(s.trainTimes);
+    const arrTimes=parseTimes(s.trainArrTimes);
+    let bestDep=null,bestArr=null;
+    for(let i=0;i<depTimes.length;i++){
+      const arr=arrTimes[i]?t2m(arrTimes[i]):null;
+      if(arr!==null&&arr<=latestArr){bestDep=depTimes[i];bestArr=arrTimes[i];}
+    }
+    // If no arrival times set, try just using departure (assume ~35min journey)
+    if(!bestDep){
+      for(const dep of depTimes){
+        const arrM=t2m(dep)+35;
+        if(arrM<=latestArr){bestDep=dep;bestArr=m2t(arrM);}
+      }
+    }
+    if(!bestDep)return null;
+    const needAtStation=t2m(bestDep)-s.stationBuffer;
     const busMustGo=needAtStation-s.busJourney;
     const busMs=parseTimes(s.busTimes).map(t2m);
     let bestBus=null;for(const m of busMs) if(m<=busMustGo) bestBus=m;
     const leaveM=(bestBus!==null?bestBus:busMustGo)-s.walkToBus;
-    return{leaveM,leave:m2t(leaveM),train:best,busDepart:bestBus!==null?m2t(bestBus):null};
+    return{leaveM,leave:m2t(leaveM),trainDep:bestDep,trainArr:bestArr,busDepart:bestBus!==null?m2t(bestBus):null};
   }
-  function renderHero(trains){
-    const plan=calcPlan(trains);
+
+  function renderHero(){
+    const plan=calcPlan();
     const tEl=document.getElementById('heroTime');
     const cEl=document.getElementById('heroCD');
     const pEl=document.getElementById('heroPlan');
-    if(!tEl) return;
+    if(!tEl)return;
     if(!plan){
       tEl.textContent='—';
-      cEl.textContent=(trains&&trains.length)?'Add bus times in the schedule card':'Add bus times + refresh trains';
-      if(pEl) pEl.innerHTML='';return;
+      cEl.textContent='Add bus + train times to see your leave-by time';
+      if(pEl)pEl.innerHTML='';return;
     }
     tEl.textContent=plan.leave;
     const diff=plan.leaveM-nowM();
     cEl.textContent=diff<0?'time passed':diff===0?'leave now!':diff===1?'in 1 min':`in ${diff} min`;
     if(pEl){
       const ls=[];
-      if(plan.busDepart) ls.push(`🚌 Bus ${plan.busDepart}`);
-      ls.push(`🚂 Train ${plan.train.depart}`);
-      if(plan.train.arrive) ls.push(`🏫 Arrive ${plan.train.arrive}`);
+      if(plan.busDepart)ls.push(`🚌 Bus ${plan.busDepart}`);
+      ls.push(`🚂 Train ${plan.trainDep}`);
+      if(plan.trainArr)ls.push(`🏫 Arrive ${plan.trainArr}`);
       pEl.innerHTML=ls.join('<br>');
     }
   }
 
-  // ── train cache ──────────────────────────────────────────────────────────────
-  let _mTrains=[],_mTs=0;
-  let _rTrains=[],_rTs=0;
-  async function fetchTrains(dir,force){
-    const isMorn=dir==='morning';
-    const cache=isMorn?{t:_mTrains,ts:_mTs}:{t:_rTrains,ts:_rTs};
-    if(!force&&cache.t.length&&Date.now()-cache.ts<90000) return cache.t;
-    const from=isMorn?'2300':'8600';
-    const to=isMorn?'8600':'2300';
-    try{
-      const r=await fetch(`/api/train-times?from=${from}&to=${to}`);
-      if(!r.ok) return cache.t;
-      const d=await r.json();
-      if(d.ok&&d.trains){
-        if(isMorn){_mTrains=d.trains;_mTs=Date.now();}
-        else{_rTrains=d.trains;_rTs=Date.now();}
-        return d.trains;
-      }
-    }catch{}
-    return cache.t;
-  }
-
-  // ── render views ─────────────────────────────────────────────────────────────
   function renderMorning(){
     const s=cfg();
-    const buses=parseTimes(s.busTimes);
-    renderMiniBus(document.getElementById('minisBus'),buses);
-    renderMiniTrain(document.getElementById('minisTrain'),_mTrains);
-    renderHero(_mTrains);
-    renderSched(document.getElementById('busSchedList'),buses,false);
-    renderSched(document.getElementById('trainSchedList'),_mTrains,true);
+    renderMini(document.getElementById('minisBus'),s.busTimes);
+    renderMini(document.getElementById('minisTrain'),s.trainTimes);
+    renderHero();
+    renderSched(document.getElementById('busSchedList'),s.busTimes);
+    renderSched(document.getElementById('trainSchedList'),s.trainTimes,s.trainArrTimes);
+    renderSched(document.getElementById('trainArrList'),s.trainArrTimes);
     document.querySelectorAll('.school-btn').forEach(b=>b.classList.toggle('active',b.dataset.time===s.schoolTime));
   }
+
   function renderAfternoon(){
     const s=cfg();
-    const buses=parseTimes(s.returnBusTimes||'');
-    renderSched(document.getElementById('returnTrainList'),_rTrains,true);
-    renderSched(document.getElementById('returnBusList'),buses,false);
+    renderSched(document.getElementById('returnTrainList'),s.returnTrainTimes);
+    renderSched(document.getElementById('returnBusList'),s.returnBusTimes);
   }
 
-  // ── refresh ──────────────────────────────────────────────────────────────────
-  async function refreshMorning(show){
-    const st=document.getElementById('heroSt');
-    const upEl=document.getElementById('heroUp');
-    const trUp=document.getElementById('trainUp');
-    if(show&&st) st.textContent='Fetching trains…';
-    await fetchTrains('morning',true);
-    renderMorning();
-    const t=fmtUp();
-    if(upEl) upEl.textContent=`Updated ${t}`;
-    if(trUp) trUp.textContent=`Updated ${t}`;
-    if(show&&st){
-      st.textContent=_mTrains.length?`${_mTrains.length} trains loaded ✓`:'No trains — check station IDs';
-      setTimeout(()=>{if(st.textContent.includes('train'))st.textContent='';},4000);
-    }
-  }
-  async function refreshReturn(show){
-    const upEl=document.getElementById('returnUp');
-    await fetchTrains('return',true);
-    renderAfternoon();
-    if(upEl) upEl.textContent=`Updated ${fmtUp()}`;
+  // wire an edit panel
+  function wireEdit(btnId,panelId,inputId,saveId,key,renderFn){
+    document.getElementById(btnId).addEventListener('click',()=>{
+      const p=document.getElementById(panelId);
+      p.classList.toggle('open');
+      document.getElementById(btnId).textContent=p.classList.contains('open')?'Close':'Edit';
+    });
+    document.getElementById(saveId).addEventListener('click',()=>{
+      const s=cfg();s[key]=document.getElementById(inputId).value.trim();store(s);
+      renderFn();
+      document.getElementById(panelId).classList.remove('open');
+      document.getElementById(btnId).textContent='Edit';
+    });
   }
 
-  // ── direction toggle ─────────────────────────────────────────────────────────
+  wireEdit('busEditBtn','busEditPanel','busTimesIn','busSaveBtn','busTimes',renderMorning);
+  wireEdit('trainEditBtn','trainEditPanel','trainTimesIn','trainSaveBtn','trainTimes',renderMorning);
+  wireEdit('trainArrEditBtn','trainArrEditPanel','trainArrIn','trainArrSaveBtn','trainArrTimes',renderMorning);
+  wireEdit('retTrainEditBtn','retTrainEditPanel','retTrainIn','retTrainSaveBtn','returnTrainTimes',renderAfternoon);
+  wireEdit('retBusEditBtn','retBusEditPanel','retBusIn','retBusSaveBtn','returnBusTimes',renderAfternoon);
+
+  // direction
   let _dir='morning';
   function setDir(d){
     _dir=d;
@@ -537,41 +506,18 @@ body{
     document.getElementById('afternoonView').style.display=d==='afternoon'?'':'none';
     document.getElementById('dirMorning').classList.toggle('active',d==='morning');
     document.getElementById('dirAfternoon').classList.toggle('active',d==='afternoon');
-    if(d==='afternoon') refreshReturn(false);
   }
   document.getElementById('dirMorning').addEventListener('click',()=>setDir('morning'));
   document.getElementById('dirAfternoon').addEventListener('click',()=>setDir('afternoon'));
 
-  // ── school time ──────────────────────────────────────────────────────────────
+  // school time
   document.querySelectorAll('.school-btn').forEach(btn=>{
     btn.addEventListener('click',()=>{
       const s=cfg();s.schoolTime=btn.dataset.time;store(s);renderMorning();
     });
   });
 
-  // ── refresh buttons ──────────────────────────────────────────────────────────
-  document.getElementById('refreshHeroBtn').addEventListener('click',()=>refreshMorning(true));
-  document.getElementById('trainRefBtn').addEventListener('click',()=>refreshMorning(true));
-  document.getElementById('returnRefBtn').addEventListener('click',()=>refreshReturn(true));
-
-  // ── bus edit ─────────────────────────────────────────────────────────────────
-  function wireEdit(toggleId,panelId,inputId,saveId,key,renderFn){
-    document.getElementById(toggleId).addEventListener('click',()=>{
-      const p=document.getElementById(panelId);
-      p.classList.toggle('open');
-      document.getElementById(toggleId).textContent=p.classList.contains('open')?'Close':'Edit';
-    });
-    document.getElementById(saveId).addEventListener('click',()=>{
-      const s=cfg();s[key]=document.getElementById(inputId).value.trim();store(s);
-      renderFn();
-      document.getElementById(panelId).classList.remove('open');
-      document.getElementById(toggleId).textContent='Edit';
-    });
-  }
-  wireEdit('busEditBtn','busEditPanel','busTimesIn','busSaveBtn','busTimes',renderMorning);
-  wireEdit('retBusEditBtn','retBusEditPanel','retBusIn','retBusSaveBtn','returnBusTimes',renderAfternoon);
-
-  // ── settings ─────────────────────────────────────────────────────────────────
+  // settings
   function loadForm(){
     const s=cfg();
     document.getElementById('sWalkBus').value=s.walkToBus;
@@ -579,7 +525,10 @@ body{
     document.getElementById('sBuf').value=s.stationBuffer;
     document.getElementById('sWalkSchool').value=s.walkToSchool;
     document.getElementById('busTimesIn').value=s.busTimes;
-    document.getElementById('retBusIn').value=s.returnBusTimes||'';
+    document.getElementById('trainTimesIn').value=s.trainTimes;
+    document.getElementById('trainArrIn').value=s.trainArrTimes;
+    document.getElementById('retTrainIn').value=s.returnTrainTimes;
+    document.getElementById('retBusIn').value=s.returnBusTimes;
   }
   document.getElementById('setSaveBtn').addEventListener('click',()=>{
     const s=cfg();
@@ -592,13 +541,13 @@ body{
     if(st){st.textContent='Settings saved ✓';setTimeout(()=>{if(st.textContent==='Settings saved ✓')st.textContent='';},2500);}
   });
 
-  // ── ntfy ─────────────────────────────────────────────────────────────────────
+  // ntfy
   function getNtfy(){return localStorage.getItem('dashboard:ntfy:topic')||'';}
   async function pushNtfy(title,body,atUnix){
     const topic=getNtfy();
     if(!topic){alert('Set your ntfy topic in the Reminders section first.');return false;}
     const h={'Content-Type':'text/plain',Title:title};
-    if(atUnix) h['At']=String(atUnix);
+    if(atUnix)h['At']=String(atUnix);
     try{const r=await fetch(`https://ntfy.sh/${topic}`,{method:'POST',headers:h,body});return r.ok;}
     catch{return false;}
   }
@@ -612,8 +561,8 @@ body{
     const at=new Date();at.setHours(Math.floor(alertM/60),alertM%60,0,0);
     if(at<=new Date()){if(stEl)stEl.textContent='Next bus is < 15 min away.';return;}
     if(stEl)stEl.textContent='Setting alert…';
-    const ok=await pushNtfy(`Bus 74 in 15 min — departs ${m2t(nextM)}`,'Leave home now for your bus!',Math.floor(at.getTime()/1000));
-    if(stEl) stEl.textContent=ok?`✓ Alert set for ${m2t(alertM)}`:'Failed — check ntfy topic';
+    const ok=await pushNtfy(`Bus 74 in 15 min — departs ${m2t(nextM)}`,'Leave home now!',Math.floor(at.getTime()/1000));
+    if(stEl)stEl.textContent=ok?`✓ Alert set for ${m2t(alertM)}`:'Failed — check ntfy topic';
   }
   document.getElementById('alertHeroBtn').addEventListener('click',()=>alertNextBus(document.getElementById('heroSt')));
   document.getElementById('alertNextBtn').addEventListener('click',()=>alertNextBus(document.getElementById('alertSt')));
@@ -624,21 +573,18 @@ body{
     const now=nowM();
     const upcoming=buses.map(t2m).filter(m=>m>now+15);
     if(!upcoming.length){stEl.textContent='No buses far enough in the future.';return;}
-    stEl.textContent='Scheduling…';
-    let sent=0;
+    stEl.textContent='Scheduling…';let sent=0;
     for(const busM of upcoming){
       const alertM=busM-15;
       const at=new Date();at.setHours(Math.floor(alertM/60),alertM%60,0,0);
       const ok=await pushNtfy(`Bus 74 in 15 min — ${m2t(busM)}`,'Leave home now!',Math.floor(at.getTime()/1000));
-      if(ok) sent++;
+      if(ok)sent++;
     }
     stEl.textContent=`✓ ${sent} alert${sent!==1?'s':''} scheduled for today`;
   });
 
-  // ── init ─────────────────────────────────────────────────────────────────────
   loadForm();
   renderMorning();
-  refreshMorning(false);
   setInterval(()=>{renderMorning();if(_dir==='afternoon')renderAfternoon();},60000);
 })();
 </script>
