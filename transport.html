@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="topbar.js" defer></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#050506">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dashboard">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon.svg">
+<title>Transport — Dashboard</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#050506;
+  --bg-card:rgba(255,255,255,0.04);
+  --border:rgba(255,255,255,0.06);
+  --border-mid:rgba(255,255,255,0.10);
+  --text-primary:#FAFAFA;
+  --text-secondary:#B8B6B0;
+  --text-tertiary:#76746E;
+  --accent:#60a5fa;
+  --accent-dim:rgba(96,165,250,0.10);
+  --accent-border:rgba(96,165,250,0.22);
+  --font:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Roboto,sans-serif;
+  --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+html{min-height:100%;}
+body{
+  min-height:100vh;background:var(--bg);color:var(--text-primary);
+  font-family:var(--font);max-width:800px;margin:0 auto;
+  padding:max(env(safe-area-inset-top,0px),20px) 18px 100px;
+}
+
+/* Page header */
+.page-header{margin-bottom:20px;}
+.page-title{font-size:26px;font-weight:800;letter-spacing:-0.025em;
+  background:linear-gradient(180deg,#FFFFFF 0%,#A0C4FF 140%);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+.page-date{font-size:12px;color:var(--text-tertiary);margin-top:3px;}
+
+/* Section label */
+.sec{font-family:var(--font-mono);font-size:11px;font-weight:600;
+  letter-spacing:0.18em;text-transform:uppercase;color:var(--text-tertiary);
+  margin:18px 0 9px;display:flex;align-items:center;gap:8px;}
+.sec::before{content:'≡';font-size:14px;opacity:0.7;}
+
+/* Card */
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;
+  box-shadow:0 12px 40px rgba(0,0,0,0.4);margin-bottom:14px;overflow:hidden;}
+
+/* Direction toggle */
+.dir-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px;}
+.dir-btn{padding:11px 10px;border-radius:12px;border:1px solid var(--border-mid);
+  background:rgba(255,255,255,0.04);color:var(--text-secondary);
+  font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all 0.15s;text-align:center;}
+.dir-btn.active{background:var(--accent-dim);border-color:var(--accent-border);color:var(--accent);}
+
+/* School time row */
+.school-row{display:flex;align-items:center;gap:10px;padding:16px 18px 0;}
+.school-label{font-size:11px;color:var(--text-tertiary);flex:1;}
+.school-btns{display:flex;gap:6px;}
+.school-btn{padding:6px 14px;border-radius:8px;border:1px solid var(--border-mid);
+  background:rgba(255,255,255,0.04);color:var(--text-secondary);
+  font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all 0.15s;}
+.school-btn.active{background:var(--accent-dim);border-color:var(--accent-border);color:var(--accent);}
+
+/* Hero bar */
+.hero{margin:14px 16px 16px;padding:18px 20px;background:var(--accent-dim);
+  border:1px solid var(--accent-border);border-radius:14px;
+  display:flex;align-items:center;gap:14px;}
+.hero-left{flex:1;}
+.hero-lbl{font-size:11px;color:rgba(96,165,250,0.7);margin-bottom:4px;}
+.hero-time{font-size:36px;font-weight:800;color:var(--accent);
+  font-variant-numeric:tabular-nums;letter-spacing:-0.03em;line-height:1;}
+.hero-cd{font-size:12px;color:rgba(96,165,250,0.65);margin-top:5px;}
+.hero-plan{font-size:11px;color:var(--text-tertiary);line-height:1.9;text-align:right;}
+
+/* Two-col grid */
+.cols{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--border);}
+.col{padding:14px 16px;}
+.col:first-child{border-right:1px solid var(--border);}
+.col-title{font-size:11px;font-weight:700;color:var(--text-secondary);
+  text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px;}
+.col-stop{font-size:10px;color:var(--text-tertiary);margin-bottom:10px;direction:rtl;}
+.t-row{display:flex;align-items:center;gap:8px;padding:5px 0;
+  border-bottom:1px solid rgba(255,255,255,0.04);}
+.t-row:last-child{border-bottom:none;}
+.t-val{font-size:16px;font-weight:700;color:var(--text-primary);
+  font-variant-numeric:tabular-nums;min-width:44px;}
+.t-val.nxt{color:var(--accent);}
+.bdg{font-size:10px;padding:2px 7px;border-radius:99px;
+  background:rgba(255,255,255,0.07);color:var(--text-tertiary);}
+.bdg.soon{background:rgba(96,165,250,0.15);color:var(--accent);}
+.bdg.delay{background:rgba(239,68,68,0.14);color:#f87171;}
+.bdg.xfer{background:rgba(251,191,36,0.12);color:#fbbf24;}
+.t-empty{font-size:11px;color:var(--text-tertiary);padding:6px 0;line-height:1.6;}
+
+/* Card bottom bar */
+.cbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+  padding:10px 16px 14px;border-top:1px solid var(--border);}
+.cbtn{padding:7px 13px;border-radius:8px;border:1px solid var(--border-mid);
+  background:rgba(255,255,255,0.04);color:var(--text-secondary);
+  font-size:12px;cursor:pointer;font-family:var(--font);transition:background 0.15s;}
+.cbtn:hover{background:rgba(255,255,255,0.08);}
+.cbtn.prim{background:var(--accent-dim);border-color:var(--accent-border);color:var(--accent);}
+.cst{font-size:11px;color:var(--text-tertiary);}
+.cup{font-size:10px;color:var(--text-tertiary);margin-left:auto;}
+
+/* Full schedule list */
+.scard{padding:16px 18px;}
+.scard-title{font-size:13px;font-weight:700;color:var(--text-primary);margin-bottom:12px;}
+.slist{display:flex;flex-direction:column;gap:5px;}
+.srow{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;
+  background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);}
+.srow.nxt{background:var(--accent-dim);border-color:var(--accent-border);}
+.srow.past{opacity:0.42;}
+.stime{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;min-width:46px;}
+.srow.nxt .stime{color:var(--accent);}
+.sinfo{flex:1;font-size:10px;color:var(--text-tertiary);line-height:1.5;}
+.sbdg{font-size:10px;padding:2px 8px;border-radius:99px;}
+.sbdg.past{background:rgba(255,255,255,0.05);color:var(--text-tertiary);}
+.sbdg.nxt{background:var(--accent-dim);color:var(--accent);}
+.sbdg.soon{background:rgba(96,165,250,0.14);color:var(--accent);}
+.sbdg.ok{background:rgba(255,255,255,0.06);color:var(--text-tertiary);}
+.sempty{font-size:12px;color:var(--text-tertiary);text-align:center;
+  padding:22px 10px;line-height:1.8;}
+
+/* Inline edit panel */
+.edit-toggle{display:flex;align-items:center;justify-content:space-between;
+  margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
+.edit-lbl{font-size:11px;color:var(--text-tertiary);}
+.edit-open{padding:5px 12px;border-radius:7px;border:1px solid var(--border-mid);
+  background:rgba(255,255,255,0.04);color:var(--text-secondary);
+  font-size:11px;cursor:pointer;font-family:var(--font);}
+.edit-panel{margin-top:10px;display:none;}
+.edit-panel.open{display:block;}
+.edit-input{width:100%;background:rgba(255,255,255,0.06);border:1px solid var(--border-mid);
+  border-radius:8px;color:var(--text-primary);font-size:12px;font-family:var(--font-mono);
+  padding:8px 12px;outline:none;}
+.edit-input:focus{border-color:var(--accent-border);}
+.edit-hint{font-size:10px;color:var(--text-tertiary);margin-top:5px;}
+.edit-save{margin-top:8px;padding:7px 16px;border-radius:8px;border:none;
+  background:var(--accent-dim);color:var(--accent);
+  font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);}
+
+/* Settings card */
+.set-card{padding:16px 18px;}
+.set-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.set-lbl{font-size:12px;color:var(--text-secondary);flex:1;}
+.set-in{width:56px;background:rgba(255,255,255,0.06);border:1px solid var(--border-mid);
+  border-radius:7px;color:var(--text-primary);font-size:13px;font-weight:600;
+  padding:6px 8px;text-align:center;font-family:var(--font-mono);}
+.set-unit{font-size:11px;color:var(--text-tertiary);}
+.set-save{margin-top:8px;padding:8px 22px;border-radius:10px;border:none;
+  background:var(--accent-dim);color:var(--accent);
+  font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);}
+.set-note{font-size:10px;color:var(--text-tertiary);margin-top:12px;line-height:1.7;}
+
+/* Alerts card */
+.al-card{padding:16px 18px;}
+.al-title{font-size:13px;font-weight:700;color:var(--text-primary);margin-bottom:4px;}
+.al-sub{font-size:11px;color:var(--text-tertiary);margin-bottom:14px;line-height:1.6;}
+.al-btns{display:flex;flex-wrap:wrap;gap:8px;}
+.al-st{margin-top:10px;font-size:11px;color:var(--text-tertiary);min-height:16px;}
+
+/* Refresh bar */
+.rbar{display:flex;align-items:center;gap:10px;
+  padding:10px 16px;border-top:1px solid var(--border);}
+.rbtn{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;
+  border:1px solid var(--border-mid);background:rgba(255,255,255,0.04);
+  color:var(--text-secondary);font-size:12px;cursor:pointer;font-family:var(--font);transition:background 0.15s;}
+.rbtn:hover{background:rgba(255,255,255,0.08);}
+.rup{font-size:10px;color:var(--text-tertiary);margin-left:auto;}
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div class="page-title">🚌 Transport</div>
+  <div class="page-date" id="pageDate"></div>
+</div>
+
+<!-- Direction toggle -->
+<div class="dir-row">
+  <button class="dir-btn active" id="dirMorning">☀️ To School</button>
+  <button class="dir-btn" id="dirAfternoon">🌆 Back Home</button>
+</div>
+
+<!-- ─── MORNING VIEW ────────────────────────────────────────────── -->
+<div id="morningView">
+
+  <div class="sec">Journey Planner</div>
+  <div class="card">
+    <div class="school-row">
+      <span class="school-label">School starts at</span>
+      <div class="school-btns">
+        <button class="school-btn" data-time="07:40">7:40</button>
+        <button class="school-btn" data-time="08:00">8:00</button>
+      </div>
+    </div>
+    <div class="hero">
+      <div class="hero-left">
+        <div class="hero-lbl">Leave home by</div>
+        <div class="hero-time" id="heroTime">—</div>
+        <div class="hero-cd" id="heroCD"></div>
+      </div>
+      <div class="hero-plan" id="heroPlan"></div>
+    </div>
+    <div class="cols">
+      <div class="col">
+        <div class="col-title">🚌 Bus 74</div>
+        <div class="col-stop">יהודה הלוי / הרב כלף</div>
+        <div id="minisBus"></div>
+      </div>
+      <div class="col">
+        <div class="col-title">🚂 Rakevet</div>
+        <div class="col-stop">ראש העין צפון ← הרצליה</div>
+        <div id="minisTrain"></div>
+      </div>
+    </div>
+    <div class="cbar">
+      <button class="cbtn prim" id="alertHeroBtn">🔔 Alert me</button>
+      <button class="cbtn" id="refreshHeroBtn">↻ Refresh</button>
+      <span class="cst" id="heroSt"></span>
+      <span class="cup" id="heroUp"></span>
+    </div>
+  </div>
+
+  <div class="sec">Bus 74 Schedule</div>
+  <div class="card">
+    <div class="scard">
+      <div class="scard-title">Morning departures · יהודה הלוי / הרב כלף (37557)</div>
+      <div class="slist" id="busSchedList"><div class="sempty">Add bus times below →</div></div>
+      <div class="edit-toggle">
+        <span class="edit-lbl">Morning bus times</span>
+        <button class="edit-open" id="busEditBtn">Edit</button>
+      </div>
+      <div class="edit-panel" id="busEditPanel">
+        <input class="edit-input" id="busTimesIn" type="text" placeholder="06:50,07:05,07:20,07:35,07:50,08:05" autocomplete="off" spellcheck="false">
+        <div class="edit-hint">All morning departures from your stop, comma-separated · format HH:MM</div>
+        <button class="edit-save" id="busSaveBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">Live Train Times</div>
+  <div class="card">
+    <div class="scard">
+      <div class="scard-title">ראש העין צפון → הרצליה · live departures</div>
+      <div class="slist" id="trainSchedList"><div class="sempty">Tap refresh to load live train times</div></div>
+    </div>
+    <div class="rbar">
+      <button class="rbtn" id="trainRefBtn">↻ Refresh trains</button>
+      <span class="rup" id="trainUp"></span>
+    </div>
+  </div>
+
+</div><!-- /morningView -->
+
+<!-- ─── AFTERNOON VIEW ──────────────────────────────────────────── -->
+<div id="afternoonView" style="display:none">
+
+  <div class="sec">Live Return Trains</div>
+  <div class="card">
+    <div class="scard">
+      <div class="scard-title">הרצליה → ראש העין צפון · live departures</div>
+      <div class="slist" id="returnTrainList"><div class="sempty">Tap refresh to load live train times</div></div>
+    </div>
+    <div class="rbar">
+      <button class="rbtn" id="returnRefBtn">↻ Refresh trains</button>
+      <span class="rup" id="returnUp"></span>
+    </div>
+  </div>
+
+  <div class="sec">Bus from Station</div>
+  <div class="card">
+    <div class="scard">
+      <div class="scard-title">From ראש העין צפון station → home</div>
+      <div class="slist" id="returnBusList"><div class="sempty">Add your afternoon bus times below</div></div>
+      <div class="edit-toggle">
+        <span class="edit-lbl">Afternoon bus times</span>
+        <button class="edit-open" id="retBusEditBtn">Edit</button>
+      </div>
+      <div class="edit-panel" id="retBusEditPanel">
+        <input class="edit-input" id="retBusIn" type="text" placeholder="13:30,14:00,14:30,15:00,15:30,16:00" autocomplete="off" spellcheck="false">
+        <div class="edit-hint">Buses from the train station back home, comma-separated · HH:MM</div>
+        <button class="edit-save" id="retBusSaveBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /afternoonView -->
+
+<!-- ─── ALWAYS VISIBLE ──────────────────────────────────────────── -->
+
+<div class="sec">Notifications</div>
+<div class="card">
+  <div class="al-card">
+    <div class="al-title">ntfy alerts</div>
+    <div class="al-sub">Sends a push notification to your phone before your bus. Uses the ntfy topic saved in the Reminders section.</div>
+    <div class="al-btns">
+      <button class="cbtn prim" id="alertNextBtn">🔔 Alert for next bus</button>
+      <button class="cbtn" id="alertAllBtn">📅 Schedule all buses today</button>
+    </div>
+    <div class="al-st" id="alertSt"></div>
+  </div>
+</div>
+
+<div class="sec">Settings</div>
+<div class="card">
+  <div class="set-card">
+    <div class="set-row">
+      <span class="set-lbl">Walk home → bus stop</span>
+      <input class="set-in" id="sWalkBus" type="number" value="5" min="0" max="30">
+      <span class="set-unit">min</span>
+    </div>
+    <div class="set-row">
+      <span class="set-lbl">Bus journey to train station</span>
+      <input class="set-in" id="sBusJrn" type="number" value="10" min="1" max="60">
+      <span class="set-unit">min</span>
+    </div>
+    <div class="set-row">
+      <span class="set-lbl">Buffer at train station</span>
+      <input class="set-in" id="sBuf" type="number" value="5" min="0" max="20">
+      <span class="set-unit">min</span>
+    </div>
+    <div class="set-row">
+      <span class="set-lbl">Walk Herzliya station → school</span>
+      <input class="set-in" id="sWalkSchool" type="number" value="10" min="0" max="30">
+      <span class="set-unit">min</span>
+    </div>
+    <button class="set-save" id="setSaveBtn">Save settings</button>
+    <div class="set-note">
+      Train data from Israel Railways API · Station IDs: ראש העין צפון = 2300, הרצליה = 8600<br>
+      If trains don't load the station IDs might need updating — let me know.
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const KEY='dashboard:transport:v1';
+  function load(){try{return JSON.parse(localStorage.getItem(KEY))||{};}catch{return {};}}
+  function store(o){localStorage.setItem(KEY,JSON.stringify(o));}
+  const DEF={schoolTime:'07:40',walkToBus:5,busJourney:10,stationBuffer:5,walkToSchool:10,busTimes:'',returnBusTimes:''};
+  function cfg(){return Object.assign({},DEF,load());}
+
+  // ── helpers ────────────────────────────────────────────────────────────────
+  function t2m(hhmm){const[h,m]=hhmm.split(':').map(Number);return h*60+m;}
+  function m2t(m){const h=Math.floor(m/60)%24,mn=m%60;return `${String(h).padStart(2,'0')}:${String(mn).padStart(2,'0')}`;}
+  function nowM(){const n=new Date();return n.getHours()*60+n.getMinutes();}
+  function parseTimes(s){
+    if(!s) return [];
+    return s.split(',').map(x=>x.trim()).filter(x=>/^\d{1,2}:\d{2}$/.test(x)).sort();
+  }
+  function fmtUp(){const n=new Date();return `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;}
+
+  // ── date header ─────────────────────────────────────────────────────────────
+  (function(){
+    const el=document.getElementById('pageDate');
+    if(!el) return;
+    const d=new Date();
+    const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    el.textContent=`${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}`;
+  })();
+
+  // ── mini lists (2-col in hero card) ─────────────────────────────────────────
+  function renderMiniBus(el,busTimes){
+    if(!el) return;
+    const now=nowM();
+    const up=busTimes.map(t2m).filter(m=>m>=now-1).slice(0,4);
+    if(!up.length){el.innerHTML='<div class="t-empty">No more buses today</div>';return;}
+    el.innerHTML=up.map((m,i)=>{
+      const d=m-now;const soon=d<=12;
+      const b=d<=0?'now':d<60?`${d}m`:`${Math.floor(d/60)}h${d%60}m`;
+      return `<div class="t-row"><div class="t-val${i===0?' nxt':''}">${m2t(m)}</div><span class="bdg${soon?' soon':''}">${b}</span></div>`;
+    }).join('');
+  }
+  function renderMiniTrain(el,trains){
+    if(!el) return;
+    if(!trains||!trains.length){el.innerHTML='<div class="t-empty">Tap ↻ Refresh</div>';return;}
+    const now=nowM();
+    el.innerHTML=trains.slice(0,4).map((t,i)=>{
+      const d=t2m(t.depart)-now;const soon=d<=15;
+      const b=d<=0?'left':d<60?`${d}m`:`${Math.floor(d/60)}h${d%60}m`;
+      const ex=(t.delay>0?`<span class="bdg delay">+${t.delay}m</span>`:'')+
+               (t.transfers>0?`<span class="bdg xfer">${t.transfers}x</span>`:'');
+      return `<div class="t-row"><div class="t-val${i===0?' nxt':''}">${t.depart}</div><span class="bdg${soon?' soon':''}">${b}</span>${ex}</div>`;
+    }).join('');
+  }
+
+  // ── full schedule list ───────────────────────────────────────────────────────
+  function renderSched(el,items,isTrains){
+    if(!el) return;
+    if(!items||!items.length){
+      el.innerHTML='<div class="sempty">No times yet.<br>'+(isTrains?'Tap ↻ refresh above.':'Add times using Edit button.')+'</div>';
+      return;
+    }
+    const now=nowM();
+    let firstFutureIdx=-1;
+    items.forEach((x,i)=>{if(firstFutureIdx===-1&&t2m(isTrains?x.depart:x)>=now)firstFutureIdx=i;});
+    el.innerHTML=items.map((x,i)=>{
+      const ts=isTrains?x.depart:x;
+      const depM=t2m(ts);
+      const past=depM<now;
+      const isNxt=i===firstFutureIdx;
+      const diff=depM-now;
+      let bc='ok',bt=diff<60?`${diff}m`:`${Math.floor(diff/60)}h${diff%60}m`;
+      if(past){bc='past';bt='passed';}
+      else if(isNxt){bc='nxt';bt='next';}
+      else if(diff<=15){bc='soon';bt=`${diff}m`;}
+      let info='';
+      if(isTrains){
+        const ps=[];
+        if(x.arrive) ps.push(`→ ${x.arrive}`);
+        if(x.delay>0) ps.push(`<span style="color:#f87171">+${x.delay}m</span>`);
+        if(x.transfers>0) ps.push(`${x.transfers} change`);
+        if(x.platform) ps.push(`Plat. ${x.platform}`);
+        if(ps.length) info=`<div class="sinfo">${ps.join(' · ')}</div>`;
+      }
+      return `<div class="srow${isNxt?' nxt':''}${past?' past':''}"><div class="stime">${ts}</div>${info}<span class="sbdg ${bc}">${bt}</span></div>`;
+    }).join('');
+  }
+
+  // ── journey planner ──────────────────────────────────────────────────────────
+  function calcPlan(trains){
+    const s=cfg();
+    const schoolM=t2m(s.schoolTime);
+    const latestArr=schoolM-s.walkToSchool;
+    let best=null;
+    for(const t of(trains||[])) if(t.arrive&&t2m(t.arrive)<=latestArr) best=t;
+    if(!best) return null;
+    const needAtStation=t2m(best.depart)-s.stationBuffer;
+    const busMustGo=needAtStation-s.busJourney;
+    const busMs=parseTimes(s.busTimes).map(t2m);
+    let bestBus=null;for(const m of busMs) if(m<=busMustGo) bestBus=m;
+    const leaveM=(bestBus!==null?bestBus:busMustGo)-s.walkToBus;
+    return{leaveM,leave:m2t(leaveM),train:best,busDepart:bestBus!==null?m2t(bestBus):null};
+  }
+  function renderHero(trains){
+    const plan=calcPlan(trains);
+    const tEl=document.getElementById('heroTime');
+    const cEl=document.getElementById('heroCD');
+    const pEl=document.getElementById('heroPlan');
+    if(!tEl) return;
+    if(!plan){
+      tEl.textContent='—';
+      cEl.textContent=(trains&&trains.length)?'Add bus times in the schedule card':'Add bus times + refresh trains';
+      if(pEl) pEl.innerHTML='';return;
+    }
+    tEl.textContent=plan.leave;
+    const diff=plan.leaveM-nowM();
+    cEl.textContent=diff<0?'time passed':diff===0?'leave now!':diff===1?'in 1 min':`in ${diff} min`;
+    if(pEl){
+      const ls=[];
+      if(plan.busDepart) ls.push(`🚌 Bus ${plan.busDepart}`);
+      ls.push(`🚂 Train ${plan.train.depart}`);
+      if(plan.train.arrive) ls.push(`🏫 Arrive ${plan.train.arrive}`);
+      pEl.innerHTML=ls.join('<br>');
+    }
+  }
+
+  // ── train cache ──────────────────────────────────────────────────────────────
+  let _mTrains=[],_mTs=0;
+  let _rTrains=[],_rTs=0;
+  async function fetchTrains(dir,force){
+    const isMorn=dir==='morning';
+    const cache=isMorn?{t:_mTrains,ts:_mTs}:{t:_rTrains,ts:_rTs};
+    if(!force&&cache.t.length&&Date.now()-cache.ts<90000) return cache.t;
+    const from=isMorn?'2300':'8600';
+    const to=isMorn?'8600':'2300';
+    try{
+      const r=await fetch(`/api/train-times?from=${from}&to=${to}`);
+      if(!r.ok) return cache.t;
+      const d=await r.json();
+      if(d.ok&&d.trains){
+        if(isMorn){_mTrains=d.trains;_mTs=Date.now();}
+        else{_rTrains=d.trains;_rTs=Date.now();}
+        return d.trains;
+      }
+    }catch{}
+    return cache.t;
+  }
+
+  // ── render views ─────────────────────────────────────────────────────────────
+  function renderMorning(){
+    const s=cfg();
+    const buses=parseTimes(s.busTimes);
+    renderMiniBus(document.getElementById('minisBus'),buses);
+    renderMiniTrain(document.getElementById('minisTrain'),_mTrains);
+    renderHero(_mTrains);
+    renderSched(document.getElementById('busSchedList'),buses,false);
+    renderSched(document.getElementById('trainSchedList'),_mTrains,true);
+    document.querySelectorAll('.school-btn').forEach(b=>b.classList.toggle('active',b.dataset.time===s.schoolTime));
+  }
+  function renderAfternoon(){
+    const s=cfg();
+    const buses=parseTimes(s.returnBusTimes||'');
+    renderSched(document.getElementById('returnTrainList'),_rTrains,true);
+    renderSched(document.getElementById('returnBusList'),buses,false);
+  }
+
+  // ── refresh ──────────────────────────────────────────────────────────────────
+  async function refreshMorning(show){
+    const st=document.getElementById('heroSt');
+    const upEl=document.getElementById('heroUp');
+    const trUp=document.getElementById('trainUp');
+    if(show&&st) st.textContent='Fetching trains…';
+    await fetchTrains('morning',true);
+    renderMorning();
+    const t=fmtUp();
+    if(upEl) upEl.textContent=`Updated ${t}`;
+    if(trUp) trUp.textContent=`Updated ${t}`;
+    if(show&&st){
+      st.textContent=_mTrains.length?`${_mTrains.length} trains loaded ✓`:'No trains — check station IDs';
+      setTimeout(()=>{if(st.textContent.includes('train'))st.textContent='';},4000);
+    }
+  }
+  async function refreshReturn(show){
+    const upEl=document.getElementById('returnUp');
+    await fetchTrains('return',true);
+    renderAfternoon();
+    if(upEl) upEl.textContent=`Updated ${fmtUp()}`;
+  }
+
+  // ── direction toggle ─────────────────────────────────────────────────────────
+  let _dir='morning';
+  function setDir(d){
+    _dir=d;
+    document.getElementById('morningView').style.display=d==='morning'?'':'none';
+    document.getElementById('afternoonView').style.display=d==='afternoon'?'':'none';
+    document.getElementById('dirMorning').classList.toggle('active',d==='morning');
+    document.getElementById('dirAfternoon').classList.toggle('active',d==='afternoon');
+    if(d==='afternoon') refreshReturn(false);
+  }
+  document.getElementById('dirMorning').addEventListener('click',()=>setDir('morning'));
+  document.getElementById('dirAfternoon').addEventListener('click',()=>setDir('afternoon'));
+
+  // ── school time ──────────────────────────────────────────────────────────────
+  document.querySelectorAll('.school-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const s=cfg();s.schoolTime=btn.dataset.time;store(s);renderMorning();
+    });
+  });
+
+  // ── refresh buttons ──────────────────────────────────────────────────────────
+  document.getElementById('refreshHeroBtn').addEventListener('click',()=>refreshMorning(true));
+  document.getElementById('trainRefBtn').addEventListener('click',()=>refreshMorning(true));
+  document.getElementById('returnRefBtn').addEventListener('click',()=>refreshReturn(true));
+
+  // ── bus edit ─────────────────────────────────────────────────────────────────
+  function wireEdit(toggleId,panelId,inputId,saveId,key,renderFn){
+    document.getElementById(toggleId).addEventListener('click',()=>{
+      const p=document.getElementById(panelId);
+      p.classList.toggle('open');
+      document.getElementById(toggleId).textContent=p.classList.contains('open')?'Close':'Edit';
+    });
+    document.getElementById(saveId).addEventListener('click',()=>{
+      const s=cfg();s[key]=document.getElementById(inputId).value.trim();store(s);
+      renderFn();
+      document.getElementById(panelId).classList.remove('open');
+      document.getElementById(toggleId).textContent='Edit';
+    });
+  }
+  wireEdit('busEditBtn','busEditPanel','busTimesIn','busSaveBtn','busTimes',renderMorning);
+  wireEdit('retBusEditBtn','retBusEditPanel','retBusIn','retBusSaveBtn','returnBusTimes',renderAfternoon);
+
+  // ── settings ─────────────────────────────────────────────────────────────────
+  function loadForm(){
+    const s=cfg();
+    document.getElementById('sWalkBus').value=s.walkToBus;
+    document.getElementById('sBusJrn').value=s.busJourney;
+    document.getElementById('sBuf').value=s.stationBuffer;
+    document.getElementById('sWalkSchool').value=s.walkToSchool;
+    document.getElementById('busTimesIn').value=s.busTimes;
+    document.getElementById('retBusIn').value=s.returnBusTimes||'';
+  }
+  document.getElementById('setSaveBtn').addEventListener('click',()=>{
+    const s=cfg();
+    s.walkToBus=parseInt(document.getElementById('sWalkBus').value)||5;
+    s.busJourney=parseInt(document.getElementById('sBusJrn').value)||10;
+    s.stationBuffer=parseInt(document.getElementById('sBuf').value)||5;
+    s.walkToSchool=parseInt(document.getElementById('sWalkSchool').value)||10;
+    store(s);renderMorning();
+    const st=document.getElementById('alertSt');
+    if(st){st.textContent='Settings saved ✓';setTimeout(()=>{if(st.textContent==='Settings saved ✓')st.textContent='';},2500);}
+  });
+
+  // ── ntfy ─────────────────────────────────────────────────────────────────────
+  function getNtfy(){return localStorage.getItem('dashboard:ntfy:topic')||'';}
+  async function pushNtfy(title,body,atUnix){
+    const topic=getNtfy();
+    if(!topic){alert('Set your ntfy topic in the Reminders section first.');return false;}
+    const h={'Content-Type':'text/plain',Title:title};
+    if(atUnix) h['At']=String(atUnix);
+    try{const r=await fetch(`https://ntfy.sh/${topic}`,{method:'POST',headers:h,body});return r.ok;}
+    catch{return false;}
+  }
+  async function alertNextBus(stEl){
+    const s=cfg();
+    const buses=parseTimes(s.busTimes);
+    const now=nowM();
+    const nextM=buses.map(t2m).find(m=>m>now);
+    if(!nextM){if(stEl)stEl.textContent='No upcoming buses.';return;}
+    const alertM=nextM-15;
+    const at=new Date();at.setHours(Math.floor(alertM/60),alertM%60,0,0);
+    if(at<=new Date()){if(stEl)stEl.textContent='Next bus is < 15 min away.';return;}
+    if(stEl)stEl.textContent='Setting alert…';
+    const ok=await pushNtfy(`Bus 74 in 15 min — departs ${m2t(nextM)}`,'Leave home now for your bus!',Math.floor(at.getTime()/1000));
+    if(stEl) stEl.textContent=ok?`✓ Alert set for ${m2t(alertM)}`:'Failed — check ntfy topic';
+  }
+  document.getElementById('alertHeroBtn').addEventListener('click',()=>alertNextBus(document.getElementById('heroSt')));
+  document.getElementById('alertNextBtn').addEventListener('click',()=>alertNextBus(document.getElementById('alertSt')));
+  document.getElementById('alertAllBtn').addEventListener('click',async()=>{
+    const stEl=document.getElementById('alertSt');
+    const s=cfg();
+    const buses=parseTimes(s.busTimes);
+    const now=nowM();
+    const upcoming=buses.map(t2m).filter(m=>m>now+15);
+    if(!upcoming.length){stEl.textContent='No buses far enough in the future.';return;}
+    stEl.textContent='Scheduling…';
+    let sent=0;
+    for(const busM of upcoming){
+      const alertM=busM-15;
+      const at=new Date();at.setHours(Math.floor(alertM/60),alertM%60,0,0);
+      const ok=await pushNtfy(`Bus 74 in 15 min — ${m2t(busM)}`,'Leave home now!',Math.floor(at.getTime()/1000));
+      if(ok) sent++;
+    }
+    stEl.textContent=`✓ ${sent} alert${sent!==1?'s':''} scheduled for today`;
+  });
+
+  // ── init ─────────────────────────────────────────────────────────────────────
+  loadForm();
+  renderMorning();
+  refreshMorning(false);
+  setInterval(()=>{renderMorning();if(_dir==='afternoon')renderAfternoon();},60000);
+})();
+</script>
+</body>
+</html>
