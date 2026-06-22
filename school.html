@@ -1585,6 +1585,112 @@ document.addEventListener('keydown',function(e){
 // ===== Init =====
 document.addEventListener('DOMContentLoaded',scRenderAll);
 
+// ===== Supabase sync =====
+(function(){
+  const SB_URL='https://mtuoqwbrujxutofhyahb.supabase.co';
+  const SB_KEY='sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
+  const APP_KEY='school';
+  function isSynced(k){return k.startsWith('dashboard:school:v1:');}
+
+  // Capture original before hooking so applyRemote can write without triggering a push loop
+  const _rawSet=localStorage.setItem.bind(localStorage);
+
+  function gatherLocal(){
+    const s={};
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(k&&isSynced(k)){try{s[k]=JSON.parse(localStorage.getItem(k));}catch{s[k]=localStorage.getItem(k);}}
+    }
+    return s;
+  }
+
+  function applyRemote(data){
+    if(!data) return;
+    Object.keys(data).forEach(k=>{if(isSynced(k))_rawSet(k,JSON.stringify(data[k]));});
+    try{scRenderAll();}catch{}
+  }
+
+  let lastSyncedJson=null,pushTimer=null,_sb=null;
+
+  function schedPush(){clearTimeout(pushTimer);pushTimer=setTimeout(doPush,300);}
+  async function doPush(){
+    if(!_sb) return;
+    const s=gatherLocal();const j=JSON.stringify(s);
+    if(j===lastSyncedJson) return;
+    try{await _sb.from('app_state').upsert({key:APP_KEY,data:s,updated_at:new Date().toISOString()});lastSyncedJson=j;}catch{}
+  }
+
+  // Hook saves so any scSet() triggers a sync push
+  const _rawRemove=localStorage.removeItem.bind(localStorage);
+  localStorage.setItem=function(k,v){_rawSet(k,v);try{if(isSynced(k))schedPush();}catch{}};
+  localStorage.removeItem=function(k){_rawRemove(k);try{if(isSynced(k))schedPush();}catch{}};
+
+  async function fetchAndApply(){
+    if(!_sb) return;
+    try{
+      const{data:row}=await _sb.from('app_state').select('data').eq('key',APP_KEY).maybeSingle();
+      if(!row||!row.data) return;
+      const j=JSON.stringify(row.data);
+      if(j===lastSyncedJson) return;
+      lastSyncedJson=j;
+      applyRemote(row.data);
+    }catch{}
+  }
+
+  async function initSync(){
+    if(!window.supabase) return;
+    _sb=window.supabase.createClient(SB_URL,SB_KEY);
+    try{
+      const{data:row}=await _sb.from('app_state').select('data').eq('key',APP_KEY).maybeSingle();
+      if(row&&row.data&&Object.keys(row.data).length>0){
+        lastSyncedJson=JSON.stringify(row.data);
+        try{applyRemote(row.data);}catch{}
+      } else {
+        const local=gatherLocal();
+        if(Object.keys(local).length>0){
+          lastSyncedJson=JSON.stringify(local);
+          await _sb.from('app_state').upsert({key:APP_KEY,data:local,updated_at:new Date().toISOString()});
+        }
+      }
+      const localNow=gatherLocal();
+      if(JSON.stringify(localNow)!==lastSyncedJson) schedPush();
+    }catch{}
+    // Realtime — independent of init success
+    try{
+      _sb.channel('db-school')
+        .on('postgres_changes',{event:'*',schema:'public',table:'app_state',filter:`key=eq.${APP_KEY}`},payload=>{
+          try{
+            const d=payload.new&&payload.new.data;if(!d) return;
+            const j=JSON.stringify(d);if(j===lastSyncedJson) return;
+            lastSyncedJson=j;applyRemote(d);
+          }catch{}
+        })
+        .subscribe();
+    }catch{}
+  }
+
+  // Pull latest when tab becomes visible
+  document.addEventListener('visibilitychange',async()=>{
+    if(document.visibilityState==='hidden') return;
+    await fetchAndApply();
+  });
+
+  // Keepalive push on page close
+  function flush(){
+    if(!_sb) return;
+    const s=gatherLocal();const j=JSON.stringify(s);if(j===lastSyncedJson) return;
+    try{fetch(SB_URL+'/rest/v1/app_state',{method:'POST',keepalive:true,
+      headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Prefer':'resolution=merge-duplicates'},
+      body:JSON.stringify({key:APP_KEY,data:s,updated_at:new Date().toISOString()})
+    });}catch{}
+  }
+  window.addEventListener('pagehide',flush);
+  window.addEventListener('beforeunload',flush);
+
+  function wait(){window.supabase?initSync():setTimeout(wait,50);}
+  wait();
+})();
+
 })();
 
 if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}

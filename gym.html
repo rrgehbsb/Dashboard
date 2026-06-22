@@ -3842,8 +3842,18 @@ img, video, canvas, svg { max-width: 100%; }
   }, true);
   window.addEventListener('pagehide', pcFlushPushOnUnload);
   window.addEventListener('beforeunload', pcFlushPushOnUnload);
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) pcFlushPushOnUnload();
+  document.addEventListener('visibilitychange', async () => {
+    if (document.hidden) { pcFlushPushOnUnload(); return; }
+    // Tab came back into view — pull latest in case realtime missed something
+    if (!pcSupa) return;
+    try {
+      const { data } = await pcSupa.from('app_state').select('data').eq('key', APP_KEY).maybeSingle();
+      if (!data || !data.data) return;
+      const incoming = JSON.stringify(data.data);
+      if (incoming === pcLastSyncedJson) return;
+      pcLastSyncedJson = incoming;
+      pcMaybeApplyRemote(data.data);
+    } catch (_) {}
   });
 })();
 </script>
