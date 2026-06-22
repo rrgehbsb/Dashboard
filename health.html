@@ -1626,7 +1626,18 @@ details[open] .mp-details-summary::before { content: '▾ '; }
 
     window.addEventListener('pagehide',flushWithKeepalive);
     window.addEventListener('beforeunload',flushWithKeepalive);
-    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flushWithKeepalive();});
+    document.addEventListener('visibilitychange',async()=>{
+      if(document.visibilityState==='hidden'){flushWithKeepalive();return;}
+      // Tab came back into view — pull latest from Supabase in case realtime missed anything
+      try{
+        const{data:row}=await client().from('app_state').select('data').eq('key',APP_KEY).single();
+        if(!row||!row.data) return;
+        const j=JSON.stringify(row.data);
+        if(j===lastSyncedJson) return;
+        lastSyncedJson=j;
+        try{applyRemote(row.data);}catch(e){}
+      }catch{}
+    });
 
     function waitForSupabase(){window.supabase?initSync():setTimeout(waitForSupabase,50);}
     waitForSupabase();
