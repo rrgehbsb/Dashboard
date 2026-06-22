@@ -1537,6 +1537,20 @@ details[open] .mp-details-summary::before { content: '▾ '; }
             const local=JSON.parse(localStorage.getItem(k)||'null');
             _raw.set(k,JSON.stringify(mergeMealDailyLog(local,data[k])));
           }catch{_raw.set(k,JSON.stringify(data[k]));}
+        } else if(k==='po_water_v1'){
+          // If local was modified more recently than remote, keep today's local count
+          try{
+            const local=JSON.parse(localStorage.getItem(k)||'null');
+            const remote=data[k];
+            if(local&&remote&&(local._ts||0)>(remote._ts||0)){
+              const d=new Date();
+              const tk=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+              const merged=Object.assign({},remote,{logs:Object.assign({},remote.logs||{}),_ts:local._ts});
+              const localToday=(local.logs||{})[tk];
+              if(localToday!=null&&localToday>0) merged.logs[tk]=localToday; else delete merged.logs[tk];
+              _raw.set(k,JSON.stringify(merged));
+            }else{_raw.set(k,JSON.stringify(remote));}
+          }catch{_raw.set(k,JSON.stringify(data[k]));}
         } else {
           _raw.set(k,JSON.stringify(data[k]));
         }
@@ -1553,7 +1567,7 @@ details[open] .mp-details-summary::before { content: '▾ '; }
       try{if(typeof renderAll==='function')renderAll();}catch(e){}
     }
 
-    let lastSyncedJson=null,pendingRemote=null,syncTimer=null,_sb=null;
+    let lastSyncedJson=null,pendingRemote=null,syncTimer=null,retryTimer=null,_sb=null;
 
     function client(){if(!_sb)_sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);return _sb;}
     function scheduleSync(){clearTimeout(syncTimer);syncTimer=setTimeout(push,250);}
@@ -1563,9 +1577,13 @@ details[open] .mp-details-summary::before { content: '▾ '; }
         const state=gatherLocal();
         const json=JSON.stringify(state);
         if(json===lastSyncedJson) return;
-        lastSyncedJson=json;
         await client().from('app_state').upsert({key:APP_KEY,data:state,updated_at:new Date().toISOString()});
-      }catch(e){console.warn('Health sync push failed:',e);}
+        lastSyncedJson=json; // only mark synced after upsert succeeds
+        clearTimeout(retryTimer);
+      }catch(e){
+        console.warn('Health sync push failed — retrying in 5 s:',e);
+        clearTimeout(retryTimer);retryTimer=setTimeout(scheduleSync,5000);
+      }
     }
 
     localStorage.setItem=function(k,v){_raw.set(k,v);try{if(isSynced(k))scheduleSync();}catch{}};
@@ -1641,6 +1659,19 @@ details[open] .mp-details-summary::before { content: '▾ '; }
 
     function waitForSupabase(){window.supabase?initSync():setTimeout(waitForSupabase,50);}
     waitForSupabase();
+
+    // Poll every 30 s as fallback when realtime WebSocket drops silently
+    setInterval(async()=>{
+      if(!_sb) return;
+      try{
+        const{data:row}=await client().from('app_state').select('data').eq('key',APP_KEY).single();
+        if(!row||!row.data) return;
+        const j=JSON.stringify(row.data);
+        if(j===lastSyncedJson) return;
+        lastSyncedJson=j;
+        if(userFocused)pendingRemote=row.data;else applyRemote(row.data);
+      }catch{}
+    },30000);
   })();
 })();
 
@@ -1691,7 +1722,7 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catc
     return s;
   }
   function loadState() { try { const r = localStorage.getItem(W_LS); if (r) return norm(JSON.parse(r)); } catch(e) {} return norm({}); }
-  function saveState() { try { localStorage.setItem(W_LS, JSON.stringify(wState)); } catch(e) {} }
+  function saveState() { try { wState._ts = Date.now(); localStorage.setItem(W_LS, JSON.stringify(wState)); } catch(e) {} }
   let wState = loadState();
 
   function dKey(d) { return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
