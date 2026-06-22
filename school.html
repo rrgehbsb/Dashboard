@@ -1610,14 +1610,20 @@ document.addEventListener('DOMContentLoaded',scRenderAll);
     try{scRenderAll();}catch{}
   }
 
-  let lastSyncedJson=null,pushTimer=null,_sb=null;
+  let lastSyncedJson=null,pushTimer=null,retryTimer=null,_sb=null;
 
   function schedPush(){clearTimeout(pushTimer);pushTimer=setTimeout(doPush,300);}
   async function doPush(){
     if(!_sb) return;
     const s=gatherLocal();const j=JSON.stringify(s);
     if(j===lastSyncedJson) return;
-    try{await _sb.from('app_state').upsert({key:APP_KEY,data:s,updated_at:new Date().toISOString()});lastSyncedJson=j;}catch{}
+    try{
+      await _sb.from('app_state').upsert({key:APP_KEY,data:s,updated_at:new Date().toISOString()});
+      lastSyncedJson=j;
+      clearTimeout(retryTimer);
+    }catch{
+      clearTimeout(retryTimer);retryTimer=setTimeout(schedPush,5000);
+    }
   }
 
   // Hook saves so any scSet() triggers a sync push
@@ -1689,6 +1695,9 @@ document.addEventListener('DOMContentLoaded',scRenderAll);
 
   function wait(){window.supabase?initSync():setTimeout(wait,50);}
   wait();
+
+  // Poll every 30 s as fallback when realtime WebSocket drops silently
+  setInterval(fetchAndApply,30000);
 })();
 
 })();

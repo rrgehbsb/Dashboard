@@ -1458,7 +1458,7 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
     window.dispatchEvent(new CustomEvent('goals-changed'));
   }
 
-  let lastSyncedJson=null,pendingRemote=null,syncTimer=null,_sb=null;
+  let lastSyncedJson=null,pendingRemote=null,syncTimer=null,retryTimer=null,_sb=null;
 
   function client(){
     if(!_sb) _sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
@@ -1472,9 +1472,13 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
       const state=gatherLocal();
       const json=JSON.stringify(state);
       if(json===lastSyncedJson) return;
-      lastSyncedJson=json;
       await client().from('app_state').upsert({key:APP_KEY,data:state,updated_at:new Date().toISOString()});
-    }catch(e){console.warn('Sync push failed:',e);}
+      lastSyncedJson=json;
+      clearTimeout(retryTimer);
+    }catch(e){
+      console.warn('Sync push failed — retrying in 5 s:',e);
+      clearTimeout(retryTimer);retryTimer=setTimeout(scheduleSync,5000);
+    }
   }
 
   const _setItem=localStorage.setItem.bind(localStorage);
@@ -1553,6 +1557,19 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
 
   function waitForSupabase(){window.supabase?initSync():setTimeout(waitForSupabase,50);}
   waitForSupabase();
+
+  // Poll every 30 s as fallback when realtime WebSocket drops silently
+  setInterval(async()=>{
+    if(!_sb) return;
+    try{
+      const{data:row}=await client().from('app_state').select('data').eq('key',APP_KEY).single();
+      if(!row||!row.data) return;
+      const j=JSON.stringify(row.data);
+      if(j===lastSyncedJson) return;
+      lastSyncedJson=j;
+      if(userFocused) pendingRemote=row.data; else applyRemote(row.data);
+    }catch{}
+  },30000);
 
   if('serviceWorker' in navigator){
     navigator.serviceWorker.register('/sw.js').catch(()=>{});

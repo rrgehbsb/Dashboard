@@ -3660,6 +3660,7 @@ img, video, canvas, svg { max-width: 100%; }
 
   let pcSupa = null;
   let pcPushTimer = null;
+  let pcRetryTimer = null;
   let pcSuppressSync = false;
   let pcPendingRemote = null;
   // JSON of the last state we sent or received — used to ignore
@@ -3768,8 +3769,11 @@ img, video, canvas, svg { max-width: 100%; }
           { key: APP_KEY, data: state, updated_at: new Date().toISOString() },
           { onConflict: 'key' }
         );
-      if (!error) pcLastSyncedJson = json;
-    } catch (_) {}
+      if (!error) { pcLastSyncedJson = json; clearTimeout(pcRetryTimer); }
+      else { clearTimeout(pcRetryTimer); pcRetryTimer = setTimeout(pcSchedulePush, 5000); }
+    } catch (_) {
+      clearTimeout(pcRetryTimer); pcRetryTimer = setTimeout(pcSchedulePush, 5000);
+    }
   }
 
   function pcSchedulePush() {
@@ -3840,6 +3844,19 @@ img, video, canvas, svg { max-width: 100%; }
   document.addEventListener('focusout', () => {
     setTimeout(pcApplyPendingIfReady, 0);
   }, true);
+  // Poll every 30 s as fallback when realtime WebSocket drops silently
+  setInterval(async () => {
+    if (!pcSupa) return;
+    try {
+      const { data } = await pcSupa.from('app_state').select('data').eq('key', APP_KEY).maybeSingle();
+      if (!data || !data.data) return;
+      const incoming = JSON.stringify(data.data);
+      if (incoming === pcLastSyncedJson) return;
+      pcLastSyncedJson = incoming;
+      pcMaybeApplyRemote(data.data);
+    } catch (_) {}
+  }, 30000);
+
   window.addEventListener('pagehide', pcFlushPushOnUnload);
   window.addEventListener('beforeunload', pcFlushPushOnUnload);
   document.addEventListener('visibilitychange', async () => {
