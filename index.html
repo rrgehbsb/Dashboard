@@ -1396,8 +1396,10 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
   const SUPABASE_KEY='sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
   const APP_KEY='dashboard';
 
+  // Only goals and schedule sync via app_state.
+  // Reminders have their own dedicated API sync — keep them separate to avoid conflicts.
   function isSynced(k){
-    return k==='goal_streak_v1'||k==='day_schedule'||k.startsWith('goals:')||k.startsWith('dashboard:reminders:');
+    return k==='goal_streak_v1'||k==='day_schedule'||k.startsWith('goals:');
   }
 
   function gatherLocal(){
@@ -1409,24 +1411,50 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
     return s;
   }
 
+  // Merge two goal arrays: union by text, local done/queued status wins
+  function mergeGoalLists(local,remote){
+    const byText={};
+    (remote||[]).forEach(g=>{byText[g.text]={...g};});
+    (local||[]).forEach(g=>{
+      if(byText[g.text]){
+        // Local checked/queued state wins — prevents remote from un-checking your work
+        if(g.done) byText[g.text].done=true;
+        if(g.queued) byText[g.text].queued=true;
+      } else {
+        byText[g.text]={...g};
+      }
+    });
+    return Object.values(byText);
+  }
+
   function applyRemote(data){
     if(!data) return;
     const remoteHasGoals=Object.keys(data).some(k=>k.startsWith('goals:'));
-    const remoteHasReminders=Object.keys(data).some(k=>k.startsWith('dashboard:reminders:'));
-    Object.keys(data).forEach(k=>{if(isSynced(k)) _setItem(k,JSON.stringify(data[k]));});
+    const today=getActiveDateString();
+    Object.keys(data).forEach(k=>{
+      if(!isSynced(k)) return;
+      if(k.startsWith('goals:')&&k.slice(6)>=today){
+        // Merge today's/future goals so neither device loses tasks
+        const merged=mergeGoalLists(storeGet(k),data[k]);
+        _setItem(k,JSON.stringify(merged));
+      } else {
+        _setItem(k,JSON.stringify(data[k]));
+      }
+    });
     for(let i=localStorage.length-1;i>=0;i--){
       const k=localStorage.key(i);
       if(!k||!isSynced(k)||k in data) continue;
       if(k.startsWith('goals:')){
         const dateStr=k.slice(6);
-        if(!remoteHasGoals||dateStr>=getActiveDateString()) continue;
+        if(!remoteHasGoals||dateStr>=today) continue; // never delete today's goals
       }
       if(k==='day_schedule') continue;
-      if(k.startsWith('dashboard:reminders:')&&!remoteHasReminders) continue;
       _removeItem(k);
     }
-    loadToday();loadTomorrow();renderStreak();
-    try{updateDayBar();}catch{}
+    try{loadToday();}catch(e){}
+    try{loadTomorrow();}catch(e){}
+    try{renderStreak();}catch(e){}
+    try{updateDayBar();}catch(e){}
     window.dispatchEvent(new CustomEvent('goals-changed'));
   }
 
@@ -1465,10 +1493,12 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
   });
 
   async function initSync(){
+    // Fetch + apply remote data
     try{
       const{data:row}=await client().from('app_state').select('data').eq('key',APP_KEY).single();
       if(row&&row.data&&Object.keys(row.data).length>0){
-        lastSyncedJson=JSON.stringify(row.data);applyRemote(row.data);
+        lastSyncedJson=JSON.stringify(row.data);
+        try{applyRemote(row.data);}catch(e){console.warn('applyRemote failed:',e);}
       } else {
         const local=gatherLocal();
         if(Object.keys(local).length>0){
@@ -1476,9 +1506,11 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
           await client().from('app_state').upsert({key:APP_KEY,data:local,updated_at:new Date().toISOString()});
         }
       }
-      // Push local goals up if remote is missing today's data
       const localNow=gatherLocal();
       if(JSON.stringify(localNow)!==lastSyncedJson) scheduleSync();
+    }catch(e){console.warn('Sync init failed:',e);}
+    // Realtime subscription is independent — always set up even if init fetch failed
+    try{
       client().channel('db-dashboard')
         .on('postgres_changes',{event:'*',schema:'public',table:'app_state',filter:`key=eq.${APP_KEY}`},payload=>{
           try{
@@ -1489,7 +1521,7 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
           }catch(e){console.warn('Realtime apply failed:',e);}
         })
         .subscribe();
-    }catch(e){console.warn('Sync init failed:',e);}
+    }catch(e){console.warn('Realtime subscribe failed:',e);}
   }
 
   function flushWithKeepalive(){

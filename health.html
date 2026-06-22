@@ -1508,14 +1508,43 @@ details[open] .mp-details-summary::before { content: '▾ '; }
 
     const _raw={set:localStorage.setItem.bind(localStorage),remove:localStorage.removeItem.bind(localStorage)};
 
+    function mergeMealDailyLog(localDays,remoteDays){
+      // Merge today's eaten states: if local says eaten=true, keep it
+      // Prevents another device from un-checking meals you've already marked as eaten
+      const tk=(function(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');})();
+      const merged=Object.assign({},remoteDays||{});
+      const loc=(localDays||{})[tk];
+      const rem=(remoteDays||{})[tk];
+      if(loc){
+        merged[tk]=Object.assign({},rem||{});
+        Object.keys(loc).forEach(id=>{
+          if(loc[id]&&loc[id].eaten){
+            merged[tk][id]=Object.assign({},merged[tk][id]||{},{eaten:true});
+          }
+        });
+      }
+      return merged;
+    }
+
     function applyRemote(data){
       if(!data) return;
       const remoteHasMP=MP_KEYS.some(k=>k in data);
-      Object.keys(data).forEach(k=>{if(isSynced(k))_raw.set(k,JSON.stringify(data[k]));});
+      Object.keys(data).forEach(k=>{
+        if(!isSynced(k)) return;
+        if(k==='dashboard:mealPrep:v1:daily'){
+          // Merge today's check-offs so meals eaten on this device aren't reset
+          try{
+            const local=JSON.parse(localStorage.getItem(k)||'null');
+            _raw.set(k,JSON.stringify(mergeMealDailyLog(local,data[k])));
+          }catch{_raw.set(k,JSON.stringify(data[k]));}
+        } else {
+          _raw.set(k,JSON.stringify(data[k]));
+        }
+      });
       for(let i=localStorage.length-1;i>=0;i--){
         const k=localStorage.key(i);
         if(!k||!isSynced(k)||k in data) continue;
-        // Don't wipe meal prep keys if remote has never seen them
+        // Only wipe local keys if remote has at least one key from the same namespace
         if(k.startsWith('dashboard:mealPrep:v1:')&&!remoteHasMP) continue;
         _raw.remove(k);
       }
@@ -1556,7 +1585,8 @@ details[open] .mp-details-summary::before { content: '▾ '; }
       try{
         const{data:row}=await client().from('app_state').select('data').eq('key',APP_KEY).single();
         if(row&&row.data&&Object.keys(row.data).length>0){
-          lastSyncedJson=JSON.stringify(row.data);applyRemote(row.data);
+          lastSyncedJson=JSON.stringify(row.data);
+          try{applyRemote(row.data);}catch(e){console.warn('Health applyRemote failed:',e);}
         } else {
           const local=gatherLocal();
           if(Object.keys(local).length>0){
@@ -1564,9 +1594,11 @@ details[open] .mp-details-summary::before { content: '▾ '; }
             await client().from('app_state').upsert({key:APP_KEY,data:local,updated_at:new Date().toISOString()});
           }
         }
-        // Push local data up if remote is missing keys we have locally
         const localNow=gatherLocal();
         if(JSON.stringify(localNow)!==lastSyncedJson) scheduleSync();
+      }catch(e){console.warn('Health sync init failed:',e);}
+      // Realtime subscription is independent — set up even if init fetch failed
+      try{
         client().channel('db-health')
           .on('postgres_changes',{event:'*',schema:'public',table:'app_state',filter:`key=eq.${APP_KEY}`},payload=>{
             try{
@@ -1577,7 +1609,7 @@ details[open] .mp-details-summary::before { content: '▾ '; }
             }catch(e){console.warn('Health realtime apply failed:',e);}
           })
           .subscribe();
-      }catch(e){console.warn('Health sync init failed:',e);}
+      }catch(e){console.warn('Health realtime subscribe failed:',e);}
     }
 
     function flushWithKeepalive(){
