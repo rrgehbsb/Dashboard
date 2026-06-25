@@ -1509,8 +1509,7 @@ details[open] .mp-details-summary::before { content: '▾ '; }
     const _raw={set:localStorage.setItem.bind(localStorage),remove:localStorage.removeItem.bind(localStorage)};
 
     function mergeMealDailyLog(localDays,remoteDays){
-      // Merge today's eaten states: if local says eaten=true, keep it
-      // Prevents another device from un-checking meals you've already marked as eaten
+      // Merge today's eaten states using most-recent action timestamp
       const tk=(function(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');})();
       const merged=Object.assign({},remoteDays||{});
       const loc=(localDays||{})[tk];
@@ -1518,8 +1517,10 @@ details[open] .mp-details-summary::before { content: '▾ '; }
       if(loc){
         merged[tk]=Object.assign({},rem||{});
         Object.keys(loc).forEach(id=>{
-          if(loc[id]&&loc[id].eaten){
-            merged[tk][id]=Object.assign({},merged[tk][id]||{},{eaten:true});
+          const localTs=Math.max(loc[id]&&loc[id].eatenAt||0,loc[id]&&loc[id].uneatenAt||0);
+          const remoteTs=Math.max(rem&&rem[id]&&rem[id].eatenAt||0,rem&&rem[id]&&rem[id].uneatenAt||0);
+          if(localTs>=remoteTs){
+            merged[tk][id]=Object.assign({},merged[tk][id]||{},loc[id]);
           }
         });
       }
@@ -1660,7 +1661,7 @@ details[open] .mp-details-summary::before { content: '▾ '; }
     function waitForSupabase(){window.supabase?initSync():setTimeout(waitForSupabase,50);}
     waitForSupabase();
 
-    // Poll every 30 s as fallback when realtime WebSocket drops silently
+    // Poll every 5 s as fallback when realtime WebSocket drops silently
     setInterval(async()=>{
       if(!_sb) return;
       try{
@@ -1671,7 +1672,7 @@ details[open] .mp-details-summary::before { content: '▾ '; }
         lastSyncedJson=j;
         if(userFocused)pendingRemote=row.data;else applyRemote(row.data);
       }catch{}
-    },30000);
+    },5000);
   })();
 })();
 
@@ -2157,7 +2158,10 @@ function toggleEaten(mealId){
   const days=getDays(),dk=todayKey();
   if(!days[dk])days[dk]={};
   if(!days[dk][mealId])days[dk][mealId]={};
-  days[dk][mealId].eaten=!days[dk][mealId].eaten;
+  const nowEaten=!days[dk][mealId].eaten;
+  days[dk][mealId].eaten=nowEaten;
+  if(nowEaten){days[dk][mealId].eatenAt=Date.now();delete days[dk][mealId].uneatenAt;}
+  else{days[dk][mealId].uneatenAt=Date.now();delete days[dk][mealId].eatenAt;}
   saveDays(days);renderAll();
 }
 

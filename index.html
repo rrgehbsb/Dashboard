@@ -1565,7 +1565,7 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
   function waitForSupabase(){window.supabase?initSync():setTimeout(waitForSupabase,50);}
   waitForSupabase();
 
-  // Poll every 30 s as fallback when realtime WebSocket drops silently
+  // Poll every 5 s as fallback when realtime WebSocket drops silently
   setInterval(async()=>{
     if(!_sb) return;
     try{
@@ -1576,7 +1576,7 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
       lastSyncedJson=j;
       if(userFocused) pendingRemote=row.data; else applyRemote(row.data);
     }catch{}
-  },30000);
+  },5000);
 
   if('serviceWorker' in navigator){
     navigator.serviceWorker.register('/sw.js').catch(()=>{});
