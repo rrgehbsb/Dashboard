@@ -728,6 +728,170 @@ details[open] .mp-details-summary::before { content: '▾ '; }
 .mp-details-body { font-size: 12px; color: var(--text-secondary); padding: 0 14px 12px; line-height: 1.6; }
 .mp-meal-default { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; font-style: italic; }
 .mp-extras-row { background: rgba(255,255,255,0.02); }
+
+/* ── Sleep & Weight ── */
+.sw-card {
+  background: var(--bg-card);
+  border-radius: 16px;
+  padding: 18px 18px 14px;
+  margin-bottom: 16px;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+}
+.sw-bars {
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+  height: 56px;
+  margin-bottom: 10px;
+}
+.sw-bar-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+  justify-content: flex-end;
+}
+.sw-bar {
+  width: 100%;
+  border-radius: 4px 4px 0 0;
+  min-height: 4px;
+  transition: height 0.3s ease;
+}
+.sw-bar-label {
+  font-size: 9px;
+  color: var(--text-quaternary);
+  font-family: var(--font-mono);
+}
+.sw-bar-val {
+  font-size: 9px;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+}
+.sw-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+.sw-log-btn {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: var(--font);
+}
+.sw-log-btn:active { opacity: 0.7; }
+.sw-weight-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.sw-weight-current {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
+}
+.sw-weight-trend {
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+.sw-sparkline {
+  display: flex;
+  gap: 3px;
+  align-items: flex-end;
+  height: 40px;
+  margin-bottom: 10px;
+}
+.sw-spark-bar {
+  flex: 1;
+  border-radius: 2px 2px 0 0;
+  min-height: 2px;
+  background: rgba(29,158,117,0.4);
+  transition: height 0.3s;
+}
+.sw-spark-bar.today { background: var(--accent); }
+/* Modal */
+.sw-modal {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.sw-modal.show { display: flex; }
+.sw-modal-box {
+  background: #111113;
+  border: 1px solid var(--border-strong);
+  border-radius: 20px;
+  padding: 28px 24px 20px;
+  width: min(340px, 90vw);
+  box-shadow: 0 24px 64px rgba(0,0,0,0.7);
+}
+.sw-modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+.sw-modal-sub {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-bottom: 18px;
+}
+.sw-modal-input {
+  width: 100%;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-size: 24px;
+  font-weight: 600;
+  padding: 12px 14px;
+  text-align: center;
+  font-family: var(--font-mono);
+  margin-bottom: 18px;
+  outline: none;
+}
+.sw-modal-input:focus { border-color: var(--accent); }
+.sw-modal-actions {
+  display: flex;
+  gap: 10px;
+}
+.sw-modal-cancel {
+  flex: 1;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  border-radius: 10px;
+  padding: 10px;
+  font-size: 14px;
+  cursor: pointer;
+  font-family: var(--font);
+}
+.sw-modal-save {
+  flex: 2;
+  background: var(--accent);
+  border: none;
+  color: #fff;
+  border-radius: 10px;
+  padding: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font);
+}
 </style>
 </head>
 <body>
@@ -822,6 +986,56 @@ details[open] .mp-details-summary::before { content: '▾ '; }
       <svg class="spark-svg" id="sparkSvg" viewBox="0 0 280 70" preserveAspectRatio="none"></svg>
     </div>
     <div id="histList" style="margin-top:14px"></div>
+  </div>
+
+  <!-- SLEEP TRACKER -->
+  <div class="sw-card" id="sleepSection">
+    <div class="section-title" style="margin-top:0;margin-bottom:14px">Sleep</div>
+    <div class="sw-bars" id="sleepBars"></div>
+    <div class="sw-meta">
+      <span id="sleepAvg">—</span>
+      <button class="sw-log-btn" id="sleepLogBtn">+ Log sleep</button>
+    </div>
+  </div>
+
+  <!-- WEIGHT TRACKER -->
+  <div class="sw-card" id="weightSection">
+    <div class="section-title" style="margin-top:0;margin-bottom:14px">Weight</div>
+    <div class="sw-weight-row">
+      <div class="sw-weight-current" id="weightCurrent">—</div>
+      <div class="sw-weight-trend" id="weightTrend"></div>
+    </div>
+    <div class="sw-sparkline" id="weightSparkline"></div>
+    <div class="sw-meta">
+      <span id="weightAvg"></span>
+      <button class="sw-log-btn" id="weightLogBtn">+ Log weight</button>
+    </div>
+  </div>
+
+  <!-- Sleep Log Modal -->
+  <div class="sw-modal" id="sleepModal">
+    <div class="sw-modal-box">
+      <div class="sw-modal-title">Log Sleep</div>
+      <div class="sw-modal-sub">Hours slept last night</div>
+      <input class="sw-modal-input" id="sleepInput" type="number" min="0" max="24" step="0.5" placeholder="7.5">
+      <div class="sw-modal-actions">
+        <button class="sw-modal-cancel" id="sleepCancel">Cancel</button>
+        <button class="sw-modal-save" id="sleepSave">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Weight Log Modal -->
+  <div class="sw-modal" id="weightModal">
+    <div class="sw-modal-box">
+      <div class="sw-modal-title">Log Weight</div>
+      <div class="sw-modal-sub">Body weight in kg</div>
+      <input class="sw-modal-input" id="weightInput" type="number" min="30" max="300" step="0.1" placeholder="82.5">
+      <div class="sw-modal-actions">
+        <button class="sw-modal-cancel" id="weightCancel">Cancel</button>
+        <button class="sw-modal-save" id="weightSave">Save</button>
+      </div>
+    </div>
   </div>
 
   <!-- MEAL PREP TRACKER -->
@@ -1503,7 +1717,7 @@ window._dbHSchedulePush = function(){};
     const SUPABASE_URL='https://mtuoqwbrujxutofhyahb.supabase.co';
     const SUPABASE_KEY='sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
     const APP_KEY='health';
-    function isSynced(k){return k.startsWith('stack:')||k==='po_water_v1'||k.startsWith('dashboard:mealPrep:v1:');}
+    function isSynced(k){return k.startsWith('stack:')||k==='po_water_v1'||k.startsWith('dashboard:mealPrep:v1:')||k==='dashboard:sleep:v1'||k==='dashboard:weight:v1';}
 
     let lastRemoteAt=0,hasPendingPush=false,pushTimer=null,_sb=null;
     function client(){if(!_sb)_sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);return _sb;}
@@ -1516,6 +1730,7 @@ window._dbHSchedulePush = function(){};
       try{render();}catch(e){}
       try{if(typeof window.wRenderAll==='function')window.wRenderAll();}catch(e){}
       try{if(typeof window.mpRenderAll==='function')window.mpRenderAll();}catch(e){}
+      try{if(typeof window.swRenderAll==='function')window.swRenderAll();}catch(e){}
       window.dispatchEvent(new CustomEvent('health-synced'));
     }
 
@@ -1560,6 +1775,7 @@ window._dbHSchedulePush = function(){};
           try{render();}catch{}
           try{if(typeof window.wRenderAll==='function')window.wRenderAll();}catch{}
           try{if(typeof window.mpRenderAll==='function')window.mpRenderAll();}catch{}
+          try{if(typeof window.swRenderAll==='function')window.swRenderAll();}catch{}
         }
       }catch(e){console.warn('Health sync init failed:',e);}
       // Now safe for writes — hook up the external schedule function
@@ -1568,6 +1784,7 @@ window._dbHSchedulePush = function(){};
       try{render();}catch{}
       try{if(typeof window.wRenderAll==='function')window.wRenderAll();}catch{}
       try{if(typeof window.mpRenderAll==='function')window.mpRenderAll();}catch{}
+      try{if(typeof window.swRenderAll==='function')window.swRenderAll();}catch{}
     }
 
     function flushWithKeepalive(){
@@ -2249,6 +2466,179 @@ document.getElementById('mpEditMealCancel').addEventListener('click',()=>documen
 document.getElementById('mpEditMealModal').addEventListener('click',e=>{if(e.target.id==='mpEditMealModal')document.getElementById('mpEditMealModal').classList.remove('show');});
 
 window.mpRenderAll = renderAll;
+renderAll();
+})();
+</script>
+
+<script>
+(function(){
+'use strict';
+const SL_KEY = 'dashboard:sleep:v1';
+const WT_KEY = 'dashboard:weight:v1';
+
+function today() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function dateStr(daysAgo) {
+  const d = new Date(); d.setDate(d.getDate() - daysAgo);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function dayLabel(daysAgo) {
+  const days = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+  const d = new Date(); d.setDate(d.getDate() - daysAgo);
+  return days[d.getDay()];
+}
+
+function slGet() { return window._dbH.hasOwnProperty(SL_KEY) ? window._dbH[SL_KEY] : {entries:[]}; }
+function slSet(v) { window._dbH[SL_KEY] = v; window._dbHSchedulePush(); }
+function wtGet() { return window._dbH.hasOwnProperty(WT_KEY) ? window._dbH[WT_KEY] : {entries:[]}; }
+function wtSet(v) { window._dbH[WT_KEY] = v; window._dbHSchedulePush(); }
+
+function renderSleep() {
+  const data = slGet();
+  const entries = data.entries || [];
+  const byDate = {};
+  entries.forEach(e => { byDate[e.date] = e.hours; });
+
+  const barsEl = document.getElementById('sleepBars');
+  if (!barsEl) return;
+  const MAX_H = 10;
+  let html = '';
+  let total = 0, count = 0;
+  for (let i = 6; i >= 0; i--) {
+    const dk = dateStr(i);
+    const h = byDate[dk];
+    const hasVal = h !== undefined;
+    const pct = hasVal ? Math.min(100, (h / MAX_H) * 100) : 0;
+    const color = !hasVal ? 'rgba(255,255,255,0.07)'
+                : h >= 7 ? 'var(--accent)'
+                : h >= 6 ? '#f0a500'
+                : '#e05252';
+    if (hasVal) { total += h; count++; }
+    html += `<div class="sw-bar-wrap">
+      <div class="sw-bar-val">${hasVal ? h : ''}</div>
+      <div class="sw-bar" style="height:${pct}%;background:${color}"></div>
+      <div class="sw-bar-label">${dayLabel(i)}</div>
+    </div>`;
+  }
+  barsEl.innerHTML = html;
+
+  const avgEl = document.getElementById('sleepAvg');
+  if (avgEl) avgEl.textContent = count ? `avg ${(total/count).toFixed(1)}h / night` : 'No data yet';
+}
+
+function renderWeight() {
+  const data = wtGet();
+  const entries = (data.entries || []).slice().sort((a,b) => a.date.localeCompare(b.date));
+
+  const curEl = document.getElementById('weightCurrent');
+  const trendEl = document.getElementById('weightTrend');
+  const sparkEl = document.getElementById('weightSparkline');
+  const avgEl = document.getElementById('weightAvg');
+  if (!curEl) return;
+
+  if (!entries.length) {
+    curEl.textContent = '—';
+    if (trendEl) trendEl.textContent = '';
+    if (sparkEl) sparkEl.innerHTML = '';
+    if (avgEl) avgEl.textContent = '';
+    return;
+  }
+
+  const latest = entries[entries.length - 1];
+  curEl.textContent = latest.kg + ' kg';
+
+  const cutoff = dateStr(7);
+  const older = entries.filter(e => e.date <= cutoff);
+  if (older.length && trendEl) {
+    const diff = (latest.kg - older[older.length-1].kg).toFixed(1);
+    const sign = diff > 0 ? '+' : '';
+    trendEl.textContent = `${sign}${diff} kg (7d)`;
+    trendEl.style.color = diff > 0 ? '#e05252' : diff < 0 ? 'var(--accent)' : 'var(--text-tertiary)';
+  } else if (trendEl) { trendEl.textContent = ''; }
+
+  if (sparkEl) {
+    const show = entries.slice(-30);
+    if (show.length < 2) { sparkEl.innerHTML = ''; }
+    else {
+      const vals = show.map(e => e.kg);
+      const min = Math.min(...vals), max = Math.max(...vals);
+      const range = max - min || 1;
+      const td = today();
+      sparkEl.innerHTML = show.map(e => {
+        const pct = Math.max(8, ((e.kg - min) / range) * 100);
+        const isTd = e.date === td;
+        return `<div class="sw-spark-bar${isTd?' today':''}" style="height:${pct}%" title="${e.date}: ${e.kg}kg"></div>`;
+      }).join('');
+    }
+  }
+
+  if (avgEl && entries.length) {
+    const last7 = entries.filter(e => e.date >= dateStr(7));
+    if (last7.length) {
+      const avg = (last7.reduce((s,e)=>s+e.kg,0)/last7.length).toFixed(1);
+      avgEl.textContent = `7d avg: ${avg} kg`;
+    }
+  }
+}
+
+function renderAll() {
+  renderSleep();
+  renderWeight();
+}
+window.swRenderAll = renderAll;
+
+// Sleep modal
+document.getElementById('sleepLogBtn').addEventListener('click', () => {
+  const data = slGet();
+  const td = today();
+  const existing = (data.entries||[]).find(e => e.date === td);
+  const inp = document.getElementById('sleepInput');
+  if (inp) inp.value = existing ? existing.hours : '';
+  document.getElementById('sleepModal').classList.add('show');
+  if (inp) inp.focus();
+});
+document.getElementById('sleepCancel').addEventListener('click', () => document.getElementById('sleepModal').classList.remove('show'));
+document.getElementById('sleepModal').addEventListener('click', e => { if(e.target.id==='sleepModal') document.getElementById('sleepModal').classList.remove('show'); });
+document.getElementById('sleepSave').addEventListener('click', () => {
+  const val = parseFloat(document.getElementById('sleepInput').value);
+  if (isNaN(val) || val < 0 || val > 24) return;
+  const data = slGet();
+  const entries = data.entries || [];
+  const td = today();
+  const idx = entries.findIndex(e => e.date === td);
+  if (idx >= 0) entries[idx].hours = val; else entries.push({date: td, hours: val});
+  slSet({entries});
+  document.getElementById('sleepModal').classList.remove('show');
+  renderSleep();
+});
+
+// Weight modal
+document.getElementById('weightLogBtn').addEventListener('click', () => {
+  const data = wtGet();
+  const td = today();
+  const existing = (data.entries||[]).find(e => e.date === td);
+  const inp = document.getElementById('weightInput');
+  if (inp) inp.value = existing ? existing.kg : '';
+  document.getElementById('weightModal').classList.add('show');
+  if (inp) inp.focus();
+});
+document.getElementById('weightCancel').addEventListener('click', () => document.getElementById('weightModal').classList.remove('show'));
+document.getElementById('weightModal').addEventListener('click', e => { if(e.target.id==='weightModal') document.getElementById('weightModal').classList.remove('show'); });
+document.getElementById('weightSave').addEventListener('click', () => {
+  const val = parseFloat(document.getElementById('weightInput').value);
+  if (isNaN(val) || val < 30 || val > 300) return;
+  const data = wtGet();
+  const entries = data.entries || [];
+  const td = today();
+  const idx = entries.findIndex(e => e.date === td);
+  if (idx >= 0) entries[idx].kg = val; else entries.push({date: td, kg: val});
+  wtSet({entries});
+  document.getElementById('weightModal').classList.remove('show');
+  renderWeight();
+});
+
 renderAll();
 })();
 </script>

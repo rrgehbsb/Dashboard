@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '1.0.6';
+const DASHBOARD_VERSION = '1.0.7';
 
 (function () {
   'use strict';
@@ -179,6 +179,9 @@ body.topbar-modal-open { overflow: hidden; touch-action: none; }
   <a href="school.html" class="bottombar-tab" data-page="school">
     <span class="bottombar-tab-icon">📚</span><span>School</span>
   </a>
+  <a href="habits.html" class="bottombar-tab" data-page="habits">
+    <span class="bottombar-tab-icon">🔥</span><span>Habits</span>
+  </a>
   <a href="transport.html" class="bottombar-tab" data-page="transport">
     <span class="bottombar-tab-icon">🚌</span><span>Transport</span>
   </a>
@@ -200,6 +203,7 @@ body.topbar-modal-open { overflow: hidden; touch-action: none; }
     if (p.endsWith('health.html')) return 'health';
     if (p.endsWith('gym.html')) return 'fitness';
     if (p.endsWith('school.html')) return 'school';
+    if (p.endsWith('habits.html')) return 'habits';
     if (p.endsWith('transport.html')) return 'transport';
     return 'main';
   }

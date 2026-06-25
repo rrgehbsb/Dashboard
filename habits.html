@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#050506">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dashboard">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon.svg">
+<title>Habits — Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="topbar.js" defer></script>
+<style>
+:root {
+  --bg: #050506;
+  --bg-card: rgba(255, 255, 255, 0.04);
+  --bg-secondary: rgba(255, 255, 255, 0.035);
+  --bg-input: rgba(0, 0, 0, 0.28);
+  --bg-input-focus: rgba(0, 0, 0, 0.36);
+
+  --border: rgba(255, 255, 255, 0.06);
+  --border-soft: rgba(255, 255, 255, 0.04);
+  --border-strong: rgba(255, 255, 255, 0.12);
+
+  --text-primary: #FAFAFA;
+  --text-secondary: #B8B6B0;
+  --text-tertiary: #76746E;
+  --text-quaternary: #4D4B47;
+
+  --accent: #1D9E75;
+  --accent-glow: rgba(29, 158, 117, 0.35);
+  --warning: #FF8A4D;
+
+  --font: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  background: var(--bg);
+  color: var(--text-secondary);
+  font-family: var(--font);
+  min-height: 100vh;
+}
+body::after {
+  content: '';
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background-image: radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+main {
+  position: relative; z-index: 1;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 56px 20px 120px;
+}
+
+.section-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin: 0 4px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.section-title::before {
+  content: '≡';
+  font-size: 14px;
+  opacity: 0.5;
+}
+
+/* ── Today card ── */
+.hb-today-card {
+  background: var(--bg-card);
+  border-radius: 16px;
+  padding: 18px 18px 14px;
+  margin-bottom: 16px;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+}
+.hb-habit-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-soft);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.hb-habit-row:last-of-type { border-bottom: none; }
+.hb-check {
+  width: 22px; height: 22px;
+  border-radius: 6px;
+  border: 2px solid rgba(255,255,255,0.15);
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s, border-color 0.15s;
+}
+.hb-check.done {
+  border-color: transparent;
+}
+.hb-check.done::after {
+  content: '✓';
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+}
+.hb-habit-icon { font-size: 20px; line-height: 1; }
+.hb-habit-name {
+  flex: 1;
+  font-size: 15px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.hb-streak {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+.hb-streak.hot { color: #f0a500; }
+
+/* ── Add habit row ── */
+.hb-add-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.hb-add-input {
+  flex: 1;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--text-primary);
+  font-size: 14px;
+  padding: 8px 12px;
+  font-family: var(--font);
+  outline: none;
+}
+.hb-add-input:focus { border-color: var(--accent); }
+.hb-add-input::placeholder { color: var(--text-quaternary); }
+.hb-add-btn {
+  background: var(--accent);
+  border: none;
+  color: #fff;
+  border-radius: 9px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font);
+  white-space: nowrap;
+}
+.hb-add-btn:active { opacity: 0.8; }
+
+/* ── Grid section ── */
+.hb-grid-section {
+  background: var(--bg-card);
+  border-radius: 16px;
+  padding: 18px 18px 14px;
+  margin-bottom: 16px;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+}
+.hb-grid-habit {
+  margin-bottom: 14px;
+}
+.hb-grid-habit:last-child { margin-bottom: 0; }
+.hb-grid-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+.hb-grid-label-icon { font-size: 14px; }
+.hb-grid-label-name {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-tertiary);
+  letter-spacing: 0.08em;
+}
+.hb-grid-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.hb-grid-scroll::-webkit-scrollbar { display: none; }
+.hb-grid {
+  display: flex;
+  gap: 2px;
+  /* 84 cells × (10px + 2px gap) = 1092px wide */
+  width: max-content;
+}
+.hb-cell {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.06);
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: opacity 0.12s;
+}
+.hb-cell:active { opacity: 0.7; }
+.hb-cell.done {
+  /* color set inline per habit */
+}
+.hb-cell.today-cell {
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.3);
+}
+</style>
+</head>
+<body>
+
+<main>
+  <div class="section-title">Today</div>
+  <div class="hb-today-card">
+    <div id="habitList"></div>
+    <div class="hb-add-row">
+      <input class="hb-add-input" id="hbAddInput" placeholder="New habit name…" maxlength="40">
+      <button class="hb-add-btn" id="hbAddBtn">Add</button>
+    </div>
+  </div>
+
+  <div class="section-title" style="margin-top:8px">History</div>
+  <div class="hb-grid-section" id="hbGridSection"></div>
+</main>
+
+<script>
+(function(){
+'use strict';
+
+const SUPABASE_URL = 'https://mtuoqwbrujxutofhyahb.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
+const APP_KEY = 'habits';
+
+// ── in-memory store ──
+let _db = {};
+let schedulePush = function(){};  // no-op until initSync runs
+let _sb = null;
+let lastRemoteAt = 0;
+let pushTimer = null;
+
+function client() {
+  if (!_sb) _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  return _sb;
+}
+
+// ── defaults ──
+const DEFAULT_HABITS = [
+  {id:'gym',   name:'Gym',   icon:'💪', color:'#e74c3c'},
+  {id:'study', name:'Study', icon:'📚', color:'#3498db'},
+  {id:'sleep', name:'Sleep', icon:'😴', color:'#9b59b6'},
+  {id:'water', name:'Water', icon:'💧', color:'#00bfff'},
+  {id:'read',  name:'Read',  icon:'📖', color:'#f39c12'},
+];
+
+function getHabits() {
+  return _db['habits:list'] || DEFAULT_HABITS;
+}
+function getLog() {
+  return _db['habits:log'] || {};
+}
+
+// ── date helpers ──
+function today() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function dateOffset(daysAgo) {
+  const d = new Date(); d.setDate(d.getDate() - daysAgo);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// streak = consecutive days where habit was done, going backwards from today
+function calcStreak(habitId) {
+  const log = getLog();
+  const td = today();
+  // start from today if done, else from yesterday
+  let streak = 0;
+  let offset = 0;
+  if (log[td] && log[td][habitId]) { streak = 1; offset = 1; }
+  else { offset = 1; }
+  while (true) {
+    const dk = dateOffset(offset);
+    if (log[dk] && log[dk][habitId]) { streak++; offset++; }
+    else break;
+    if (offset > 365) break;
+  }
+  return streak;
+}
+
+// ── render today list ──
+function renderToday() {
+  const habits = getHabits();
+  const log = getLog();
+  const td = today();
+  const todayLog = log[td] || {};
+  const el = document.getElementById('habitList');
+  if (!el) return;
+
+  el.innerHTML = habits.map(h => {
+    const done = !!todayLog[h.id];
+    const streak = calcStreak(h.id);
+    const streakTxt = streak > 0 ? `🔥 ${streak}d` : '';
+    const checkStyle = done ? `background:${h.color};border-color:${h.color}` : '';
+    return `<div class="hb-habit-row" data-id="${h.id}" data-date="${td}">
+      <div class="hb-check${done?' done':''}" style="${checkStyle}"></div>
+      <span class="hb-habit-icon">${h.icon}</span>
+      <span class="hb-habit-name">${h.name}</span>
+      <span class="hb-streak${streak>=3?' hot':''}">${streakTxt}</span>
+    </div>`;
+  }).join('');
+
+  // event delegation for today rows
+  el.querySelectorAll('.hb-habit-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const id = row.getAttribute('data-id');
+      const date = row.getAttribute('data-date');
+      toggleHabit(id, date);
+    });
+  });
+}
+
+// ── render contribution grids ──
+function renderGrids() {
+  const habits = getHabits();
+  const log = getLog();
+  const td = today();
+  const el = document.getElementById('hbGridSection');
+  if (!el) return;
+
+  // 84 days: index 83=oldest, 0=today
+  const DAYS = 84;
+
+  el.innerHTML = habits.map(h => {
+    let cells = '';
+    for (let i = DAYS - 1; i >= 0; i--) {
+      const dk = dateOffset(i);
+      const done = log[dk] && log[dk][h.id];
+      const isToday = dk === td;
+      const bg = done ? h.color : '';
+      const opacity = done ? '1' : '';
+      cells += `<div class="hb-cell${done?' done':''}${isToday?' today-cell':''}"
+        style="${done?`background:${h.color}`:''}${isToday&&!done?';box-shadow:0 0 0 1px rgba(255,255,255,0.3)':''}"
+        data-id="${h.id}" data-date="${dk}" title="${dk}"></div>`;
+    }
+    return `<div class="hb-grid-habit">
+      <div class="hb-grid-label">
+        <span class="hb-grid-label-icon">${h.icon}</span>
+        <span class="hb-grid-label-name">${h.name}</span>
+      </div>
+      <div class="hb-grid-scroll"><div class="hb-grid">${cells}</div></div>
+    </div>`;
+  }).join('');
+
+  // event delegation for grid cells
+  el.querySelectorAll('.hb-cell').forEach(cell => {
+    cell.addEventListener('click', () => {
+      const id = cell.getAttribute('data-id');
+      const date = cell.getAttribute('data-date');
+      toggleHabit(id, date);
+    });
+  });
+
+  // scroll grids to right (today)
+  el.querySelectorAll('.hb-grid-scroll').forEach(s => { s.scrollLeft = s.scrollWidth; });
+}
+
+function renderAll() {
+  renderToday();
+  renderGrids();
+}
+
+// ── toggle a habit for a given date ──
+function toggleHabit(id, date) {
+  const log = getLog();
+  const dayLog = Object.assign({}, log[date] || {});
+  dayLog[id] = !dayLog[id];
+  if (!dayLog[id]) delete dayLog[id];
+  const newLog = Object.assign({}, log);
+  if (Object.keys(dayLog).length === 0) delete newLog[date];
+  else newLog[date] = dayLog;
+  _db['habits:log'] = newLog;
+  schedulePush();
+  renderAll();
+}
+
+// ── add new habit ──
+document.getElementById('hbAddBtn').addEventListener('click', addHabit);
+document.getElementById('hbAddInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addHabit();
+});
+function addHabit() {
+  const inp = document.getElementById('hbAddInput');
+  const name = (inp.value || '').trim();
+  if (!name) return;
+  const habits = getHabits().slice();
+  const id = 'custom_' + Date.now();
+  habits.push({id, name, icon:'⭐', color:'#1D9E75'});
+  _db['habits:list'] = habits;
+  inp.value = '';
+  schedulePush();
+  renderAll();
+}
+
+// ── Supabase sync ──
+function applyRemote(data) {
+  if (!data) return;
+  Object.keys(_db).forEach(k => delete _db[k]);
+  Object.keys(data).forEach(k => { if (k !== '_pushAt') _db[k] = data[k]; });
+  renderAll();
+}
+
+function doPush() {
+  pushTimer = null;
+  const data = Object.assign({}, _db, {_pushAt: Date.now()});
+  client().from('app_state')
+    .upsert({key: APP_KEY, data, updated_at: new Date().toISOString()}, {onConflict:'key'})
+    .then(({error}) => {
+      if (error) { console.warn('Habits push failed:', error); setTimeout(() => { schedulePush(); }, 5000); }
+      else lastRemoteAt = data._pushAt;
+    });
+}
+
+function realSchedulePush() {
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(doPush, 500);
+}
+
+function flushWithKeepalive() {
+  if (!pushTimer) return;
+  const data = Object.assign({}, _db, {_pushAt: Date.now()});
+  try {
+    fetch(`${SUPABASE_URL}/rest/v1/app_state`, {
+      method: 'POST', keepalive: true,
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Prefer': 'resolution=merge-duplicates'
+      },
+      body: JSON.stringify({key: APP_KEY, data, updated_at: new Date().toISOString()})
+    });
+  } catch(e) {}
+}
+
+async function initSync() {
+  try {
+    const {data: row} = await client().from('app_state').select('data').eq('key', APP_KEY).maybeSingle();
+    if (row && row.data && Object.keys(row.data).length > 0) {
+      lastRemoteAt = row.data._pushAt || 0;
+      applyRemote(row.data);
+    }
+  } catch(e) { console.warn('Habits sync init failed:', e); }
+  // now safe for writes
+  schedulePush = realSchedulePush;
+  renderAll();
+}
+
+window.addEventListener('pagehide', flushWithKeepalive);
+window.addEventListener('beforeunload', flushWithKeepalive);
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState === 'hidden') { flushWithKeepalive(); return; }
+  // pull on focus
+  try {
+    const {data: row} = await client().from('app_state').select('data').eq('key', APP_KEY).maybeSingle();
+    if (!row || !row.data) return;
+    const remoteAt = row.data._pushAt || 0;
+    if (remoteAt === lastRemoteAt) return;
+    lastRemoteAt = remoteAt;
+    applyRemote(row.data);
+  } catch(e) {}
+});
+
+setInterval(async () => {
+  if (!_sb || pushTimer) return;
+  try {
+    const {data: row} = await client().from('app_state').select('data').eq('key', APP_KEY).maybeSingle();
+    if (!row || !row.data) return;
+    const remoteAt = row.data._pushAt || 0;
+    if (remoteAt === lastRemoteAt) return;
+    lastRemoteAt = remoteAt;
+    applyRemote(row.data);
+  } catch(e) {}
+}, 5000);
+
+function waitForSupabase() {
+  if (window.supabase) initSync();
+  else setTimeout(waitForSupabase, 50);
+}
+
+// initial render with defaults, then sync
+renderAll();
+waitForSupabase();
+
+})();
+</script>
+
+</body>
+</html>
