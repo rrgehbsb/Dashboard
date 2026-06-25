@@ -820,6 +820,95 @@ details[open] .mp-details-summary::before { content: '▾ '; }
   transition: height 0.3s;
 }
 .sw-spark-bar.today { background: var(--accent); }
+/* ── Measurements ── */
+.ms-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.ms-cell {
+  background: var(--bg-secondary);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.ms-cell-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  margin-bottom: 4px;
+}
+.ms-cell-val {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.1;
+}
+.ms-cell-unit {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-tertiary);
+}
+.ms-cell-delta {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+  font-family: var(--font-mono);
+}
+.ms-cell-delta.up { color: #e05252; }
+.ms-cell-delta.down { color: var(--accent); }
+.ms-sparkline {
+  display: flex;
+  gap: 3px;
+  align-items: flex-end;
+  height: 36px;
+  margin-bottom: 10px;
+}
+.ms-spark-bar {
+  flex: 1;
+  border-radius: 2px 2px 0 0;
+  min-height: 2px;
+  background: rgba(29,158,117,0.4);
+  transition: height 0.3s;
+}
+.ms-spark-bar.latest { background: var(--accent); }
+.ms-modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.ms-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ms-field label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.ms-field input {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-size: 16px;
+  padding: 10px 12px;
+  outline: none;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  -moz-appearance: textfield;
+}
+.ms-field input::-webkit-inner-spin-button,
+.ms-field input::-webkit-outer-spin-button { -webkit-appearance: none; }
+.ms-field input:focus { border-color: var(--accent); }
+
 /* Modal */
 .sw-modal {
   display: none;
@@ -1009,6 +1098,41 @@ details[open] .mp-details-summary::before { content: '▾ '; }
     <div class="sw-meta">
       <span id="weightAvg"></span>
       <button class="sw-log-btn" id="weightLogBtn">+ Log weight</button>
+    </div>
+  </div>
+
+  <!-- MEASUREMENTS TRACKER -->
+  <div class="sw-card" id="measurementsSection">
+    <div class="section-title" style="margin-top:0;margin-bottom:14px">Measurements</div>
+    <div class="ms-grid" id="msGrid">
+      <div class="ms-cell"><div class="ms-cell-label">Waist</div><div class="ms-cell-val" id="msWaistVal">—</div><div class="ms-cell-delta" id="msWaistDelta"></div></div>
+      <div class="ms-cell"><div class="ms-cell-label">Chest</div><div class="ms-cell-val" id="msChestVal">—</div><div class="ms-cell-delta" id="msChestDelta"></div></div>
+      <div class="ms-cell"><div class="ms-cell-label">L. Arm</div><div class="ms-cell-val" id="msLArmVal">—</div><div class="ms-cell-delta" id="msLArmDelta"></div></div>
+      <div class="ms-cell"><div class="ms-cell-label">R. Arm</div><div class="ms-cell-val" id="msRArmVal">—</div><div class="ms-cell-delta" id="msRArmDelta"></div></div>
+    </div>
+    <div class="ms-sparkline" id="msSparkline"></div>
+    <div class="sw-meta">
+      <span id="msLastDate" style="font-size:12px;color:var(--text-tertiary)"></span>
+      <button class="sw-log-btn" id="msLogBtn">+ Log measurements</button>
+    </div>
+  </div>
+
+  <!-- Measurements Log Modal -->
+  <div class="sw-modal" id="msModal">
+    <div class="sw-modal-box" style="width:min(400px,92vw)">
+      <div class="sw-modal-title">Log Measurements</div>
+      <div class="sw-modal-sub" id="msModalDate">Today's session</div>
+      <div class="ms-modal-grid">
+        <div class="ms-field"><label>Waist (cm)</label><input type="number" id="msWaistIn" step="0.1" min="40" max="200" placeholder="—"></div>
+        <div class="ms-field"><label>Chest (cm)</label><input type="number" id="msChestIn" step="0.1" min="40" max="200" placeholder="—"></div>
+        <div class="ms-field"><label>L. Arm (cm)</label><input type="number" id="msLArmIn" step="0.1" min="15" max="80" placeholder="—"></div>
+        <div class="ms-field"><label>R. Arm (cm)</label><input type="number" id="msRArmIn" step="0.1" min="15" max="80" placeholder="—"></div>
+        <div class="ms-field" style="grid-column:1/-1"><label>Hips (cm, optional)</label><input type="number" id="msHipsIn" step="0.1" min="40" max="200" placeholder="—"></div>
+      </div>
+      <div class="sw-modal-actions">
+        <button class="sw-modal-cancel" id="msCancel">Cancel</button>
+        <button class="sw-modal-save" id="msSave">Save</button>
+      </div>
     </div>
   </div>
 
@@ -1717,7 +1841,7 @@ window._dbHSchedulePush = function(){};
     const SUPABASE_URL='https://mtuoqwbrujxutofhyahb.supabase.co';
     const SUPABASE_KEY='sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
     const APP_KEY='health';
-    function isSynced(k){return k.startsWith('stack:')||k==='po_water_v1'||k.startsWith('dashboard:mealPrep:v1:')||k==='dashboard:sleep:v1'||k==='dashboard:weight:v1';}
+    function isSynced(k){return k.startsWith('stack:')||k==='po_water_v1'||k.startsWith('dashboard:mealPrep:v1:')||k==='dashboard:sleep:v1'||k==='dashboard:weight:v1'||k==='dashboard:measurements:v1';}
 
     let lastRemoteAt=0,hasPendingPush=false,pushTimer=null,_sb=null;
     function client(){if(!_sb)_sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);return _sb;}
@@ -1731,6 +1855,7 @@ window._dbHSchedulePush = function(){};
       try{if(typeof window.wRenderAll==='function')window.wRenderAll();}catch(e){}
       try{if(typeof window.mpRenderAll==='function')window.mpRenderAll();}catch(e){}
       try{if(typeof window.swRenderAll==='function')window.swRenderAll();}catch(e){}
+      try{if(typeof window.measureRenderAll==='function')window.measureRenderAll();}catch(e){}
       window.dispatchEvent(new CustomEvent('health-synced'));
     }
 
@@ -2640,6 +2765,137 @@ document.getElementById('weightSave').addEventListener('click', () => {
 });
 
 renderAll();
+})();
+</script>
+
+<script>
+(function(){
+'use strict';
+const MS_KEY = 'dashboard:measurements:v1';
+
+function today() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function msGet() {
+  if (window._dbH && window._dbH.hasOwnProperty(MS_KEY)) return window._dbH[MS_KEY];
+  try { return JSON.parse(localStorage.getItem(MS_KEY)) || {entries:[]}; } catch { return {entries:[]}; }
+}
+function msSet(v) {
+  if (window._dbH) { window._dbH[MS_KEY] = v; if(typeof window._dbHSchedulePush==='function') window._dbHSchedulePush(); }
+  try { localStorage.setItem(MS_KEY, JSON.stringify(v)); } catch {}
+}
+
+function fmtDelta(val, prev) {
+  if (prev == null || val == null) return {text:'', cls:''};
+  const diff = +(val - prev).toFixed(1);
+  if (diff === 0) return {text:'±0', cls:''};
+  return {text:(diff>0?'+':'')+diff, cls: diff>0?'up':'down'};
+}
+
+function renderMeasurements() {
+  const data = msGet();
+  const entries = (data.entries || []).slice().sort((a,b)=>a.date.localeCompare(b.date));
+  const latest = entries[entries.length-1] || null;
+  const prev   = entries[entries.length-2] || null;
+
+  const fields = [
+    {id:'msWaistVal', dId:'msWaistDelta', key:'waist'},
+    {id:'msChestVal', dId:'msChestDelta', key:'chest'},
+    {id:'msLArmVal',  dId:'msLArmDelta',  key:'leftArm'},
+    {id:'msRArmVal',  dId:'msRArmDelta',  key:'rightArm'},
+  ];
+  fields.forEach(f => {
+    const vEl = document.getElementById(f.id);
+    const dEl = document.getElementById(f.dId);
+    if (!vEl) return;
+    const val = latest ? latest[f.key] : null;
+    const pval = prev ? prev[f.key] : null;
+    if (val != null) {
+      vEl.innerHTML = val + '<span class="ms-cell-unit"> cm</span>';
+    } else {
+      vEl.innerHTML = '<span style="color:var(--text-tertiary)">—</span>';
+    }
+    if (dEl) {
+      const d = fmtDelta(val, pval);
+      dEl.textContent = d.text;
+      dEl.className = 'ms-cell-delta' + (d.cls ? ' ' + d.cls : '');
+    }
+  });
+
+  const lastDateEl = document.getElementById('msLastDate');
+  if (lastDateEl) lastDateEl.textContent = latest ? 'Last: ' + latest.date : 'No data yet';
+
+  // Sparkline (waist, last 5 entries)
+  const sparkEl = document.getElementById('msSparkline');
+  if (sparkEl) {
+    const show = entries.slice(-5);
+    if (show.length < 2) { sparkEl.innerHTML = ''; }
+    else {
+      const vals = show.map(e => e.waist || 0).filter(v => v > 0);
+      if (vals.length < 2) { sparkEl.innerHTML = ''; }
+      else {
+        const min = Math.min(...vals), max = Math.max(...vals);
+        const range = max - min || 1;
+        sparkEl.innerHTML = show.map((e, i) => {
+          const v = e.waist || 0;
+          const pct = v > 0 ? Math.max(8, ((v - min) / range) * 100) : 0;
+          const isLast = i === show.length - 1;
+          return `<div class="ms-spark-bar${isLast?' latest':''}" style="height:${pct}%" title="${e.date}: ${v} cm"></div>`;
+        }).join('');
+      }
+    }
+  }
+}
+
+window.measureRenderAll = renderMeasurements;
+
+// Modal
+document.getElementById('msLogBtn').addEventListener('click', () => {
+  const data = msGet();
+  const entries = data.entries || [];
+  const last = entries[entries.length-1] || null;
+  const td = today();
+  const existing = entries.find(e => e.date === td);
+  const src = existing || last;
+  ['msWaistIn','msChestIn','msLArmIn','msRArmIn','msHipsIn'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (id === 'msWaistIn') el.value = src ? (src.waist || '') : '';
+    else if (id === 'msChestIn') el.value = src ? (src.chest || '') : '';
+    else if (id === 'msLArmIn') el.value = src ? (src.leftArm || '') : '';
+    else if (id === 'msRArmIn') el.value = src ? (src.rightArm || '') : '';
+    else if (id === 'msHipsIn') el.value = src ? (src.hips || '') : '';
+  });
+  const sub = document.getElementById('msModalDate');
+  if (sub) sub.textContent = td;
+  document.getElementById('msModal').classList.add('show');
+  document.getElementById('msWaistIn').focus();
+});
+document.getElementById('msCancel').addEventListener('click', () => document.getElementById('msModal').classList.remove('show'));
+document.getElementById('msModal').addEventListener('click', e => { if(e.target.id==='msModal') document.getElementById('msModal').classList.remove('show'); });
+document.getElementById('msSave').addEventListener('click', () => {
+  const g = (id) => { const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? null : +v.toFixed(1); };
+  const waist = g('msWaistIn'), chest = g('msChestIn'), leftArm = g('msLArmIn'), rightArm = g('msRArmIn'), hips = g('msHipsIn');
+  if (waist === null && chest === null && leftArm === null && rightArm === null) return;
+  const data = msGet();
+  const entries = data.entries || [];
+  const td = today();
+  const idx = entries.findIndex(e => e.date === td);
+  const entry = { date: td };
+  if (waist !== null) entry.waist = waist;
+  if (chest !== null) entry.chest = chest;
+  if (leftArm !== null) entry.leftArm = leftArm;
+  if (rightArm !== null) entry.rightArm = rightArm;
+  if (hips !== null) entry.hips = hips;
+  if (idx >= 0) entries[idx] = {...entries[idx], ...entry};
+  else entries.push(entry);
+  msSet({entries});
+  document.getElementById('msModal').classList.remove('show');
+  renderMeasurements();
+});
+
+renderMeasurements();
 })();
 </script>
 

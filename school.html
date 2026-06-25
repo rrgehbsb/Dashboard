@@ -372,6 +372,168 @@ body{
     overflow-y:auto!important;
   }
 }
+
+/* ===== POMODORO TIMER STYLES ===== */
+.pomo-section{margin-bottom:24px;}
+
+/* Two-column layout: timer left, log right */
+.pomo-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media(max-width:600px){.pomo-grid{grid-template-columns:1fr;}}
+
+/* Timer card */
+.pomo-timer-card{
+  background:var(--bg-card);border:1px solid var(--border);border-radius:16px;
+  padding:24px 20px;box-shadow:0 12px 40px rgba(0,0,0,0.45);
+  display:flex;flex-direction:column;align-items:center;gap:0;
+}
+
+/* Plant display */
+.pomo-plant-wrap{
+  width:100%;display:flex;flex-direction:column;align-items:center;
+  margin-bottom:8px;
+}
+#pomoPlantGrow{
+  width:140px;height:160px;overflow:hidden;position:relative;
+  clip-path:inset(0% 0 0 0);
+  transition:clip-path 0.5s ease;
+}
+#pomoPlantGrow.bloomed{animation:pomoBloomed 0.6s ease;}
+@keyframes pomoBloomed{0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)}}
+#pomoPlantGrow svg{width:100%;height:100%;display:block;}
+
+.pomo-tier-label{
+  font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:0.12em;
+  text-transform:uppercase;color:var(--text-tertiary);margin-top:4px;text-align:center;
+}
+.pomo-rarity-common{color:#4ade80;}
+.pomo-rarity-uncommon{color:#fbbf24;}
+.pomo-rarity-rare{color:#fda4af;}
+.pomo-rarity-epic{color:#818cf8;}
+.pomo-rarity-legendary{color:#fbbf24;text-shadow:0 0 8px #fbbf24;}
+
+/* Circular progress + digits */
+.pomo-clock-wrap{position:relative;width:120px;height:120px;margin:12px 0 8px;}
+.pomo-arc{position:absolute;inset:0;}
+.pomo-arc circle{
+  fill:none;stroke-width:5;stroke-linecap:round;
+  transform:rotate(-90deg);transform-origin:50% 50%;
+}
+.pomo-arc-bg{stroke:var(--border-strong);}
+.pomo-arc-fg{stroke:var(--accent);transition:stroke-dashoffset 0.9s linear;}
+.pomo-arc-fg.break-mode{stroke:var(--warning);}
+.pomo-digits{
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-family:var(--font-mono);font-size:30px;font-weight:700;color:var(--text-primary);
+  letter-spacing:-0.02em;line-height:1;
+}
+.pomo-mode-label{
+  font-family:var(--font-mono);font-size:9px;letter-spacing:0.14em;text-transform:uppercase;
+  color:var(--text-tertiary);margin-top:2px;
+}
+
+/* Session info row */
+.pomo-session-info{
+  font-family:var(--font-mono);font-size:10px;color:var(--text-quaternary);
+  letter-spacing:0.06em;margin-bottom:10px;text-align:center;
+}
+.pomo-session-info span{color:var(--text-tertiary);}
+
+/* Subject picker */
+.pomo-subject-row{
+  display:flex;align-items:center;gap:8px;margin-bottom:12px;width:100%;
+}
+.pomo-subject-label{font-size:11px;color:var(--text-tertiary);white-space:nowrap;}
+.pomo-subject-select{
+  flex:1;background:var(--bg-input);border:1px solid var(--border-strong);border-radius:8px;
+  padding:5px 10px;color:var(--text-primary);font-family:var(--font);font-size:12px;
+  cursor:pointer;outline:none;
+}
+.pomo-subject-select:focus{border-color:var(--accent);}
+.pomo-subject-row.hidden-by-state{opacity:0.3;pointer-events:none;}
+
+/* Timer buttons */
+.pomo-btn-row{display:flex;gap:8px;width:100%;justify-content:center;}
+.pomo-btn{
+  padding:8px 18px;border-radius:10px;font-size:13px;font-weight:600;
+  font-family:var(--font));border:none;cursor:pointer;transition:all 0.15s;
+}
+.pomo-btn-start{
+  background:rgba(29,158,117,0.18);border:1px solid rgba(29,158,117,0.4);
+  color:var(--accent);
+}
+.pomo-btn-start:hover{background:rgba(29,158,117,0.3);}
+.pomo-btn-pause{
+  background:rgba(255,138,77,0.15);border:1px solid rgba(255,138,77,0.35);
+  color:var(--warning);
+}
+.pomo-btn-pause:hover{background:rgba(255,138,77,0.25);}
+.pomo-btn-reset{
+  background:rgba(255,255,255,0.05);border:1px solid var(--border);
+  color:var(--text-tertiary);
+}
+.pomo-btn-reset:hover{background:rgba(255,255,255,0.10);color:var(--text-secondary);}
+.pomo-btn-skip{
+  background:rgba(255,255,255,0.04);border:1px solid var(--border);
+  color:var(--text-quaternary);font-size:11px;padding:6px 12px;
+}
+.pomo-btn-skip:hover{background:rgba(255,255,255,0.08);}
+
+/* Log card */
+.pomo-log-card{
+  background:var(--bg-card);border:1px solid var(--border);border-radius:16px;
+  padding:20px;box-shadow:0 12px 40px rgba(0,0,0,0.45);
+  display:flex;flex-direction:column;gap:0;
+}
+
+/* Bar chart */
+.pomo-chart-wrap{margin-bottom:16px;}
+.pomo-bars{display:flex;align-items:flex-end;gap:4px;height:60px;padding:0 2px;}
+.pomo-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;}
+.pomo-bar-track{
+  width:100%;border-radius:4px 4px 0 0;background:var(--bg-secondary);
+  border:1px solid var(--border);flex:1;display:flex;align-items:flex-end;overflow:hidden;min-height:4px;
+}
+.pomo-bar-fill{
+  width:100%;border-radius:3px 3px 0 0;background:var(--accent);
+  min-height:0;transition:height 0.4s ease;
+}
+.pomo-bar-fill.today{background:linear-gradient(to top,var(--accent),#25c991);}
+.pomo-bar-day{font-family:var(--font-mono);font-size:8px;color:var(--text-quaternary);letter-spacing:0.04em;}
+.pomo-bar-day.today{color:var(--accent);}
+
+/* Today's study list */
+.pomo-today-list{display:flex;flex-direction:column;gap:5px;margin-bottom:10px;}
+.pomo-today-row{
+  display:flex;align-items:center;gap:8px;
+  padding:7px 10px;border-radius:8px;
+  background:var(--bg-secondary);border:1px solid var(--border);
+}
+.pomo-today-subject{flex:1;font-size:12px;color:var(--text-primary);font-weight:500;}
+.pomo-today-mins{font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);}
+.pomo-today-sessions{font-family:var(--font-mono);font-size:10px;color:var(--text-quaternary);}
+
+.pomo-empty{
+  padding:20px 0;text-align:center;
+  font-size:12px;color:var(--text-quaternary);font-style:italic;
+}
+
+/* Total row */
+.pomo-total-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 2px;border-top:1px solid var(--border);margin-top:4px;
+}
+.pomo-total-label{font-size:11px;color:var(--text-tertiary);}
+.pomo-total-val{font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--text-primary);}
+
+/* Toast notification */
+#pomoToast{
+  position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:rgba(10,10,12,0.95);border:1px solid rgba(129,140,248,0.4);border-radius:12px;
+  padding:12px 20px;font-size:14px;font-weight:600;color:#818cf8;
+  box-shadow:0 8px 32px rgba(0,0,0,0.6);z-index:500;
+  opacity:0;transition:opacity 0.3s,transform 0.3s;pointer-events:none;white-space:nowrap;
+}
+#pomoToast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 </style>
 </head>
 <body>
@@ -394,6 +556,63 @@ body{
   <div class="sc-stat-chip"><span class="sc-stat-val" id="statTestsWeek">0</span><span class="sc-stat-label">Tests This Week</span></div>
   <div class="sc-stat-chip"><span class="sc-stat-val" id="statDoneToday">0</span><span class="sc-stat-label">Done Today</span></div>
   <div class="sc-stat-chip"><span class="sc-stat-val" id="statAvg">—</span><span class="sc-stat-label">Avg</span></div>
+</div>
+
+<!-- Pomodoro Timer -->
+<div class="pomo-section">
+  <div class="section-title">POMODORO TIMER</div>
+  <div class="pomo-grid">
+
+    <!-- Left: Timer + plant -->
+    <div class="pomo-timer-card">
+      <div class="pomo-plant-wrap">
+        <div id="pomoPlantGrow"><!-- SVG injected by JS --></div>
+        <div class="pomo-tier-label" id="pomoTierLabel">Seed</div>
+      </div>
+
+      <div class="pomo-clock-wrap">
+        <svg class="pomo-arc" viewBox="0 0 100 100">
+          <circle class="pomo-arc-bg" cx="50" cy="50" r="45" stroke-dasharray="282.7" stroke-dashoffset="0"/>
+          <circle class="pomo-arc-fg" id="pomoArcFg" cx="50" cy="50" r="45" stroke-dasharray="282.7" stroke-dashoffset="0"/>
+        </svg>
+        <div class="pomo-digits">
+          <span id="pomoTime">25:00</span>
+          <span class="pomo-mode-label" id="pomoModeLabel">Focus</span>
+        </div>
+      </div>
+
+      <div class="pomo-session-info" id="pomoSessionInfo">Today: <span id="pomoToday">0</span> &nbsp;·&nbsp; Total: <span id="pomoTotal">0</span></div>
+
+      <div class="pomo-subject-row" id="pomoSubjectRow">
+        <span class="pomo-subject-label">Studying:</span>
+        <select class="pomo-subject-select" id="pomoSubjectSelect"></select>
+      </div>
+
+      <div class="pomo-btn-row">
+        <button class="pomo-btn pomo-btn-start" id="pomoStartBtn" onclick="pomoStart()">Start</button>
+        <button class="pomo-btn pomo-btn-pause" id="pomoPauseBtn" onclick="pomoPause()" style="display:none;">Pause</button>
+        <button class="pomo-btn pomo-btn-reset" onclick="pomoReset()">Reset</button>
+        <button class="pomo-btn pomo-btn-skip" onclick="pomoSkip()" id="pomoSkipBtn" style="display:none;">Skip Break</button>
+      </div>
+    </div>
+
+    <!-- Right: Study log -->
+    <div class="pomo-log-card">
+      <div class="section-title" style="margin-bottom:10px;">THIS WEEK</div>
+      <div class="pomo-chart-wrap">
+        <div class="pomo-bars" id="pomoBars"></div>
+      </div>
+
+      <div class="section-title" style="margin-bottom:8px;">TODAY'S STUDY</div>
+      <div id="pomoTodayList" class="pomo-today-list"></div>
+      <div class="pomo-empty" id="pomoLogEmpty">No sessions yet today. Start your first Pomodoro!</div>
+      <div class="pomo-total-row" id="pomoTotalRow" style="display:none;">
+        <span class="pomo-total-label">Total today</span>
+        <span class="pomo-total-val" id="pomoTotalMins">0 min</span>
+      </div>
+    </div>
+
+  </div>
 </div>
 
 <!-- Today's Focus -->

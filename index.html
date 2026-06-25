@@ -543,6 +543,60 @@ body::after{
   background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.10);
   color:#FAFAFA;border-radius:10px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;
 }
+
+/* ── Mood tracker ── */
+.mood-card{
+  background:rgba(255,255,255,0.04);border-radius:16px;padding:18px 20px;
+  backdrop-filter:blur(24px) saturate(1.2);-webkit-backdrop-filter:blur(24px) saturate(1.2);
+  box-shadow:0 12px 40px rgba(0,0,0,0.45);margin-bottom:20px;
+  position:relative;z-index:1;
+}
+.mood-emoji-row{
+  display:flex;justify-content:space-between;gap:8px;margin-bottom:12px;
+}
+.mood-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:4px;padding:10px 4px;border-radius:12px;border:1.5px solid rgba(255,255,255,0.08);
+  background:rgba(255,255,255,0.03);cursor:pointer;font-family:inherit;
+  transition:background 0.15s,border-color 0.15s,transform 0.10s;
+  -webkit-tap-highlight-color:transparent;
+}
+.mood-btn:active{transform:scale(0.93);}
+.mood-btn-emoji{font-size:26px;line-height:1;}
+.mood-btn-label{font-size:9px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-tertiary);}
+.mood-btn[data-score="1"].active{background:rgba(220,60,60,0.18);border-color:rgba(220,60,60,0.45);}
+.mood-btn[data-score="2"].active{background:rgba(235,130,50,0.18);border-color:rgba(235,130,50,0.45);}
+.mood-btn[data-score="3"].active{background:rgba(230,195,50,0.18);border-color:rgba(230,195,50,0.45);}
+.mood-btn[data-score="4"].active{background:rgba(130,200,80,0.18);border-color:rgba(130,200,80,0.45);}
+.mood-btn[data-score="5"].active{background:rgba(40,180,100,0.18);border-color:rgba(40,180,100,0.45);}
+.mood-note-wrap{
+  display:none;margin-bottom:12px;
+}
+.mood-note-wrap.visible{display:block;}
+.mood-note{
+  width:100%;background:rgba(0,0,0,0.28);border:1px solid rgba(255,255,255,0.10);
+  border-radius:10px;color:#FAFAFA;font-family:inherit;font-size:13px;
+  padding:9px 12px;outline:none;resize:none;
+  transition:border-color 0.2s;
+}
+.mood-note:focus{border-color:rgba(255,255,255,0.28);}
+.mood-note::placeholder{color:var(--text-tertiary);}
+.mood-history{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.mood-dot-wrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:default;}
+.mood-dot{
+  width:10px;height:10px;border-radius:50%;
+  transition:transform 0.15s;
+}
+.mood-dot-wrap:hover .mood-dot{transform:scale(1.4);}
+.mood-dot-tip{
+  display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);
+  background:rgba(20,20,24,0.96);border:1px solid rgba(255,255,255,0.12);
+  border-radius:8px;padding:5px 9px;white-space:nowrap;
+  font-size:11px;color:#FAFAFA;pointer-events:none;z-index:10;
+}
+.mood-dot-wrap:hover .mood-dot-tip{display:block;}
+.mood-dot-label{font-size:9px;color:var(--text-tertiary);font-weight:600;font-variant-numeric:tabular-nums;}
+.mood-empty-dots{font-size:11px;color:var(--text-tertiary);font-style:italic;}
 </style>
 </head>
 <body>
@@ -635,6 +689,38 @@ body::after{
   </div>
 </div>
 
+<div class="section" style="margin-bottom:0;">
+  <div class="section-title">Mood</div>
+  <div class="mood-card">
+    <div class="mood-emoji-row" id="moodEmojiRow">
+      <button class="mood-btn" data-score="1" type="button">
+        <span class="mood-btn-emoji">😞</span>
+        <span class="mood-btn-label">Rough</span>
+      </button>
+      <button class="mood-btn" data-score="2" type="button">
+        <span class="mood-btn-emoji">😕</span>
+        <span class="mood-btn-label">Meh</span>
+      </button>
+      <button class="mood-btn" data-score="3" type="button">
+        <span class="mood-btn-emoji">😐</span>
+        <span class="mood-btn-label">Okay</span>
+      </button>
+      <button class="mood-btn" data-score="4" type="button">
+        <span class="mood-btn-emoji">🙂</span>
+        <span class="mood-btn-label">Good</span>
+      </button>
+      <button class="mood-btn" data-score="5" type="button">
+        <span class="mood-btn-emoji">😊</span>
+        <span class="mood-btn-label">Great</span>
+      </button>
+    </div>
+    <div class="mood-note-wrap" id="moodNoteWrap">
+      <textarea class="mood-note" id="moodNote" rows="2" placeholder="Add a note… (optional)"></textarea>
+    </div>
+    <div class="mood-history" id="moodHistory"></div>
+  </div>
+</div>
+
 <div class="dash-grid" id="dashGrid">
   <a href="health.html" class="dash-mini-card" id="dmMeals">
     <div class="dm-eyebrow">MEALS</div>
@@ -655,6 +741,11 @@ body::after{
     <div class="dm-eyebrow">WEIGHT</div>
     <div class="dm-value" id="dmWeightVal">—</div>
     <div class="dm-sub" id="dmWeightSub"></div>
+  </a>
+  <a href="summary.html" class="dash-mini-card" id="dmSummary">
+    <div class="dm-eyebrow">MONTHLY</div>
+    <div class="dm-value">📊</div>
+    <div class="dm-sub">Review</div>
   </a>
 </div>
 
@@ -817,7 +908,7 @@ function timeValueToHour(v) {
 // Storage — synced keys live in _db (Supabase-backed); everything else uses localStorage
 const _db={};
 let _schedulePush=()=>{};
-function _isSynced(k){return k==='goal_streak_v1'||k==='day_schedule'||k.startsWith('goals:');}
+function _isSynced(k){return k==='goal_streak_v1'||k==='day_schedule'||k.startsWith('goals:')||k==='dashboard:mood:v1';}
 function storeGet(key){
   if(_isSynced(key)) return _db.hasOwnProperty(key)?_db[key]:null;
   try{return JSON.parse(localStorage.getItem(key));}catch{return null;}
@@ -1387,6 +1478,120 @@ function updateDashGrid(){
   }catch{document.getElementById('dmWeightVal').textContent='Not logged';document.getElementById('dmWeightSub').textContent='Add weight in Gym →';}
 }
 
+// ── Mood Tracker ────────────────────────────────────────────────────────────
+const MOOD_KEY='dashboard:mood:v1';
+const MOOD_COLORS=['','#DC3C3C','#EB8232','#E6C332','#82C850','#28B464'];
+const MOOD_EMOJIS=['','😞','😕','😐','🙂','😊'];
+
+function moodTodayStr(){
+  const n=new Date();
+  if(n.getHours()<6){const d=new Date(n);d.setDate(d.getDate()-1);return toDateStr(d);}
+  return toDateStr(n);
+}
+
+function getMoodData(){return storeGet(MOOD_KEY)||{entries:[]};}
+function saveMoodData(data){storeSet(MOOD_KEY,data);}
+
+let _moodNoteTimer=null;
+
+function renderMood(){
+  const data=getMoodData();
+  const today=moodTodayStr();
+  const todayEntry=data.entries.find(e=>e.date===today)||null;
+  const currentScore=todayEntry?todayEntry.score:0;
+  const currentNote=todayEntry?todayEntry.note||'':'';
+
+  // Emoji buttons
+  document.querySelectorAll('.mood-btn').forEach(btn=>{
+    const s=parseInt(btn.dataset.score);
+    btn.classList.toggle('active',s===currentScore);
+  });
+
+  // Note area
+  const noteWrap=document.getElementById('moodNoteWrap');
+  const noteEl=document.getElementById('moodNote');
+  if(currentScore>0){
+    noteWrap.classList.add('visible');
+    if(noteEl.value!==currentNote) noteEl.value=currentNote;
+  } else {
+    noteWrap.classList.remove('visible');
+  }
+
+  // History dots — last 7 days excluding today
+  const histEl=document.getElementById('moodHistory');
+  histEl.innerHTML='';
+  const days7=[];
+  for(let i=6;i>=0;i--){
+    const d=new Date();
+    if(new Date().getHours()<6) d.setDate(d.getDate()-1);
+    d.setDate(d.getDate()-i);
+    days7.push(toDateStr(d));
+  }
+  let hasAny=false;
+  days7.forEach(dateStr=>{
+    const entry=data.entries.find(e=>e.date===dateStr);
+    const dot=document.createElement('div');
+    dot.className='mood-dot-wrap';
+    const parts=dateStr.split('-');
+    const shortDate=`${parseInt(parts[1])}/${parseInt(parts[2])}`;
+    const isToday=dateStr===today;
+    const score=entry?entry.score:0;
+    dot.innerHTML=`
+      <div class="mood-dot" style="background:${score?MOOD_COLORS[score]:'rgba(255,255,255,0.12)'}"></div>
+      <span class="mood-dot-label">${isToday?'Today':shortDate}</span>
+      <div class="mood-dot-tip">${shortDate}${score?' — '+MOOD_EMOJIS[score]+' '+score+'/5':' — no log'}${entry&&entry.note?' · '+entry.note.slice(0,40):''}</div>
+    `;
+    histEl.appendChild(dot);
+    if(score) hasAny=true;
+  });
+  if(!hasAny){
+    histEl.innerHTML='<span class="mood-empty-dots">No mood logged yet — tap an emoji above.</span>';
+  }
+}
+
+function logMood(score){
+  const data=getMoodData();
+  const today=moodTodayStr();
+  const existingIdx=data.entries.findIndex(e=>e.date===today);
+  if(existingIdx!==-1){
+    if(data.entries[existingIdx].score===score){
+      // Tap same score to deselect
+      data.entries.splice(existingIdx,1);
+    } else {
+      data.entries[existingIdx].score=score;
+    }
+  } else {
+    data.entries.push({date:today,score,note:''});
+  }
+  // Keep only last 90 days
+  const cutoff=new Date();cutoff.setDate(cutoff.getDate()-90);
+  data.entries=data.entries.filter(e=>new Date(e.date)>=cutoff);
+  saveMoodData(data);
+  renderMood();
+}
+
+function saveMoodNote(note){
+  const data=getMoodData();
+  const today=moodTodayStr();
+  const idx=data.entries.findIndex(e=>e.date===today);
+  if(idx===-1) return;
+  data.entries[idx].note=note;
+  saveMoodData(data);
+}
+
+// Mood button clicks
+document.getElementById('moodEmojiRow').addEventListener('click',e=>{
+  const btn=e.target.closest('.mood-btn');
+  if(!btn) return;
+  logMood(parseInt(btn.dataset.score));
+});
+
+// Note auto-save
+document.getElementById('moodNote').addEventListener('input',e=>{
+  clearTimeout(_moodNoteTimer);
+  _moodNoteTimer=setTimeout(()=>saveMoodNote(e.target.value.trim()),2000);
+});
+
 // Init
 runRollover();
 runStreakCheck();
@@ -1399,6 +1604,7 @@ updateTicker();
 updateCmdBar();
 updateDoNow();
 updateDashGrid();
+renderMood();
 window.addEventListener('storage',()=>{ updateCmdBar(); updateDoNow(); updateDashGrid(); });
 window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashGrid(); });
 
@@ -1449,6 +1655,7 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
     try{loadTomorrow();}catch(e){}
     try{renderStreak();}catch(e){}
     try{updateDayBar();}catch(e){}
+    try{renderMood();}catch(e){}
     window.dispatchEvent(new CustomEvent('goals-changed'));
   }
 
@@ -1476,6 +1683,7 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
     try{loadTomorrow();}catch(e){}
     try{renderStreak();}catch(e){}
     try{updateDayBar();}catch(e){}
+    try{renderMood();}catch(e){}
   }
 
   function flushWithKeepalive(){

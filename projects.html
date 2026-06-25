@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#050506">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/manifest.json">
+<title>Projects — Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="topbar.js" defer></script>
+<style>
+:root {
+  --bg: #050506;
+  --bg-card: rgba(255,255,255,0.04);
+  --bg-secondary: rgba(255,255,255,0.035);
+  --border: rgba(255,255,255,0.06);
+  --border-strong: rgba(255,255,255,0.12);
+  --text-primary: #FAFAFA;
+  --text-secondary: #B8B6B0;
+  --text-tertiary: #76746E;
+  --text-quaternary: #4D4B47;
+  --accent: #1D9E75;
+  --warning: #FF8A4D;
+  --font: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  background: var(--bg);
+  color: var(--text-secondary);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: radial-gradient(rgba(255,255,255,0.014) 1px, transparent 1px);
+  background-size: 3px 3px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 56px 20px 120px;
+  position: relative;
+  z-index: 2;
+}
+
+/* ===== Page title ===== */
+.page-title {
+  margin: 0 0 24px;
+  font-size: 26px; font-weight: 700;
+  letter-spacing: -0.025em;
+  background: linear-gradient(180deg, #FFFFFF 0%, #C7C4BC 120%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}
+
+/* ===== Project Switcher ===== */
+.project-switcher {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-bottom: 28px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.project-switcher::-webkit-scrollbar { display: none; }
+
+.project-pill {
+  flex-shrink: 0;
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-family: var(--font); font-size: 13px; font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.project-pill:hover { background: rgba(255,255,255,0.07); color: var(--text-primary); }
+.project-pill.active {
+  color: var(--text-primary);
+  border-color: transparent;
+}
+.project-pill-icon { font-size: 14px; }
+.project-pill-new {
+  border-style: dashed;
+  color: var(--text-tertiary);
+}
+.project-pill-new:hover { color: var(--text-secondary); }
+
+/* ===== Project header ===== */
+.project-header {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 24px;
+}
+.project-header-icon {
+  font-size: 28px; line-height: 1;
+  flex-shrink: 0;
+}
+.project-header-name {
+  font-size: 22px; font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.project-header-name-input {
+  font-size: 22px; font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  background: rgba(0,0,0,0.28);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-family: var(--font);
+  outline: none;
+  flex: 1; min-width: 0;
+}
+.project-header-icon-input {
+  font-size: 22px;
+  background: rgba(0,0,0,0.28);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-family: var(--font);
+  outline: none;
+  width: 60px; text-align: center;
+  color: var(--text-primary);
+}
+.btn-icon {
+  background: transparent; border: none;
+  color: var(--text-tertiary);
+  font-size: 15px; cursor: pointer;
+  padding: 6px 8px; border-radius: 8px;
+  transition: background 0.15s, color 0.15s;
+  line-height: 1;
+}
+.btn-icon:hover { background: var(--bg-secondary); color: var(--text-primary); }
+.btn-delete {
+  color: #e74c3c;
+  font-size: 13px; font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(231,76,60,0.3);
+  background: rgba(231,76,60,0.08);
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.btn-delete:hover { background: rgba(231,76,60,0.16); border-color: rgba(231,76,60,0.5); }
+
+/* ===== Kanban columns ===== */
+.kanban {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+@media (max-width: 600px) {
+  .kanban { grid-template-columns: 1fr; }
+}
+
+.kanban-col {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  display: flex; flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.col-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 4px;
+}
+.col-title {
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.col-badge {
+  font-family: var(--font-mono);
+  font-size: 10px; font-weight: 700;
+  padding: 2px 7px; border-radius: 999px;
+  background: var(--bg-secondary);
+  color: var(--text-quaternary);
+}
+
+/* ===== Task cards ===== */
+.task-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 10px 8px;
+  display: flex; flex-direction: column; gap: 6px;
+  transition: background 0.15s;
+}
+.task-card:hover { background: rgba(255,255,255,0.055); }
+.task-card.is-done {
+  opacity: 0.5;
+}
+.task-text {
+  font-size: 13px; font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.4; word-break: break-word;
+}
+.task-card.is-done .task-text {
+  text-decoration: line-through;
+  text-decoration-color: rgba(255,255,255,0.35);
+}
+.task-actions {
+  display: flex; align-items: center; gap: 4px;
+}
+.task-arrow {
+  background: transparent; border: none;
+  color: var(--text-quaternary);
+  font-size: 12px; padding: 3px 5px;
+  border-radius: 6px; cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  line-height: 1;
+}
+.task-arrow:hover:not(:disabled) { background: rgba(255,255,255,0.07); color: var(--text-secondary); }
+.task-arrow:disabled { opacity: 0.25; cursor: not-allowed; }
+.task-del {
+  background: transparent; border: none;
+  color: var(--text-quaternary);
+  font-size: 14px; padding: 3px 5px;
+  border-radius: 6px; cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  margin-left: auto;
+  line-height: 1;
+}
+.task-del:hover { background: rgba(231,76,60,0.12); color: #e74c3c; }
+
+/* ===== Quick-add input ===== */
+.quick-add {
+  display: flex; gap: 6px; margin-top: 4px;
+}
+.quick-add-input {
+  flex: 1; min-width: 0;
+  padding: 8px 10px;
+  background: rgba(0,0,0,0.22);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-family: var(--font); font-size: 12px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.quick-add-input::placeholder { color: var(--text-quaternary); }
+.quick-add-input:focus { border-color: var(--border-strong); }
+
+/* ===== Empty state ===== */
+.empty-state {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 16px;
+  padding: 80px 20px;
+  text-align: center;
+}
+.empty-icon { font-size: 40px; }
+.empty-title {
+  font-size: 18px; font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+.empty-sub { font-size: 14px; color: var(--text-tertiary); margin: 0; }
+.btn-primary {
+  padding: 11px 22px;
+  background: var(--accent);
+  border: none; border-radius: 12px;
+  color: #fff;
+  font-family: var(--font); font-size: 14px; font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.15s, transform 0.1s;
+}
+.btn-primary:hover { filter: brightness(1.12); transform: translateY(-1px); }
+.btn-primary:active { transform: translateY(0); }
+
+/* ===== Modal ===== */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 100;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.modal-overlay.hidden { display: none; }
+.modal {
+  background: #0e0e11;
+  border: 1px solid var(--border-strong);
+  border-radius: 18px;
+  padding: 24px;
+  width: 100%; max-width: 380px;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.7);
+}
+.modal-title {
+  font-size: 17px; font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 20px;
+}
+.modal-field { margin-bottom: 16px; }
+.modal-label {
+  display: block;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--text-tertiary);
+  margin-bottom: 7px;
+}
+.modal-input {
+  width: 100%;
+  padding: 10px 14px;
+  background: rgba(0,0,0,0.32);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-family: var(--font); font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.modal-input:focus { border-color: var(--accent); }
+.color-swatches {
+  display: flex; gap: 10px; flex-wrap: wrap;
+}
+.color-swatch {
+  width: 28px; height: 28px;
+  border-radius: 50%; cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform 0.12s, border-color 0.12s;
+  flex-shrink: 0;
+}
+.color-swatch:hover { transform: scale(1.15); }
+.color-swatch.selected { border-color: rgba(255,255,255,0.8); transform: scale(1.15); }
+.modal-actions {
+  display: flex; gap: 10px; margin-top: 22px;
+}
+.btn-secondary {
+  flex: 1; padding: 11px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  color: var(--text-secondary);
+  font-family: var(--font); font-size: 14px; font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-secondary:hover { background: rgba(255,255,255,0.07); }
+.modal-actions .btn-primary { flex: 1.5; }
+
+/* ===== Sync indicator ===== */
+.sync-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--text-quaternary);
+  position: fixed; bottom: 80px; right: 20px;
+  z-index: 10;
+  transition: background 0.3s;
+}
+.sync-dot.syncing { background: var(--accent); animation: pulse-dot 1s ease-in-out infinite; }
+.sync-dot.error   { background: #e74c3c; }
+@keyframes pulse-dot {
+  0%,100% { opacity: 1; } 50% { opacity: 0.35; }
+}
+
+</style>
+</head>
+<body>
+<main>
+  <h1 class="page-title">Projects</h1>
+
+  <!-- Project switcher -->
+  <div class="project-switcher" id="switcher"></div>
+
+  <!-- Active project view -->
+  <div id="projectView"></div>
+</main>
+
+<div class="sync-dot" id="syncDot"></div>
+
+<!-- New / Edit Project Modal -->
+<div class="modal-overlay hidden" id="modalOverlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h2 class="modal-title" id="modalTitle">New Project</h2>
+    <div class="modal-field">
+      <label class="modal-label" for="modalIcon">Icon</label>
+      <input class="modal-input" id="modalIcon" type="text" maxlength="4" value="📁" style="width:80px;">
+    </div>
+    <div class="modal-field">
+      <label class="modal-label" for="modalName">Name</label>
+      <input class="modal-input" id="modalName" type="text" placeholder="Project name…" autocomplete="off">
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">Color</label>
+      <div class="color-swatches" id="colorSwatches"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="modalCancel">Cancel</button>
+      <button class="btn-primary" id="modalSave">Create</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+'use strict';
+
+// ============ SUPABASE SYNC ============
+const SUPABASE_URL = 'https://mtuoqwbrujxutofhyahb.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
+const APP_KEY = 'projects';
+
+let _db = {};
+let schedulePush = function(){};
+let _sb = null;
+let lastRemoteAt = 0;
+let pushTimer = null;
+
+const syncDot = document.getElementById('syncDot');
+function dotSyncing() { syncDot.className = 'sync-dot syncing'; }
+function dotOk()      { syncDot.className = 'sync-dot'; }
+function dotErr()     { syncDot.className = 'sync-dot error'; setTimeout(dotOk, 3000); }
+
+function dbSave() {
+  try { localStorage.setItem('pj_db', JSON.stringify(_db)); } catch(e) {}
+  schedulePush();
+}
+function dbLoad() {
+  try {
+    const raw = localStorage.getItem('pj_db');
+    if (raw) _db = JSON.parse(raw) || {};
+  } catch(e) {}
+}
+
+function realSchedulePush() {
+  if (pushTimer) clearTimeout(pushTimer);
+  pushTimer = setTimeout(async () => {
+    pushTimer = null;
+    if (!_sb) return;
+    dotSyncing();
+    try {
+      const { error } = await _sb.from('app_state')
+        .upsert({ key: APP_KEY, data: _db, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+      if (error) throw error;
+      dotOk();
+    } catch(e) { dotErr(); }
+  }, 400);
+}
+
+function flushWithKeepalive() {
+  if (!pushTimer) return;
+  clearTimeout(pushTimer);
+  pushTimer = null;
+  if (!_sb) return;
+  try {
+    fetch(SUPABASE_URL + '/rest/v1/app_state?on_conflict=key', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates',
+      },
+      body: JSON.stringify({ key: APP_KEY, data: _db, updated_at: new Date().toISOString() }),
+      keepalive: true,
+    }).catch(()=>{});
+  } catch(e) {}
+}
+window.addEventListener('pagehide', flushWithKeepalive);
+window.addEventListener('beforeunload', flushWithKeepalive);
+
+async function pullRemote() {
+  if (!_sb) return;
+  try {
+    const { data, error } = await _sb.from('app_state').select('data,updated_at').eq('key', APP_KEY).maybeSingle();
+    if (error || !data) return;
+    const remoteAt = data.updated_at ? new Date(data.updated_at).getTime() : 0;
+    if (remoteAt === lastRemoteAt) return;
+    lastRemoteAt = remoteAt;
+    if (data.data && typeof data.data === 'object') {
+      _db = data.data;
+      try { localStorage.setItem('pj_db', JSON.stringify(_db)); } catch(e) {}
+      render();
+    }
+  } catch(e) {}
+}
+
+async function initSync() {
+  if (!window.supabase) return;
+  _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  schedulePush = realSchedulePush;
+
+  // Initial pull
+  try {
+    const { data, error } = await _sb.from('app_state').select('data,updated_at').eq('key', APP_KEY).maybeSingle();
+    if (!error && data && data.data && typeof data.data === 'object') {
+      const remoteAt = data.updated_at ? new Date(data.updated_at).getTime() : 0;
+      lastRemoteAt = remoteAt;
+      _db = data.data;
+      try { localStorage.setItem('pj_db', JSON.stringify(_db)); } catch(e) {}
+      render();
+    } else {
+      // push local state if any
+      if (Object.keys(_db).length > 0) schedulePush();
+    }
+  } catch(e) {}
+
+  // Realtime
+  _sb.channel('pj_' + APP_KEY)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'app_state', filter: 'key=eq.' + APP_KEY }, payload => {
+      if (!payload.new || !payload.new.data) return;
+      const remoteAt = payload.new.updated_at ? new Date(payload.new.updated_at).getTime() : 0;
+      if (remoteAt === lastRemoteAt) return;
+      lastRemoteAt = remoteAt;
+      _db = payload.new.data;
+      try { localStorage.setItem('pj_db', JSON.stringify(_db)); } catch(e) {}
+      render();
+    }).subscribe();
+
+  // Poll every 5s
+  setInterval(pullRemote, 5000);
+}
+
+// Visibility: always pull on tab focus
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) pullRemote();
+});
+
+// ============ DATA HELPERS ============
+const COLORS = ['#3b82f6','#e74c3c','#1D9E75','#8b5cf6','#f97316'];
+
+function uid() { return Math.random().toString(36).slice(2,9); }
+
+function getProjects() {
+  return Array.isArray(_db['projects:list']) ? _db['projects:list'] : [];
+}
+function setProjects(list) {
+  _db['projects:list'] = list;
+  dbSave();
+}
+
+function getProject(id) {
+  return getProjects().find(p => p.id === id) || null;
+}
+
+function updateProject(id, fn) {
+  const list = getProjects();
+  const idx = list.findIndex(p => p.id === id);
+  if (idx === -1) return;
+  fn(list[idx]);
+  setProjects(list);
+}
+
+// ============ STATE ============
+let activeId = null;
+let editMode = false;
+
+// ============ MODAL ============
+let modalMode = 'new'; // 'new' | 'edit'
+let selectedColor = COLORS[0];
+
+const modalOverlay = document.getElementById('modalOverlay');
+const modalTitle   = document.getElementById('modalTitle');
+const modalIcon    = document.getElementById('modalIcon');
+const modalName    = document.getElementById('modalName');
+const modalSave    = document.getElementById('modalSave');
+const modalCancel  = document.getElementById('modalCancel');
+const colorSwatches = document.getElementById('colorSwatches');
+
+// Build color swatches
+COLORS.forEach(c => {
+  const sw = document.createElement('div');
+  sw.className = 'color-swatch' + (c === selectedColor ? ' selected' : '');
+  sw.style.background = c;
+  sw.dataset.color = c;
+  sw.addEventListener('click', () => {
+    selectedColor = c;
+    colorSwatches.querySelectorAll('.color-swatch').forEach(s => s.classList.toggle('selected', s.dataset.color === c));
+  });
+  colorSwatches.appendChild(sw);
+});
+
+function openModal(mode, project) {
+  modalMode = mode;
+  if (mode === 'new') {
+    modalTitle.textContent = 'New Project';
+    modalSave.textContent = 'Create';
+    modalIcon.value = '📁';
+    modalName.value = '';
+    selectedColor = COLORS[0];
+  } else {
+    modalTitle.textContent = 'Edit Project';
+    modalSave.textContent = 'Save';
+    modalIcon.value = project.icon || '📁';
+    modalName.value = project.name || '';
+    selectedColor = project.color || COLORS[0];
+  }
+  colorSwatches.querySelectorAll('.color-swatch').forEach(s => s.classList.toggle('selected', s.dataset.color === selectedColor));
+  modalOverlay.classList.remove('hidden');
+  setTimeout(() => modalName.focus(), 60);
+}
+function closeModal() { modalOverlay.classList.add('hidden'); }
+
+modalCancel.addEventListener('click', closeModal);
+modalOverlay.addEventListener('click', e => { if (e.target === modalOverlay) closeModal(); });
+modalName.addEventListener('keydown', e => { if (e.key === 'Enter') modalSave.click(); });
+
+modalSave.addEventListener('click', () => {
+  const name = modalName.value.trim();
+  const icon = modalIcon.value.trim() || '📁';
+  if (!name) { modalName.focus(); return; }
+
+  if (modalMode === 'new') {
+    const p = { id: uid(), name, icon, color: selectedColor, tasks: [] };
+    const list = getProjects();
+    list.push(p);
+    setProjects(list);
+    activeId = p.id;
+    editMode = false;
+  } else {
+    updateProject(activeId, p => { p.name = name; p.icon = icon; p.color = selectedColor; });
+    editMode = false;
+  }
+  closeModal();
+  render();
+});
+
+// ============ RENDER ============
+const switcher    = document.getElementById('switcher');
+const projectView = document.getElementById('projectView');
+
+function pilllColor(project) {
+  const c = project.color || COLORS[0];
+  return `background:${c}22;border-color:${c}55;`;
+}
+
+function renderSwitcher(projects) {
+  switcher.innerHTML = '';
+  projects.forEach(p => {
+    const pill = document.createElement('button');
+    pill.type = 'button';
+    pill.className = 'project-pill' + (p.id === activeId ? ' active' : '');
+    if (p.id === activeId) pill.setAttribute('style', pilllColor(p));
+    pill.innerHTML = `<span class="project-pill-icon">${escHtml(p.icon)}</span><span>${escHtml(p.name)}</span>`;
+    pill.addEventListener('click', () => {
+      activeId = p.id; editMode = false; render();
+    });
+    switcher.appendChild(pill);
+  });
+
+  const newPill = document.createElement('button');
+  newPill.type = 'button';
+  newPill.className = 'project-pill project-pill-new';
+  newPill.textContent = '+ New';
+  newPill.addEventListener('click', () => openModal('new'));
+  switcher.appendChild(newPill);
+}
+
+function renderEmpty() {
+  projectView.innerHTML = `
+    <div class="empty-state">
+      <div class="empty-icon">📋</div>
+      <p class="empty-title">No projects yet</p>
+      <p class="empty-sub">Organize your work into projects with a Kanban board.</p>
+      <button class="btn-primary" id="emptyCreateBtn">Create your first project</button>
+    </div>`;
+  document.getElementById('emptyCreateBtn').addEventListener('click', () => openModal('new'));
+}
+
+const COLS = [
+  { status: 'todo',       label: 'To Do' },
+  { status: 'inprogress', label: 'In Progress' },
+  { status: 'done',       label: 'Done' },
+];
+
+function renderProject(project) {
+  projectView.innerHTML = '';
+
+  // Header
+  const header = document.createElement('div');
+  header.className = 'project-header';
+
+  if (editMode) {
+    const iconIn = document.createElement('input');
+    iconIn.className = 'project-header-icon-input';
+    iconIn.value = project.icon || '📁';
+    iconIn.id = 'editIcon';
+
+    const nameIn = document.createElement('input');
+    nameIn.className = 'project-header-name-input';
+    nameIn.value = project.name;
+    nameIn.id = 'editName';
+    nameIn.type = 'text';
+
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'btn-icon';
+    saveBtn.title = 'Save';
+    saveBtn.textContent = '✓';
+    saveBtn.addEventListener('click', () => {
+      const newName = nameIn.value.trim();
+      const newIcon = iconIn.value.trim() || '📁';
+      if (!newName) return;
+      updateProject(project.id, p => { p.name = newName; p.icon = newIcon; });
+      editMode = false;
+      render();
+    });
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn-delete';
+    delBtn.textContent = 'Delete Project';
+    delBtn.addEventListener('click', () => {
+      if (!confirm('Delete "' + project.name + '"? This cannot be undone.')) return;
+      const list = getProjects().filter(p => p.id !== project.id);
+      setProjects(list);
+      activeId = list.length > 0 ? list[0].id : null;
+      editMode = false;
+      render();
+    });
+
+    nameIn.addEventListener('keydown', e => { if (e.key === 'Enter') saveBtn.click(); });
+
+    header.appendChild(iconIn);
+    header.appendChild(nameIn);
+    header.appendChild(saveBtn);
+    header.appendChild(delBtn);
+  } else {
+    const iconEl = document.createElement('div');
+    iconEl.className = 'project-header-icon';
+    iconEl.textContent = project.icon || '📁';
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'project-header-name';
+    nameEl.textContent = project.name;
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'btn-icon';
+    editBtn.title = 'Edit project';
+    editBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+    editBtn.addEventListener('click', () => { editMode = true; render(); });
+
+    header.appendChild(iconEl);
+    header.appendChild(nameEl);
+    header.appendChild(editBtn);
+  }
+
+  projectView.appendChild(header);
+
+  // Kanban
+  const kanban = document.createElement('div');
+  kanban.className = 'kanban';
+
+  COLS.forEach((col, colIdx) => {
+    const tasks = (project.tasks || []).filter(t => t.status === col.status);
+
+    const colEl = document.createElement('div');
+    colEl.className = 'kanban-col';
+
+    // Column header
+    const colHead = document.createElement('div');
+    colHead.className = 'col-header';
+    const colTitle = document.createElement('div');
+    colTitle.className = 'col-title';
+    colTitle.textContent = col.label;
+    const colBadge = document.createElement('div');
+    colBadge.className = 'col-badge';
+    colBadge.textContent = tasks.length;
+    colHead.appendChild(colTitle);
+    colHead.appendChild(colBadge);
+    colEl.appendChild(colHead);
+
+    // Task cards
+    tasks.forEach(task => {
+      const card = document.createElement('div');
+      card.className = 'task-card' + (task.status === 'done' ? ' is-done' : '');
+
+      const text = document.createElement('div');
+      text.className = 'task-text';
+      text.textContent = task.text;
+
+      const actions = document.createElement('div');
+      actions.className = 'task-actions';
+
+      const leftBtn = document.createElement('button');
+      leftBtn.className = 'task-arrow';
+      leftBtn.title = 'Move left';
+      leftBtn.textContent = '←';
+      leftBtn.disabled = colIdx === 0;
+      leftBtn.addEventListener('click', () => {
+        moveTask(project.id, task.id, COLS[colIdx - 1].status);
+      });
+
+      const rightBtn = document.createElement('button');
+      rightBtn.className = 'task-arrow';
+      rightBtn.title = 'Move right';
+      rightBtn.textContent = '→';
+      rightBtn.disabled = colIdx === COLS.length - 1;
+      rightBtn.addEventListener('click', () => {
+        moveTask(project.id, task.id, COLS[colIdx + 1].status);
+      });
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'task-del';
+      delBtn.title = 'Delete task';
+      delBtn.textContent = '✕';
+      delBtn.addEventListener('click', () => deleteTask(project.id, task.id));
+
+      actions.appendChild(leftBtn);
+      actions.appendChild(rightBtn);
+      actions.appendChild(delBtn);
+
+      card.appendChild(text);
+      card.appendChild(actions);
+      colEl.appendChild(card);
+    });
+
+    // Quick-add
+    const qa = document.createElement('div');
+    qa.className = 'quick-add';
+    const qaInput = document.createElement('input');
+    qaInput.className = 'quick-add-input';
+    qaInput.type = 'text';
+    qaInput.placeholder = 'Add task…';
+    qaInput.autocomplete = 'off';
+    qaInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        const text = qaInput.value.trim();
+        if (!text) return;
+        addTask(project.id, text, col.status);
+        qaInput.value = '';
+      }
+    });
+    qa.appendChild(qaInput);
+    colEl.appendChild(qa);
+
+    kanban.appendChild(colEl);
+  });
+
+  projectView.appendChild(kanban);
+}
+
+function render() {
+  const projects = getProjects();
+
+  renderSwitcher(projects);
+
+  if (projects.length === 0) {
+    renderEmpty();
+    return;
+  }
+
+  if (!activeId || !projects.find(p => p.id === activeId)) {
+    activeId = projects[0].id;
+  }
+
+  const project = getProject(activeId);
+  if (!project) { renderEmpty(); return; }
+  renderProject(project);
+}
+
+// ============ TASK ACTIONS ============
+function addTask(projectId, text, status) {
+  updateProject(projectId, p => {
+    if (!Array.isArray(p.tasks)) p.tasks = [];
+    p.tasks.push({ id: uid(), text, status });
+  });
+  render();
+}
+
+function moveTask(projectId, taskId, newStatus) {
+  updateProject(projectId, p => {
+    const t = (p.tasks || []).find(t => t.id === taskId);
+    if (t) t.status = newStatus;
+  });
+  render();
+}
+
+function deleteTask(projectId, taskId) {
+  updateProject(projectId, p => {
+    p.tasks = (p.tasks || []).filter(t => t.id !== taskId);
+  });
+  render();
+}
+
+// ============ UTILS ============
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ============ BOOT ============
+dbLoad();
+render();
+initSync();
+
+})();
+</script>
+</body>
+</html>

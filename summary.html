@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#050506">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/manifest.json">
+<title>Summary — Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="topbar.js" defer></script>
+<style>
+:root {
+  --bg: #050506;
+  --bg-card: rgba(255,255,255,0.04);
+  --bg-secondary: rgba(255,255,255,0.035);
+  --border: rgba(255,255,255,0.06);
+  --border-strong: rgba(255,255,255,0.12);
+  --text-primary: #FAFAFA;
+  --text-secondary: #B8B6B0;
+  --text-tertiary: #76746E;
+  --text-quaternary: #4D4B47;
+  --accent: #1D9E75;
+  --warning: #FF8A4D;
+  --font: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text-secondary);
+  font-family: var(--font);
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: radial-gradient(rgba(255,255,255,0.014) 1px, transparent 1px);
+  background-size: 3px 3px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 56px 20px 120px;
+  position: relative;
+  z-index: 2;
+}
+
+/* ── Header ── */
+.summary-header {
+  margin-bottom: 36px;
+}
+.summary-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.summary-eyebrow::before {
+  content: '◈';
+  color: var(--accent);
+  font-size: 12px;
+}
+.summary-title {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  margin-bottom: 20px;
+  background: linear-gradient(135deg, #ffffff 0%, #c8c5bc 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Month nav ── */
+.month-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.month-nav button {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 16px;
+  width: 42px;
+  height: 40px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+  font-family: var(--font);
+  -webkit-tap-highlight-color: transparent;
+}
+.month-nav button:hover {
+  background: rgba(255,255,255,0.06);
+  color: var(--text-primary);
+}
+.month-nav button:active {
+  background: rgba(255,255,255,0.1);
+}
+.month-nav-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  padding: 0 16px;
+  min-width: 130px;
+  text-align: center;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+/* ── Loading ── */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 60px 0;
+  color: var(--text-tertiary);
+  font-size: 14px;
+}
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--border-strong);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Cards grid ── */
+.cards-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+@media (max-width: 480px) {
+  .cards-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 18px;
+  display: flex;
+  gap: 14px;
+  align-items: stretch;
+  transition: border-color 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.stat-card:hover {
+  border-color: var(--border-strong);
+}
+.stat-card-bar {
+  width: 4px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  align-self: stretch;
+  min-height: 60px;
+}
+.stat-card-content {
+  flex: 1;
+  min-width: 0;
+}
+.stat-card-emoji {
+  font-size: 16px;
+  line-height: 1;
+  margin-bottom: 10px;
+  display: block;
+}
+.stat-card-value {
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  margin-bottom: 4px;
+  font-family: var(--font);
+}
+.stat-card-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-family: var(--font-mono);
+  margin-bottom: 6px;
+}
+.stat-card-sub {
+  font-size: 12px;
+  color: var(--text-quaternary);
+  line-height: 1.4;
+}
+.stat-card-sub strong {
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+/* ── Highlights ── */
+.highlights-section {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+}
+.highlights-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.highlights-title::before {
+  content: '★';
+  color: var(--warning);
+  font-size: 11px;
+}
+.highlights-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.highlight-item {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  padding: 10px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  transition: border-color 0.15s;
+}
+.highlight-item:hover {
+  border-color: var(--border-strong);
+}
+
+/* ── Empty state for highlights ── */
+.highlights-empty {
+  color: var(--text-quaternary);
+  font-size: 13px;
+  text-align: center;
+  padding: 16px 0 4px;
+}
+
+/* ── Section divider ── */
+.section-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin: 0 4px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.section-label::before {
+  content: '≡';
+  font-size: 14px;
+  opacity: 0.5;
+}
+</style>
+</head>
+<body>
+<main>
+  <div class="summary-header">
+    <div class="summary-eyebrow">Monthly Review</div>
+    <div class="summary-title">Your Month in Review</div>
+    <div class="month-nav">
+      <button id="prevMonth" aria-label="Previous month">&#8249;</button>
+      <div class="month-nav-label" id="monthLabel">June 2026</div>
+      <button id="nextMonth" aria-label="Next month">&#8250;</button>
+    </div>
+  </div>
+
+  <div id="loadingState" class="loading-state">
+    <div class="spinner"></div>
+    <span>Loading your data…</span>
+  </div>
+
+  <div id="summaryContent" style="display:none">
+    <div class="section-label" style="margin-bottom:16px">Stats</div>
+    <div class="cards-grid" id="cardsGrid"></div>
+
+    <div class="highlights-section" id="highlightsSection">
+      <div class="highlights-title">Highlights</div>
+      <ul class="highlights-list" id="highlightsList"></ul>
+    </div>
+  </div>
+</main>
+
+<script>
+(async function () {
+  'use strict';
+
+  // ── Supabase ──────────────────────────────────────────────────────────────
+  const SUPABASE_URL = 'https://mtuoqwbrujxutofhyahb.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
+
+  // ── Month state ───────────────────────────────────────────────────────────
+  const now = new Date();
+  let selYear  = now.getFullYear();
+  let selMonth = now.getMonth() + 1; // 1-based
+
+  const MONTH_NAMES = ['January','February','March','April','May','June',
+                       'July','August','September','October','November','December'];
+
+  function inMonth(dateStr, y, m) {
+    return dateStr && dateStr.startsWith(String(y) + '-' + String(m).padStart(2, '0'));
+  }
+
+  function daysInMonth(y, m) {
+    return new Date(y, m, 0).getDate();
+  }
+
+  // ── Fetch ─────────────────────────────────────────────────────────────────
+  let healthData = {}, habitsData = {}, schoolData = {}, gymData = {}, indexData = {};
+
+  async function fetchAll() {
+    try {
+      // Wait for supabase to be available (loaded via CDN)
+      let attempts = 0;
+      while (!window.supabase && attempts < 50) {
+        await new Promise(r => setTimeout(r, 100));
+        attempts++;
+      }
+      if (!window.supabase) throw new Error('Supabase not loaded');
+
+      const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      const keys = ['health', 'habits', 'school', 'gym', 'index'];
+      const results = await Promise.all(
+        keys.map(k => sb.from('app_state').select('data').eq('key', k).maybeSingle())
+      );
+      healthData = results[0].data?.data || {};
+      habitsData = results[1].data?.data || {};
+      schoolData = results[2].data?.data || {};
+      gymData    = results[3].data?.data || {};
+      indexData  = results[4].data?.data || {};
+    } catch (e) {
+      console.warn('Summary fetch error:', e);
+    }
+  }
+
+  // ── Compute stats ─────────────────────────────────────────────────────────
+  function computeStats(y, m) {
+    const stats = {};
+
+    // ── Sleep ────────────────────────────────────────────────────────────────
+    try {
+      const sleepEntries = (healthData['dashboard:sleep:v1']?.entries || [])
+        .filter(e => inMonth(e.date, y, m) && typeof e.hours === 'number');
+      if (sleepEntries.length > 0) {
+        const avg = sleepEntries.reduce((s, e) => s + e.hours, 0) / sleepEntries.length;
+        stats.sleepAvg    = avg.toFixed(1);
+        stats.sleepNights = sleepEntries.length;
+        stats.sleep8Plus  = sleepEntries.filter(e => e.hours >= 8).length;
+      }
+    } catch (e) {}
+
+    // ── Weight ───────────────────────────────────────────────────────────────
+    try {
+      const wEntries = (healthData['dashboard:weight:v1']?.entries || [])
+        .filter(e => inMonth(e.date, y, m) && typeof e.kg === 'number')
+        .sort((a, b) => a.date.localeCompare(b.date));
+      if (wEntries.length >= 2) {
+        const delta = wEntries[wEntries.length - 1].kg - wEntries[0].kg;
+        stats.weightChange = (delta >= 0 ? '+' : '') + delta.toFixed(1);
+        stats.weightStart  = wEntries[0].kg;
+        stats.weightEnd    = wEntries[wEntries.length - 1].kg;
+      } else if (wEntries.length === 1) {
+        stats.weightOnly = wEntries[0].kg + ' kg';
+      }
+    } catch (e) {}
+
+    // ── Meals ────────────────────────────────────────────────────────────────
+    try {
+      const mealLog = healthData['dashboard:mealPrep:v1:daily'] || {};
+      let mealDays = 0;
+      for (const [dateStr, meals] of Object.entries(mealLog)) {
+        if (!inMonth(dateStr, y, m)) continue;
+        const mealObj = meals || {};
+        const anyEaten = Object.values(mealObj).some(v =>
+          (typeof v === 'object' && v !== null && v.eaten === true) ||
+          (typeof v === 'boolean' && v === true)
+        );
+        if (anyEaten) mealDays++;
+      }
+      stats.mealDays = mealDays;
+    } catch (e) {}
+
+    // ── Habits ───────────────────────────────────────────────────────────────
+    try {
+      const habitsLog = habitsData['habits:log'] || {};
+      // habitsLog is expected: { "2026-06-01": { "Gym": true, "Read": false, ... }, ... }
+      let totalDone = 0, totalPossible = 0;
+      const habitTotals = {}; // habitName -> { done, possible }
+
+      for (const [dateStr, dayHabits] of Object.entries(habitsLog)) {
+        if (!inMonth(dateStr, y, m)) continue;
+        if (typeof dayHabits !== 'object' || dayHabits === null) continue;
+        for (const [habitName, done] of Object.entries(dayHabits)) {
+          totalPossible++;
+          if (!habitTotals[habitName]) habitTotals[habitName] = { done: 0, possible: 0 };
+          habitTotals[habitName].possible++;
+          if (done === true || done === 1) {
+            totalDone++;
+            habitTotals[habitName].done++;
+          }
+        }
+      }
+
+      if (totalPossible > 0) {
+        stats.habitsPct = Math.round((totalDone / totalPossible) * 100);
+      }
+
+      // Top habit by completion %
+      let topHabit = null, topPct = -1;
+      for (const [name, { done, possible }] of Object.entries(habitTotals)) {
+        if (possible === 0) continue;
+        const pct = done / possible;
+        if (pct > topPct) { topPct = pct; topHabit = name; }
+      }
+      if (topHabit) {
+        stats.topHabit    = topHabit;
+        stats.topHabitPct = Math.round(topPct * 100);
+      }
+
+      // Best streak per habit within month
+      let bestStreak = 0, bestStreakHabit = null;
+      for (const [habitName, _] of Object.entries(habitTotals)) {
+        // Gather sorted dates this habit was done
+        const doneDates = Object.entries(habitsLog)
+          .filter(([dateStr, dayHabits]) =>
+            inMonth(dateStr, y, m) &&
+            typeof dayHabits === 'object' && dayHabits !== null &&
+            (dayHabits[habitName] === true || dayHabits[habitName] === 1)
+          )
+          .map(([dateStr]) => dateStr)
+          .sort();
+
+        let streak = 0, maxStreak = 0;
+        for (let i = 0; i < doneDates.length; i++) {
+          if (i === 0) {
+            streak = 1;
+          } else {
+            const prev = new Date(doneDates[i - 1]);
+            const curr = new Date(doneDates[i]);
+            const diff = (curr - prev) / (1000 * 60 * 60 * 24);
+            streak = diff === 1 ? streak + 1 : 1;
+          }
+          if (streak > maxStreak) maxStreak = streak;
+        }
+        if (maxStreak > bestStreak) {
+          bestStreak = maxStreak;
+          bestStreakHabit = habitName;
+        }
+      }
+      if (bestStreak > 0) {
+        stats.bestStreak      = bestStreak;
+        stats.bestStreakHabit = bestStreakHabit;
+      }
+    } catch (e) {}
+
+    // ── Study / School ────────────────────────────────────────────────────────
+    try {
+      const pomLog = (schoolData['dashboard:pomodoro:v1']?.log || [])
+        .filter(e => inMonth(e.date, y, m));
+      stats.studySessions = pomLog.length;
+      const totalMins = pomLog.reduce((s, e) => s + (e.minutes || 0), 0);
+      stats.studyHours = (totalMins / 60).toFixed(1);
+
+      // Top subject
+      const subjectMap = {};
+      for (const e of pomLog) {
+        const subj = e.subject || e.tag || 'Other';
+        subjectMap[subj] = (subjectMap[subj] || 0) + (e.minutes || 0);
+      }
+      let topSubject = null, topSubjectMins = 0;
+      for (const [subj, mins] of Object.entries(subjectMap)) {
+        if (mins > topSubjectMins) { topSubjectMins = mins; topSubject = subj; }
+      }
+      if (topSubject) {
+        stats.topSubject     = topSubject;
+        stats.topSubjectHrs  = (topSubjectMins / 60).toFixed(1);
+      }
+    } catch (e) {}
+
+    // ── Gym ───────────────────────────────────────────────────────────────────
+    try {
+      // Try multiple possible key structures
+      let gymSessions = null;
+      // Option 1: gymData has a top-level log array
+      const gymKeys = Object.keys(gymData);
+      for (const k of gymKeys) {
+        const val = gymData[k];
+        if (Array.isArray(val)) {
+          const monthEntries = val.filter(e =>
+            e && (inMonth(e.date, y, m) || inMonth(e.createdAt, y, m) || inMonth(e.timestamp, y, m))
+          );
+          if (monthEntries.length > 0) {
+            gymSessions = monthEntries.length;
+            break;
+          }
+        }
+        if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+          // Nested: e.g. { log: [...] }
+          for (const subKey of Object.keys(val)) {
+            const subVal = val[subKey];
+            if (Array.isArray(subVal)) {
+              const monthEntries = subVal.filter(e =>
+                e && (inMonth(e.date, y, m) || inMonth(e.createdAt, y, m) || inMonth(e.timestamp, y, m))
+              );
+              if (monthEntries.length > 0) {
+                gymSessions = monthEntries.length;
+                break;
+              }
+            }
+          }
+        }
+        if (gymSessions !== null) break;
+      }
+      if (gymSessions !== null) stats.gymSessions = gymSessions;
+    } catch (e) {}
+
+    // ── Mood ─────────────────────────────────────────────────────────────────
+    try {
+      const moodEntries = (indexData['dashboard:mood:v1']?.entries || [])
+        .filter(e => inMonth(e.date, y, m) && typeof e.score === 'number');
+      if (moodEntries.length > 0) {
+        const avg = moodEntries.reduce((s, e) => s + e.score, 0) / moodEntries.length;
+        stats.moodAvg   = avg.toFixed(1);
+        stats.moodDays  = moodEntries.length;
+        stats.moodRaw   = avg;
+      }
+    } catch (e) {}
+
+    // ── Tasks ─────────────────────────────────────────────────────────────────
+    try {
+      // Try common task structures
+      let tasksDone = null;
+      const taskSources = [
+        indexData['dashboard:tasks:v1'],
+        indexData['tasks'],
+        indexData['taskList'],
+      ];
+      for (const src of taskSources) {
+        if (!src) continue;
+        if (Array.isArray(src)) {
+          const done = src.filter(t =>
+            t && (t.done === true || t.completed === true || t.status === 'done') &&
+            inMonth(t.date || t.completedAt || t.updatedAt, y, m)
+          ).length;
+          if (done > 0) { tasksDone = done; break; }
+        } else if (typeof src === 'object') {
+          const arr = src.items || src.list || src.tasks || [];
+          if (Array.isArray(arr)) {
+            const done = arr.filter(t =>
+              t && (t.done === true || t.completed === true || t.status === 'done') &&
+              inMonth(t.date || t.completedAt || t.updatedAt, y, m)
+            ).length;
+            if (done > 0) { tasksDone = done; break; }
+          }
+        }
+      }
+      if (tasksDone !== null) stats.tasksDone = tasksDone;
+    } catch (e) {}
+
+    return stats;
+  }
+
+  // ── Mood emoji ────────────────────────────────────────────────────────────
+  function moodEmoji(score) {
+    if (!score) return '😐';
+    const n = parseFloat(score);
+    if (n >= 4.5) return '😊';
+    if (n >= 3.5) return '🙂';
+    if (n >= 2.5) return '😐';
+    if (n >= 1.5) return '😕';
+    return '😞';
+  }
+
+  // ── Render cards ──────────────────────────────────────────────────────────
+  function makeCard(emoji, label, value, sub, accentColor) {
+    return `
+      <div class="stat-card">
+        <div class="stat-card-bar" style="background:${accentColor}"></div>
+        <div class="stat-card-content">
+          <span class="stat-card-emoji">${emoji}</span>
+          <div class="stat-card-value">${value}</div>
+          <div class="stat-card-label">${label}</div>
+          ${sub ? `<div class="stat-card-sub">${sub}</div>` : ''}
+        </div>
+      </div>`;
+  }
+
+  function render(y, m) {
+    const stats = computeStats(y, m);
+
+    // Card 1 — Sleep
+    const sleepVal = stats.sleepAvg != null ? stats.sleepAvg + 'h' : '—';
+    const sleepSub = stats.sleepNights != null ? `${stats.sleepNights} nights logged` : null;
+
+    // Card 2 — Weight
+    const weightVal = stats.weightChange != null ? stats.weightChange + ' kg' : (stats.weightOnly || '—');
+    const weightSub = stats.weightChange != null
+      ? `${stats.weightStart} → ${stats.weightEnd} kg`
+      : null;
+
+    // Card 3 — Gym
+    const gymVal = stats.gymSessions != null ? String(stats.gymSessions) : '—';
+    const gymSub = stats.gymSessions != null ? 'sessions this month' : 'no data found';
+
+    // Card 4 — Habits
+    const habitsVal = stats.habitsPct != null ? stats.habitsPct + '%' : '—';
+    const habitsSub = stats.topHabit
+      ? `Top: <strong>${stats.topHabit}</strong> (${stats.topHabitPct}%)`
+      : null;
+
+    // Card 5 — Study
+    const studyVal = stats.studyHours != null ? stats.studyHours + 'h' : '—';
+    const studySub = [
+      stats.studySessions != null ? `${stats.studySessions} sessions` : null,
+      stats.topSubject ? `Top: <strong>${stats.topSubject}</strong>` : null,
+    ].filter(Boolean).join(' · ') || null;
+
+    // Card 6 — Mood
+    const moodScore = stats.moodAvg;
+    const moodVal = moodScore != null
+      ? `${moodEmoji(moodScore)} ${moodScore}`
+      : '—';
+    const moodSub = stats.moodDays != null ? `${stats.moodDays} days tracked` : null;
+
+    // Card 7 — Meals
+    const mealsVal = stats.mealDays != null ? String(stats.mealDays) : '—';
+    const mealsSub = stats.mealDays != null ? 'days with logged meals' : null;
+
+    // Card 8 — Tasks
+    const tasksVal = stats.tasksDone != null ? String(stats.tasksDone) : '—';
+    const tasksSub = stats.tasksDone != null ? 'completed this month' : 'no data found';
+
+    const grid = document.getElementById('cardsGrid');
+    grid.innerHTML = [
+      makeCard('😴', 'Sleep',    sleepVal,   sleepSub,   '#818cf8'),
+      makeCard('⚖️', 'Weight',   weightVal,  weightSub,  '#3b82f6'),
+      makeCard('💪', 'Workouts', gymVal,     gymSub,     '#e74c3c'),
+      makeCard('🔥', 'Habits',   habitsVal,  habitsSub,  '#f97316'),
+      makeCard('📚', 'Study',    studyVal,   studySub,   '#fbbf24'),
+      makeCard('😊', 'Mood',     moodVal,    moodSub,    '#4ade80'),
+      makeCard('🍽️', 'Meals',   mealsVal,   mealsSub,   '#1D9E75'),
+      makeCard('✅', 'Tasks',    tasksVal,   tasksSub,   '#94a3b8'),
+    ].join('');
+
+    // ── Highlights ──────────────────────────────────────────────────────────
+    const items = [];
+
+    if (stats.bestStreak && stats.bestStreak >= 2) {
+      items.push(`🏆 Best habit streak: <strong>${stats.bestStreak} days</strong> of ${stats.bestStreakHabit}`);
+    }
+    if (stats.sleep8Plus && stats.sleep8Plus > 0) {
+      items.push(`😴 Slept 8h+ on <strong>${stats.sleep8Plus} nights</strong> this month`);
+    }
+    if (stats.sleepAvg && parseFloat(stats.sleepAvg) >= 8) {
+      items.push(`🌙 Averaged <strong>${stats.sleepAvg}h</strong> of sleep — well above target`);
+    } else if (stats.sleepAvg && parseFloat(stats.sleepAvg) >= 7) {
+      items.push(`🌙 Consistent sleep: averaged <strong>${stats.sleepAvg}h</strong> per night`);
+    }
+    if (stats.habitsPct && stats.habitsPct >= 80) {
+      items.push(`🔥 Outstanding habits month — <strong>${stats.habitsPct}%</strong> completion rate`);
+    } else if (stats.habitsPct && stats.habitsPct >= 60) {
+      items.push(`📈 Good habits consistency: <strong>${stats.habitsPct}%</strong> hit rate`);
+    }
+    if (stats.studyHours && parseFloat(stats.studyHours) >= 20) {
+      items.push(`📚 Productive study month — <strong>${stats.studyHours}h</strong> logged${stats.topSubject ? `, mostly ${stats.topSubject}` : ''}`);
+    } else if (stats.studySessions && stats.studySessions > 0) {
+      items.push(`📚 Completed <strong>${stats.studySessions}</strong> study session${stats.studySessions > 1 ? 's' : ''} this month`);
+    }
+    if (stats.gymSessions && stats.gymSessions >= 12) {
+      items.push(`💪 Crushed it in the gym — <strong>${stats.gymSessions} workouts</strong> this month`);
+    } else if (stats.gymSessions && stats.gymSessions > 0) {
+      items.push(`💪 Hit the gym <strong>${stats.gymSessions} time${stats.gymSessions > 1 ? 's' : ''}</strong> this month`);
+    }
+    if (stats.weightChange) {
+      const delta = parseFloat(stats.weightChange);
+      if (delta < -0.5) {
+        items.push(`⚖️ Lost <strong>${Math.abs(delta).toFixed(1)} kg</strong> this month`);
+      } else if (delta > 0.5) {
+        items.push(`⚖️ Gained <strong>${delta.toFixed(1)} kg</strong> this month`);
+      } else {
+        items.push(`⚖️ Weight remained stable this month`);
+      }
+    }
+    if (stats.moodRaw && stats.moodRaw >= 4) {
+      items.push(`😊 Great mood month — averaged <strong>${stats.moodAvg}/5</strong>`);
+    } else if (stats.moodRaw && stats.moodRaw >= 3) {
+      items.push(`😐 Mood averaged <strong>${stats.moodAvg}/5</strong> — decent month overall`);
+    }
+    if (stats.mealDays && stats.mealDays >= 20) {
+      items.push(`🍽️ Consistent nutrition — meals logged <strong>${stats.mealDays} out of ~${daysInMonth(y, m)} days</strong>`);
+    }
+    if (stats.tasksDone && stats.tasksDone > 0) {
+      items.push(`✅ Completed <strong>${stats.tasksDone} task${stats.tasksDone > 1 ? 's' : ''}</strong> this month`);
+    }
+
+    const list = document.getElementById('highlightsList');
+    if (items.length === 0) {
+      list.innerHTML = '<li class="highlights-empty">No highlights available for this month yet.</li>';
+    } else {
+      list.innerHTML = items.map(txt =>
+        `<li class="highlight-item">${txt}</li>`
+      ).join('');
+    }
+  }
+
+  // ── Month nav ─────────────────────────────────────────────────────────────
+  function updateMonthLabel() {
+    document.getElementById('monthLabel').textContent =
+      MONTH_NAMES[selMonth - 1] + ' ' + selYear;
+  }
+
+  document.getElementById('prevMonth').addEventListener('click', () => {
+    selMonth--;
+    if (selMonth < 1) { selMonth = 12; selYear--; }
+    updateMonthLabel();
+    render(selYear, selMonth);
+  });
+
+  document.getElementById('nextMonth').addEventListener('click', () => {
+    selMonth++;
+    if (selMonth > 12) { selMonth = 1; selYear++; }
+    updateMonthLabel();
+    render(selYear, selMonth);
+  });
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  updateMonthLabel();
+  await fetchAll();
+  document.getElementById('loadingState').style.display  = 'none';
+  document.getElementById('summaryContent').style.display = 'block';
+  render(selYear, selMonth);
+})();
+</script>
+</body>
+</html>
