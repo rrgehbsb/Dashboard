@@ -814,14 +814,25 @@ function timeValueToHour(v) {
   return (h === 0) ? 24 : h;
 }
 
-// Storage
-function storeGet(key){try{return JSON.parse(localStorage.getItem(key));}catch{return null;}}
+// Storage — synced keys live in _db (Supabase-backed); everything else uses localStorage
+const _db={};
+let _schedulePush=()=>{};
+function _isSynced(k){return k==='goal_streak_v1'||k==='day_schedule'||k.startsWith('goals:');}
+function storeGet(key){
+  if(_isSynced(key)) return _db.hasOwnProperty(key)?_db[key]:null;
+  try{return JSON.parse(localStorage.getItem(key));}catch{return null;}
+}
 function storeSet(key,value){
-  localStorage.setItem(key,JSON.stringify(value));
+  if(_isSynced(key)){_db[key]=value;_schedulePush();}
+  else localStorage.setItem(key,JSON.stringify(value));
   if(key.startsWith('goals:')) window.dispatchEvent(new CustomEvent('goals-changed'));
 }
-function storeDelete(key){localStorage.removeItem(key);}
+function storeDelete(key){
+  if(_isSynced(key)){delete _db[key];_schedulePush();}
+  else localStorage.removeItem(key);
+}
 function storeListKeys(prefix){
+  if(prefix==='goals:'||prefix.startsWith('goals:')) return Object.keys(_db).filter(k=>k.startsWith(prefix));
   const keys=[];
   for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(prefix))keys.push(k);}
   return keys;
@@ -861,7 +872,7 @@ function runRollover(){
     const todayGoals=storeGet(`goals:${activeDate}`)||[];
     const existing=new Set(todayGoals.map(g=>g.text));
     undone.forEach(g=>{if(!existing.has(g.text)) todayGoals.push({text:g.text,done:false});});
-    localStorage.setItem(`goals:${activeDate}`,JSON.stringify(todayGoals));
+    storeSet(`goals:${activeDate}`,todayGoals);
   });
 }
 
@@ -878,7 +889,7 @@ function runStreakCheck(){
     else streak.count=0;
     streak.lastProcessedDate=d;
   });
-  localStorage.setItem('goal_streak_v1',JSON.stringify(streak));
+  storeSet('goal_streak_v1',streak);
 }
 
 // Day Ring
@@ -1392,81 +1403,13 @@ window.addEventListener('storage',()=>{ updateCmdBar(); updateDoNow(); updateDas
 window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashGrid(); });
 
 // ── Supabase sync — dashboard page ─────────────────────────────────────────────────────────────
+// Supabase IS the source of truth. _db is an in-memory mirror of it.
+// No localStorage, no merge logic — both devices always read the same Supabase row.
 (function(){
   const SUPABASE_URL='https://mtuoqwbrujxutofhyahb.supabase.co';
   const SUPABASE_KEY='sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
   const APP_KEY='dashboard';
 
-  // Only goals and schedule sync via app_state.
-  // Reminders have their own dedicated API sync — keep them separate to avoid conflicts.
-  function isSynced(k){
-    return k==='goal_streak_v1'||k==='day_schedule'||k.startsWith('goals:');
-  }
-
-  function gatherLocal(){
-    const s={};
-    for(let i=0;i<localStorage.length;i++){
-      const k=localStorage.key(i);
-      if(k&&isSynced(k)){try{s[k]=JSON.parse(localStorage.getItem(k));}catch{s[k]=localStorage.getItem(k);}}
-    }
-    return s;
-  }
-
-  // Merge two goal arrays: union by text, most-recently-changed done state wins
-  function mergeGoalLists(local,remote){
-    const byText={};
-    (remote||[]).forEach(g=>{byText[g.text]={...g};});
-    (local||[]).forEach(g=>{
-      if(byText[g.text]){
-        // Compare last-action timestamps so unchecking always beats an older check
-        const localTs=Math.max(g.doneAt||0,g.undoneAt||0);
-        const remoteTs=Math.max(byText[g.text].doneAt||0,byText[g.text].undoneAt||0);
-        if(localTs>=remoteTs){
-          byText[g.text].done=g.done;
-          byText[g.text].doneAt=g.doneAt;
-          byText[g.text].undoneAt=g.undoneAt;
-        }
-        if(g.queued) byText[g.text].queued=true;
-      } else {
-        byText[g.text]={...g};
-      }
-    });
-    return Object.values(byText);
-  }
-
-  function applyRemote(data){
-    if(!data) return;
-    const remoteHasGoals=Object.keys(data).some(k=>k.startsWith('goals:'));
-    const today=getActiveDateString();
-    Object.keys(data).forEach(k=>{
-      if(!isSynced(k)) return;
-      if(k.startsWith('goals:')&&k.slice(6)>=today){
-        // Merge today's/future goals so neither device loses tasks
-        const merged=mergeGoalLists(storeGet(k),data[k]);
-        _setItem(k,JSON.stringify(merged));
-      } else {
-        _setItem(k,JSON.stringify(data[k]));
-      }
-    });
-    for(let i=localStorage.length-1;i>=0;i--){
-      const k=localStorage.key(i);
-      if(!k||!isSynced(k)||k in data) continue;
-      if(k.startsWith('goals:')){
-        const dateStr=k.slice(6);
-        if(!remoteHasGoals||dateStr>=today) continue; // never delete today's goals
-      }
-      if(k==='day_schedule') continue;
-      _removeItem(k);
-    }
-    try{loadToday();}catch(e){}
-    try{loadTomorrow();}catch(e){}
-    try{renderStreak();}catch(e){}
-    try{updateDayBar();}catch(e){}
-    window.dispatchEvent(new CustomEvent('goals-changed'));
-  }
-
-  // lastRemoteAt: _pushAt timestamp of the last remote state we know about
-  // hasPendingPush: true from the moment user makes a change until push succeeds
   let lastRemoteAt=0,hasPendingPush=false,pushTimer=null,_sb=null;
 
   function client(){
@@ -1474,53 +1417,77 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
     return _sb;
   }
 
-  function scheduleSync(){
+  function schedulePush(){
     hasPendingPush=true;
     clearTimeout(pushTimer);
-    pushTimer=setTimeout(push,500);
+    pushTimer=setTimeout(doPush,500);
   }
+  _schedulePush=schedulePush; // wire up the global placeholder in storeSet/storeDelete
 
-  async function push(){
+  async function doPush(){
     pushTimer=null;
     try{
-      const state=gatherLocal();
+      const data={};
+      Object.keys(_db).forEach(k=>{data[k]=_db[k];});
       const pushAt=Date.now();
-      state._pushAt=pushAt;
-      await client().from('app_state').upsert({key:APP_KEY,data:state,updated_at:new Date().toISOString()});
+      data._pushAt=pushAt;
+      await client().from('app_state').upsert({key:APP_KEY,data,updated_at:new Date().toISOString()});
       lastRemoteAt=pushAt;
       hasPendingPush=false;
     }catch(e){
       console.warn('Sync push failed — retrying in 5 s:',e);
-      setTimeout(scheduleSync,5000);
+      setTimeout(schedulePush,5000);
     }
   }
 
-  const _setItem=localStorage.setItem.bind(localStorage);
-  const _removeItem=localStorage.removeItem.bind(localStorage);
-  localStorage.setItem=function(k,v){_setItem(k,v);try{if(isSynced(k))scheduleSync();}catch{}};
-  localStorage.removeItem=function(k){_removeItem(k);try{if(isSynced(k))scheduleSync();}catch{}};
+  function applyRemote(data){
+    if(!data) return;
+    // Replace _db entirely — remote is the single source of truth
+    Object.keys(_db).forEach(k=>{delete _db[k];});
+    Object.keys(data).forEach(k=>{if(k!=='_pushAt')_db[k]=data[k];});
+    try{loadToday();}catch(e){}
+    try{loadTomorrow();}catch(e){}
+    try{renderStreak();}catch(e){}
+    try{updateDayBar();}catch(e){}
+    window.dispatchEvent(new CustomEvent('goals-changed'));
+  }
 
   async function initSync(){
     try{
       const{data:row}=await client().from('app_state').select('data').eq('key',APP_KEY).single();
       if(row&&row.data&&Object.keys(row.data).length>0){
         lastRemoteAt=row.data._pushAt||0;
-        try{applyRemote(row.data);}catch(e){console.warn('applyRemote failed:',e);}
+        applyRemote(row.data);
       } else {
-        await push();
+        // No remote data yet — bootstrap from localStorage if available
+        const migrated={};
+        for(let i=0;i<localStorage.length;i++){
+          const k=localStorage.key(i);
+          if(k&&_isSynced(k)){try{migrated[k]=JSON.parse(localStorage.getItem(k));}catch{}}
+        }
+        if(Object.keys(migrated).length>0){
+          Object.assign(_db,migrated);
+          await doPush();
+        }
       }
     }catch(e){console.warn('Sync init failed:',e);}
+    // Refresh UI with whatever _db has after init
+    try{loadToday();}catch(e){}
+    try{loadTomorrow();}catch(e){}
+    try{renderStreak();}catch(e){}
+    try{updateDayBar();}catch(e){}
   }
 
   function flushWithKeepalive(){
     if(!hasPendingPush&&!pushTimer) return;
+    const data={};
+    Object.keys(_db).forEach(k=>{data[k]=_db[k];});
+    data._pushAt=Date.now();
     try{
-      const state=gatherLocal();
-      state._pushAt=Date.now();
       fetch(`${SUPABASE_URL}/rest/v1/app_state`,{
         method:'POST',keepalive:true,
         headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Prefer':'resolution=merge-duplicates'},
-        body:JSON.stringify({key:APP_KEY,data:state,updated_at:new Date().toISOString()})
+        body:JSON.stringify({key:APP_KEY,data,updated_at:new Date().toISOString()})
       });
     }catch{}
   }
@@ -1536,7 +1503,7 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
       const remoteAt=row.data._pushAt||0;
       if(remoteAt<=lastRemoteAt) return;
       lastRemoteAt=remoteAt;
-      try{applyRemote(row.data);}catch(e){}
+      applyRemote(row.data);
     }catch{}
   });
 
