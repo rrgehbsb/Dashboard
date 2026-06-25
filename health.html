@@ -1568,73 +1568,51 @@ details[open] .mp-details-summary::before { content: '▾ '; }
       try{if(typeof renderAll==='function')renderAll();}catch(e){}
     }
 
-    let lastSyncedJson=null,pendingRemote=null,syncTimer=null,retryTimer=null,_sb=null;
+    let lastRemoteAt=0,hasPendingPush=false,pushTimer=null,_sb=null;
 
     function client(){if(!_sb)_sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);return _sb;}
-    function scheduleSync(){clearTimeout(syncTimer);syncTimer=setTimeout(push,250);}
+
+    function scheduleSync(){
+      hasPendingPush=true;
+      clearTimeout(pushTimer);
+      pushTimer=setTimeout(push,500);
+    }
 
     async function push(){
+      pushTimer=null;
       try{
         const state=gatherLocal();
-        const json=JSON.stringify(state);
-        if(json===lastSyncedJson) return;
+        const pushAt=Date.now();
+        state._pushAt=pushAt;
         await client().from('app_state').upsert({key:APP_KEY,data:state,updated_at:new Date().toISOString()});
-        lastSyncedJson=json; // only mark synced after upsert succeeds
-        clearTimeout(retryTimer);
+        lastRemoteAt=pushAt;
+        hasPendingPush=false;
       }catch(e){
         console.warn('Health sync push failed — retrying in 5 s:',e);
-        clearTimeout(retryTimer);retryTimer=setTimeout(scheduleSync,5000);
+        setTimeout(scheduleSync,5000);
       }
     }
 
     localStorage.setItem=function(k,v){_raw.set(k,v);try{if(isSynced(k))scheduleSync();}catch{}};
     localStorage.removeItem=function(k){_raw.remove(k);try{if(isSynced(k))scheduleSync();}catch{}};
 
-    let userFocused=false;
-    document.addEventListener('focusin',e=>{
-      const t=e.target;
-      if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT'||t.isContentEditable))userFocused=true;
-    });
-    document.addEventListener('focusout',()=>{
-      userFocused=false;
-      if(pendingRemote!==null){const r=pendingRemote;pendingRemote=null;applyRemote(r);}
-    });
-
     async function initSync(){
       try{
         const{data:row}=await client().from('app_state').select('data').eq('key',APP_KEY).single();
         if(row&&row.data&&Object.keys(row.data).length>0){
-          lastSyncedJson=JSON.stringify(row.data);
+          lastRemoteAt=row.data._pushAt||0;
           try{applyRemote(row.data);}catch(e){console.warn('Health applyRemote failed:',e);}
         } else {
-          const local=gatherLocal();
-          if(Object.keys(local).length>0){
-            lastSyncedJson=JSON.stringify(local);
-            await client().from('app_state').upsert({key:APP_KEY,data:local,updated_at:new Date().toISOString()});
-          }
+          await push();
         }
-        const localNow=gatherLocal();
-        if(JSON.stringify(localNow)!==lastSyncedJson) scheduleSync();
       }catch(e){console.warn('Health sync init failed:',e);}
-      // Realtime subscription is independent — set up even if init fetch failed
-      try{
-        client().channel('db-health')
-          .on('postgres_changes',{event:'*',schema:'public',table:'app_state',filter:`key=eq.${APP_KEY}`},payload=>{
-            try{
-              const d=payload.new&&payload.new.data;if(!d) return;
-              const j=JSON.stringify(d);if(j===lastSyncedJson) return;
-              lastSyncedJson=j;
-              if(userFocused)pendingRemote=d;else applyRemote(d);
-            }catch(e){console.warn('Health realtime apply failed:',e);}
-          })
-          .subscribe();
-      }catch(e){console.warn('Health realtime subscribe failed:',e);}
     }
 
     function flushWithKeepalive(){
+      if(!hasPendingPush&&!pushTimer) return;
       try{
-        const state=gatherLocal();const json=JSON.stringify(state);
-        if(json===lastSyncedJson) return;
+        const state=gatherLocal();
+        state._pushAt=Date.now();
         fetch(`${SUPABASE_URL}/rest/v1/app_state`,{
           method:'POST',keepalive:true,
           headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Prefer':'resolution=merge-duplicates'},
@@ -1647,13 +1625,13 @@ details[open] .mp-details-summary::before { content: '▾ '; }
     window.addEventListener('beforeunload',flushWithKeepalive);
     document.addEventListener('visibilitychange',async()=>{
       if(document.visibilityState==='hidden'){flushWithKeepalive();return;}
-      // Tab came back into view — pull latest from Supabase in case realtime missed anything
+      if(hasPendingPush) return;
       try{
         const{data:row}=await client().from('app_state').select('data').eq('key',APP_KEY).single();
         if(!row||!row.data) return;
-        const j=JSON.stringify(row.data);
-        if(j===lastSyncedJson) return;
-        lastSyncedJson=j;
+        const remoteAt=row.data._pushAt||0;
+        if(remoteAt<=lastRemoteAt) return;
+        lastRemoteAt=remoteAt;
         try{applyRemote(row.data);}catch(e){}
       }catch{}
     });
@@ -1661,16 +1639,16 @@ details[open] .mp-details-summary::before { content: '▾ '; }
     function waitForSupabase(){window.supabase?initSync():setTimeout(waitForSupabase,50);}
     waitForSupabase();
 
-    // Poll every 5 s as fallback when realtime WebSocket drops silently
+    // Pull every 5 s — skip if we have unsent local changes to avoid overwriting them
     setInterval(async()=>{
-      if(!_sb) return;
+      if(!_sb||hasPendingPush) return;
       try{
         const{data:row}=await client().from('app_state').select('data').eq('key',APP_KEY).single();
         if(!row||!row.data) return;
-        const j=JSON.stringify(row.data);
-        if(j===lastSyncedJson) return;
-        lastSyncedJson=j;
-        if(userFocused)pendingRemote=row.data;else applyRemote(row.data);
+        const remoteAt=row.data._pushAt||0;
+        if(remoteAt<=lastRemoteAt) return;
+        lastRemoteAt=remoteAt;
+        applyRemote(row.data);
       }catch{}
     },5000);
   })();
