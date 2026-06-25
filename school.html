@@ -1617,10 +1617,11 @@ document.addEventListener('DOMContentLoaded',scRenderAll);
     try{scRenderAll();}catch{}
   }
 
-  let lastRemoteAt=0,hasPendingPush=false,pushTimer=null,_sb=null;
+  let lastRemoteAt=0,hasPendingPush=false,syncReady=false,pushTimer=null,_sb=null;
 
   function schedPush(){
     hasPendingPush=true;
+    if(!syncReady) return; // defer until initSync finishes so we never push stale defaults
     clearTimeout(pushTimer);
     pushTimer=setTimeout(doPush,500);
   }
@@ -1643,14 +1644,17 @@ document.addEventListener('DOMContentLoaded',scRenderAll);
       if(row&&row.data&&Object.keys(row.data).length>0){
         lastRemoteAt=row.data._pushAt||0;
         applyRemote(row.data);
-      } else {
-        for(let i=0;i<localStorage.length;i++){
-          const k=localStorage.key(i);
-          if(k&&isSynced(k)){try{_dbS[k]=JSON.parse(_rawGet(k));}catch{}}
-        }
-        if(Object.keys(_dbS).length>0) await doPush();
       }
+      // Always migrate any synced keys from actual localStorage not yet in _dbS
+      let migrated=false;
+      for(let i=0;i<localStorage.length;i++){
+        const k=localStorage.key(i);
+        if(k&&isSynced(k)&&!_dbS.hasOwnProperty(k)){try{_dbS[k]=JSON.parse(_rawGet(k));migrated=true;}catch{}}
+      }
+      if(migrated) try{scRenderAll();}catch{}
     }catch{}
+    syncReady=true;
+    if(hasPendingPush) schedPush(); // fire any push deferred during init
     try{scRenderAll();}catch{}
   }
 

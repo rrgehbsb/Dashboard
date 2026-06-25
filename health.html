@@ -1527,11 +1527,12 @@ details[open] .mp-details-summary::before { content: '▾ '; }
       try{if(typeof renderAll==='function')renderAll();}catch(e){}
     }
 
-    let lastRemoteAt=0,hasPendingPush=false,pushTimer=null,_sb=null;
+    let lastRemoteAt=0,hasPendingPush=false,syncReady=false,pushTimer=null,_sb=null;
     function client(){if(!_sb)_sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);return _sb;}
 
     function schedulePush(){
       hasPendingPush=true;
+      if(!syncReady) return; // defer until initSync finishes so we never push stale defaults
       clearTimeout(pushTimer);
       pushTimer=setTimeout(doPush,500);
     }
@@ -1555,15 +1556,22 @@ details[open] .mp-details-summary::before { content: '▾ '; }
         if(row&&row.data&&Object.keys(row.data).length>0){
           lastRemoteAt=row.data._pushAt||0;
           applyRemote(row.data);
-        } else {
-          // No remote data — migrate existing localStorage values into _dbH and push
-          for(let i=0;i<localStorage.length;i++){
-            const k=localStorage.key(i);
-            if(k&&isSynced(k)){try{_dbH[k]=JSON.parse(_rawGet(k));}catch{}}
-          }
-          if(Object.keys(_dbH).length>0) await doPush();
+        }
+        // Always scan actual localStorage for any synced keys not yet in _dbH
+        // (e.g. water data that existed before sync was added, or keys missing from remote)
+        let migrated=false;
+        for(let i=0;i<localStorage.length;i++){
+          const k=localStorage.key(i);
+          if(k&&isSynced(k)&&!_dbH.hasOwnProperty(k)){try{_dbH[k]=JSON.parse(_rawGet(k));migrated=true;}catch{}}
+        }
+        if(migrated){
+          try{render();}catch(e){}
+          try{if(typeof wRenderAll==='function')wRenderAll();}catch(e){}
+          try{if(typeof renderAll==='function')renderAll();}catch(e){}
         }
       }catch(e){console.warn('Health sync init failed:',e);}
+      syncReady=true;
+      if(hasPendingPush) schedulePush(); // fire any push that was deferred during init
       try{render();}catch(e){}
       try{if(typeof wRenderAll==='function')wRenderAll();}catch(e){}
       try{if(typeof renderAll==='function')renderAll();}catch(e){}

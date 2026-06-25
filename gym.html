@@ -3659,7 +3659,7 @@ img, video, canvas, svg { max-width: 100%; }
     else _pcOrigRemove(k);
   };
 
-  let pcSupa = null, pcPushTimer = null, pcLastRemoteAt = 0, pcHasPendingPush = false;
+  let pcSupa = null, pcPushTimer = null, pcLastRemoteAt = 0, pcHasPendingPush = false, pcSyncReady = false;
 
   function pcRerender() {
     try { state = loadState(); } catch {}
@@ -3680,6 +3680,7 @@ img, video, canvas, svg { max-width: 100%; }
 
   function pcSchedulePush() {
     pcHasPendingPush = true;
+    if(!pcSyncReady) return; // defer until init finishes so we never push stale defaults
     clearTimeout(pcPushTimer);
     pcPushTimer = setTimeout(pcPushNow, 500);
   }
@@ -3718,15 +3719,19 @@ img, video, canvas, svg { max-width: 100%; }
       if(!error && data && data.data && Object.keys(data.data).length > 0) {
         pcLastRemoteAt = data.data._pushAt || 0;
         pcApplyRemote(data.data);
-      } else {
-        // Bootstrap from localStorage
-        for(let i = 0; i < localStorage.length; i++) {
-          const k = localStorage.key(i);
-          if(k && PC_SYNCED_KEYS.indexOf(k) !== -1) { try{_dbG[k]=JSON.parse(_pcOrigGet(k));}catch{} }
-        }
-        if(Object.keys(_dbG).length > 0) await pcPushNow();
       }
+      // Always migrate any synced keys from actual localStorage not yet in _dbG
+      let pcMigrated = false;
+      for(let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if(k && PC_SYNCED_KEYS.indexOf(k) !== -1 && !_dbG.hasOwnProperty(k)) {
+          try{_dbG[k]=JSON.parse(_pcOrigGet(k));pcMigrated=true;}catch{}
+        }
+      }
+      if(pcMigrated) pcRerender();
     } catch(_) {}
+    pcSyncReady = true;
+    if(pcHasPendingPush) pcSchedulePush(); // fire any push deferred during init
   })();
 
   setInterval(async () => {
