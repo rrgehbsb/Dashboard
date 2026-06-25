@@ -1515,7 +1515,7 @@ window._dbHSchedulePush = function(){};
       Object.keys(data).forEach(k=>{if(k!=='_pushAt'&&isSynced(k))db[k]=data[k];});
       try{render();}catch(e){}
       try{if(typeof window.wRenderAll==='function')window.wRenderAll();}catch(e){}
-      try{if(typeof renderAll==='function')renderAll();}catch(e){}
+      try{if(typeof window.mpRenderAll==='function')window.mpRenderAll();}catch(e){}
       window.dispatchEvent(new CustomEvent('health-synced'));
     }
 
@@ -1559,7 +1559,7 @@ window._dbHSchedulePush = function(){};
         if(migrated){
           try{render();}catch{}
           try{if(typeof window.wRenderAll==='function')window.wRenderAll();}catch{}
-          try{if(typeof renderAll==='function')renderAll();}catch{}
+          try{if(typeof window.mpRenderAll==='function')window.mpRenderAll();}catch{}
         }
       }catch(e){console.warn('Health sync init failed:',e);}
       // Now safe for writes — hook up the external schedule function
@@ -1567,7 +1567,7 @@ window._dbHSchedulePush = function(){};
       if(hasPendingPush) schedulePush();
       try{render();}catch{}
       try{if(typeof window.wRenderAll==='function')window.wRenderAll();}catch{}
-      try{if(typeof renderAll==='function')renderAll();}catch{}
+      try{if(typeof window.mpRenderAll==='function')window.mpRenderAll();}catch{}
     }
 
     function flushWithKeepalive(){
@@ -2248,6 +2248,7 @@ document.getElementById('mpEditMealSave').addEventListener('click',()=>{
 document.getElementById('mpEditMealCancel').addEventListener('click',()=>document.getElementById('mpEditMealModal').classList.remove('show'));
 document.getElementById('mpEditMealModal').addEventListener('click',e=>{if(e.target.id==='mpEditMealModal')document.getElementById('mpEditMealModal').classList.remove('show');});
 
+window.mpRenderAll = renderAll;
 renderAll();
 })();
 </script>
