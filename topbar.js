@@ -134,8 +134,12 @@ body.has-bottombar {
   .topbar-water-add { width: 40px; font-size: 18px; }
   .topbar-finance-btn { width: 40px; height: 38px; }
   .topbar-finance-icon { font-size: 18px; }
-  .bottombar-tab-icon { font-size: 22px; }
-  .bottombar-tab { font-size: 10px; }
+  .bottombar-tab-icon { font-size: 20px; }
+  .bottombar-tab { font-size: 9px; gap: 2px; padding: 5px 0 3px; }
+}
+@media (max-width: 360px) {
+  .bottombar-tab-icon { font-size: 18px; }
+  .bottombar-tab { font-size: 8px; }
 }
 html, body { -webkit-text-size-adjust: 100%; }
 @media (max-width: 768px) {
@@ -265,6 +269,9 @@ html[data-theme="light"] .dm-value { color: #111 !important; }
   </a>
   <a href="projects.html" class="bottombar-tab" data-page="projects">
     <span class="bottombar-tab-icon">🗂️</span><span>Projects</span>
+  </a>
+  <a href="settings.html" class="bottombar-tab" data-page="settings">
+    <span class="bottombar-tab-icon">⚙️</span><span>Settings</span>
   </a>
 </nav>`;
 
