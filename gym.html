@@ -3735,7 +3735,7 @@ img, video, canvas, svg { max-width: 100%; }
   })();
 
   setInterval(async () => {
-    if(!pcSupa || pcHasPendingPush) return;
+    if(!pcSupa || pcPushTimer) return;
     try {
       const { data } = await pcSupa.from('app_state').select('data').eq('key', APP_KEY).maybeSingle();
       if(!data || !data.data) return;
@@ -3749,7 +3749,7 @@ img, video, canvas, svg { max-width: 100%; }
   window.addEventListener('beforeunload', pcFlushPushOnUnload);
   document.addEventListener('visibilitychange', async () => {
     if(document.hidden) { pcFlushPushOnUnload(); return; }
-    if(pcHasPendingPush || !pcSupa) return;
+    if(!pcSupa) return;
     try {
       const { data } = await pcSupa.from('app_state').select('data').eq('key', APP_KEY).maybeSingle();
       if(!data || !data.data) return;

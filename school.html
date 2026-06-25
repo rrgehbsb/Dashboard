@@ -1671,7 +1671,6 @@ document.addEventListener('DOMContentLoaded',scRenderAll);
 
   document.addEventListener('visibilitychange',async()=>{
     if(document.visibilityState==='hidden'){flush();return;}
-    if(hasPendingPush) return;
     try{
       const{data:row}=await _sb.from('app_state').select('data').eq('key',APP_KEY).maybeSingle();
       if(!row||!row.data) return;
@@ -1685,7 +1684,7 @@ document.addEventListener('DOMContentLoaded',scRenderAll);
   wait();
 
   setInterval(async()=>{
-    if(!_sb||hasPendingPush) return;
+    if(!_sb||pushTimer) return;
     try{
       const{data:row}=await _sb.from('app_state').select('data').eq('key',APP_KEY).maybeSingle();
       if(!row||!row.data) return;

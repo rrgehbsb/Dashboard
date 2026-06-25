@@ -1496,9 +1496,8 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
   window.addEventListener('beforeunload',flushWithKeepalive);
   document.addEventListener('visibilitychange',async()=>{
     if(document.visibilityState==='hidden'){flushWithKeepalive();return;}
-    if(hasPendingPush) return;
     try{
-      const{data:row}=await client().from('app_state').select('data').eq('key',APP_KEY).single();
+      const{data:row}=await client().from('app_state').select('data').eq('key',APP_KEY).maybeSingle();
       if(!row||!row.data) return;
       const remoteAt=row.data._pushAt||0;
       if(remoteAt<=lastRemoteAt) return;
@@ -1512,9 +1511,9 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
 
   // Pull every 5 s — skip if we have unsent local changes to avoid overwriting them
   setInterval(async()=>{
-    if(!_sb||hasPendingPush) return;
+    if(!_sb||pushTimer) return;
     try{
-      const{data:row}=await client().from('app_state').select('data').eq('key',APP_KEY).single();
+      const{data:row}=await client().from('app_state').select('data').eq('key',APP_KEY).maybeSingle();
       if(!row||!row.data) return;
       const remoteAt=row.data._pushAt||0;
       if(remoteAt<=lastRemoteAt) return;

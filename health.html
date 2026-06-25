@@ -1585,7 +1585,7 @@ window._dbHSchedulePush = function(){};
     window.addEventListener('beforeunload',flushWithKeepalive);
     document.addEventListener('visibilitychange',async()=>{
       if(document.visibilityState==='hidden'){flushWithKeepalive();return;}
-      if(hasPendingPush) return;
+      // Always pull on tab focus — critical on mobile where intervals are suspended
       try{
         const{data:row}=await client().from('app_state').select('data').eq('key',APP_KEY).maybeSingle();
         if(!row||!row.data) return;
@@ -1599,7 +1599,7 @@ window._dbHSchedulePush = function(){};
     waitForSupabase();
 
     setInterval(async()=>{
-      if(!_sb||hasPendingPush) return;
+      if(!_sb||pushTimer) return; // only pause during the 500ms debounce, not during retry loops
       try{
         const{data:row}=await client().from('app_state').select('data').eq('key',APP_KEY).maybeSingle();
         if(!row||!row.data) return;
