@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '1.0.5';
+const DASHBOARD_VERSION = '1.0.6';
 
 (function () {
   'use strict';

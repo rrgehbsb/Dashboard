@@ -1500,7 +1500,7 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
       const{data:row}=await client().from('app_state').select('data').eq('key',APP_KEY).maybeSingle();
       if(!row||!row.data) return;
       const remoteAt=row.data._pushAt||0;
-      if(remoteAt<=lastRemoteAt) return;
+      if(remoteAt===lastRemoteAt) return;
       lastRemoteAt=remoteAt;
       applyRemote(row.data);
     }catch{}
@@ -1516,7 +1516,7 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
       const{data:row}=await client().from('app_state').select('data').eq('key',APP_KEY).maybeSingle();
       if(!row||!row.data) return;
       const remoteAt=row.data._pushAt||0;
-      if(remoteAt<=lastRemoteAt) return;
+      if(remoteAt===lastRemoteAt) return;
       lastRemoteAt=remoteAt;
       applyRemote(row.data);
     }catch{}

@@ -1675,7 +1675,7 @@ document.addEventListener('DOMContentLoaded',scRenderAll);
       const{data:row}=await _sb.from('app_state').select('data').eq('key',APP_KEY).maybeSingle();
       if(!row||!row.data) return;
       const remoteAt=row.data._pushAt||0;
-      if(remoteAt<=lastRemoteAt) return;
+      if(remoteAt===lastRemoteAt) return;
       lastRemoteAt=remoteAt;applyRemote(row.data);
     }catch{}
   });
@@ -1689,7 +1689,7 @@ document.addEventListener('DOMContentLoaded',scRenderAll);
       const{data:row}=await _sb.from('app_state').select('data').eq('key',APP_KEY).maybeSingle();
       if(!row||!row.data) return;
       const remoteAt=row.data._pushAt||0;
-      if(remoteAt<=lastRemoteAt) return;
+      if(remoteAt===lastRemoteAt) return;
       lastRemoteAt=remoteAt;applyRemote(row.data);
     }catch{}
   },5000);

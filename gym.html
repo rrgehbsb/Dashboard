@@ -3740,7 +3740,7 @@ img, video, canvas, svg { max-width: 100%; }
       const { data } = await pcSupa.from('app_state').select('data').eq('key', APP_KEY).maybeSingle();
       if(!data || !data.data) return;
       const remoteAt = data.data._pushAt || 0;
-      if(remoteAt <= pcLastRemoteAt) return;
+      if(remoteAt === pcLastRemoteAt) return;
       pcLastRemoteAt = remoteAt; pcApplyRemote(data.data);
     } catch(_) {}
   }, 5000);
@@ -3754,7 +3754,7 @@ img, video, canvas, svg { max-width: 100%; }
       const { data } = await pcSupa.from('app_state').select('data').eq('key', APP_KEY).maybeSingle();
       if(!data || !data.data) return;
       const remoteAt = data.data._pushAt || 0;
-      if(remoteAt <= pcLastRemoteAt) return;
+      if(remoteAt === pcLastRemoteAt) return;
       pcLastRemoteAt = remoteAt; pcApplyRemote(data.data);
     } catch(_) {}
   });
