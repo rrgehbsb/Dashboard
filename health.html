@@ -1488,137 +1488,95 @@ details[open] .mp-details-summary::before { content: '▾ '; }
   render();
   startTicker();
 
-  // ── Supabase sync ──────────────────────────────────────────────────────
+  // ── Supabase sync — same principle as index.html ───────────────────────
+  // _dbH is the in-memory mirror of Supabase. localStorage.getItem/setItem
+  // for synced keys are overridden so all existing code transparently uses _dbH.
   (function(){
     const SUPABASE_URL='https://mtuoqwbrujxutofhyahb.supabase.co';
     const SUPABASE_KEY='sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
     const APP_KEY='health';
 
-    const MP_KEYS=['dashboard:mealPrep:v1:template','dashboard:mealPrep:v1:daily','dashboard:mealPrep:v1:settings'];
     function isSynced(k){return k.startsWith('stack:')||k==='po_water_v1'||k.startsWith('dashboard:mealPrep:v1:');}
 
-    function gatherLocal(){
-      const s={};
-      for(let i=0;i<localStorage.length;i++){
-        const k=localStorage.key(i);
-        if(k&&isSynced(k)){try{s[k]=JSON.parse(localStorage.getItem(k));}catch{s[k]=localStorage.getItem(k);}}
-      }
-      return s;
-    }
+    const _dbH={};
+    const _rawGet=localStorage.getItem.bind(localStorage);
+    const _rawSet=localStorage.setItem.bind(localStorage);
+    const _rawRem=localStorage.removeItem.bind(localStorage);
 
-    const _raw={set:localStorage.setItem.bind(localStorage),remove:localStorage.removeItem.bind(localStorage)};
-
-    function mergeMealDailyLog(localDays,remoteDays){
-      // Merge today's eaten states using most-recent action timestamp
-      const tk=(function(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');})();
-      const merged=Object.assign({},remoteDays||{});
-      const loc=(localDays||{})[tk];
-      const rem=(remoteDays||{})[tk];
-      if(loc){
-        merged[tk]=Object.assign({},rem||{});
-        Object.keys(loc).forEach(id=>{
-          const localTs=Math.max(loc[id]&&loc[id].eatenAt||0,loc[id]&&loc[id].uneatenAt||0);
-          const remoteTs=Math.max(rem&&rem[id]&&rem[id].eatenAt||0,rem&&rem[id]&&rem[id].uneatenAt||0);
-          if(localTs>=remoteTs){
-            merged[tk][id]=Object.assign({},merged[tk][id]||{},loc[id]);
-          }
-        });
-      }
-      return merged;
-    }
+    // Intercept localStorage so all reads/writes for synced keys hit _dbH
+    localStorage.getItem=function(k){
+      if(isSynced(k)) return _dbH.hasOwnProperty(k)?JSON.stringify(_dbH[k]):null;
+      return _rawGet(k);
+    };
+    localStorage.setItem=function(k,v){
+      if(isSynced(k)){try{_dbH[k]=JSON.parse(v);}catch{_dbH[k]=v;} schedulePush();}
+      else _rawSet(k,v);
+    };
+    localStorage.removeItem=function(k){
+      if(isSynced(k)){delete _dbH[k];schedulePush();}
+      else _rawRem(k);
+    };
 
     function applyRemote(data){
       if(!data) return;
-      const remoteHasMP=MP_KEYS.some(k=>k in data);
-      Object.keys(data).forEach(k=>{
-        if(!isSynced(k)) return;
-        if(k==='dashboard:mealPrep:v1:daily'){
-          // Merge today's check-offs so meals eaten on this device aren't reset
-          try{
-            const local=JSON.parse(localStorage.getItem(k)||'null');
-            _raw.set(k,JSON.stringify(mergeMealDailyLog(local,data[k])));
-          }catch{_raw.set(k,JSON.stringify(data[k]));}
-        } else if(k==='po_water_v1'){
-          // If local was modified more recently than remote, keep today's local count
-          try{
-            const local=JSON.parse(localStorage.getItem(k)||'null');
-            const remote=data[k];
-            if(local&&remote&&(local._ts||0)>(remote._ts||0)){
-              const d=new Date();
-              const tk=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-              const merged=Object.assign({},remote,{logs:Object.assign({},remote.logs||{}),_ts:local._ts});
-              const localToday=(local.logs||{})[tk];
-              if(localToday!=null&&localToday>0) merged.logs[tk]=localToday; else delete merged.logs[tk];
-              _raw.set(k,JSON.stringify(merged));
-            }else{_raw.set(k,JSON.stringify(remote));}
-          }catch{_raw.set(k,JSON.stringify(data[k]));}
-        } else {
-          _raw.set(k,JSON.stringify(data[k]));
-        }
-      });
-      for(let i=localStorage.length-1;i>=0;i--){
-        const k=localStorage.key(i);
-        if(!k||!isSynced(k)||k in data) continue;
-        // Only wipe local keys if remote has at least one key from the same namespace
-        if(k.startsWith('dashboard:mealPrep:v1:')&&!remoteHasMP) continue;
-        _raw.remove(k);
-      }
+      // Remote is source of truth — replace _dbH entirely
+      Object.keys(_dbH).forEach(k=>{delete _dbH[k];});
+      Object.keys(data).forEach(k=>{if(k!=='_pushAt'&&isSynced(k))_dbH[k]=data[k];});
       try{render();}catch(e){}
       try{if(typeof wRenderAll==='function')wRenderAll();}catch(e){}
       try{if(typeof renderAll==='function')renderAll();}catch(e){}
     }
 
     let lastRemoteAt=0,hasPendingPush=false,pushTimer=null,_sb=null;
-
     function client(){if(!_sb)_sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);return _sb;}
 
-    function scheduleSync(){
+    function schedulePush(){
       hasPendingPush=true;
       clearTimeout(pushTimer);
-      pushTimer=setTimeout(push,500);
+      pushTimer=setTimeout(doPush,500);
     }
 
-    async function push(){
+    async function doPush(){
       pushTimer=null;
       try{
-        const state=gatherLocal();
-        const pushAt=Date.now();
-        state._pushAt=pushAt;
-        await client().from('app_state').upsert({key:APP_KEY,data:state,updated_at:new Date().toISOString()});
-        lastRemoteAt=pushAt;
-        hasPendingPush=false;
+        const data={};Object.keys(_dbH).forEach(k=>{data[k]=_dbH[k];});
+        const pushAt=Date.now();data._pushAt=pushAt;
+        await client().from('app_state').upsert({key:APP_KEY,data,updated_at:new Date().toISOString()});
+        lastRemoteAt=pushAt;hasPendingPush=false;
       }catch(e){
-        console.warn('Health sync push failed — retrying in 5 s:',e);
-        setTimeout(scheduleSync,5000);
+        console.warn('Health sync push failed:',e);
+        setTimeout(schedulePush,5000);
       }
     }
-
-    localStorage.setItem=function(k,v){_raw.set(k,v);try{if(isSynced(k))scheduleSync();}catch{}};
-    localStorage.removeItem=function(k){_raw.remove(k);try{if(isSynced(k))scheduleSync();}catch{}};
 
     async function initSync(){
       try{
         const{data:row}=await client().from('app_state').select('data').eq('key',APP_KEY).single();
         if(row&&row.data&&Object.keys(row.data).length>0){
           lastRemoteAt=row.data._pushAt||0;
-          try{applyRemote(row.data);}catch(e){console.warn('Health applyRemote failed:',e);}
+          applyRemote(row.data);
         } else {
-          await push();
+          // No remote data — migrate existing localStorage values into _dbH and push
+          for(let i=0;i<localStorage.length;i++){
+            const k=localStorage.key(i);
+            if(k&&isSynced(k)){try{_dbH[k]=JSON.parse(_rawGet(k));}catch{}}
+          }
+          if(Object.keys(_dbH).length>0) await doPush();
         }
       }catch(e){console.warn('Health sync init failed:',e);}
+      try{render();}catch(e){}
+      try{if(typeof wRenderAll==='function')wRenderAll();}catch(e){}
+      try{if(typeof renderAll==='function')renderAll();}catch(e){}
     }
 
     function flushWithKeepalive(){
       if(!hasPendingPush&&!pushTimer) return;
-      try{
-        const state=gatherLocal();
-        state._pushAt=Date.now();
-        fetch(`${SUPABASE_URL}/rest/v1/app_state`,{
-          method:'POST',keepalive:true,
-          headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Prefer':'resolution=merge-duplicates'},
-          body:JSON.stringify({key:APP_KEY,data:state,updated_at:new Date().toISOString()})
-        });
-      }catch{}
+      const data={};Object.keys(_dbH).forEach(k=>{data[k]=_dbH[k];});data._pushAt=Date.now();
+      try{fetch(`${SUPABASE_URL}/rest/v1/app_state`,{
+        method:'POST',keepalive:true,
+        headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Prefer':'resolution=merge-duplicates'},
+        body:JSON.stringify({key:APP_KEY,data,updated_at:new Date().toISOString()})
+      });}catch{}
     }
 
     window.addEventListener('pagehide',flushWithKeepalive);
@@ -1631,15 +1589,13 @@ details[open] .mp-details-summary::before { content: '▾ '; }
         if(!row||!row.data) return;
         const remoteAt=row.data._pushAt||0;
         if(remoteAt<=lastRemoteAt) return;
-        lastRemoteAt=remoteAt;
-        try{applyRemote(row.data);}catch(e){}
+        lastRemoteAt=remoteAt;applyRemote(row.data);
       }catch{}
     });
 
     function waitForSupabase(){window.supabase?initSync():setTimeout(waitForSupabase,50);}
     waitForSupabase();
 
-    // Pull every 5 s — skip if we have unsent local changes to avoid overwriting them
     setInterval(async()=>{
       if(!_sb||hasPendingPush) return;
       try{
@@ -1647,8 +1603,7 @@ details[open] .mp-details-summary::before { content: '▾ '; }
         if(!row||!row.data) return;
         const remoteAt=row.data._pushAt||0;
         if(remoteAt<=lastRemoteAt) return;
-        lastRemoteAt=remoteAt;
-        applyRemote(row.data);
+        lastRemoteAt=remoteAt;applyRemote(row.data);
       }catch{}
     },5000);
   })();

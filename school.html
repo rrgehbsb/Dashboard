@@ -1585,62 +1585,54 @@ document.addEventListener('keydown',function(e){
 // ===== Init =====
 document.addEventListener('DOMContentLoaded',scRenderAll);
 
-// ===== Supabase sync =====
+// ===== Supabase sync — _dbS is source of truth =====
 (function(){
   const SB_URL='https://mtuoqwbrujxutofhyahb.supabase.co';
   const SB_KEY='sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
   const APP_KEY='school';
   function isSynced(k){return k.startsWith('dashboard:school:v1:');}
 
-  // Capture original before hooking so applyRemote can write without triggering a push loop
+  const _dbS={};
+  const _rawGet=localStorage.getItem.bind(localStorage);
   const _rawSet=localStorage.setItem.bind(localStorage);
+  const _rawRem=localStorage.removeItem.bind(localStorage);
 
-  function gatherLocal(){
-    const s={};
-    for(let i=0;i<localStorage.length;i++){
-      const k=localStorage.key(i);
-      if(k&&isSynced(k)){try{s[k]=JSON.parse(localStorage.getItem(k));}catch{s[k]=localStorage.getItem(k);}}
-    }
-    return s;
-  }
+  localStorage.getItem=function(k){
+    if(isSynced(k)) return _dbS.hasOwnProperty(k)?JSON.stringify(_dbS[k]):null;
+    return _rawGet(k);
+  };
+  localStorage.setItem=function(k,v){
+    if(isSynced(k)){try{_dbS[k]=JSON.parse(v);}catch{_dbS[k]=v;} schedPush();}
+    else _rawSet(k,v);
+  };
+  localStorage.removeItem=function(k){
+    if(isSynced(k)){delete _dbS[k];schedPush();}
+    else _rawRem(k);
+  };
 
   function applyRemote(data){
     if(!data) return;
-    Object.keys(data).forEach(k=>{if(isSynced(k))_rawSet(k,JSON.stringify(data[k]));});
+    Object.keys(_dbS).forEach(k=>{delete _dbS[k];});
+    Object.keys(data).forEach(k=>{if(k!=='_pushAt'&&isSynced(k))_dbS[k]=data[k];});
     try{scRenderAll();}catch{}
   }
 
-  let lastSyncedJson=null,pushTimer=null,retryTimer=null,_sb=null;
+  let lastRemoteAt=0,hasPendingPush=false,pushTimer=null,_sb=null;
 
-  function schedPush(){clearTimeout(pushTimer);pushTimer=setTimeout(doPush,300);}
-  async function doPush(){
-    if(!_sb) return;
-    const s=gatherLocal();const j=JSON.stringify(s);
-    if(j===lastSyncedJson) return;
-    try{
-      await _sb.from('app_state').upsert({key:APP_KEY,data:s,updated_at:new Date().toISOString()});
-      lastSyncedJson=j;
-      clearTimeout(retryTimer);
-    }catch{
-      clearTimeout(retryTimer);retryTimer=setTimeout(schedPush,5000);
-    }
+  function schedPush(){
+    hasPendingPush=true;
+    clearTimeout(pushTimer);
+    pushTimer=setTimeout(doPush,500);
   }
 
-  // Hook saves so any scSet() triggers a sync push
-  const _rawRemove=localStorage.removeItem.bind(localStorage);
-  localStorage.setItem=function(k,v){_rawSet(k,v);try{if(isSynced(k))schedPush();}catch{}};
-  localStorage.removeItem=function(k){_rawRemove(k);try{if(isSynced(k))schedPush();}catch{}};
-
-  async function fetchAndApply(){
-    if(!_sb) return;
+  async function doPush(){
+    pushTimer=null;if(!_sb) return;
+    const data={};Object.keys(_dbS).forEach(k=>{data[k]=_dbS[k];});
+    const pushAt=Date.now();data._pushAt=pushAt;
     try{
-      const{data:row}=await _sb.from('app_state').select('data').eq('key',APP_KEY).maybeSingle();
-      if(!row||!row.data) return;
-      const j=JSON.stringify(row.data);
-      if(j===lastSyncedJson) return;
-      lastSyncedJson=j;
-      applyRemote(row.data);
-    }catch{}
+      await _sb.from('app_state').upsert({key:APP_KEY,data,updated_at:new Date().toISOString()});
+      lastRemoteAt=pushAt;hasPendingPush=false;
+    }catch{setTimeout(schedPush,5000);}
   }
 
   async function initSync(){
@@ -1649,55 +1641,55 @@ document.addEventListener('DOMContentLoaded',scRenderAll);
     try{
       const{data:row}=await _sb.from('app_state').select('data').eq('key',APP_KEY).maybeSingle();
       if(row&&row.data&&Object.keys(row.data).length>0){
-        lastSyncedJson=JSON.stringify(row.data);
-        try{applyRemote(row.data);}catch{}
+        lastRemoteAt=row.data._pushAt||0;
+        applyRemote(row.data);
       } else {
-        const local=gatherLocal();
-        if(Object.keys(local).length>0){
-          lastSyncedJson=JSON.stringify(local);
-          await _sb.from('app_state').upsert({key:APP_KEY,data:local,updated_at:new Date().toISOString()});
+        for(let i=0;i<localStorage.length;i++){
+          const k=localStorage.key(i);
+          if(k&&isSynced(k)){try{_dbS[k]=JSON.parse(_rawGet(k));}catch{}}
         }
+        if(Object.keys(_dbS).length>0) await doPush();
       }
-      const localNow=gatherLocal();
-      if(JSON.stringify(localNow)!==lastSyncedJson) schedPush();
     }catch{}
-    // Realtime — independent of init success
-    try{
-      _sb.channel('db-school')
-        .on('postgres_changes',{event:'*',schema:'public',table:'app_state',filter:`key=eq.${APP_KEY}`},payload=>{
-          try{
-            const d=payload.new&&payload.new.data;if(!d) return;
-            const j=JSON.stringify(d);if(j===lastSyncedJson) return;
-            lastSyncedJson=j;applyRemote(d);
-          }catch{}
-        })
-        .subscribe();
-    }catch{}
+    try{scRenderAll();}catch{}
   }
 
-  // Pull latest when tab becomes visible
-  document.addEventListener('visibilitychange',async()=>{
-    if(document.visibilityState==='hidden') return;
-    await fetchAndApply();
-  });
-
-  // Keepalive push on page close
   function flush(){
-    if(!_sb) return;
-    const s=gatherLocal();const j=JSON.stringify(s);if(j===lastSyncedJson) return;
+    if(!_sb||(!hasPendingPush&&!pushTimer)) return;
+    const data={};Object.keys(_dbS).forEach(k=>{data[k]=_dbS[k];});data._pushAt=Date.now();
     try{fetch(SB_URL+'/rest/v1/app_state',{method:'POST',keepalive:true,
       headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Prefer':'resolution=merge-duplicates'},
-      body:JSON.stringify({key:APP_KEY,data:s,updated_at:new Date().toISOString()})
+      body:JSON.stringify({key:APP_KEY,data,updated_at:new Date().toISOString()})
     });}catch{}
   }
   window.addEventListener('pagehide',flush);
   window.addEventListener('beforeunload',flush);
 
+  document.addEventListener('visibilitychange',async()=>{
+    if(document.visibilityState==='hidden'){flush();return;}
+    if(hasPendingPush) return;
+    try{
+      const{data:row}=await _sb.from('app_state').select('data').eq('key',APP_KEY).maybeSingle();
+      if(!row||!row.data) return;
+      const remoteAt=row.data._pushAt||0;
+      if(remoteAt<=lastRemoteAt) return;
+      lastRemoteAt=remoteAt;applyRemote(row.data);
+    }catch{}
+  });
+
   function wait(){window.supabase?initSync():setTimeout(wait,50);}
   wait();
 
-  // Poll every 30 s as fallback when realtime WebSocket drops silently
-  setInterval(fetchAndApply,30000);
+  setInterval(async()=>{
+    if(!_sb||hasPendingPush) return;
+    try{
+      const{data:row}=await _sb.from('app_state').select('data').eq('key',APP_KEY).maybeSingle();
+      if(!row||!row.data) return;
+      const remoteAt=row.data._pushAt||0;
+      if(remoteAt<=lastRemoteAt) return;
+      lastRemoteAt=remoteAt;applyRemote(row.data);
+    }catch{}
+  },5000);
 })();
 
 })();
