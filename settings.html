@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Settings — Dashboard</title>
+  <!-- Apply saved theme immediately to prevent flash -->
+  <script>
+    try {
+      var __cfg = JSON.parse(localStorage.getItem('dashboard:settings:v1') || '{}');
+      document.documentElement.setAttribute('data-theme', __cfg.theme === 'light' ? 'light' : 'dark');
+      var __ac = {purple:{d:'#a78bfa',l:'#7c3aed'},blue:{d:'#60a5fa',l:'#2563eb'},green:{d:'#34d399',l:'#059669'},orange:{d:'#fb923c',l:'#ea580c'},pink:{d:'#f472b6',l:'#db2777'},red:{d:'#f87171',l:'#dc2626'},yellow:{d:'#fbbf24',l:'#d97706'},teal:{d:'#2dd4bf',l:'#0d9488'}}[__cfg.accent||'purple'];
+      document.documentElement.style.setProperty('--accent', __cfg.theme==='light' ? __ac.l : __ac.d);
+      document.documentElement.style.setProperty('--card-radius', {sharp:'6px',rounded:'14px',pill:'24px'}[__cfg.cardStyle||'rounded']||'14px');
+    } catch(e) {}
+  </script>
+  <script src="topbar.js" defer></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --accent: #a78bfa;
+      --card-radius: 14px;
+      --s-bg: #0f0f11;
+      --s-surface: rgba(255,255,255,0.055);
+      --s-border: rgba(255,255,255,0.07);
+      --s-sep: rgba(255,255,255,0.05);
+      --s-text: #fafafa;
+      --s-text2: rgba(255,255,255,0.4);
+      --s-text3: rgba(255,255,255,0.24);
+      --s-ctrl: rgba(255,255,255,0.07);
+      --s-ctrl-border: rgba(255,255,255,0.08);
+    }
+    html[data-theme="light"] {
+      --s-bg: #f2f2f7;
+      --s-surface: #ffffff;
+      --s-border: rgba(0,0,0,0.08);
+      --s-sep: rgba(0,0,0,0.055);
+      --s-text: #1a1a1a;
+      --s-text2: rgba(0,0,0,0.42);
+      --s-text3: rgba(0,0,0,0.28);
+      --s-ctrl: rgba(0,0,0,0.06);
+      --s-ctrl-border: rgba(0,0,0,0.09);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+      background: var(--s-bg);
+      color: var(--s-text);
+      min-height: 100vh;
+      -webkit-text-size-adjust: 100%;
+      transition: background 0.25s, color 0.25s;
+    }
+
+    /* ---- Page wrapper ---- */
+    .st-page {
+      max-width: 560px;
+      margin: 0 auto;
+      padding: 28px 16px 120px;
+    }
+
+    /* ---- Hero ---- */
+    .st-hero { margin-bottom: 32px; padding-top: 4px; }
+    .st-title {
+      font-size: 38px;
+      font-weight: 800;
+      letter-spacing: -1.5px;
+      line-height: 1;
+      margin-bottom: 6px;
+      background: linear-gradient(130deg, var(--s-text) 0%, var(--s-text2) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .st-sub { font-size: 14px; color: var(--s-text2); }
+
+    /* ---- Groups ---- */
+    .st-group { margin-bottom: 28px; }
+    .st-group-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--s-text3);
+      margin-bottom: 8px;
+      padding-left: 4px;
+    }
+    .st-body {
+      background: var(--s-surface);
+      border: 1px solid var(--s-border);
+      border-radius: 18px;
+      overflow: hidden;
+      transition: background 0.25s, border-color 0.25s;
+    }
+    html[data-theme="light"] .st-body {
+      box-shadow: 0 1px 12px rgba(0,0,0,0.06);
+    }
+
+    /* ---- Rows ---- */
+    .st-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 13px 16px;
+      min-height: 54px;
+      border-bottom: 1px solid var(--s-sep);
+      transition: border-color 0.25s;
+    }
+    .st-row:last-child { border-bottom: none; }
+    .st-row-icon {
+      font-size: 19px;
+      width: 30px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .st-row-label {
+      font-size: 15px;
+      font-weight: 500;
+      flex: 1;
+      min-width: 0;
+      color: var(--s-text);
+    }
+
+    /* ---- Theme pill ---- */
+    .st-theme-pill {
+      display: flex;
+      background: var(--s-ctrl);
+      border-radius: 10px;
+      padding: 3px;
+      gap: 2px;
+      flex-shrink: 0;
+      transition: background 0.25s;
+    }
+    .st-theme-btn {
+      padding: 5px 13px;
+      border: none;
+      border-radius: 7px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      background: transparent;
+      color: var(--s-text2);
+      font-family: inherit;
+      transition: all 0.18s;
+      white-space: nowrap;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .st-theme-btn.active {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+
+    /* ---- Color swatches ---- */
+    .st-swatches {
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+    }
+    .st-swatch {
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2.5px solid transparent;
+      transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+      flex-shrink: 0;
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .st-swatch:active { transform: scale(0.88); }
+    .st-swatch.active {
+      border-color: var(--s-text);
+      transform: scale(1.2);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--s-text) 15%, transparent);
+    }
+
+    /* ---- Pill selectors ---- */
+    .st-pill {
+      display: flex;
+      background: var(--s-ctrl);
+      border-radius: 10px;
+      padding: 3px;
+      gap: 2px;
+      flex-shrink: 0;
+      transition: background 0.25s;
+    }
+    .st-pbtn {
+      padding: 5px 10px;
+      border: none;
+      border-radius: 7px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      background: transparent;
+      color: var(--s-text2);
+      font-family: inherit;
+      transition: all 0.18s;
+      white-space: nowrap;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .st-pbtn.active {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+
+    /* ---- Text input ---- */
+    .st-input {
+      background: var(--s-ctrl);
+      border: 1px solid var(--s-ctrl-border);
+      border-radius: 9px;
+      padding: 7px 11px;
+      font-size: 14px;
+      color: var(--s-text);
+      width: 130px;
+      text-align: right;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s, background 0.25s;
+    }
+    .st-input:focus { border-color: var(--accent); }
+    .st-input::placeholder { color: var(--s-text3); }
+
+    /* ---- Stepper ---- */
+    .st-stepper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .st-sbtn {
+      width: 30px; height: 30px;
+      border: 1px solid var(--s-ctrl-border);
+      background: var(--s-ctrl);
+      color: var(--s-text);
+      border-radius: 8px;
+      font-size: 20px;
+      font-weight: 400;
+      line-height: 1;
+      cursor: pointer;
+      font-family: inherit;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.12s;
+      flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .st-sbtn:active { background: var(--accent); color: #fff; border-color: transparent; }
+    .st-sval {
+      font-size: 16px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      min-width: 24px;
+      text-align: center;
+      color: var(--s-text);
+    }
+    .st-sunit {
+      font-size: 12px;
+      color: var(--s-text2);
+    }
+
+    /* ---- Version badge ---- */
+    .st-ver {
+      font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+      font-size: 12px;
+      background: var(--s-ctrl);
+      padding: 4px 9px;
+      border-radius: 7px;
+      color: var(--s-text2);
+      transition: background 0.25s;
+    }
+
+    /* ---- Danger row ---- */
+    .st-row.danger { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .st-row.danger:active { background: rgba(239,68,68,0.08); }
+    .danger-label { color: #f87171; }
+    html[data-theme="light"] .danger-label { color: #dc2626; }
+
+    /* ---- Accent preview dot in hero ---- */
+    .st-accent-dot {
+      display: inline-block;
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+      margin-left: 6px;
+      vertical-align: middle;
+      transition: background 0.3s;
+      box-shadow: 0 0 8px var(--accent);
+    }
+  </style>
+</head>
+<body>
+
+<div class="st-page">
+
+  <div class="st-hero">
+    <div class="st-title">Settings<span class="st-accent-dot"></span></div>
+    <div class="st-sub">Customize your dashboard</div>
+  </div>
+
+  <!-- APPEARANCE -->
+  <div class="st-group">
+    <div class="st-group-label">Appearance</div>
+    <div class="st-body">
+
+      <div class="st-row">
+        <div class="st-row-icon">🌙</div>
+        <div class="st-row-label">Theme</div>
+        <div class="st-theme-pill" id="themePill">
+          <button class="st-theme-btn" data-val="dark">🌙 Dark</button>
+          <button class="st-theme-btn" data-val="light">☀️ Light</button>
+        </div>
+      </div>
+
+      <div class="st-row" style="flex-wrap:wrap; row-gap:10px">
+        <div class="st-row-icon">🎨</div>
+        <div class="st-row-label">Accent Color</div>
+        <div class="st-swatches" id="swatches"></div>
+      </div>
+
+      <div class="st-row">
+        <div class="st-row-icon">🃏</div>
+        <div class="st-row-label">Card Style</div>
+        <div class="st-pill" id="cardPill">
+          <button class="st-pbtn" data-val="sharp">Sharp</button>
+          <button class="st-pbtn" data-val="rounded">Rounded</button>
+          <button class="st-pbtn" data-val="pill">Pill</button>
+        </div>
+      </div>
+
+      <div class="st-row">
+        <div class="st-row-icon" style="font-size:14px;font-weight:800">Aa</div>
+        <div class="st-row-label">Text Size</div>
+        <div class="st-pill" id="fontPill">
+          <button class="st-pbtn" data-val="small">S</button>
+          <button class="st-pbtn" data-val="medium">M</button>
+          <button class="st-pbtn" data-val="large">L</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- PERSONAL -->
+  <div class="st-group">
+    <div class="st-group-label">Personal</div>
+    <div class="st-body">
+
+      <div class="st-row">
+        <div class="st-row-icon">👤</div>
+        <div class="st-row-label">Your Name</div>
+        <input class="st-input" id="nameInput" placeholder="Enter name" maxlength="20" autocomplete="off" spellcheck="false">
+      </div>
+
+      <div class="st-row">
+        <div class="st-row-icon">💰</div>
+        <div class="st-row-label">Currency</div>
+        <div class="st-pill" id="currencyPill">
+          <button class="st-pbtn" data-val="₪">₪</button>
+          <button class="st-pbtn" data-val="$">$</button>
+          <button class="st-pbtn" data-val="€">€</button>
+          <button class="st-pbtn" data-val="£">£</button>
+        </div>
+      </div>
+
+      <div class="st-row">
+        <div class="st-row-icon">📅</div>
+        <div class="st-row-label">Week Starts</div>
+        <div class="st-pill" id="weekPill">
+          <button class="st-pbtn" data-val="sun">Sunday</button>
+          <button class="st-pbtn" data-val="mon">Monday</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- HEALTH GOALS -->
+  <div class="st-group">
+    <div class="st-group-label">Health Goals</div>
+    <div class="st-body">
+
+      <div class="st-row">
+        <div class="st-row-icon">💧</div>
+        <div class="st-row-label">Daily Water</div>
+        <div class="st-stepper">
+          <button class="st-sbtn" id="wDown">−</button>
+          <span class="st-sval" id="wVal">8</span>
+          <span class="st-sunit">cups</span>
+          <button class="st-sbtn" id="wUp">+</button>
+        </div>
+      </div>
+
+      <div class="st-row">
+        <div class="st-row-icon">😴</div>
+        <div class="st-row-label">Sleep Goal</div>
+        <div class="st-stepper">
+          <button class="st-sbtn" id="sDown">−</button>
+          <span class="st-sval" id="sVal">8</span>
+          <span class="st-sunit">hrs</span>
+          <button class="st-sbtn" id="sUp">+</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ABOUT -->
+  <div class="st-group">
+    <div class="st-group-label">About</div>
+    <div class="st-body">
+
+      <div class="st-row">
+        <div class="st-row-icon">ℹ️</div>
+        <div class="st-row-label">Version</div>
+        <span class="st-ver" id="verLabel">—</span>
+      </div>
+
+      <div class="st-row danger" id="resetRow">
+        <div class="st-row-icon">🗑️</div>
+        <div class="st-row-label danger-label">Reset All Settings</div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- /st-page -->
+
+<script>
+const SK = 'dashboard:settings:v1';
+const ACCENTS = {
+  purple: {d:'#a78bfa', l:'#7c3aed'},
+  blue:   {d:'#60a5fa', l:'#2563eb'},
+  green:  {d:'#34d399', l:'#059669'},
+  orange: {d:'#fb923c', l:'#ea580c'},
+  pink:   {d:'#f472b6', l:'#db2777'},
+  red:    {d:'#f87171', l:'#dc2626'},
+  yellow: {d:'#fbbf24', l:'#d97706'},
+  teal:   {d:'#2dd4bf', l:'#0d9488'},
+};
+
+function load() {
+  try { return JSON.parse(localStorage.getItem(SK) || '{}'); } catch { return {}; }
+}
+function save(s) {
+  localStorage.setItem(SK, JSON.stringify(s));
+  applyCSS(s);
+}
+function applyCSS(s) {
+  const dark = s.theme !== 'light';
+  const root = document.documentElement;
+  root.setAttribute('data-theme', dark ? 'dark' : 'light');
+  const ac = ACCENTS[s.accent || 'purple'];
+  root.style.setProperty('--accent', dark ? ac.d : ac.l);
+  root.style.setProperty('--card-radius', {sharp:'6px',rounded:'14px',pill:'24px'}[s.cardStyle||'rounded'] || '14px');
+  root.style.setProperty('--base-font', {small:'13px',medium:'15px',large:'17px'}[s.fontSize||'medium'] || '15px');
+}
+
+function buildSwatches(s) {
+  const dark = s.theme !== 'light';
+  const wrap = document.getElementById('swatches');
+  wrap.innerHTML = '';
+  Object.entries(ACCENTS).forEach(([key, val]) => {
+    const b = document.createElement('button');
+    b.className = 'st-swatch' + (key === (s.accent || 'purple') ? ' active' : '');
+    b.dataset.val = key;
+    b.style.background = dark ? val.d : val.l;
+    b.title = key;
+    wrap.appendChild(b);
+  });
+}
+
+function pillSync(containerId, currentVal) {
+  document.querySelectorAll('#' + containerId + ' .st-pbtn').forEach(b =>
+    b.classList.toggle('active', b.dataset.val === currentVal));
+}
+function themePillSync(s) {
+  document.querySelectorAll('#themePill .st-theme-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.val === (s.theme || 'dark')));
+}
+
+function renderAll(s) {
+  themePillSync(s);
+  buildSwatches(s);
+  pillSync('cardPill', s.cardStyle || 'rounded');
+  pillSync('fontPill', s.fontSize || 'medium');
+  document.getElementById('nameInput').value = s.name || '';
+  pillSync('currencyPill', s.currency || '₪');
+  pillSync('weekPill', s.weekStart || 'sun');
+  document.getElementById('wVal').textContent = s.waterGoal || 8;
+  document.getElementById('sVal').textContent = s.sleepGoal || 8;
+}
+
+// -- Event binding helpers --
+function pillBind(id, key) {
+  document.getElementById(id).addEventListener('click', e => {
+    const b = e.target.closest('.st-pbtn'); if (!b) return;
+    const s = load(); s[key] = b.dataset.val; save(s); renderAll(s);
+  });
+}
+function stepBind(upId, downId, key, valId, min, max, def) {
+  document.getElementById(upId).addEventListener('click', () => {
+    const s = load(); s[key] = Math.min(max, (s[key] ?? def) + 1);
+    save(s); document.getElementById(valId).textContent = s[key];
+  });
+  document.getElementById(downId).addEventListener('click', () => {
+    const s = load(); s[key] = Math.max(min, (s[key] ?? def) - 1);
+    save(s); document.getElementById(valId).textContent = s[key];
+  });
+}
+
+// Theme
+document.getElementById('themePill').addEventListener('click', e => {
+  const b = e.target.closest('.st-theme-btn'); if (!b) return;
+  const s = load(); s.theme = b.dataset.val;
+  save(s); renderAll(s);
+});
+
+// Accent swatches
+document.getElementById('swatches').addEventListener('click', e => {
+  const b = e.target.closest('.st-swatch'); if (!b) return;
+  const s = load(); s.accent = b.dataset.val;
+  save(s); renderAll(s);
+});
+
+pillBind('cardPill', 'cardStyle');
+pillBind('fontPill', 'fontSize');
+
+document.getElementById('nameInput').addEventListener('input', e => {
+  const s = load(); s.name = e.target.value; save(s);
+});
+
+pillBind('currencyPill', 'currency');
+pillBind('weekPill', 'weekStart');
+
+stepBind('wUp', 'wDown', 'waterGoal', 'wVal', 1, 20, 8);
+stepBind('sUp', 'sDown', 'sleepGoal', 'sVal', 4, 14, 8);
+
+document.getElementById('resetRow').addEventListener('click', () => {
+  if (!confirm('Reset all settings to defaults?')) return;
+  localStorage.removeItem(SK);
+  const s = {};
+  save(s); renderAll(s);
+});
+
+// Init
+const s0 = load();
+applyCSS(s0);
+renderAll(s0);
+setTimeout(() => {
+  const vl = document.getElementById('verLabel');
+  if (vl && typeof DASHBOARD_VERSION !== 'undefined')
+    vl.textContent = 'v' + DASHBOARD_VERSION;
+}, 50);
+</script>
+</body>
+</html>

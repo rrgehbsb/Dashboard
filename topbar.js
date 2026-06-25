@@ -7,7 +7,21 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '1.0.9';
+const DASHBOARD_VERSION = '1.1.0';
+
+// Apply saved theme before anything renders (prevents flash)
+(function() {
+  try {
+    var _s = JSON.parse(localStorage.getItem('dashboard:settings:v1') || '{}');
+    var _dark = _s.theme !== 'light';
+    document.documentElement.setAttribute('data-theme', _dark ? 'dark' : 'light');
+    var _acMap = {purple:{d:'#a78bfa',l:'#7c3aed'},blue:{d:'#60a5fa',l:'#2563eb'},green:{d:'#34d399',l:'#059669'},orange:{d:'#fb923c',l:'#ea580c'},pink:{d:'#f472b6',l:'#db2777'},red:{d:'#f87171',l:'#dc2626'},yellow:{d:'#fbbf24',l:'#d97706'},teal:{d:'#2dd4bf',l:'#0d9488'}};
+    var _ac = _acMap[_s.accent || 'purple'] || _acMap.purple;
+    document.documentElement.style.setProperty('--accent', _dark ? _ac.d : _ac.l);
+    document.documentElement.style.setProperty('--card-radius', {sharp:'6px',rounded:'14px',pill:'24px'}[_s.cardStyle||'rounded']||'14px');
+    document.documentElement.style.setProperty('--base-font', {small:'13px',medium:'15px',large:'17px'}[_s.fontSize||'medium']||'15px');
+  } catch(e) {}
+})();
 
 (function () {
   'use strict';
@@ -148,11 +162,68 @@ body.topbar-modal-open { overflow: hidden; touch-action: none; }
     overflow-y: auto !important; overscroll-behavior: contain;
   }
 }
+
+/* ===== THEME SYSTEM ===== */
+:root { --accent: #a78bfa; --card-radius: 14px; --base-font: 15px; }
+.topbar-version {
+  font-size: 10px; color: rgba(255,255,255,0.22); font-family: monospace; margin-right: auto;
+  transition: color 0.25s;
+}
+html[data-theme="light"] .topbar-version { color: rgba(0,0,0,0.28); }
+.topbar-settings-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 42px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.04);
+  border-radius: 12px; text-decoration: none; font-size: 18px;
+  -webkit-tap-highlight-color: transparent; transition: background 0.15s, border-color 0.25s;
+}
+.topbar-settings-btn:hover { background: rgba(255,255,255,0.09); }
+html[data-theme="light"] .topbar-settings-btn {
+  border-color: rgba(0,0,0,0.1); background: rgba(0,0,0,0.04);
+}
+html[data-theme="light"] .topbar-settings-btn:hover { background: rgba(0,0,0,0.08); }
+
+/* Smooth theme transitions */
+body { transition: background-color 0.25s, color 0.25s; }
+.topbar { transition: background-color 0.25s, border-color 0.25s; }
+.bottombar { transition: background-color 0.25s, border-color 0.25s; }
+.bottombar-tab { transition: color 0.15s; }
+.section, .gm-card, .hb-card, .hb-header-card, .fin-card, .sch-card, .hth-card, .dash-mini-card, .pom-card, .kn-col, .sum-stat {
+  transition: background-color 0.25s, border-color 0.25s, color 0.25s;
+}
+
+/* Light mode overrides */
+html[data-theme="light"] body { background: #f2f2f7 !important; color: #1a1a1a !important; }
+html[data-theme="light"] .topbar { background: rgba(242,242,247,0.97) !important; border-bottom-color: rgba(0,0,0,0.09) !important; }
+html[data-theme="light"] .bottombar { background: rgba(242,242,247,0.97) !important; border-top-color: rgba(0,0,0,0.09) !important; }
+html[data-theme="light"] .bottombar-tab { color: rgba(0,0,0,0.36) !important; }
+html[data-theme="light"] .bottombar-tab.active { color: #111 !important; }
+html[data-theme="light"] .topbar-water-pill { color: #111 !important; background: rgba(125,211,252,0.13) !important; border-color: rgba(125,211,252,0.28) !important; }
+html[data-theme="light"] .topbar-finance-btn { border-color: rgba(0,0,0,0.1) !important; background: rgba(0,0,0,0.04) !important; }
+html[data-theme="light"] .section { background: rgba(255,255,255,0.82) !important; border-color: rgba(0,0,0,0.08) !important; }
+html[data-theme="light"] .section-title { color: #111 !important; }
+html[data-theme="light"] .gm-card,
+html[data-theme="light"] .hb-card,
+html[data-theme="light"] .hb-header-card,
+html[data-theme="light"] .fin-card,
+html[data-theme="light"] .sch-card,
+html[data-theme="light"] .hth-card,
+html[data-theme="light"] .dash-mini-card,
+html[data-theme="light"] .pom-card,
+html[data-theme="light"] .kn-col,
+html[data-theme="light"] .sum-stat { background: rgba(255,255,255,0.9) !important; border-color: rgba(0,0,0,0.08) !important; color: #111 !important; }
+html[data-theme="light"] input:not([type=range]):not([type=checkbox]):not([type=radio]),
+html[data-theme="light"] textarea,
+html[data-theme="light"] select { background: rgba(0,0,0,0.05) !important; border-color: rgba(0,0,0,0.11) !important; color: #111 !important; }
+html[data-theme="light"] .dm-eyebrow,
+html[data-theme="light"] .dm-sub { color: rgba(0,0,0,0.42) !important; }
+html[data-theme="light"] .dm-value { color: #111 !important; }
 `;
 
   const topbarHtml = `
 <header class="topbar" id="topbar" role="navigation" aria-label="Quick actions">
-  <span style="font-size:10px;color:rgba(255,255,255,0.25);font-family:monospace;margin-right:auto">v${DASHBOARD_VERSION}</span>
+  <span class="topbar-version">v${DASHBOARD_VERSION}</span>
   <div class="topbar-water-wrap">
     <a href="health.html#water" class="topbar-water-pill" id="topbarWater" aria-label="Water progress">
       <span class="topbar-pill-dot"></span>
@@ -163,6 +234,13 @@ body.topbar-modal-open { overflow: hidden; touch-action: none; }
   <a href="finance.html" class="topbar-finance-btn" id="topbarFinance" aria-label="Finance">
     <span class="topbar-finance-icon">📊</span>
   </a>
+  <a href="settings.html" class="topbar-settings-btn" id="topbarSettings" aria-label="Settings">⚙️</a>
+</header>`;
+
+  const minimalTopbarHtml = `
+<header class="topbar" id="topbar" role="navigation" aria-label="Quick actions">
+  <span class="topbar-version">v${DASHBOARD_VERSION}</span>
+  <a href="settings.html" class="topbar-settings-btn" id="topbarSettings" aria-label="Settings">⚙️</a>
 </header>`;
 
   const bottombarHtml = `
@@ -198,6 +276,10 @@ body.topbar-modal-open { overflow: hidden; touch-action: none; }
     const p = (window.location.pathname || '').toLowerCase();
     return p.endsWith('/index.html') || p.endsWith('index.html') || p.endsWith('/');
   }
+  function isSettingsPage() {
+    const p = (window.location.pathname || '').toLowerCase();
+    return p.endsWith('/settings.html') || p.endsWith('settings.html');
+  }
   function isEmbedded() {
     try { return window.self !== window.top; } catch (e) { return true; }
   }
@@ -209,6 +291,7 @@ body.topbar-modal-open { overflow: hidden; touch-action: none; }
     if (p.endsWith('habits.html')) return 'habits';
     if (p.endsWith('transport.html')) return 'transport';
     if (p.endsWith('projects.html')) return 'projects';
+    if (p.endsWith('settings.html')) return 'settings';
     return 'main';
   }
 
@@ -218,10 +301,10 @@ body.topbar-modal-open { overflow: hidden; touch-action: none; }
     style.id = 'topbar-style';
     style.textContent = css;
     document.head.appendChild(style);
-    // Topbar (water + finance) only on home page
-    if (isHomePage() && !document.getElementById('topbar')) {
+    // Topbar: full (water+finance+gear) on home, minimal (version+gear) elsewhere, skip on settings (has own header)
+    if (!document.getElementById('topbar') && !isSettingsPage()) {
       const topWrap = document.createElement('div');
-      topWrap.innerHTML = topbarHtml.trim();
+      topWrap.innerHTML = (isHomePage() ? topbarHtml : minimalTopbarHtml).trim();
       document.body.insertBefore(topWrap.firstChild, document.body.firstChild);
     }
     // Bottom tabs on all non-finance, non-iframe pages
