@@ -7,6 +7,8 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
+const DASHBOARD_VERSION = '1.0.3';
+
 (function () {
   'use strict';
 
@@ -150,6 +152,7 @@ body.topbar-modal-open { overflow: hidden; touch-action: none; }
 
   const topbarHtml = `
 <header class="topbar" id="topbar" role="navigation" aria-label="Quick actions">
+  <span style="font-size:10px;color:rgba(255,255,255,0.25);font-family:monospace;margin-right:auto">v${DASHBOARD_VERSION}</span>
   <div class="topbar-water-wrap">
     <a href="health.html#water" class="topbar-water-pill" id="topbarWater" aria-label="Water progress">
       <span class="topbar-pill-dot"></span>
@@ -234,7 +237,12 @@ body.topbar-modal-open { overflow: hidden; touch-action: none; }
   }
   function getWaterProgress() {
     let state = null;
-    try { state = JSON.parse(localStorage.getItem('po_water_v1')); } catch (e) {}
+    // On health.html, read from the shared sync store; elsewhere from localStorage
+    if (window._dbH && window._dbH['po_water_v1']) {
+      state = window._dbH['po_water_v1'];
+    } else {
+      try { state = JSON.parse(localStorage.getItem('po_water_v1')); } catch (e) {}
+    }
     if (!state) return { done: 0, total: 0 };
     const todayKey = calendarDateKey();
     const done = (state.logs || {})[todayKey] || 0;
@@ -288,8 +296,6 @@ body.topbar-modal-open { overflow: hidden; touch-action: none; }
     };
   }
   async function pushWaterMergedToSupabase(localWater) {
-    if (window.location.pathname.endsWith('/health.html') ||
-        window.location.pathname.endsWith('health.html')) return;
     if (!window.supabase || !TOPBAR_SUPABASE_URL || !TOPBAR_SUPABASE_KEY) return;
     if (TOPBAR_SUPABASE_URL.indexOf('PASTE-') === 0) return;
     try {
@@ -297,7 +303,8 @@ body.topbar-modal-open { overflow: hidden; touch-action: none; }
       const { data } = await supa
         .from('app_state').select('data').eq('key', 'health').maybeSingle();
       const current = (data && data.data) || {};
-      const merged = Object.assign({}, current, { po_water_v1: localWater });
+      // Always stamp _pushAt so health.html's poll detects the change
+      const merged = Object.assign({}, current, { po_water_v1: localWater, _pushAt: Date.now() });
       await supa.from('app_state').upsert(
         { key: 'health', data: merged, updated_at: new Date().toISOString() },
         { onConflict: 'key' }
@@ -306,16 +313,26 @@ body.topbar-modal-open { overflow: hidden; touch-action: none; }
   }
   function addWater() {
     let state = null;
-    try { state = JSON.parse(localStorage.getItem('po_water_v1')); } catch (e) {}
-    if (!state || typeof state !== 'object') state = defaultWaterState();
-    state.logs = state.logs || {};
-    const k = calendarDateKey();
-    state.logs[k] = (state.logs[k] || 0) + 1;
-    try { localStorage.setItem('po_water_v1', JSON.stringify(state)); } catch (e) {}
+    // On health.html, use the shared sync store so the change goes through health sync
+    if (window._dbH && typeof window._dbHSchedulePush === 'function') {
+      state = window._dbH['po_water_v1'] ? JSON.parse(JSON.stringify(window._dbH['po_water_v1'])) : defaultWaterState();
+      state.logs = state.logs || {};
+      const k = calendarDateKey();
+      state.logs[k] = (state.logs[k] || 0) + 1;
+      window._dbH['po_water_v1'] = state;
+      window._dbHSchedulePush();
+    } else {
+      try { state = JSON.parse(localStorage.getItem('po_water_v1')); } catch (e) {}
+      if (!state || typeof state !== 'object') state = defaultWaterState();
+      state.logs = state.logs || {};
+      const k = calendarDateKey();
+      state.logs[k] = (state.logs[k] || 0) + 1;
+      try { localStorage.setItem('po_water_v1', JSON.stringify(state)); } catch (e) {}
+      pushWaterMergedToSupabase(state);
+    }
     render();
     const btn = document.getElementById('topbarWaterAdd');
     if (btn) { btn.classList.add('flash'); setTimeout(() => btn.classList.remove('flash'), 220); }
-    pushWaterMergedToSupabase(state);
   }
 
   function blockGesture(e) { e.preventDefault(); }
@@ -356,6 +373,7 @@ body.topbar-modal-open { overflow: hidden; touch-action: none; }
     startModalLock();
     window.addEventListener('storage', render);
     window.addEventListener('focus', render);
+    window.addEventListener('health-synced', render);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) render(); });
     setInterval(render, 30 * 1000);
   }
