@@ -1055,8 +1055,8 @@ function buildGoalRow(g,idx,goals,key,readOnly){
   if(!readOnly){
     cb.addEventListener('change',()=>{
       goals[idx].done=cb.checked;
-      if(cb.checked) goals[idx].doneAt=Date.now();
-      else delete goals[idx].doneAt;
+      if(cb.checked){ goals[idx].doneAt=Date.now(); delete goals[idx].undoneAt; }
+      else { goals[idx].undoneAt=Date.now(); delete goals[idx].doneAt; }
       storeSet(key,goals);
       li.classList.toggle('gm-done',cb.checked);
       if(key===`goals:${getActiveDateString()}`) renderTodayHeader();else renderTomorrowCount();
@@ -1412,14 +1412,20 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
     return s;
   }
 
-  // Merge two goal arrays: union by text, local done/queued status wins
+  // Merge two goal arrays: union by text, most-recently-changed done state wins
   function mergeGoalLists(local,remote){
     const byText={};
     (remote||[]).forEach(g=>{byText[g.text]={...g};});
     (local||[]).forEach(g=>{
       if(byText[g.text]){
-        // Local checked/queued state wins — prevents remote from un-checking your work
-        if(g.done) byText[g.text].done=true;
+        // Compare last-action timestamps so unchecking always beats an older check
+        const localTs=Math.max(g.doneAt||0,g.undoneAt||0);
+        const remoteTs=Math.max(byText[g.text].doneAt||0,byText[g.text].undoneAt||0);
+        if(localTs>=remoteTs){
+          byText[g.text].done=g.done;
+          byText[g.text].doneAt=g.doneAt;
+          byText[g.text].undoneAt=g.undoneAt;
+        }
         if(g.queued) byText[g.text].queued=true;
       } else {
         byText[g.text]={...g};
