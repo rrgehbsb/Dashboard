@@ -1058,7 +1058,8 @@ function buildGoalRow(g,idx,goals,key,readOnly){
       if(cb.checked) goals[idx].doneAt=Date.now();
       else delete goals[idx].doneAt;
       storeSet(key,goals);
-      if(key===`goals:${getActiveDateString()}`) loadToday();else loadTomorrow();
+      li.classList.toggle('gm-done',cb.checked);
+      if(key===`goals:${getActiveDateString()}`) renderTodayHeader();else renderTomorrowCount();
     });
   }
   qBtn.addEventListener('click',()=>{
