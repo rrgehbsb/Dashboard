@@ -1,4 +1,4 @@
-// Returns all reminders from Supabase in localStorage-compatible format.
+// Returns reminders for a specific user from Supabase.
 // Called on dashboard load so every device sees the same reminder list.
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -11,9 +11,13 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ ok: false, error: 'Supabase env vars not set' });
   }
 
+  const userId = req.query.userId || 'shared';
+  const prefix = userId + '::';
+  const likeFilter = 'client_id=like.' + encodeURIComponent(prefix + '%');
+
   try {
     const r = await fetch(
-      `${SB_URL}/rest/v1/reminders?select=client_id,title,message,time_local,enabled,category,repeat_daily&order=time_local.asc`,
+      `${SB_URL}/rest/v1/reminders?${likeFilter}&select=client_id,title,message,time_local,enabled,category,repeat_daily&order=time_local.asc`,
       { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } }
     );
     if (!r.ok) {
@@ -22,7 +26,7 @@ module.exports = async function handler(req, res) {
     }
     const rows = await r.json();
     const reminders = rows.map(row => ({
-      id: row.client_id,
+      id: row.client_id.slice(prefix.length), // Strip user prefix
       title: row.title,
       message: row.message || row.title,
       time: row.time_local,

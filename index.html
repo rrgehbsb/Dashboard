@@ -1856,34 +1856,27 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
   const RM_KEY='dashboard:reminders:v1';
   const RM_SENT_KEY='dashboard:reminders:sent:v1';
 
-  const DEFAULTS=[
-    {id:'rm-meal-1',title:'Pre-gym meal',message:'Eat pre-gym meal.',category:'meal',time:'08:30',enabled:true,repeatDaily:true},
-    {id:'rm-meal-2',title:'Post-gym shake',message:'Drink post-gym shake.',category:'meal',time:'10:30',enabled:true,repeatDaily:true},
-    {id:'rm-meal-3',title:'School meal',message:'Eat school meal.',category:'meal',time:'12:30',enabled:true,repeatDaily:true},
-    {id:'rm-meal-4',title:'After-school meal',message:'Eat after-school meal.',category:'meal',time:'17:00',enabled:true,repeatDaily:true},
-    {id:'rm-meal-5',title:'Dinner',message:'Eat dinner.',category:'meal',time:'19:30',enabled:true,repeatDaily:true},
-    {id:'rm-meal-6',title:'Night snack',message:'Eat night snack.',category:'meal',time:'21:30',enabled:true,repeatDaily:true},
-    {id:'rm-sleep-1',title:'Wind down for sleep',message:'Wind down for sleep.',category:'sleep',time:'20:40',enabled:true,repeatDaily:true},
-    {id:'rm-gym-1',title:'Log today\'s workout',message:'Log today\'s workout.',category:'gym',time:'11:30',enabled:true,repeatDaily:true},
-  ];
+  const DEFAULTS=[];
 
   function getRM(){try{return JSON.parse(localStorage.getItem(RM_KEY))||null;}catch{return null;}}
   function saveRM(arr){localStorage.setItem(RM_KEY,JSON.stringify(arr));}
 
   async function syncReminders(){
     const arr=getRM()||[];
+    const uid=localStorage.getItem('_dashUid')||'';
     try{
       await fetch('/api/sync-reminders',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({reminders:arr,timezone:Intl.DateTimeFormat().resolvedOptions().timeZone}),
+        body:JSON.stringify({reminders:arr,timezone:Intl.DateTimeFormat().resolvedOptions().timeZone,userId:uid}),
       });
     }catch{}
   }
 
   async function loadFromCloud(){
     try{
-      const r=await fetch('/api/get-reminders');
+      const uid=localStorage.getItem('_dashUid')||'';
+      const r=await fetch('/api/get-reminders?userId='+encodeURIComponent(uid));
       if(!r.ok) return;
       const data=await r.json();
       if(!data.ok) return;

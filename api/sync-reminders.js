@@ -1,4 +1,4 @@
-// Full sync: upserts current reminders into Supabase and deletes any that were removed.
+// Full sync: upserts current reminders into Supabase (per-user) and deletes removed ones.
 // Called whenever the user adds, edits, deletes, or toggles a reminder.
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
@@ -6,20 +6,19 @@ module.exports = async function handler(req, res) {
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  const { reminders, timezone } = req.body || {};
+  const { reminders, timezone, userId } = req.body || {};
   if (!Array.isArray(reminders)) {
     return res.status(400).json({ ok: false, error: 'reminders must be an array' });
   }
 
+  const uid = userId || 'shared';
+  const prefix = uid + '::';
   const tz = timezone || 'UTC';
-  const currentIds = reminders.map(r => String(r.id));
 
   try {
-    // Step 1: delete rows that are no longer in the local list
-    const deleteFilter = currentIds.length > 0
-      ? `client_id=not.in.(${currentIds.join(',')})`
-      : `client_id=not.is.null`;
-    await fetch(`${SB_URL}/rest/v1/reminders?${deleteFilter}`, {
+    // Delete all of this user's existing reminders, then re-upsert current list
+    const likeFilter = 'client_id=like.' + encodeURIComponent(prefix + '%');
+    await fetch(`${SB_URL}/rest/v1/reminders?${likeFilter}`, {
       method: 'DELETE',
       headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` },
     });
@@ -28,9 +27,8 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true, synced: 0 });
     }
 
-    // Step 2: upsert current list
     const rows = reminders.map(r => ({
-      client_id: String(r.id),
+      client_id: prefix + String(r.id),
       title: r.title || '',
       message: r.message || r.title || '',
       category: r.category || 'custom',
