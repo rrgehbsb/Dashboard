@@ -426,7 +426,7 @@ main {
 // ============ SUPABASE SYNC ============
 const SUPABASE_URL = 'https://mtuoqwbrujxutofhyahb.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
-const APP_KEY = 'projects';
+const APP_KEY_BASE = 'projects'; let APP_KEY = APP_KEY_BASE;
 
 let _db = {};
 let schedulePush = function(){};
@@ -506,6 +506,12 @@ async function pullRemote() {
 async function initSync() {
   if (!window.supabase) return;
   _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  // Auth guard
+  const { data: { session: _sess }, error: _authErr } = await _sb.auth.getSession();
+  if (!_sess) { window.location.href = 'login.html'; return; }
+  const _uid = _sess.user.id;
+  localStorage.setItem('_dashUid', _uid);
+  APP_KEY = _uid + ':' + APP_KEY_BASE;
   schedulePush = realSchedulePush;
 
   // Initial pull

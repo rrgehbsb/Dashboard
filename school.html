@@ -1808,7 +1808,7 @@ document.addEventListener('DOMContentLoaded',scRenderAll);
 (function(){
   const SB_URL='https://mtuoqwbrujxutofhyahb.supabase.co';
   const SB_KEY='sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
-  const APP_KEY='school';
+  const APP_KEY_BASE='school'; let APP_KEY=APP_KEY_BASE;
   function isSynced(k){return k.startsWith('dashboard:school:v1:');}
 
   const _dbS={};
@@ -1858,6 +1858,12 @@ document.addEventListener('DOMContentLoaded',scRenderAll);
   async function initSync(){
     if(!window.supabase) return;
     _sb=window.supabase.createClient(SB_URL,SB_KEY);
+    // Auth guard
+    const { data: { session: _sess }, error: _authErr } = await _sb.auth.getSession();
+    if (!_sess) { window.location.href = 'login.html'; return; }
+    const _uid = _sess.user.id;
+    localStorage.setItem('_dashUid', _uid);
+    APP_KEY = _uid + ':' + APP_KEY_BASE;
     try{
       const{data:row}=await _sb.from('app_state').select('data').eq('key',APP_KEY).maybeSingle();
       if(row&&row.data&&Object.keys(row.data).length>0){

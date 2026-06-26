@@ -424,6 +424,11 @@
         <div class="st-row-label danger-label">Reset All Settings</div>
       </div>
 
+      <div class="st-row danger" id="logoutRow" style="cursor:pointer">
+        <div class="st-row-icon">🚪</div>
+        <div class="st-row-label danger-label">Log Out</div>
+      </div>
+
     </div>
   </div>
 
@@ -578,12 +583,15 @@ function getSB() {
 async function loadFromCloud() {
   const sb = getSB(); if (!sb) return;
   try {
-    const { data } = await sb.from('app_state').select('data').eq('key', 'settings').maybeSingle();
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) { window.location.href = 'login.html'; return; }
+    const uid = session.user.id;
+    localStorage.setItem('_dashUid', uid);
+    const settingsKey = uid + ':settings';
+    const { data } = await sb.from('app_state').select('data').eq('key', settingsKey).maybeSingle();
     if (data && data.data) {
-      const s = data.data;
-      localStorage.setItem(SK, JSON.stringify(s));
-      applyCSS(s);
-      renderAll(s);
+      localStorage.setItem(SK, JSON.stringify(data.data));
+      applyCSS(data.data); renderAll(data.data);
     }
   } catch(e) { console.error('Settings pull error', e); }
 }
@@ -599,8 +607,9 @@ async function saveToCloud() {
     const s = load();
     const sb = getSB();
     if (!sb) throw new Error('Supabase not loaded');
+    const uid = localStorage.getItem('_dashUid') || 'anon';
     await sb.from('app_state').upsert(
-      { key: 'settings', data: s, updated_at: new Date().toISOString() },
+      { key: uid + ':settings', data: s, updated_at: new Date().toISOString() },
       { onConflict: 'key' }
     );
     status.textContent = '✓ Saved — settings will sync to all devices';
@@ -614,6 +623,14 @@ async function saveToCloud() {
   btn.disabled = false;
   setTimeout(() => { status.style.opacity = '0'; }, 3000);
 }
+
+document.getElementById('logoutRow').addEventListener('click', async () => {
+  if (!confirm('Log out of your account?')) return;
+  const sb = getSB();
+  if (sb) await sb.auth.signOut();
+  localStorage.removeItem('_dashUid');
+  window.location.href = 'login.html';
+});
 
 // Pull cloud settings on load
 document.addEventListener('DOMContentLoaded', loadFromCloud);

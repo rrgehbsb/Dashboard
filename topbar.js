@@ -435,13 +435,15 @@ html[data-theme="light"] .dm-value { color: #111 !important; }
     if (TOPBAR_SUPABASE_URL.indexOf('PASTE-') === 0) return;
     try {
       const supa = window.supabase.createClient(TOPBAR_SUPABASE_URL, TOPBAR_SUPABASE_KEY);
+      const _wUid = localStorage.getItem('_dashUid');
+      const _wKey = _wUid ? _wUid + ':health' : 'health';
       const { data } = await supa
-        .from('app_state').select('data').eq('key', 'health').maybeSingle();
+        .from('app_state').select('data').eq('key', _wKey).maybeSingle();
       const current = (data && data.data) || {};
       // Always stamp _pushAt so health.html's poll detects the change
       const merged = Object.assign({}, current, { po_water_v1: localWater, _pushAt: Date.now() });
       await supa.from('app_state').upsert(
-        { key: 'health', data: merged, updated_at: new Date().toISOString() },
+        { key: _wKey, data: merged, updated_at: new Date().toISOString() },
         { onConflict: 'key' }
       );
     } catch (e) {}

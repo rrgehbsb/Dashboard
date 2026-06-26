@@ -369,7 +369,11 @@ main {
       if (!window.supabase) throw new Error('Supabase not loaded');
 
       const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      const keys = ['health', 'habits', 'school', 'gym', 'index'];
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) { window.location.href = 'login.html'; return; }
+      const uid = session.user.id;
+      localStorage.setItem('_dashUid', uid);
+      const keys = [uid + ':health', uid + ':habits', uid + ':school', uid + ':po-coach', uid + ':dashboard'];
       const results = await Promise.all(
         keys.map(k => sb.from('app_state').select('data').eq('key', k).maybeSingle())
       );

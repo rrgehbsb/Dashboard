@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Login — Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+      background: #0a0a0b;
+      color: #fafafa;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+    .wrap {
+      width: 100%;
+      max-width: 380px;
+    }
+    .logo {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+    .logo-icon { font-size: 48px; margin-bottom: 10px; }
+    .logo-title {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #fafafa, rgba(255,255,255,0.5));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .logo-sub {
+      font-size: 13px;
+      color: rgba(255,255,255,0.35);
+      margin-top: 4px;
+    }
+    .card {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px;
+      padding: 28px 24px 32px;
+    }
+    /* Tab toggle */
+    .tabs {
+      display: flex;
+      background: rgba(255,255,255,0.07);
+      border-radius: 10px;
+      padding: 3px;
+      margin-bottom: 24px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 8px;
+      border: none;
+      border-radius: 7px;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      background: transparent;
+      color: rgba(255,255,255,0.4);
+      transition: all 0.18s;
+    }
+    .tab-btn.active {
+      background: rgba(255,255,255,0.12);
+      color: #fafafa;
+    }
+    /* Form */
+    .field { margin-bottom: 14px; }
+    .field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.38);
+      margin-bottom: 6px;
+    }
+    .field input {
+      width: 100%;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 15px;
+      color: #fafafa;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s;
+      -webkit-appearance: none;
+    }
+    .field input:focus { border-color: rgba(167,139,250,0.6); }
+    .field input::placeholder { color: rgba(255,255,255,0.22); }
+    /* Submit */
+    .submit-btn {
+      width: 100%;
+      padding: 14px;
+      margin-top: 8px;
+      background: #a78bfa;
+      border: none;
+      border-radius: 12px;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .submit-btn:active { transform: scale(0.98); }
+    .submit-btn:disabled { opacity: 0.5; cursor: default; }
+    /* Messages */
+    .msg {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 500;
+      display: none;
+      line-height: 1.4;
+    }
+    .msg.error { background: rgba(248,113,113,0.12); color: #f87171; border: 1px solid rgba(248,113,113,0.2); display: block; }
+    .msg.success { background: rgba(52,211,153,0.12); color: #34d399; border: 1px solid rgba(52,211,153,0.2); display: block; }
+    /* Check email state */
+    .check-email {
+      display: none;
+      text-align: center;
+      padding: 16px 0 8px;
+    }
+    .check-email-icon { font-size: 48px; margin-bottom: 12px; }
+    .check-email h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    .check-email p { font-size: 14px; color: rgba(255,255,255,0.45); line-height: 1.5; }
+    .back-link {
+      display: block;
+      text-align: center;
+      margin-top: 20px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.35);
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    /* Loading overlay */
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 8px 0;
+      font-size: 13px;
+      color: rgba(255,255,255,0.4);
+    }
+    .spinner {
+      display: inline-block;
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.15);
+      border-top-color: #a78bfa;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">
+    <div class="logo-icon">🏠</div>
+    <div class="logo-title">My Dashboard</div>
+    <div class="logo-sub">Sign in to your account</div>
+  </div>
+
+  <div class="card">
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" id="tabSignin" onclick="setTab('signin')">Sign In</button>
+      <button class="tab-btn" id="tabSignup" onclick="setTab('signup')">Create Account</button>
+    </div>
+
+    <!-- Form -->
+    <div id="formWrap">
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="emailInput" placeholder="you@example.com" autocomplete="email" autocapitalize="none">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="passInput" placeholder="••••••••" autocomplete="current-password" minlength="6">
+      </div>
+      <button class="submit-btn" id="submitBtn" onclick="handleSubmit()">Sign In</button>
+      <div class="loading" id="loading"><span class="spinner"></span> <span id="loadingText">Signing in…</span></div>
+      <div class="msg" id="msgBox"></div>
+    </div>
+
+    <!-- Check email state (shown after signup) -->
+    <div class="check-email" id="checkEmail">
+      <div class="check-email-icon">📬</div>
+      <h3>Check your email</h3>
+      <p>We sent a confirmation link to <strong id="sentTo"></strong>. Click it to activate your account, then come back and sign in.</p>
+      <span class="back-link" onclick="setTab('signin')">Back to Sign In</span>
+    </div>
+  </div>
+</div>
+
+<script>
+const SB_URL = 'https://mtuoqwbrujxutofhyahb.supabase.co';
+const SB_KEY = 'sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
+const sb = supabase.createClient(SB_URL, SB_KEY);
+
+// Keys that existed before auth was added — will be migrated to user-prefixed keys
+const OLD_KEYS = ['dashboard', 'health', 'po-coach', 'school', 'habits', 'projects', 'settings'];
+
+let currentTab = 'signin';
+
+function setTab(tab) {
+  currentTab = tab;
+  document.getElementById('tabSignin').classList.toggle('active', tab === 'signin');
+  document.getElementById('tabSignup').classList.toggle('active', tab === 'signup');
+  document.getElementById('submitBtn').textContent = tab === 'signin' ? 'Sign In' : 'Create Account';
+  document.getElementById('passInput').autocomplete = tab === 'signin' ? 'current-password' : 'new-password';
+  clearMsg();
+}
+
+function showMsg(text, type) {
+  const el = document.getElementById('msgBox');
+  el.className = 'msg ' + type;
+  el.textContent = text;
+}
+function clearMsg() {
+  const el = document.getElementById('msgBox');
+  el.className = 'msg';
+  el.textContent = '';
+}
+function setLoading(on, text) {
+  document.getElementById('loading').style.display = on ? 'block' : 'none';
+  document.getElementById('loadingText').textContent = text || '';
+  document.getElementById('submitBtn').style.display = on ? 'none' : 'block';
+  document.getElementById('submitBtn').disabled = on;
+}
+
+async function migrateIfNeeded(userId) {
+  try {
+    const migKey = userId + ':_migrated';
+    const { data: already } = await sb.from('app_state').select('data').eq('key', migKey).maybeSingle();
+    if (already) return;
+
+    for (const key of OLD_KEYS) {
+      const { data } = await sb.from('app_state').select('data,updated_at').eq('key', key).maybeSingle();
+      if (data && data.data) {
+        await sb.from('app_state').upsert(
+          { key: userId + ':' + key, data: data.data, updated_at: new Date().toISOString() },
+          { onConflict: 'key' }
+        );
+      }
+    }
+    await sb.from('app_state').upsert(
+      { key: migKey, data: { done: true, at: new Date().toISOString() }, updated_at: new Date().toISOString() },
+      { onConflict: 'key' }
+    );
+  } catch(e) {
+    console.warn('Migration error (non-fatal):', e);
+  }
+}
+
+async function afterLogin(userId) {
+  localStorage.setItem('_dashUid', userId);
+  setLoading(true, 'Migrating your data…');
+  await migrateIfNeeded(userId);
+  setLoading(true, 'Loading dashboard…');
+  window.location.href = 'index.html';
+}
+
+async function handleSubmit() {
+  const email = document.getElementById('emailInput').value.trim();
+  const pass = document.getElementById('passInput').value;
+  if (!email || !pass) { showMsg('Please enter your email and password.', 'error'); return; }
+  clearMsg();
+
+  if (currentTab === 'signin') {
+    setLoading(true, 'Signing in…');
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+    if (error) { setLoading(false); showMsg(error.message, 'error'); return; }
+    await afterLogin(data.user.id);
+
+  } else {
+    setLoading(true, 'Creating account…');
+    const { data, error } = await sb.auth.signUp({ email, password: pass });
+    setLoading(false);
+    if (error) { showMsg(error.message, 'error'); return; }
+    // If email confirmation is disabled, user is auto-confirmed
+    if (data.session) {
+      await afterLogin(data.user.id);
+    } else {
+      document.getElementById('formWrap').style.display = 'none';
+      document.getElementById('sentTo').textContent = email;
+      document.getElementById('checkEmail').style.display = 'block';
+    }
+  }
+}
+
+// Allow Enter key to submit
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') handleSubmit();
+});
+
+// Check if already logged in — skip login screen
+(async () => {
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) {
+      localStorage.setItem('_dashUid', session.user.id);
+      window.location.href = 'index.html';
+    }
+  } catch(e) {}
+})();
+</script>
+</body>
+</html>
