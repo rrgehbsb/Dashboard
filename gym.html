@@ -3930,46 +3930,6 @@ img, video, canvas, svg { max-width: 100%; }
 const GT_TPL='dashboard:gym:v1:template', GT_LOG='dashboard:gym:v1:logs', GT_ACT='dashboard:gym:v1:activeDay';
 
 const GT_DEFAULT=[
-  {id:'upper',name:'Upper',exercises:[
-    {id:'ex_u1',name:'Cable Lateral Raise',    sets:3,repMin:12,repMax:20,target:'7.5 kg',step:1.25,bw:false,notes:''},
-    {id:'ex_u2',name:'Lat Pulldown',           sets:3,repMin:8, repMax:12,target:'55 kg', notes:''},
-    {id:'ex_u3',name:'Unilateral Pec Deck',    sets:3,repMin:8, repMax:12,target:'36 kg', notes:''},
-    {id:'ex_u4',name:'Seated Cable Row',       sets:3,repMin:8, repMax:12,target:'45 kg', notes:''},
-    {id:'ex_u5',name:'Machine Shoulder Press', sets:3,repMin:8, repMax:10,target:'32 kg', notes:''},
-    {id:'ex_u6',name:'Preacher Curl',          sets:3,repMin:8, repMax:12,target:'20 kg', notes:''},
-    {id:'ex_u7',name:'Cuff Tricep Extension',  sets:3,repMin:10,repMax:12,target:'10 kg', notes:''},
-  ]},
-  {id:'legs',name:'Legs',exercises:[
-    {id:'ex_l1',name:'Leg Extension', sets:3,repMin:12,repMax:15,target:'90 kg',notes:''},
-    {id:'ex_l2',name:'Hack Squat',    sets:3,repMin:8, repMax:12,target:'45 kg',notes:''},
-    {id:'ex_l3',name:'SLDL / RDL',   sets:3,repMin:8, repMax:12,target:'10 kg',notes:''},
-    {id:'ex_l4',name:'Hamstring Curl',sets:3,repMin:10,repMax:15,target:'55 kg',notes:''},
-    {id:'ex_l5',name:'Hip Adductors', sets:3,repMin:12,repMax:20,target:'',     notes:''},
-    {id:'ex_l6',name:'Calf Raises',   sets:3,repMin:12,repMax:20,target:'45 kg',notes:''},
-  ]},
-  {id:'push',name:'Push',exercises:[
-    {id:'ex_p1',name:'Incline Smith Press',      sets:3,repMin:8, repMax:10,target:'25 kg',  notes:''},
-    {id:'ex_p2',name:'Machine Chest Press',      sets:3,repMin:10,repMax:12,target:'23 kg',  notes:''},
-    {id:'ex_p3',name:'Cable Chest Fly',          sets:3,repMin:12,repMax:15,target:'7.5 kg', notes:''},
-    {id:'ex_p4',name:'Cable Lateral Raise',      sets:3,repMin:15,repMax:20,target:'6 kg',   notes:''},
-    {id:'ex_p5',name:'Machine Shoulder Press',   sets:3,repMin:10,repMax:12,target:'27 kg',  notes:''},
-    {id:'ex_p6',name:'Unilateral Rope Pushdown', sets:3,repMin:10,repMax:12,target:'8.5 kg', notes:''},
-  ]},
-  {id:'pull',name:'Pull',exercises:[
-    {id:'ex_pu1',name:'Lat Pulldown',              sets:3,repMin:8, repMax:12,target:'55 kg',   notes:''},
-    {id:'ex_pu2',name:'Chest-Supported T-Bar Row', sets:3,repMin:8, repMax:12,target:'22.5 kg', notes:''},
-    {id:'ex_pu3',name:'Single Arm Cable Row',      sets:3,repMin:10,repMax:12,target:'17.5 kg', notes:''},
-    {id:'ex_pu4',name:'Straight Arm Pulldown',     sets:3,repMin:12,repMax:15,target:'17.5 kg', notes:''},
-    {id:'ex_pu5',name:'Recline Preacher Curl',     sets:3,repMin:8, repMax:10,target:'20 kg',   notes:''},
-    {id:'ex_pu6',name:'Hammer Curl',               sets:3,repMin:12,repMax:15,target:'11 kg',   notes:''},
-  ]},
-  {id:'upperb',name:'Upper B',exercises:[
-    {id:'ex_b1',name:'Incline Machine Press', sets:3,repMin:10,repMax:12,target:'22.5 kg',notes:''},
-    {id:'ex_b2',name:'Cable Lateral Raise',   sets:3,repMin:15,repMax:25,target:'4.5 kg', notes:''},
-    {id:'ex_b3',name:'Rear Delt Cable Fly',   sets:3,repMin:15,repMax:20,target:'27 kg',  notes:''},
-    {id:'ex_b4',name:'Cable Curl',            sets:3,repMin:10,repMax:12,target:'15 kg',  notes:''},
-    {id:'ex_b5',name:'Rope Pushdown / Dips',  sets:3,repMin:10,repMax:15,target:'20 kg',  notes:''},
-  ]},
 ];
 
 function gtG(k){try{return JSON.parse(localStorage.getItem(k));}catch{return null;}}
