@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '1.3.0';
+const DASHBOARD_VERSION = '1.3.1';
 
 // Apply saved theme before anything renders (prevents flash)
 (function() {
@@ -24,7 +24,18 @@ const DASHBOARD_VERSION = '1.3.0';
     document.documentElement.setAttribute('data-skin', _skin);
     if (_skin === 'onepiece' || _skin === 'bluelock') {
       _accentVal = (_skin === 'onepiece') ? '#F4A91F' : '#1FA2FF';
-      var _bg = _dark
+      // Themed display font (One Piece = comic Bangers, Blue Lock = techy Orbitron)
+      var _fontHref = (_skin === 'onepiece')
+        ? 'https://fonts.googleapis.com/css2?family=Bangers&display=swap'
+        : 'https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap';
+      var _fl = document.createElement('link');
+      _fl.rel = 'stylesheet'; _fl.href = _fontHref; _fl.id = 'skin-font';
+      (document.head || document.documentElement).appendChild(_fl);
+      // Themed background: subtle motif pattern layered over a signature gradient
+      var _pat = (_skin === 'onepiece')
+        ? "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Cg fill='none' stroke='%23F4A91F' stroke-width='2' stroke-linecap='round' opacity='0.05'%3E%3Cpath d='M20 20 L28 28 M28 20 L20 28'/%3E%3Cpath d='M44 44 L52 52 M52 44 L44 52'/%3E%3C/g%3E%3C/svg%3E\")"
+        : "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='64'%3E%3Cg fill='none' stroke='%231FA2FF' stroke-width='1.5' opacity='0.06'%3E%3Cpolygon points='28,2 52,16 52,44 28,58 4,44 4,16'/%3E%3C/g%3E%3C/svg%3E\")";
+      var _grad = _dark
         ? (_skin === 'onepiece'
             ? 'radial-gradient(ellipse 95% 55% at 50% -10%, #2a1206 0%, #0a0a0b 58%)'
             : 'radial-gradient(ellipse 95% 55% at 50% -10%, #04203f 0%, #06080d 58%)')
@@ -33,7 +44,7 @@ const DASHBOARD_VERSION = '1.3.0';
             : 'linear-gradient(180deg, #e2f1ff 0%, #f2f2f7 42%)');
       var _se = document.createElement('style');
       _se.id = 'skin-early';
-      _se.textContent = 'body{background:' + _bg + ' !important; background-attachment:fixed !important;}';
+      _se.textContent = 'body{background:' + _pat + ' , ' + _grad + ' !important; background-attachment:fixed, fixed !important;}';
       (document.head || document.documentElement).appendChild(_se);
     }
 
@@ -387,6 +398,71 @@ html[data-skin="onepiece"] .topbar-settings-btn,
 html[data-skin="bluelock"] .topbar-settings-btn { border-color: var(--accent) !important; }
 html[data-skin="onepiece"] .topbar-version,
 html[data-skin="bluelock"] .topbar-version { color: var(--accent) !important; opacity: 0.5; }
+
+/* Themed display fonts on headings */
+html[data-skin="onepiece"] .section-title,
+html[data-skin="onepiece"] .skin-banner-name,
+html[data-skin="onepiece"] .st-title,
+html[data-skin="onepiece"] .skin-splash-tag {
+  font-family: 'Bangers', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  text-transform: none !important;
+}
+html[data-skin="onepiece"] .section-title { font-size: 15px !important; letter-spacing: 1.4px !important; }
+html[data-skin="onepiece"] .skin-banner-name { font-size: 14px !important; letter-spacing: 1px !important; }
+html[data-skin="bluelock"] .section-title,
+html[data-skin="bluelock"] .skin-banner-name,
+html[data-skin="bluelock"] .st-title,
+html[data-skin="bluelock"] .skin-splash-tag {
+  font-family: 'Orbitron', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-weight: 900 !important;
+}
+html[data-skin="bluelock"] .section-title { letter-spacing: 0.16em !important; }
+
+/* Themed water pill */
+html[data-skin="onepiece"] .topbar-water-pill { background: rgba(244,169,31,0.10) !important; border-color: rgba(244,169,31,0.30) !important; }
+html[data-skin="onepiece"] .topbar-water-pill .topbar-pill-dot { background: #F4A91F !important; }
+html[data-skin="onepiece"] .topbar-water-add { background: linear-gradient(180deg, rgba(244,169,31,0.55), rgba(230,57,70,0.55)) !important; border-color: rgba(244,169,31,0.30) !important; }
+html[data-skin="bluelock"] .topbar-water-pill { background: rgba(31,162,255,0.12) !important; border-color: rgba(31,162,255,0.32) !important; }
+html[data-skin="bluelock"] .topbar-water-pill .topbar-pill-dot { background: #1FA2FF !important; }
+html[data-skin="bluelock"] .topbar-water-add { background: linear-gradient(180deg, rgba(31,162,255,0.55), rgba(0,229,255,0.55)) !important; border-color: rgba(31,162,255,0.32) !important; }
+
+/* Active bottom-tab glow indicator */
+html[data-skin="onepiece"] .bottombar-tab,
+html[data-skin="bluelock"] .bottombar-tab { position: relative; }
+html[data-skin="onepiece"] .bottombar-tab.active::before,
+html[data-skin="bluelock"] .bottombar-tab.active::before {
+  content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  width: 22px; height: 3px; border-radius: 0 0 3px 3px;
+  background: var(--accent); box-shadow: 0 0 9px var(--accent);
+}
+
+/* Themed text selection */
+html[data-skin="onepiece"] ::selection,
+html[data-skin="bluelock"] ::selection { background: var(--accent); color: #0a0a0b; }
+
+/* ===== Skin switch splash ===== */
+.skin-splash {
+  position: fixed; inset: 0; z-index: 9999;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 0.28s ease; pointer-events: none;
+}
+.skin-splash.show { opacity: 1; }
+.skin-splash[data-skin-splash="onepiece"] { background: radial-gradient(circle at 50% 45%, rgba(244,169,31,0.22), rgba(10,6,2,0.96) 62%); }
+.skin-splash[data-skin-splash="bluelock"] { background: radial-gradient(circle at 50% 45%, rgba(31,162,255,0.22), rgba(2,8,16,0.96) 62%); }
+.skin-splash-mark {
+  font-size: 92px; line-height: 1; text-align: center;
+  transform: scale(0.35); opacity: 0;
+  animation: splash-pop 0.6s cubic-bezier(.34,1.56,.64,1) forwards;
+  filter: drop-shadow(0 8px 22px rgba(0,0,0,0.6));
+}
+.skin-splash-tag {
+  margin-top: 16px; font-size: 19px; font-weight: 900;
+  letter-spacing: 0.28em; color: var(--accent); text-align: center;
+  text-transform: uppercase; opacity: 0;
+  animation: splash-tag 0.6s ease 0.18s forwards; padding: 0 24px;
+}
+@keyframes splash-pop { to { transform: scale(1); opacity: 1; } }
+@keyframes splash-tag { from { opacity: 0; letter-spacing: 0.5em; } to { opacity: 1; letter-spacing: 0.24em; } }
 `;
 
   const topbarHtml = `
@@ -520,10 +596,42 @@ html[data-skin="bluelock"] .topbar-version { color: var(--accent) !important; op
 
   const DEFAULT_NAV = { main:'🏠', health:'💊', fitness:'💪', school:'📚', habits:'🔥', transport:'🚌', projects:'🗂️', settings:'⚙️' };
 
+  const SKIN_SPLASH = {
+    onepiece: { mark: '🏴‍☠️', tag: 'King of the Pirates' },
+    bluelock: { mark: '⚽', tag: "World's #1 Striker" },
+  };
+  // Cinematic splash shown when switching style
+  window.dashSkinSplash = function(skin) {
+    if (!SKIN_SPLASH[skin]) return;
+    const o = document.createElement('div');
+    o.className = 'skin-splash';
+    o.setAttribute('data-skin-splash', skin);
+    o.innerHTML =
+      '<div class="skin-splash-mark">' + SKIN_SPLASH[skin].mark + '</div>' +
+      '<div class="skin-splash-tag">' + SKIN_SPLASH[skin].tag + '</div>';
+    document.body.appendChild(o);
+    requestAnimationFrame(() => o.classList.add('show'));
+    setTimeout(() => o.classList.remove('show'), 1150);
+    setTimeout(() => o.remove(), 1500);
+  };
+
+  function ensureSkinFont(skin) {
+    const href = (skin === 'onepiece')
+      ? 'https://fonts.googleapis.com/css2?family=Bangers&display=swap'
+      : (skin === 'bluelock')
+        ? 'https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap'
+        : null;
+    let fl = document.getElementById('skin-font');
+    if (!href) { if (fl) fl.remove(); return; }
+    if (!fl) { fl = document.createElement('link'); fl.rel = 'stylesheet'; fl.id = 'skin-font'; document.head.appendChild(fl); }
+    if (fl.href !== href) fl.href = href;
+  }
+
   // Apply a skin live (called from settings.html when the user switches style)
   window.dashApplySkin = function(skin) {
     const root = document.documentElement;
     root.setAttribute('data-skin', skin || 'none');
+    ensureSkinFont(skin);
     const map = (SKINS[skin] && SKINS[skin].nav) || DEFAULT_NAV;
     document.querySelectorAll('.bottombar-tab').forEach((t) => {
       const k = t.getAttribute('data-page');

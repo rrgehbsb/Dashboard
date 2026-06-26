@@ -660,9 +660,14 @@ document.getElementById('swatches').addEventListener('click', e => {
 // Skin / Theme Style picker
 document.getElementById('skinPicker').addEventListener('click', e => {
   const card = e.target.closest('.st-skin-card'); if (!card) return;
+  const prev = (load().skin || 'none');
   const s = load(); s.skin = card.dataset.val;
   save(s); renderAll(s);
   if (typeof window.dashApplySkin === 'function') window.dashApplySkin(s.skin);
+  // Cinematic splash only when switching INTO a new skin
+  if (s.skin !== 'none' && s.skin !== prev && typeof window.dashSkinSplash === 'function') {
+    window.dashSkinSplash(s.skin);
+  }
 });
 
 pillBind('cardPill', 'cardStyle');
