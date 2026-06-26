@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '1.2.3';
+const DASHBOARD_VERSION = '1.3.0';
 
 // Apply saved theme before anything renders (prevents flash)
 (function() {
@@ -17,7 +17,27 @@ const DASHBOARD_VERSION = '1.2.3';
     document.documentElement.setAttribute('data-theme', _dark ? 'dark' : 'light');
     var _acMap = {purple:{d:'#a78bfa',l:'#7c3aed'},blue:{d:'#60a5fa',l:'#2563eb'},green:{d:'#34d399',l:'#059669'},orange:{d:'#fb923c',l:'#ea580c'},pink:{d:'#f472b6',l:'#db2777'},red:{d:'#f87171',l:'#dc2626'},yellow:{d:'#fbbf24',l:'#d97706'},teal:{d:'#2dd4bf',l:'#0d9488'}};
     var _ac = _acMap[_s.accent || 'purple'] || _acMap.purple;
-    document.documentElement.style.setProperty('--accent', _dark ? _ac.d : _ac.l);
+    var _accentVal = _dark ? _ac.d : _ac.l;
+
+    // ---- Anime skin (One Piece / Blue Lock) ----
+    var _skin = _s.skin || 'none';
+    document.documentElement.setAttribute('data-skin', _skin);
+    if (_skin === 'onepiece' || _skin === 'bluelock') {
+      _accentVal = (_skin === 'onepiece') ? '#F4A91F' : '#1FA2FF';
+      var _bg = _dark
+        ? (_skin === 'onepiece'
+            ? 'radial-gradient(ellipse 95% 55% at 50% -10%, #2a1206 0%, #0a0a0b 58%)'
+            : 'radial-gradient(ellipse 95% 55% at 50% -10%, #04203f 0%, #06080d 58%)')
+        : (_skin === 'onepiece'
+            ? 'linear-gradient(180deg, #fff3e0 0%, #f2f2f7 42%)'
+            : 'linear-gradient(180deg, #e2f1ff 0%, #f2f2f7 42%)');
+      var _se = document.createElement('style');
+      _se.id = 'skin-early';
+      _se.textContent = 'body{background:' + _bg + ' !important; background-attachment:fixed !important;}';
+      (document.head || document.documentElement).appendChild(_se);
+    }
+
+    document.documentElement.style.setProperty('--accent', _accentVal);
     document.documentElement.style.setProperty('--card-radius', {sharp:'6px',rounded:'14px',pill:'24px'}[_s.cardStyle||'rounded']||'14px');
     document.documentElement.style.setProperty('--base-font', {small:'13px',medium:'15px',large:'17px'}[_s.fontSize||'medium']||'15px');
   } catch(e) {}
@@ -29,6 +49,44 @@ const DASHBOARD_VERSION = '1.2.3';
   // -------- Supabase config (replace with your own project URL + publishable key) --------
   const TOPBAR_SUPABASE_URL = 'https://mtuoqwbrujxutofhyahb.supabase.co';
   const TOPBAR_SUPABASE_KEY = 'sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
+
+  // -------- Anime skins: nav emojis + rotating character banner --------
+  const SKINS = {
+    onepiece: {
+      mark: '🏴‍☠️',
+      nav: { main:'🏴‍☠️', health:'🍖', fitness:'👊', school:'🗺️', habits:'☀️', transport:'⚓', projects:'💰', settings:'🧭' },
+      chars: [
+        { emoji:'👒', name:'Monkey D. Luffy', quote:"I'm gonna be King of the Pirates!" },
+        { emoji:'⚔️', name:'Roronoa Zoro', quote:"Nothing happened." },
+        { emoji:'🦵', name:'Sanji', quote:"A man who makes a woman cry isn't worth a damn." },
+        { emoji:'🍊', name:'Nami', quote:"I want to draw a map of the entire world!" },
+        { emoji:'🎯', name:'Usopp', quote:"I'm a brave warrior of the sea!" },
+        { emoji:'🩺', name:'Chopper', quote:"Being alone hurts more than any wound." },
+        { emoji:'📖', name:'Nico Robin', quote:"I want to live! Take me out to sea with you!" },
+        { emoji:'🔥', name:'Portgas D. Ace', quote:"Thank you... for loving me." },
+        { emoji:'🌅', name:'Gol D. Roger', quote:"My treasure? It's all right where I left it." },
+      ],
+    },
+    bluelock: {
+      mark: '⚽',
+      nav: { main:'⚽', health:'🧬', fitness:'⚡', school:'🧠', habits:'🔥', transport:'👟', projects:'🏆', settings:'⚙️' },
+      chars: [
+        { emoji:'⚽', name:'Yoichi Isagi', quote:"I'll devour every last one of you." },
+        { emoji:'💙', name:'Meguru Bachira', quote:"My monster is finally dancing." },
+        { emoji:'❄️', name:'Rin Itoshi', quote:"I'll crush everything in my path." },
+        { emoji:'🎮', name:'Seishiro Nagi', quote:"This is such a pain... but fine." },
+        { emoji:'🦊', name:'Reo Mikage', quote:"I always get exactly what I want." },
+        { emoji:'👑', name:'Shoei Baro', quote:"I am the protagonist of this field." },
+        { emoji:'⚡', name:'Rensuke Kunigami', quote:"Hard work will never betray me." },
+        { emoji:'🐉', name:'Jinpachi Ego', quote:"Forget teamwork. Awaken your ego." },
+        { emoji:'🏆', name:'Sae Itoshi', quote:"Mediocrity is the real sin." },
+      ],
+    },
+  };
+  function getSkin() {
+    try { return (JSON.parse(localStorage.getItem('dashboard:settings:v1') || '{}').skin) || 'none'; }
+    catch (e) { return 'none'; }
+  }
 
   // -------- CSS --------
   const css = `
@@ -260,6 +318,75 @@ html[data-theme="light"] select { background: rgba(0,0,0,0.05) !important; borde
 html[data-theme="light"] .dm-eyebrow,
 html[data-theme="light"] .dm-sub { color: rgba(0,0,0,0.42) !important; }
 html[data-theme="light"] .dm-value { color: #111 !important; }
+
+/* ===== ANIME SKINS (One Piece / Blue Lock) ===== */
+
+/* Character banner */
+.skin-banner { display: none; }
+html[data-skin="onepiece"] .skin-banner,
+html[data-skin="bluelock"] .skin-banner {
+  display: flex; align-items: center; gap: 13px;
+  padding: 11px 15px; position: relative; overflow: hidden;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  z-index: 30;
+}
+html[data-skin="onepiece"] .skin-banner {
+  background: linear-gradient(100deg, rgba(230,57,70,0.18), rgba(244,169,31,0.10) 58%, transparent);
+}
+html[data-skin="bluelock"] .skin-banner {
+  background: linear-gradient(100deg, rgba(31,162,255,0.20), rgba(0,229,255,0.10) 58%, transparent);
+}
+.skin-banner::after {
+  content: ''; position: absolute; top: 0; bottom: 0; width: 38%; left: -60%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+  animation: skin-shimmer 5s ease-in-out infinite; pointer-events: none;
+}
+@keyframes skin-shimmer { 0% { left: -60%; } 55%, 100% { left: 135%; } }
+.skin-banner-emoji {
+  font-size: 31px; line-height: 1; flex-shrink: 0;
+  filter: drop-shadow(0 2px 5px rgba(0,0,0,0.55));
+  transition: transform 0.32s cubic-bezier(.34,1.56,.64,1), opacity 0.32s;
+}
+.skin-banner-text { flex: 1; min-width: 0; }
+.skin-banner-name {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.13em;
+  color: var(--accent); text-transform: uppercase; margin-bottom: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transition: opacity 0.32s;
+}
+.skin-banner-quote {
+  font-size: 12.5px; font-style: italic; color: rgba(255,255,255,0.74);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transition: opacity 0.32s;
+}
+html[data-theme="light"] .skin-banner-quote { color: rgba(0,0,0,0.62); }
+.skin-banner-mark { font-size: 23px; opacity: 0.55; flex-shrink: 0; }
+.skin-banner.swap .skin-banner-emoji { transform: scale(0.3) rotate(-14deg); opacity: 0; }
+.skin-banner.swap .skin-banner-name,
+.skin-banner.swap .skin-banner-quote { opacity: 0; }
+
+/* Themed structural chrome */
+html[data-skin="onepiece"] .section-title,
+html[data-skin="bluelock"] .section-title { color: var(--accent) !important; }
+html[data-skin="onepiece"] .section { border-color: rgba(244,169,31,0.16) !important; }
+html[data-skin="bluelock"] .section { border-color: rgba(31,162,255,0.18) !important; }
+html[data-skin="onepiece"] .topbar,
+html[data-skin="onepiece"] .bottombar { background: rgba(15,7,3,0.94) !important; border-color: rgba(244,169,31,0.16) !important; }
+html[data-skin="bluelock"] .topbar,
+html[data-skin="bluelock"] .bottombar { background: rgba(3,11,22,0.94) !important; border-color: rgba(31,162,255,0.18) !important; }
+html[data-skin="onepiece"] .bottombar-tab.active,
+html[data-skin="bluelock"] .bottombar-tab.active { color: var(--accent) !important; }
+/* Themed emojis show in full color (no grayscale) */
+html[data-skin="onepiece"] .bottombar-tab-icon,
+html[data-skin="bluelock"] .bottombar-tab-icon { filter: none !important; opacity: 0.72 !important; }
+html[data-skin="onepiece"] .bottombar-tab.active .bottombar-tab-icon,
+html[data-skin="bluelock"] .bottombar-tab.active .bottombar-tab-icon {
+  filter: none !important; opacity: 1 !important; transform: scale(1.06);
+}
+html[data-skin="onepiece"] .topbar-settings-btn,
+html[data-skin="bluelock"] .topbar-settings-btn { border-color: var(--accent) !important; }
+html[data-skin="onepiece"] .topbar-version,
+html[data-skin="bluelock"] .topbar-version { color: var(--accent) !important; opacity: 0.5; }
 `;
 
   const topbarHtml = `
@@ -362,6 +489,92 @@ html[data-theme="light"] .dm-value { color: #111 !important; }
       });
       document.body.classList.add('has-bottombar');
     }
+
+    // ---- Anime skin: swap nav emojis + inject rotating character banner ----
+    const skin = getSkin();
+    if (skin && SKINS[skin]) {
+      const navMap = SKINS[skin].nav;
+      document.querySelectorAll('.bottombar-tab').forEach((t) => {
+        const k = t.getAttribute('data-page');
+        const ic = t.querySelector('.bottombar-tab-icon');
+        if (ic && navMap[k]) ic.textContent = navMap[k];
+      });
+      if (!document.getElementById('skinBanner')) {
+        const b = document.createElement('div');
+        b.className = 'skin-banner';
+        b.id = 'skinBanner';
+        b.innerHTML =
+          '<div class="skin-banner-emoji" id="skinBE"></div>' +
+          '<div class="skin-banner-text">' +
+            '<div class="skin-banner-name" id="skinBN"></div>' +
+            '<div class="skin-banner-quote" id="skinBQ"></div>' +
+          '</div>' +
+          '<div class="skin-banner-mark">' + SKINS[skin].mark + '</div>';
+        const tb = document.getElementById('topbar');
+        if (tb && tb.parentNode) tb.parentNode.insertBefore(b, tb.nextSibling);
+        else document.body.insertBefore(b, document.body.firstChild);
+        startSkinRotation(skin);
+      }
+    }
+  }
+
+  const DEFAULT_NAV = { main:'🏠', health:'💊', fitness:'💪', school:'📚', habits:'🔥', transport:'🚌', projects:'🗂️', settings:'⚙️' };
+
+  // Apply a skin live (called from settings.html when the user switches style)
+  window.dashApplySkin = function(skin) {
+    const root = document.documentElement;
+    root.setAttribute('data-skin', skin || 'none');
+    const map = (SKINS[skin] && SKINS[skin].nav) || DEFAULT_NAV;
+    document.querySelectorAll('.bottombar-tab').forEach((t) => {
+      const k = t.getAttribute('data-page');
+      const ic = t.querySelector('.bottombar-tab-icon');
+      if (ic && map[k]) ic.textContent = map[k];
+    });
+    const existing = document.getElementById('skinBanner');
+    if (existing) existing.remove();
+    if (_skinTimer) { clearInterval(_skinTimer); _skinTimer = null; }
+    if (SKINS[skin]) {
+      const b = document.createElement('div');
+      b.className = 'skin-banner';
+      b.id = 'skinBanner';
+      b.innerHTML =
+        '<div class="skin-banner-emoji" id="skinBE"></div>' +
+        '<div class="skin-banner-text">' +
+          '<div class="skin-banner-name" id="skinBN"></div>' +
+          '<div class="skin-banner-quote" id="skinBQ"></div>' +
+        '</div>' +
+        '<div class="skin-banner-mark">' + SKINS[skin].mark + '</div>';
+      const tb = document.getElementById('topbar');
+      if (tb && tb.parentNode) tb.parentNode.insertBefore(b, tb.nextSibling);
+      else document.body.insertBefore(b, document.body.firstChild);
+      startSkinRotation(skin);
+    }
+  };
+
+  let _skinTimer = null;
+  function startSkinRotation(skin) {
+    const data = SKINS[skin];
+    if (!data) return;
+    const chars = data.chars;
+    const banner = document.getElementById('skinBanner');
+    const be = document.getElementById('skinBE');
+    const bn = document.getElementById('skinBN');
+    const bq = document.getElementById('skinBQ');
+    if (!banner || !be) return;
+    let i = Math.floor(Math.random() * chars.length);
+    function show(idx) {
+      const c = chars[idx];
+      be.textContent = c.emoji;
+      bn.textContent = c.name;
+      bq.textContent = '“' + c.quote + '”';
+    }
+    show(i);
+    if (_skinTimer) clearInterval(_skinTimer);
+    _skinTimer = setInterval(() => {
+      i = (i + 1) % chars.length;
+      banner.classList.add('swap');
+      setTimeout(() => { show(i); banner.classList.remove('swap'); }, 320);
+    }, 5500);
   }
 
   function calendarDateKey() {

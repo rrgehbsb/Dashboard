@@ -11,7 +11,12 @@
       var __cfg = JSON.parse(localStorage.getItem('dashboard:settings:v1') || '{}');
       document.documentElement.setAttribute('data-theme', __cfg.theme === 'light' ? 'light' : 'dark');
       var __ac = {purple:{d:'#a78bfa',l:'#7c3aed'},blue:{d:'#60a5fa',l:'#2563eb'},green:{d:'#34d399',l:'#059669'},orange:{d:'#fb923c',l:'#ea580c'},pink:{d:'#f472b6',l:'#db2777'},red:{d:'#f87171',l:'#dc2626'},yellow:{d:'#fbbf24',l:'#d97706'},teal:{d:'#2dd4bf',l:'#0d9488'}}[__cfg.accent||'purple'];
-      document.documentElement.style.setProperty('--accent', __cfg.theme==='light' ? __ac.l : __ac.d);
+      var __accent = __cfg.theme==='light' ? __ac.l : __ac.d;
+      var __skin = __cfg.skin || 'none';
+      document.documentElement.setAttribute('data-skin', __skin);
+      if (__skin === 'onepiece') __accent = '#F4A91F';
+      else if (__skin === 'bluelock') __accent = '#1FA2FF';
+      document.documentElement.style.setProperty('--accent', __accent);
       document.documentElement.style.setProperty('--card-radius', {sharp:'6px',rounded:'14px',pill:'24px'}[__cfg.cardStyle||'rounded']||'14px');
     } catch(e) {}
   </script>
@@ -287,6 +292,41 @@
       transition: background 0.3s;
       box-shadow: 0 0 8px var(--accent);
     }
+
+    /* ---- Skin picker (flagship style cards) ---- */
+    .st-skins { display: flex; flex-direction: column; gap: 10px; padding: 12px; }
+    .st-skin-card {
+      display: flex; align-items: center; gap: 14px;
+      padding: 15px 16px; border-radius: 15px; cursor: pointer;
+      border: 2px solid var(--s-border); background: var(--s-ctrl);
+      position: relative; overflow: hidden;
+      transition: border-color 0.15s, transform 0.1s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .st-skin-card:active { transform: scale(0.985); }
+    .st-skin-card.active { border-color: var(--accent); }
+    .st-skin-glow { position: absolute; inset: 0; opacity: 0; transition: opacity 0.25s; pointer-events: none; }
+    .st-skin-card.active .st-skin-glow { opacity: 1; }
+    .st-skin-shine {
+      position: absolute; top: 0; bottom: 0; width: 40%; left: -60%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.10), transparent);
+      pointer-events: none;
+    }
+    .st-skin-card.active .st-skin-shine { animation: st-shine 4.5s ease-in-out infinite; }
+    @keyframes st-shine { 0% { left: -60%; } 55%, 100% { left: 140%; } }
+    .st-skin-emoji { font-size: 30px; line-height: 1; flex-shrink: 0; position: relative; z-index: 1;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4)); }
+    .st-skin-info { flex: 1; min-width: 0; position: relative; z-index: 1; }
+    .st-skin-name { font-size: 15.5px; font-weight: 800; letter-spacing: -0.2px; color: var(--s-text); }
+    .st-skin-desc { font-size: 12px; color: var(--s-text2); margin-top: 3px; }
+    .st-skin-check {
+      font-size: 13px; font-weight: 800; color: #fff;
+      width: 24px; height: 24px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--accent); opacity: 0; transform: scale(0.5);
+      transition: opacity 0.18s, transform 0.18s; position: relative; z-index: 1; flex-shrink: 0;
+    }
+    .st-skin-card.active .st-skin-check { opacity: 1; transform: scale(1); }
   </style>
 </head>
 <body>
@@ -299,6 +339,47 @@
     </button>
     <div class="st-title">Settings<span class="st-accent-dot"></span></div>
     <div class="st-sub">Customize your dashboard</div>
+  </div>
+
+  <!-- THEME STYLE / SKIN -->
+  <div class="st-group">
+    <div class="st-group-label">Theme Style</div>
+    <div class="st-body">
+      <div class="st-skins" id="skinPicker">
+
+        <div class="st-skin-card" data-val="none">
+          <div class="st-skin-emoji">🎛️</div>
+          <div class="st-skin-info">
+            <div class="st-skin-name">Default</div>
+            <div class="st-skin-desc">Clean dashboard · your accent color</div>
+          </div>
+          <div class="st-skin-check">✓</div>
+        </div>
+
+        <div class="st-skin-card" data-val="onepiece">
+          <div class="st-skin-glow" style="background:linear-gradient(100deg, rgba(230,57,70,0.22), rgba(244,169,31,0.16) 60%, transparent)"></div>
+          <div class="st-skin-shine"></div>
+          <div class="st-skin-emoji">🏴‍☠️</div>
+          <div class="st-skin-info">
+            <div class="st-skin-name">One Piece</div>
+            <div class="st-skin-desc">Straw Hat crew · gold &amp; red · 👒⚔️🍖</div>
+          </div>
+          <div class="st-skin-check">✓</div>
+        </div>
+
+        <div class="st-skin-card" data-val="bluelock">
+          <div class="st-skin-glow" style="background:linear-gradient(100deg, rgba(31,162,255,0.24), rgba(0,229,255,0.16) 60%, transparent)"></div>
+          <div class="st-skin-shine"></div>
+          <div class="st-skin-emoji">⚽</div>
+          <div class="st-skin-info">
+            <div class="st-skin-name">Blue Lock</div>
+            <div class="st-skin-desc">Striker mode · electric blue · ⚡🧠🏆</div>
+          </div>
+          <div class="st-skin-check">✓</div>
+        </div>
+
+      </div>
+    </div>
   </div>
 
   <!-- APPEARANCE -->
@@ -470,14 +551,36 @@ function save(s) {
   localStorage.setItem(SK, JSON.stringify(s));
   applyCSS(s);
 }
+const SKIN_ACCENT = { onepiece: '#F4A91F', bluelock: '#1FA2FF' };
+
 function applyCSS(s) {
   const dark = s.theme !== 'light';
   const root = document.documentElement;
   root.setAttribute('data-theme', dark ? 'dark' : 'light');
+  const skin = s.skin || 'none';
+  root.setAttribute('data-skin', skin);
   const ac = ACCENTS[s.accent || 'purple'];
-  root.style.setProperty('--accent', dark ? ac.d : ac.l);
+  let accent = dark ? ac.d : ac.l;
+  if (SKIN_ACCENT[skin]) accent = SKIN_ACCENT[skin];
+  root.style.setProperty('--accent', accent);
   root.style.setProperty('--card-radius', {sharp:'6px',rounded:'14px',pill:'24px'}[s.cardStyle||'rounded'] || '14px');
   root.style.setProperty('--base-font', {small:'13px',medium:'15px',large:'17px'}[s.fontSize||'medium'] || '15px');
+
+  // Skin background (matches topbar.js so settings page is themed too)
+  let early = document.getElementById('skin-early');
+  if (skin === 'onepiece' || skin === 'bluelock') {
+    const bg = dark
+      ? (skin === 'onepiece'
+          ? 'radial-gradient(ellipse 95% 55% at 50% -10%, #2a1206 0%, #0a0a0b 58%)'
+          : 'radial-gradient(ellipse 95% 55% at 50% -10%, #04203f 0%, #06080d 58%)')
+      : (skin === 'onepiece'
+          ? 'linear-gradient(180deg, #fff3e0 0%, #f2f2f7 42%)'
+          : 'linear-gradient(180deg, #e2f1ff 0%, #f2f2f7 42%)');
+    if (!early) { early = document.createElement('style'); early.id = 'skin-early'; document.head.appendChild(early); }
+    early.textContent = 'body{background:' + bg + ' !important; background-attachment:fixed !important;}';
+  } else if (early) {
+    early.textContent = '';
+  }
 }
 
 function buildSwatches(s) {
@@ -503,9 +606,16 @@ function themePillSync(s) {
     b.classList.toggle('active', b.dataset.val === (s.theme || 'dark')));
 }
 
+function skinSync(s) {
+  const cur = s.skin || 'none';
+  document.querySelectorAll('#skinPicker .st-skin-card').forEach(c =>
+    c.classList.toggle('active', c.dataset.val === cur));
+}
+
 function renderAll(s) {
   themePillSync(s);
   buildSwatches(s);
+  skinSync(s);
   pillSync('cardPill', s.cardStyle || 'rounded');
   pillSync('fontPill', s.fontSize || 'medium');
   document.getElementById('nameInput').value = s.name || '';
@@ -545,6 +655,14 @@ document.getElementById('swatches').addEventListener('click', e => {
   const b = e.target.closest('.st-swatch'); if (!b) return;
   const s = load(); s.accent = b.dataset.val;
   save(s); renderAll(s);
+});
+
+// Skin / Theme Style picker
+document.getElementById('skinPicker').addEventListener('click', e => {
+  const card = e.target.closest('.st-skin-card'); if (!card) return;
+  const s = load(); s.skin = card.dataset.val;
+  save(s); renderAll(s);
+  if (typeof window.dashApplySkin === 'function') window.dashApplySkin(s.skin);
 });
 
 pillBind('cardPill', 'cardStyle');
