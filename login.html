@@ -277,10 +277,20 @@ async function cleanupOldKeys() {
   } catch(e) {}
 }
 
-async function afterLogin(userId) {
+async function afterLogin(userId, isNewUser = false) {
   localStorage.setItem('_dashUid', userId);
   setLoading(true, 'Setting up…');
-  await migrateIfNeeded(userId);
+  if (isNewUser) {
+    // New signup: skip migration, mark clean so old data is never inherited
+    try {
+      await sb.from('app_state').upsert(
+        { key: userId + ':_migrated', data: { done: true, newUser: true, at: new Date().toISOString() }, updated_at: new Date().toISOString() },
+        { onConflict: 'key' }
+      );
+    } catch(e) {}
+  } else {
+    await migrateIfNeeded(userId);
+  }
   await cleanupOldKeys();
   setLoading(true, 'Loading dashboard…');
   window.location.href = 'index.html';
@@ -305,7 +315,7 @@ async function handleSubmit() {
     if (error) { showMsg(error.message, 'error'); return; }
     // If email confirmation is disabled, user is auto-confirmed
     if (data.session) {
-      await afterLogin(data.user.id);
+      await afterLogin(data.user.id, true);
     } else {
       document.getElementById('formWrap').style.display = 'none';
       document.getElementById('sentTo').textContent = email;
