@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '1.3.1';
+const DASHBOARD_VERSION = '1.3.2';
 
 // Apply saved theme before anything renders (prevents flash)
 (function() {
@@ -65,6 +65,7 @@ const DASHBOARD_VERSION = '1.3.1';
   const SKINS = {
     onepiece: {
       mark: '🏴‍☠️',
+      label: 'WANTED · DEAD OR ALIVE',
       nav: { main:'🏴‍☠️', health:'🍖', fitness:'👊', school:'🗺️', habits:'☀️', transport:'⚓', projects:'💰', settings:'🧭' },
       chars: [
         { emoji:'👒', name:'Monkey D. Luffy', quote:"I'm gonna be King of the Pirates!" },
@@ -80,6 +81,7 @@ const DASHBOARD_VERSION = '1.3.1';
     },
     bluelock: {
       mark: '⚽',
+      label: 'BLUE LOCK · EGOIST No.',
       nav: { main:'⚽', health:'🧬', fitness:'⚡', school:'🧠', habits:'🔥', transport:'👟', projects:'🏆', settings:'⚙️' },
       chars: [
         { emoji:'⚽', name:'Yoichi Isagi', quote:"I'll devour every last one of you." },
@@ -463,6 +465,81 @@ html[data-skin="bluelock"] ::selection { background: var(--accent); color: #0a0a
 }
 @keyframes splash-pop { to { transform: scale(1); opacity: 1; } }
 @keyframes splash-tag { from { opacity: 0; letter-spacing: 0.5em; } to { opacity: 1; letter-spacing: 0.24em; } }
+
+/* ===== STYLISH TEXT & IDENTITY ===== */
+
+/* Gradient-filled, glowing section titles */
+html[data-skin="onepiece"] .section-title {
+  background: linear-gradient(90deg, #F4A91F, #E63946) !important;
+  -webkit-background-clip: text !important; background-clip: text !important;
+  -webkit-text-fill-color: transparent !important; color: transparent !important;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.35));
+  border-bottom-color: rgba(244,169,31,0.32) !important;
+}
+html[data-skin="bluelock"] .section-title {
+  background: linear-gradient(90deg, #1FA2FF, #00E5FF) !important;
+  -webkit-background-clip: text !important; background-clip: text !important;
+  -webkit-text-fill-color: transparent !important; color: transparent !important;
+  filter: drop-shadow(0 0 7px rgba(31,162,255,0.5));
+  border-bottom-color: rgba(31,162,255,0.32) !important;
+}
+
+/* Banner: poster (One Piece) vs neon HUD (Blue Lock) */
+.skin-banner-label {
+  font-size: 9px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--accent); opacity: 0.85; margin-bottom: 1px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+html[data-skin="onepiece"] .skin-banner {
+  border: 2px solid rgba(244,169,31,0.45); border-radius: 4px;
+  margin: 6px 10px; box-shadow: inset 0 0 0 1px rgba(230,57,70,0.25), 0 4px 14px -8px rgba(244,169,31,0.6);
+  background: linear-gradient(100deg, rgba(244,169,31,0.14), rgba(230,57,70,0.10) 60%, rgba(0,0,0,0));
+}
+html[data-skin="bluelock"] .skin-banner {
+  margin: 6px 10px; border: 1px solid rgba(31,162,255,0.4);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 13px), calc(100% - 13px) 100%, 0 100%);
+  box-shadow: inset 0 0 18px rgba(31,162,255,0.12), 0 0 16px -4px rgba(31,162,255,0.5);
+}
+/* Animated shimmering character name (gradient text) */
+.skin-banner-name {
+  background-size: 200% auto; -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent !important;
+  animation: skin-name-shine 4.5s linear infinite;
+}
+html[data-skin="onepiece"] .skin-banner-name { background-image: linear-gradient(90deg, #F4A91F, #ffe6a0, #E63946, #F4A91F); }
+html[data-skin="bluelock"] .skin-banner-name {
+  background-image: linear-gradient(90deg, #1FA2FF, #aef0ff, #00E5FF, #1FA2FF);
+  filter: drop-shadow(0 0 6px rgba(31,162,255,0.55));
+}
+@keyframes skin-name-shine { to { background-position: 200% center; } }
+
+/* Themed card edges */
+html[data-skin="onepiece"] .section { box-shadow: inset 0 2px 0 rgba(244,169,31,0.4); }
+html[data-skin="bluelock"] .section {
+  box-shadow: inset 0 0 0 1px rgba(31,162,255,0.14), 0 0 20px -10px rgba(31,162,255,0.5);
+}
+
+/* Glowing accent action buttons (settings save, etc.) */
+html[data-skin="onepiece"] #saveBtn,
+html[data-skin="bluelock"] #saveBtn {
+  box-shadow: 0 8px 22px -8px var(--accent); letter-spacing: 0.05em; font-weight: 800;
+}
+html[data-skin="bluelock"] #saveBtn { text-shadow: 0 0 10px rgba(0,0,0,0.3); }
+
+/* Active bottom-tab label glow (Blue Lock neon) */
+html[data-skin="bluelock"] .bottombar-tab.active span:last-child { text-shadow: 0 0 8px var(--accent); }
+html[data-skin="onepiece"] .bottombar-tab.active span:last-child { text-shadow: 0 1px 4px rgba(244,169,31,0.6); }
+
+/* Splash tag uses gradient text too */
+html[data-skin="onepiece"] .skin-splash-tag {
+  background: linear-gradient(90deg, #F4A91F, #ffe6a0, #E63946);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
+}
+html[data-skin="bluelock"] .skin-splash-tag {
+  background: linear-gradient(90deg, #1FA2FF, #aef0ff, #00E5FF);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
+  filter: drop-shadow(0 0 10px rgba(31,162,255,0.6));
+}
 `;
 
   const topbarHtml = `
@@ -582,6 +659,7 @@ html[data-skin="bluelock"] ::selection { background: var(--accent); color: #0a0a
         b.innerHTML =
           '<div class="skin-banner-emoji" id="skinBE"></div>' +
           '<div class="skin-banner-text">' +
+            '<div class="skin-banner-label" id="skinBL"></div>' +
             '<div class="skin-banner-name" id="skinBN"></div>' +
             '<div class="skin-banner-quote" id="skinBQ"></div>' +
           '</div>' +
@@ -666,6 +744,7 @@ html[data-skin="bluelock"] ::selection { background: var(--accent); color: #0a0a
     const chars = data.chars;
     const banner = document.getElementById('skinBanner');
     const be = document.getElementById('skinBE');
+    const bl = document.getElementById('skinBL');
     const bn = document.getElementById('skinBN');
     const bq = document.getElementById('skinBQ');
     if (!banner || !be) return;
@@ -675,6 +754,11 @@ html[data-skin="bluelock"] ::selection { background: var(--accent); color: #0a0a
       be.textContent = c.emoji;
       bn.textContent = c.name;
       bq.textContent = '“' + c.quote + '”';
+      if (bl) {
+        bl.textContent = (skin === 'bluelock')
+          ? 'BLUE LOCK · EGOIST No.' + String(idx + 1).padStart(2, '0')
+          : data.label;
+      }
     }
     show(i);
     if (_skinTimer) clearInterval(_skinTimer);
