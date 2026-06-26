@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '1.1.0';
+const DASHBOARD_VERSION = '1.1.4';
 
 // Apply saved theme before anything renders (prevents flash)
 (function() {
@@ -166,6 +166,43 @@ body.topbar-modal-open { overflow: hidden; touch-action: none; }
     overflow-y: auto !important; overscroll-behavior: contain;
   }
 }
+
+/* ===== GLOBAL POLISH ===== */
+
+/* Section cards — consistent radius from settings + breathing room */
+.section {
+  border-radius: var(--card-radius, 14px) !important;
+  padding: 18px 18px 20px !important;
+  margin-bottom: 14px;
+}
+
+/* Section titles — same look on every page */
+.section-title {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  color: rgba(255,255,255,0.35) !important;
+  margin-bottom: 16px !important;
+  padding-bottom: 11px !important;
+  border-bottom: 1px solid rgba(255,255,255,0.07) !important;
+  display: block !important;
+}
+html[data-theme="light"] .section-title {
+  color: rgba(0,0,0,0.35) !important;
+  border-bottom-color: rgba(0,0,0,0.07) !important;
+}
+
+/* Cards — more internal breathing room, consistent radius */
+.gm-card, .hb-card, .hb-header-card, .fin-card, .sch-card, .hth-card, .dash-mini-card, .pom-card {
+  border-radius: calc(var(--card-radius, 14px) - 2px) !important;
+}
+.gm-card { padding: 16px !important; margin-bottom: 10px; }
+.hth-card { padding: 16px !important; margin-bottom: 10px; }
+.sch-card { padding: 16px !important; margin-bottom: 10px; }
+
+/* Font size from settings */
+body { font-size: var(--base-font, 15px); }
 
 /* ===== THEME SYSTEM ===== */
 :root { --accent: #a78bfa; --card-radius: 14px; --base-font: 15px; }
