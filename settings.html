@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Settings — Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- Apply saved theme immediately to prevent flash -->
   <script>
     try {
@@ -426,6 +427,17 @@
     </div>
   </div>
 
+  <!-- Save button -->
+  <button id="saveBtn" onclick="saveToCloud()" style="
+    width:100%; padding:16px; margin-top:8px;
+    background:var(--accent); border:none; border-radius:var(--card-radius,14px);
+    color:#fff; font-size:16px; font-weight:700; font-family:inherit;
+    cursor:pointer; letter-spacing:0.01em;
+    -webkit-tap-highlight-color:transparent;
+    transition:opacity 0.15s, transform 0.1s;
+  ">Save Settings</button>
+  <div id="saveStatus" style="text-align:center;font-size:13px;margin-top:10px;min-height:20px;color:rgba(255,255,255,0.45);transition:opacity 0.3s"></div>
+
 </div><!-- /st-page -->
 
 <script>
@@ -554,6 +566,57 @@ setTimeout(() => {
   if (vl && typeof DASHBOARD_VERSION !== 'undefined')
     vl.textContent = 'v' + DASHBOARD_VERSION;
 }, 50);
+</script>
+<script>
+const SB_URL = 'https://mtuoqwbrujxutofhyahb.supabase.co';
+const SB_KEY = 'sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
+
+function getSB() {
+  return window.supabase ? window.supabase.createClient(SB_URL, SB_KEY) : null;
+}
+
+async function loadFromCloud() {
+  const sb = getSB(); if (!sb) return;
+  try {
+    const { data } = await sb.from('app_state').select('data').eq('key', 'settings').maybeSingle();
+    if (data && data.data) {
+      const s = data.data;
+      localStorage.setItem(SK, JSON.stringify(s));
+      applyCSS(s);
+      renderAll(s);
+    }
+  } catch(e) { console.error('Settings pull error', e); }
+}
+
+async function saveToCloud() {
+  const btn = document.getElementById('saveBtn');
+  const status = document.getElementById('saveStatus');
+  btn.style.opacity = '0.6';
+  btn.disabled = true;
+  status.textContent = 'Saving…';
+  status.style.opacity = '1';
+  try {
+    const s = load();
+    const sb = getSB();
+    if (!sb) throw new Error('Supabase not loaded');
+    await sb.from('app_state').upsert(
+      { key: 'settings', data: s, updated_at: new Date().toISOString() },
+      { onConflict: 'key' }
+    );
+    status.textContent = '✓ Saved — settings will sync to all devices';
+    status.style.color = 'var(--accent)';
+  } catch(e) {
+    status.textContent = '✗ Save failed — check your connection';
+    status.style.color = '#f87171';
+    console.error('Settings save error', e);
+  }
+  btn.style.opacity = '1';
+  btn.disabled = false;
+  setTimeout(() => { status.style.opacity = '0'; }, 3000);
+}
+
+// Pull cloud settings on load
+document.addEventListener('DOMContentLoaded', loadFromCloud);
 </script>
 </body>
 </html>
