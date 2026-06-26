@@ -269,10 +269,19 @@ async function migrateIfNeeded(userId) {
   }
 }
 
+async function cleanupOldKeys() {
+  try {
+    for (const key of OLD_KEYS) {
+      await sb.from('app_state').delete().eq('key', key);
+    }
+  } catch(e) {}
+}
+
 async function afterLogin(userId) {
   localStorage.setItem('_dashUid', userId);
-  setLoading(true, 'Migrating your data…');
+  setLoading(true, 'Setting up…');
   await migrateIfNeeded(userId);
+  await cleanupOldKeys();
   setLoading(true, 'Loading dashboard…');
   window.location.href = 'index.html';
 }

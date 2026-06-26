@@ -424,6 +424,11 @@
         <div class="st-row-label danger-label">Reset All Settings</div>
       </div>
 
+      <div class="st-row danger" id="resetDataRow" style="cursor:pointer">
+        <div class="st-row-icon">⚠️</div>
+        <div class="st-row-label danger-label">Clear All My Data</div>
+      </div>
+
       <div class="st-row danger" id="logoutRow" style="cursor:pointer">
         <div class="st-row-icon">🚪</div>
         <div class="st-row-label danger-label">Log Out</div>
@@ -623,6 +628,29 @@ async function saveToCloud() {
   btn.disabled = false;
   setTimeout(() => { status.style.opacity = '0'; }, 3000);
 }
+
+document.getElementById('resetDataRow').addEventListener('click', async () => {
+  if (!confirm('This will permanently delete ALL your data (health logs, gym, habits, todos, finance, etc). Are you sure?')) return;
+  if (!confirm('Last chance — this cannot be undone. Delete everything?')) return;
+  const sb = getSB(); if (!sb) return;
+  const uid = localStorage.getItem('_dashUid');
+  if (!uid) return;
+  const status = document.getElementById('saveStatus');
+  status.textContent = 'Clearing data…'; status.style.opacity = '1'; status.style.color = '#f87171';
+  try {
+    const DATA_KEYS = ['dashboard','health','po-coach','school','habits','projects','settings','_migrated'];
+    for (const k of DATA_KEYS) {
+      await sb.from('app_state').delete().eq('key', uid + ':' + k);
+    }
+    localStorage.removeItem(SK);
+    status.textContent = '✓ All data cleared — refreshing…';
+    status.style.color = 'var(--accent)';
+    setTimeout(() => window.location.reload(), 1200);
+  } catch(e) {
+    status.textContent = '✗ Failed — try again';
+    console.error(e);
+  }
+});
 
 document.getElementById('logoutRow').addEventListener('click', async () => {
   if (!confirm('Log out of your account?')) return;
