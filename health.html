@@ -1348,16 +1348,7 @@ window._dbHSchedulePush = function(){};
 
   const TEMPLATE_VERSION = 5;
 
-  const STACK_DEFAULTS = [
-    { id: 'm1', name: 'XXXXX - Supplement of choice', dose: '', window: 'morning', note: 'how much MG, meal times, any data below', tag: null,    ordered: true  },
-    { id: 'm2', name: 'XXXXX - Supplement of choice', dose: '', window: 'morning', note: 'how much MG, meal times, any data below', tag: 'stack', ordered: true  },
-    { id: 'm3', name: 'XXXXX - Supplement of choice', dose: '', window: 'morning', note: 'how much MG, meal times, any data below', tag: null,    ordered: true  },
-    { id: 'l1', name: 'XXXXX - Supplement of choice', dose: '', window: 'lunch',   note: 'how much MG, meal times, any data below', tag: null,    ordered: true  },
-    { id: 'l2', name: 'XXXXX - Supplement of choice', dose: '', window: 'lunch',   note: 'how much MG, meal times, any data below', tag: null,    ordered: true  },
-    { id: 'e1', name: 'XXXXX - Supplement of choice', dose: '', window: 'evening', note: 'how much MG, meal times, any data below', tag: null,    ordered: true  },
-    { id: 'e2', name: 'XXXXX - Supplement of choice', dose: '', window: 'evening', note: 'how much MG, meal times, any data below', tag: 'not-ordered', ordered: false },
-    { id: 'e3', name: 'XXXXX - Supplement of choice', dose: '', window: 'evening', note: 'how much MG, meal times, any data below', tag: null,    ordered: true  },
-  ];
+  const STACK_DEFAULTS = [];
 
   const STACK_WINDOWS = [
     { key: 'morning', icon: '🌅', title: 'Morning', time: '7–10 AM', cutoffHour: 10 },
@@ -2326,25 +2317,11 @@ const MP_TPL='dashboard:mealPrep:v1:template';
 const MP_DAYS='dashboard:mealPrep:v1:daily';
 const MP_SETTINGS='dashboard:mealPrep:v1:settings';
 
-const MP_DEFAULT=[
-  {id:'mp1',name:'Pre-gym',foods:'Banana + granola bar',kcal:300,protein:5,carbs:55,fat:5,notes:''},
-  {id:'mp2',name:'Post-gym shake',foods:'Milk + whey + oats + banana + PB + honey',kcal:950,protein:55,carbs:100,fat:25,notes:''},
-  {id:'mp3',name:'School meal',foods:'Pita + tuna + techina + fruit + pretzels',kcal:775,protein:40,carbs:90,fat:18,notes:''},
-  {id:'mp4',name:'After-school meal',foods:'Rice 400g + chicken 200g + olive oil',kcal:1075,protein:60,carbs:135,fat:20,notes:''},
-  {id:'mp5',name:'Dinner',foods:'Rice 400g + ground beef 200g + sauce',kcal:1150,protein:55,carbs:140,fat:25,notes:''},
-  {id:'mp6',name:'Night snack',foods:'PB&J or granola + milk',kcal:650,protein:15,carbs:90,fat:20,notes:''},
-];
+const MP_DEFAULT=[];
 
-const TARGETS_DEFAULT={kcal:{min:4300,max:4600},protein:{min:170,max:220},carbs:{min:550,max:650},fat:{min:120,max:160}};
+const TARGETS_DEFAULT={kcal:{min:0,max:0},protein:{min:0,max:0},carbs:{min:0,max:0},fat:{min:0,max:0}};
 
-const QUICK_ADD=[
-  {label:'+200g rice',kcal:260,protein:5,carbs:57,fat:1},
-  {label:'+2 tbsp PB',kcal:190,protein:8,carbs:7,fat:16},
-  {label:'+1 pita',kcal:225,protein:7,carbs:45,fat:2},
-  {label:'+40g oats',kcal:150,protein:5,carbs:27,fat:3},
-  {label:'+1 tbsp olive oil',kcal:120,protein:0,carbs:0,fat:14},
-  {label:'Banana + honey',kcal:175,protein:2,carbs:44,fat:0},
-];
+const QUICK_ADD=[];
 
 function mpG(k){return window._dbH.hasOwnProperty(k)?window._dbH[k]:null;}
 function mpS(k,v){window._dbH[k]=v;window._dbHSchedulePush();}
