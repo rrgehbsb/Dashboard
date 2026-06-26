@@ -1579,6 +1579,22 @@ img, video, canvas, svg { max-width: 100%; }
     </div>
   </div>
 
+  <!-- EXERCISE PROGRESS CHART -->
+  <div class="gt-wrap" id="exProgressSection" style="margin-top:0;margin-bottom:14px">
+    <div class="gt-today-card" style="padding:16px 16px 14px">
+      <div class="gt-section-head" style="margin-bottom:10px">
+        <span class="gt-title">Exercise Progress</span>
+      </div>
+      <select id="exProgressSelect" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.10);border-radius:10px;padding:10px 12px;color:#fafafa;font-size:14px;font-family:inherit;margin-bottom:12px;outline:none;cursor:pointer;appearance:none;-webkit-appearance:none">
+        <option value="">— Pick an exercise —</option>
+      </select>
+      <div id="exProgressChartWrap" style="display:none">
+        <canvas id="exProgressCanvas" style="width:100%;height:160px;display:block"></canvas>
+      </div>
+      <div id="exProgressNoData" style="display:none;text-align:center;padding:24px 0;color:rgba(255,255,255,0.3);font-size:13px">No data for this exercise yet</div>
+    </div>
+  </div>
+
   <!-- WEIGHT + PROGRESS PHOTOS -->
   <div class="wt-section">
     <div class="wt-divider"><span>WEIGHT</span></div>
@@ -3631,6 +3647,157 @@ img, video, canvas, svg { max-width: 100%; }
   renderAll();
   wtRender();
   photosRender();
+
+  // ============================================================
+  // EXERCISE PROGRESS CHART
+  // Uses state.exercises + state.logs (po_coach_v1 store).
+  // Each log entry: { weight, reps, date (ISO string) }
+  // For each exercise, collect the max weight per calendar day,
+  // sort by date, take last 20, draw a line chart on canvas.
+  // ============================================================
+  function _drawLine(canvas, points, color) {
+    const dpr = window.devicePixelRatio || 1;
+    const W = canvas.offsetWidth, H = canvas.offsetHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    if (!points.length) { ctx.clearRect(0,0,W,H); return; }
+    const pad = {t:12,r:8,b:22,l:36};
+    const gw = W-pad.l-pad.r, gh = H-pad.t-pad.b;
+    const ys = points.map(p=>p.val);
+    const mn = Math.min(...ys)*0.97, mx = Math.max(...ys)*1.03+0.1;
+    const range = mx-mn||1;
+    const px = i => pad.l+(i/Math.max(points.length-1,1))*gw;
+    const py = v => pad.t+gh-((v-mn)/range)*gh;
+    const ac = color || getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#a78bfa';
+    ctx.clearRect(0,0,W,H);
+    for(let i=0;i<=3;i++){
+      const y=pad.t+(gh/3)*i;
+      ctx.strokeStyle='rgba(255,255,255,0.06)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+gw,y);ctx.stroke();
+      const v=mx-(range/3)*i;
+      ctx.fillStyle='rgba(255,255,255,0.28)';ctx.font='10px system-ui';ctx.textAlign='right';
+      ctx.fillText((Math.round(v*10)/10),pad.l-3,y+4);
+    }
+    if(points.length<2){
+      if(points.length===1){ctx.beginPath();ctx.arc(px(0),py(points[0].val),4,0,Math.PI*2);ctx.fillStyle=ac;ctx.fill();}
+      return;
+    }
+    ctx.beginPath();
+    points.forEach((p,i)=>i?ctx.lineTo(px(i),py(p.val)):ctx.moveTo(px(i),py(p.val)));
+    ctx.lineTo(px(points.length-1),pad.t+gh);ctx.lineTo(px(0),pad.t+gh);ctx.closePath();
+    ctx.fillStyle=ac+'1a';ctx.fill();
+    ctx.beginPath();
+    points.forEach((p,i)=>i?ctx.lineTo(px(i),py(p.val)):ctx.moveTo(px(i),py(p.val)));
+    ctx.strokeStyle=ac;ctx.lineWidth=2;ctx.lineJoin='round';ctx.stroke();
+    points.forEach((p,i)=>{ctx.beginPath();ctx.arc(px(i),py(p.val),3,0,Math.PI*2);ctx.fillStyle=ac;ctx.fill();});
+    ctx.fillStyle='rgba(255,255,255,0.28)';ctx.font='10px system-ui';ctx.textAlign='center';
+    ctx.fillText(points[0].label,px(0),H-4);
+    if(points.length>1)ctx.fillText(points[points.length-1].label,px(points.length-1),H-4);
+    if(points.length>5)ctx.fillText(points[Math.floor(points.length/2)].label,px(Math.floor(points.length/2)),H-4);
+  }
+
+  function buildExerciseChart() {
+    const sel = document.getElementById('exProgressSelect');
+    if (!sel) return;
+    // Collect all exercise names that have at least one weighted log
+    const options = [];
+    state.exercises.forEach(ex => {
+      if (ex.bw) return; // skip bodyweight exercises — no weight to chart
+      const logs = state.logs[ex.id] || [];
+      if (logs.length) options.push({ id: ex.id, name: ex.name });
+    });
+    // Preserve current selection if it still exists
+    const prevVal = sel.value;
+    // Rebuild option list (keep the placeholder)
+    sel.innerHTML = '<option value="">— Pick an exercise —</option>';
+    options.sort((a, b) => a.name.localeCompare(b.name)).forEach(o => {
+      const opt = document.createElement('option');
+      opt.value = o.id;
+      opt.textContent = o.name;
+      sel.appendChild(opt);
+    });
+    if (prevVal && options.find(o => o.id === prevVal)) {
+      sel.value = prevVal;
+      renderExerciseChart(prevVal);
+    } else {
+      // Hide chart if prior selection no longer valid
+      const wrap = document.getElementById('exProgressChartWrap');
+      const noData = document.getElementById('exProgressNoData');
+      if (wrap) wrap.style.display = 'none';
+      if (noData) noData.style.display = 'none';
+    }
+  }
+
+  function renderExerciseChart(exerciseId) {
+    const wrap = document.getElementById('exProgressChartWrap');
+    const noData = document.getElementById('exProgressNoData');
+    const canvas = document.getElementById('exProgressCanvas');
+    if (!wrap || !noData || !canvas) return;
+
+    const logs = (state.logs[exerciseId] || []).slice();
+    // Group by calendar date, take the max weight per day
+    const byDay = {};
+    logs.forEach(l => {
+      if (!l.weight) return;
+      const dk = l.date.slice(0, 10);
+      if (!byDay[dk] || l.weight > byDay[dk]) byDay[dk] = l.weight;
+    });
+    const sorted = Object.keys(byDay).sort();
+    // Take last 20 sessions
+    const recent = sorted.slice(-20);
+
+    if (recent.length < 2) {
+      wrap.style.display = 'none';
+      noData.style.display = 'block';
+      return;
+    }
+
+    noData.style.display = 'none';
+    wrap.style.display = 'block';
+
+    const points = recent.map(dk => {
+      const [y, m, d] = dk.split('-').map(Number);
+      const dt = new Date(y, m - 1, d);
+      const mons = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const label = mons[dt.getMonth()] + ' ' + dt.getDate();
+      return { val: byDay[dk], label };
+    });
+
+    // Use the --accent CSS var; fall back to a muted purple that looks fine
+    // on this dark background
+    const accent = getComputedStyle(document.documentElement)
+      .getPropertyValue('--accent').trim() || '#ffffff';
+
+    // Canvas needs a frame so offsetWidth is non-zero
+    requestAnimationFrame(() => _drawLine(canvas, points, accent));
+  }
+
+  // Wire up the dropdown
+  (function initExerciseChart() {
+    const sel = document.getElementById('exProgressSelect');
+    if (!sel) return;
+    buildExerciseChart();
+    sel.addEventListener('change', e => {
+      const id = e.target.value;
+      const wrap = document.getElementById('exProgressChartWrap');
+      const noData = document.getElementById('exProgressNoData');
+      if (!id) {
+        if (wrap) wrap.style.display = 'none';
+        if (noData) noData.style.display = 'none';
+        return;
+      }
+      renderExerciseChart(id);
+    });
+  })();
+
+  // Re-populate the dropdown after every renderAll() call so newly logged
+  // exercises appear immediately without a page reload.
+  const _origRenderAll = renderAll;
+  renderAll = function() {
+    _origRenderAll.apply(this, arguments);
+    buildExerciseChart();
+  };
 
   // ── Cloud sync — _dbG is source of truth (same pattern as dashboard goals) ──
   const SUPABASE_URL = 'https://mtuoqwbrujxutofhyahb.supabase.co';

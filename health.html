@@ -1085,6 +1085,10 @@ details[open] .mp-details-summary::before { content: '▾ '; }
       <span id="sleepAvg">—</span>
       <button class="sw-log-btn" id="sleepLogBtn">+ Log sleep</button>
     </div>
+    <div style="margin-top:14px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:8px">Sleep History</div>
+      <canvas id="sleepChart" style="width:100%;height:150px;display:block"></canvas>
+    </div>
   </div>
 
   <!-- WEIGHT TRACKER -->
@@ -1098,6 +1102,10 @@ details[open] .mp-details-summary::before { content: '▾ '; }
     <div class="sw-meta">
       <span id="weightAvg"></span>
       <button class="sw-log-btn" id="weightLogBtn">+ Log weight</button>
+    </div>
+    <div style="margin-top:14px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:8px">Weight Trend</div>
+      <canvas id="weightChart" style="width:100%;height:150px;display:block"></canvas>
     </div>
   </div>
 
@@ -2651,6 +2659,8 @@ function renderSleep() {
 
   const avgEl = document.getElementById('sleepAvg');
   if (avgEl) avgEl.textContent = count ? `avg ${(total/count).toFixed(1)}h / night` : 'No data yet';
+
+  try { if (typeof window.renderSleepChart === 'function') window.renderSleepChart(); } catch(e) {}
 }
 
 function renderWeight() {
@@ -2706,6 +2716,8 @@ function renderWeight() {
       avgEl.textContent = `7d avg: ${avg} kg`;
     }
   }
+
+  try { if (typeof window.renderWeightChart === 'function') window.renderWeightChart(); } catch(e) {}
 }
 
 function renderAll() {
@@ -2766,6 +2778,154 @@ document.getElementById('weightSave').addEventListener('click', () => {
 
 renderAll();
 })();
+</script>
+
+<script>
+// ===== CHART HELPERS =====
+function _drawLine(canvas, points, color) {
+  // points: [{label, val}]
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.offsetWidth, H = canvas.offsetHeight;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  if (!points.length) { ctx.clearRect(0,0,W,H); return; }
+  const pad = {t:12,r:8,b:22,l:36};
+  const gw = W-pad.l-pad.r, gh = H-pad.t-pad.b;
+  const ys = points.map(p=>p.val);
+  const mn = Math.min(...ys)*0.98, mx = Math.max(...ys)*1.02+0.1;
+  const range = mx-mn||1;
+  const px = i => pad.l+(i/Math.max(points.length-1,1))*gw;
+  const py = v => pad.t+gh-((v-mn)/range)*gh;
+  const ac = color || getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#a78bfa';
+  ctx.clearRect(0,0,W,H);
+  for(let i=0;i<=3;i++){
+    const y=pad.t+(gh/3)*i;
+    ctx.strokeStyle='rgba(255,255,255,0.06)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+gw,y);ctx.stroke();
+    const v=mx-(range/3)*i;
+    ctx.fillStyle='rgba(255,255,255,0.28)';ctx.font='10px system-ui';ctx.textAlign='right';
+    ctx.fillText((Math.round(v*10)/10),pad.l-3,y+4);
+  }
+  if(points.length<2)return;
+  ctx.beginPath();
+  points.forEach((p,i)=>i?ctx.lineTo(px(i),py(p.val)):ctx.moveTo(px(i),py(p.val)));
+  ctx.lineTo(px(points.length-1),pad.t+gh);ctx.lineTo(px(0),pad.t+gh);ctx.closePath();
+  ctx.fillStyle=ac+'1a';ctx.fill();
+  ctx.beginPath();
+  points.forEach((p,i)=>i?ctx.lineTo(px(i),py(p.val)):ctx.moveTo(px(i),py(p.val)));
+  ctx.strokeStyle=ac;ctx.lineWidth=2;ctx.lineJoin='round';ctx.stroke();
+  points.forEach((p,i)=>{ctx.beginPath();ctx.arc(px(i),py(p.val),3,0,Math.PI*2);ctx.fillStyle=ac;ctx.fill();});
+  ctx.fillStyle='rgba(255,255,255,0.28)';ctx.font='10px system-ui';ctx.textAlign='center';
+  ctx.fillText(points[0].label,px(0),H-4);
+  if(points.length>1)ctx.fillText(points[points.length-1].label,px(points.length-1),H-4);
+  if(points.length>5)ctx.fillText(points[Math.floor(points.length/2)].label,px(Math.floor(points.length/2)),H-4);
+}
+
+function _drawBars(canvas, bars, color) {
+  // bars: [{label, val, goal}]  goal draws a subtle line
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.offsetWidth, H = canvas.offsetHeight;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  if(!bars.length){ctx.clearRect(0,0,W,H);return;}
+  const pad={t:12,r:8,b:22,l:8};
+  const gw=W-pad.l-pad.r,gh=H-pad.t-pad.b;
+  const n=bars.length;
+  const ac=color||getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()||'#a78bfa';
+  const mx=Math.max(...bars.map(b=>Math.max(b.val,b.goal||0)))*1.05||1;
+  const bW=(gw/n)*0.55,gap=(gw/n)*0.45;
+  ctx.clearRect(0,0,W,H);
+  for(let i=0;i<=3;i++){
+    const y=pad.t+(gh/3)*i;
+    ctx.strokeStyle='rgba(255,255,255,0.05)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+gw,y);ctx.stroke();
+  }
+  bars.forEach((b,i)=>{
+    const x=pad.l+(gw/n)*i+gap/2;
+    const bH=(b.val/mx)*gh;
+    if(b.goal){
+      const gH=(b.goal/mx)*gh;
+      ctx.strokeStyle='rgba(255,255,255,0.15)';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+      ctx.beginPath();ctx.moveTo(x,pad.t+gh-gH);ctx.lineTo(x+bW,pad.t+gh-gH);ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    const under=!b.goal||b.val>=b.goal;
+    ctx.fillStyle=under?ac+'cc':'#f87171cc';
+    ctx.beginPath();
+    const r=4;
+    const bx=x,by=pad.t+gh-bH,bh2=bH;
+    ctx.moveTo(bx+r,by);ctx.lineTo(bx+bW-r,by);ctx.quadraticCurveTo(bx+bW,by,bx+bW,by+r);
+    ctx.lineTo(bx+bW,by+bh2);ctx.lineTo(bx,by+bh2);ctx.lineTo(bx,by+r);
+    ctx.quadraticCurveTo(bx,by,bx+r,by);ctx.closePath();ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.32)';ctx.font='9px system-ui';ctx.textAlign='center';
+    ctx.fillText(b.label,x+bW/2,H-5);
+    ctx.fillStyle='rgba(255,255,255,0.6)';ctx.font='9px system-ui';
+    if(bH>14)ctx.fillText(b.val,x+bW/2,pad.t+gh-bH-3);
+  });
+}
+
+window.renderWeightChart = function() {
+  const canvas = document.getElementById('weightChart');
+  if (!canvas) return;
+  const raw = window._dbH && window._dbH.hasOwnProperty('dashboard:weight:v1')
+    ? window._dbH['dashboard:weight:v1']
+    : null;
+  const entries = (raw && raw.entries ? raw.entries : [])
+    .slice()
+    .sort((a,b) => a.date.localeCompare(b.date))
+    .slice(-30);
+  if (!entries.length) { const ctx=canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height); return; }
+  const points = entries.map(e => {
+    const parts = e.date.split('-');
+    return { label: (parts[1]||'')+'-'+(parts[2]||''), val: e.kg };
+  });
+  _drawLine(canvas, points);
+};
+
+window.renderSleepChart = function() {
+  const canvas = document.getElementById('sleepChart');
+  if (!canvas) return;
+  const raw = window._dbH && window._dbH.hasOwnProperty('dashboard:sleep:v1')
+    ? window._dbH['dashboard:sleep:v1']
+    : null;
+  const entries = (raw && raw.entries ? raw.entries : [])
+    .slice()
+    .sort((a,b) => a.date.localeCompare(b.date))
+    .slice(-14);
+  if (!entries.length) { const ctx=canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height); return; }
+  let sleepGoal = 8;
+  try {
+    const settings = JSON.parse(localStorage.getItem('dashboard:settings:v1'));
+    if (settings && settings.sleepGoal) sleepGoal = parseFloat(settings.sleepGoal) || 8;
+  } catch(e) {}
+  const ac = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#1D9E75';
+  const bars = entries.map(e => {
+    const parts = e.date.split('-');
+    return { label: (parts[1]||'')+'-'+(parts[2]||''), val: e.hours, goal: sleepGoal };
+  });
+  // Pass green so bars meeting goal are green; _drawBars uses red (#f87171cc) for bars under goal
+  _drawBars(canvas, bars, '#22c55e');
+};
+
+// Draw charts on load (after a tick so canvas has layout)
+setTimeout(function() {
+  try { window.renderWeightChart(); } catch(e) {}
+  try { window.renderSleepChart(); } catch(e) {}
+}, 0);
+
+// Redraw on resize
+window.addEventListener('resize', function() {
+  try { window.renderWeightChart(); } catch(e) {}
+  try { window.renderSleepChart(); } catch(e) {}
+});
+
+// Redraw after remote sync
+window.addEventListener('health-synced', function() {
+  try { window.renderWeightChart(); } catch(e) {}
+  try { window.renderSleepChart(); } catch(e) {}
+});
 </script>
 
 <script>

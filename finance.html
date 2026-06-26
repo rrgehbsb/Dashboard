@@ -2094,6 +2094,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   </div>
   <div class="card" style="padding:20px 20px 14px">
     <div id="budCatList"></div>
+    <div style="margin:16px 0 8px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:8px">This Month</div>
+      <canvas id="budgetChart" style="width:100%;height:140px;display:block"></canvas>
+    </div>
     <div class="bud-total-row">
       <span class="bud-total-label">Total</span>
       <span class="bud-total-val" id="budTotalVal">₪0 / ₪0</span>
@@ -2237,6 +2241,287 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 </nav>
 
 <script>
+// ============================================================
+// BUDGET TAB — rendering + modals + bar chart
+// ============================================================
+(function() {
+  function storeGet(key) {
+    try { const raw = localStorage.getItem(key); return raw == null ? null : JSON.parse(raw); }
+    catch (e) { return null; }
+  }
+  function storeSet(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {}
+  }
+
+  const BUD_KEY = 'dashboard:budget:v1';
+  const DEFAULT_CATS = [
+    { key: 'food',      label: 'Food',      color: '#34d399' },
+    { key: 'goingOut',  label: 'Going Out', color: '#60a5fa' },
+    { key: 'transport', label: 'Transport', color: '#fbbf24' },
+    { key: 'clothes',   label: 'Clothes',   color: '#f472b6' },
+    { key: 'other',     label: 'Other',     color: '#a78bfa' },
+  ];
+  const SYM = '₪';
+
+  function getBudData() { return storeGet(BUD_KEY) || { budgets: {}, spending: [] }; }
+  function saveBudData(d) { storeSet(BUD_KEY, d); }
+
+  function currentMonthKey() {
+    const n = new Date();
+    return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0');
+  }
+
+  function getMonthSpend(spending, monthKey) {
+    const map = {};
+    (spending || []).forEach(s => {
+      if (s.date && s.date.startsWith(monthKey)) map[s.category] = (map[s.category] || 0) + (s.amount || 0);
+    });
+    return map;
+  }
+
+  function getAllCats(data) {
+    const defaults = DEFAULT_CATS.map(c => c.key);
+    const custom = (data.customCats || []).filter(k => !defaults.includes(k));
+    return [
+      ...DEFAULT_CATS,
+      ...custom.map(k => ({ key: k, label: k.charAt(0).toUpperCase() + k.slice(1), color: '#a78bfa' }))
+    ];
+  }
+
+  // ---- bar chart helper ----
+  function _drawBudgetBars(canvas, bars) {
+    const dpr = window.devicePixelRatio || 1;
+    const W = canvas.offsetWidth, H = canvas.offsetHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    const pad={t:12,r:8,b:28,l:8};
+    const gw=W-pad.l-pad.r,gh=H-pad.t-pad.b;
+    const n=bars.length;
+    const ac=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()||'#a78bfa';
+    const mx=Math.max(...bars.map(b=>Math.max(b.spent||0,b.budget||0)))*1.1||100;
+    const bW=(gw/n)*0.5,gap=(gw/n)*0.5;
+    ctx.clearRect(0,0,W,H);
+    for(let i=0;i<=3;i++){
+      const y=pad.t+(gh/3)*i;
+      ctx.strokeStyle='rgba(255,255,255,0.05)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+gw,y);ctx.stroke();
+    }
+    bars.forEach((b,i)=>{
+      const x=pad.l+(gw/n)*i+gap/2;
+      if(b.budget){
+        const bgH=(b.budget/mx)*gh;
+        ctx.strokeStyle='rgba(255,255,255,0.18)';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+        ctx.strokeRect(x,pad.t+gh-bgH,bW,bgH);ctx.setLineDash([]);
+      }
+      const spH=((b.spent||0)/mx)*gh;
+      const over=b.budget&&b.spent>b.budget;
+      ctx.fillStyle=(over?'#f87171':(b.color||ac))+'cc';
+      if(spH>0){
+        const r=3,bx=x,by=pad.t+gh-spH;
+        ctx.beginPath();
+        ctx.moveTo(bx+r,by);ctx.lineTo(bx+bW-r,by);ctx.quadraticCurveTo(bx+bW,by,bx+bW,by+r);
+        ctx.lineTo(bx+bW,by+spH);ctx.lineTo(bx,by+spH);ctx.lineTo(bx,by+r);
+        ctx.quadraticCurveTo(bx,by,bx+r,by);ctx.closePath();ctx.fill();
+        if(spH>14){
+          ctx.fillStyle='rgba(255,255,255,0.7)';ctx.font='9px system-ui';ctx.textAlign='center';
+          ctx.fillText(Math.round(b.spent),x+bW/2,by+spH-4);
+        }
+      }
+      ctx.fillStyle='rgba(255,255,255,0.35)';ctx.font='9px system-ui';ctx.textAlign='center';
+      ctx.fillText(b.label,x+bW/2,H-6);
+    });
+  }
+
+  function renderBudgetChart() {
+    const canvas = document.getElementById('budgetChart');
+    if (!canvas) return;
+    const data = getBudData();
+    const budgets = data.budgets || {};
+    const spending = data.spending || [];
+    const monthKey = currentMonthKey();
+    const monthSpend = getMonthSpend(spending, monthKey);
+    const cats = getAllCats(data);
+    const bars = cats.map(c => ({ label: c.label.length > 7 ? c.label.slice(0,6)+'.' : c.label, spent: monthSpend[c.key] || 0, budget: budgets[c.key] || 0, color: c.color }));
+    _drawBudgetBars(canvas, bars);
+  }
+
+  // ---- category list ----
+  function renderBudget() {
+    const data = getBudData();
+    const budgets = data.budgets || {};
+    const spending = data.spending || [];
+    const monthKey = currentMonthKey();
+    const monthSpend = getMonthSpend(spending, monthKey);
+    const cats = getAllCats(data);
+
+    // Month header
+    const now = new Date();
+    const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const titleEl = document.getElementById('budMonthTitle');
+    const subEl = document.getElementById('budMonthSub');
+    if (titleEl) titleEl.textContent = months[now.getMonth()] + ' ' + now.getFullYear();
+
+    const catList = document.getElementById('budCatList');
+    if (!catList) return;
+    catList.innerHTML = '';
+
+    let totalSpent = 0, totalBudget = 0;
+    cats.forEach(cat => {
+      const spent = monthSpend[cat.key] || 0;
+      const budget = budgets[cat.key] || 0;
+      totalSpent += spent; totalBudget += budget;
+      const left = budget - spent;
+      const pct = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0;
+      const over = budget > 0 && spent > budget;
+      const warn = budget > 0 && spent / budget >= 0.8;
+      const fillCls = over ? 'bud-fill-over' : warn ? 'bud-fill-warn' : 'bud-fill-ok';
+      const amtCls = over ? 'bud-cat-left-over' : warn ? 'bud-cat-left-warn' : 'bud-cat-left-ok';
+      const leftText = budget > 0
+        ? (over ? SYM + Math.round(Math.abs(left)) + ' over' : SYM + Math.round(left) + ' left')
+        : (spent > 0 ? SYM + Math.round(spent) + ' spent' : '—');
+      const row = document.createElement('div');
+      row.className = 'bud-cat-row';
+      row.innerHTML = '<div class="bud-cat-head">'
+        + '<span class="bud-cat-name">' + cat.label + '</span>'
+        + '<span class="bud-cat-amounts ' + amtCls + '">' + SYM + Math.round(spent) + ' / ' + (budget ? SYM + Math.round(budget) : '—') + ' &nbsp;<small>' + leftText + '</small></span>'
+        + '</div>'
+        + '<div class="bud-track"><div class="bud-fill ' + fillCls + '" style="width:' + pct.toFixed(1) + '%"></div></div>';
+      catList.appendChild(row);
+
+      // Spending items for this category this month
+      const catItems = (spending || []).filter(s => s.date && s.date.startsWith(monthKey) && s.category === cat.key)
+        .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+      if (catItems.length) {
+        catItems.forEach(s => {
+          const itemEl = document.createElement('div');
+          itemEl.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:5px 0 5px 12px;font-size:12px;color:var(--text-tertiary);border-left:2px solid rgba(255,255,255,0.08);margin:3px 0 3px 4px';
+          const noteText = s.note ? '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.note + '</span>' : '<span style="flex:1;color:var(--text-quaternary)">' + cat.label + '</span>';
+          const delBtn = '<button data-del-id="' + s.id + '" style="background:none;border:none;color:var(--text-tertiary);cursor:pointer;font-size:13px;padding:0 4px;opacity:0.5">×</button>';
+          itemEl.innerHTML = noteText + '<span style="font-family:var(--font-mono);font-variant-numeric:tabular-nums;margin-left:8px;flex-shrink:0">' + SYM + (s.amount || 0).toFixed(2) + '</span>' + '<span style="font-size:10px;color:var(--text-quaternary);margin-left:6px;flex-shrink:0">' + (s.date || '').slice(5) + '</span>' + delBtn;
+          catList.appendChild(itemEl);
+        });
+      }
+    });
+
+    const totalVal = document.getElementById('budTotalVal');
+    if (totalVal) totalVal.textContent = SYM + Math.round(totalSpent) + ' / ' + (totalBudget ? SYM + Math.round(totalBudget) : '—');
+    if (subEl) subEl.textContent = totalBudget ? (Math.round((totalSpent / totalBudget) * 100)) + '% of monthly budget used' : '';
+
+    // Wire delete buttons
+    catList.querySelectorAll('[data-del-id]').forEach(b => {
+      b.addEventListener('click', () => {
+        const d = getBudData();
+        d.spending = (d.spending || []).filter(s => s.id !== b.dataset.delId);
+        saveBudData(d);
+        renderBudget();
+        renderBudgetChart();
+      });
+    });
+
+    renderBudgetChart();
+  }
+
+  // ---- Edit budgets modal ----
+  function openEditBudgets() {
+    const data = getBudData();
+    const budgets = data.budgets || {};
+    const cats = getAllCats(data);
+    const fieldsEl = document.getElementById('budBudgetFields');
+    if (!fieldsEl) return;
+    fieldsEl.innerHTML = cats.map(c =>
+      '<div class="fin-field"><label>' + c.label + '</label>'
+      + '<input type="number" step="1" min="0" data-cat-key="' + c.key + '" placeholder="0" value="' + (budgets[c.key] || '') + '"></div>'
+    ).join('');
+    document.getElementById('budEditBudgetsModal').classList.add('show');
+  }
+  function closeEditBudgets() {
+    document.getElementById('budEditBudgetsModal').classList.remove('show');
+  }
+  document.getElementById('budEditBudgetsBtn').addEventListener('click', openEditBudgets);
+  document.getElementById('budBudgetsCancel').addEventListener('click', closeEditBudgets);
+  document.getElementById('budEditBudgetsModal').addEventListener('click', e => {
+    if (e.target === document.getElementById('budEditBudgetsModal')) closeEditBudgets();
+  });
+  document.getElementById('budBudgetsSave').addEventListener('click', () => {
+    const data = getBudData();
+    document.querySelectorAll('#budBudgetFields input[data-cat-key]').forEach(inp => {
+      const v = parseFloat(inp.value);
+      if (!isNaN(v) && v >= 0) data.budgets[inp.dataset.catKey] = v;
+      else delete data.budgets[inp.dataset.catKey];
+    });
+    saveBudData(data);
+    closeEditBudgets();
+    renderBudget();
+  });
+
+  // Add custom category
+  document.getElementById('budAddCatBtn').addEventListener('click', () => {
+    const inp = document.getElementById('budNewCatName');
+    const name = (inp.value || '').trim().toLowerCase().replace(/\s+/g, '_');
+    if (!name) return;
+    const data = getBudData();
+    data.customCats = data.customCats || [];
+    if (!data.customCats.includes(name)) data.customCats.push(name);
+    saveBudData(data);
+    inp.value = '';
+    openEditBudgets();
+  });
+
+  // ---- Add expense modal ----
+  function openAddExpense() {
+    const data = getBudData();
+    const cats = getAllCats(data);
+    const catSel = document.getElementById('budExpCat');
+    if (catSel) catSel.innerHTML = cats.map(c => '<option value="' + c.key + '">' + c.label + '</option>').join('');
+    const dateEl = document.getElementById('budExpDate');
+    if (dateEl && !dateEl.value) {
+      const now = new Date();
+      dateEl.value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+    }
+    document.getElementById('budAddExpenseModal').classList.add('show');
+    setTimeout(() => { const a = document.getElementById('budExpAmt'); if (a) a.focus(); }, 60);
+  }
+  function closeAddExpense() {
+    document.getElementById('budAddExpenseModal').classList.remove('show');
+  }
+  document.getElementById('budAddExpenseBtn').addEventListener('click', openAddExpense);
+  document.getElementById('budExpCancel').addEventListener('click', closeAddExpense);
+  document.getElementById('budAddExpenseModal').addEventListener('click', e => {
+    if (e.target === document.getElementById('budAddExpenseModal')) closeAddExpense();
+  });
+  document.getElementById('budExpSave').addEventListener('click', () => {
+    const amt = parseFloat(document.getElementById('budExpAmt').value);
+    const cat = document.getElementById('budExpCat').value;
+    const note = (document.getElementById('budExpNote').value || '').trim();
+    const date = document.getElementById('budExpDate').value;
+    if (isNaN(amt) || amt <= 0 || !cat || !date) return;
+    const data = getBudData();
+    data.spending = data.spending || [];
+    data.spending.push({ id: 's_' + Date.now(), date, category: cat, amount: amt, note });
+    // Keep only last 365 days
+    const cutoff = new Date(); cutoff.setFullYear(cutoff.getFullYear() - 1);
+    data.spending = data.spending.filter(s => new Date(s.date) >= cutoff);
+    saveBudData(data);
+    document.getElementById('budExpAmt').value = '';
+    document.getElementById('budExpNote').value = '';
+    closeAddExpense();
+    renderBudget();
+  });
+
+  // Render on tab click
+  document.querySelectorAll('.bot-tab[data-tab="budget"]').forEach(b => {
+    b.addEventListener('click', () => { renderBudget(); });
+  });
+
+  // Resize
+  window.addEventListener('resize', renderBudgetChart);
+
+  renderBudget();
+})();
+</script>
+
+<script>
 (function() {
 
   // ============================================================
@@ -2283,7 +2568,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   }
   tabs.forEach(b => b.addEventListener('click', () => setActiveTab(b.dataset.tab)));
   const savedTab = storeGet(TAB_KEY);
-  setActiveTab(savedTab && ['net','subs','incoming','wish'].includes(savedTab) ? savedTab : 'net');
+  setActiveTab(savedTab && ['net','subs','incoming','wish','budget','savings'].includes(savedTab) ? savedTab : 'net');
 
   // ============================================================
   // NET WORTH (copied from the main dashboard, verbatim logic)
