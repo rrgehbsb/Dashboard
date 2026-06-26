@@ -256,6 +256,8 @@ async function migrateIfNeeded(userId) {
           { key: userId + ':' + key, data: data.data, updated_at: new Date().toISOString() },
           { onConflict: 'key' }
         );
+        // Delete old generic key so future new users don't inherit this data
+        await sb.from('app_state').delete().eq('key', key);
       }
     }
     await sb.from('app_state').upsert(
