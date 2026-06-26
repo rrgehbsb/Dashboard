@@ -1013,15 +1013,46 @@ function updateDayBar(){
   const rf=document.getElementById('ringFill');
   document.getElementById('ringClock').textContent=formatClock(now);
   document.getElementById('ringHours').textContent=`${fmtScheduleHour(WAKE_HOUR)} – ${fmtScheduleHour(SLEEP_HOUR)}`;
-  if(hours<WAKE_HOUR){
+
+  // Midnight-crossing: sleep time is next day (e.g. wake=9am, sleep=1am)
+  const crossesMidnight = SLEEP_HOUR < WAKE_HOUR;
+  const totalAwakeHours = crossesMidnight ? (24 - WAKE_HOUR + SLEEP_HOUR) : (SLEEP_HOUR - WAKE_HOUR);
+
+  let zone; // 'sleeping' | 'awake' | 'pastBed'
+  let elapsedAwake = 0, minsToWake = 0;
+
+  if (crossesMidnight) {
+    if (hours >= SLEEP_HOUR && hours < WAKE_HOUR) {
+      zone = 'sleeping';
+      minsToWake = Math.round((WAKE_HOUR - hours) * 60);
+    } else if (hours >= WAKE_HOUR) {
+      zone = 'awake';
+      elapsedAwake = hours - WAKE_HOUR;
+    } else {
+      // After midnight, before sleep time (e.g. 0:00–1:00)
+      zone = 'awake';
+      elapsedAwake = (24 - WAKE_HOUR) + hours;
+    }
+  } else {
+    if (hours < WAKE_HOUR) {
+      zone = 'sleeping';
+      minsToWake = Math.round((WAKE_HOUR - hours) * 60);
+    } else if (hours >= SLEEP_HOUR) {
+      zone = 'pastBed';
+    } else {
+      zone = 'awake';
+      elapsedAwake = hours - WAKE_HOUR;
+    }
+  }
+
+  if (zone === 'sleeping') {
     rf.setAttribute('stroke','#4D4B47');
     rf.setAttribute('stroke-dashoffset',CIRCUMFERENCE);
     document.getElementById('ringPercent').textContent='—';
     document.getElementById('ringPhase').textContent='SLEEPING';
     document.getElementById('ringStatus').textContent='😴 Still sleeping';
-    const mins=Math.round((WAKE_HOUR-hours)*60);
-    document.getElementById('ringRemaining').textContent=`${Math.floor(mins/60)}h ${mins%60}m until wake-up`;
-  } else if(hours>=SLEEP_HOUR){
+    document.getElementById('ringRemaining').textContent=`${Math.floor(minsToWake/60)}h ${minsToWake%60}m until wake-up`;
+  } else if (zone === 'pastBed') {
     rf.setAttribute('stroke','#E25D7A');
     rf.setAttribute('stroke-dashoffset',0);
     document.getElementById('ringPercent').textContent='ZZZ';
@@ -1030,7 +1061,7 @@ function updateDayBar(){
     const overMins=Math.round((hours-SLEEP_HOUR)*60);
     document.getElementById('ringRemaining').textContent=overMins>0?`${overMins}m past target bedtime`:'At target bedtime';
   } else {
-    const pct=(hours-WAKE_HOUR)/(SLEEP_HOUR-WAKE_HOUR)*100;
+    const pct=Math.min(100,Math.max(0,(elapsedAwake/totalAwakeHours)*100));
     rf.setAttribute('stroke',getStrokeColor(pct));
     rf.setAttribute('stroke-dashoffset',CIRCUMFERENCE*(1-pct/100));
     document.getElementById('ringPercent').textContent=Math.round(pct)+'%';
@@ -1042,8 +1073,8 @@ function updateDayBar(){
     else{phase='BEDTIME';status='🌙 Bedtime soon';}
     document.getElementById('ringPhase').textContent=phase;
     document.getElementById('ringStatus').textContent=status;
-    const mins=Math.round((SLEEP_HOUR-hours)*60);
-    document.getElementById('ringRemaining').textContent=`${Math.floor(mins/60)}h ${mins%60}m awake time left`;
+    const minsLeft=Math.round((totalAwakeHours-elapsedAwake)*60);
+    document.getElementById('ringRemaining').textContent=`${Math.floor(minsLeft/60)}h ${minsLeft%60}m awake time left`;
   }
 }
 
