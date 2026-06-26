@@ -639,7 +639,8 @@ document.getElementById('resetDataRow').addEventListener('click', async () => {
   status.textContent = 'Clearing data…'; status.style.opacity = '1'; status.style.color = '#f87171';
   try {
     // Clear Supabase
-    const DATA_KEYS = ['dashboard','health','po-coach','school','habits','projects','settings','_migrated'];
+    // Keep _migrated so migration never re-runs and re-copies old data
+    const DATA_KEYS = ['dashboard','health','po-coach','school','habits','projects','settings'];
     for (const k of DATA_KEYS) {
       await sb.from('app_state').delete().eq('key', uid + ':' + k);
     }
