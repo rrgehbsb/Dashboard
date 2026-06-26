@@ -638,14 +638,18 @@ document.getElementById('resetDataRow').addEventListener('click', async () => {
   const status = document.getElementById('saveStatus');
   status.textContent = 'Clearing data…'; status.style.opacity = '1'; status.style.color = '#f87171';
   try {
+    // Clear Supabase
     const DATA_KEYS = ['dashboard','health','po-coach','school','habits','projects','settings','_migrated'];
     for (const k of DATA_KEYS) {
       await sb.from('app_state').delete().eq('key', uid + ':' + k);
     }
-    localStorage.removeItem(SK);
-    status.textContent = '✓ All data cleared — refreshing…';
+    // Clear ALL localStorage (wipes cached page data so it can't push back to Supabase)
+    localStorage.clear();
+    status.textContent = '✓ All data cleared — signing out…';
     status.style.color = 'var(--accent)';
-    setTimeout(() => window.location.reload(), 1200);
+    // Sign out so Supabase session is also fresh, then go to login
+    await sb.auth.signOut();
+    setTimeout(() => { window.location.href = 'login.html'; }, 800);
   } catch(e) {
     status.textContent = '✗ Failed — try again';
     console.error(e);
