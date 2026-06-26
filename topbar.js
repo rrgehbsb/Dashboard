@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '1.3.2';
+const DASHBOARD_VERSION = '1.3.3';
 
 // Apply saved theme before anything renders (prevents flash)
 (function() {
@@ -540,6 +540,72 @@ html[data-skin="bluelock"] .skin-splash-tag {
   -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
   filter: drop-shadow(0 0 10px rgba(31,162,255,0.6));
 }
+
+/* ===== MOTION & MICRO-INTERACTIONS ===== */
+
+/* Active tab: flame flicker (One Piece) / electric pulse (Blue Lock) */
+html[data-skin="onepiece"] .bottombar-tab.active .bottombar-tab-icon {
+  animation: skin-flicker 1.5s ease-in-out infinite;
+}
+@keyframes skin-flicker {
+  0%, 100% { filter: drop-shadow(0 0 2px rgba(244,169,31,0.7)); transform: scale(1.07) rotate(-2deg); }
+  50%      { filter: drop-shadow(0 0 9px rgba(244,169,31,0.95)); transform: scale(1.13) rotate(2deg); }
+}
+html[data-skin="bluelock"] .bottombar-tab.active .bottombar-tab-icon {
+  animation: skin-pulse 1.5s ease-in-out infinite;
+}
+@keyframes skin-pulse {
+  0%, 100% { filter: drop-shadow(0 0 3px var(--accent)); transform: scale(1.06); }
+  50%      { filter: drop-shadow(0 0 11px var(--accent)); transform: scale(1.12); }
+}
+
+/* Banner mark gently bobs */
+html[data-skin="onepiece"] .skin-banner-mark,
+html[data-skin="bluelock"] .skin-banner-mark { animation: skin-mark-bob 3.2s ease-in-out infinite; }
+@keyframes skin-mark-bob { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-3px) rotate(7deg); } }
+
+/* Water-log emoji burst */
+.skin-burst {
+  position: fixed; z-index: 9998; font-size: 18px; pointer-events: none;
+  transform: translate(-50%, -50%); animation: skin-burst 0.72s ease-out forwards;
+  will-change: transform, opacity;
+}
+@keyframes skin-burst {
+  0%   { opacity: 1; transform: translate(-50%, -50%) scale(0.6); }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--bx)), calc(-50% + var(--by))) scale(1.15); }
+}
+
+/* Page-load light sweep */
+.skin-sweep {
+  position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 9997;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  box-shadow: 0 0 14px var(--accent); transform-origin: left;
+  animation: skin-sweep 0.85s ease-out forwards;
+}
+@keyframes skin-sweep {
+  0%   { transform: scaleX(0); opacity: 1; }
+  70%  { transform: scaleX(1); opacity: 1; }
+  100% { transform: scaleX(1); opacity: 0; }
+}
+
+/* Welcome toast */
+.skin-toast {
+  position: fixed; left: 50%; bottom: calc(86px + env(safe-area-inset-bottom));
+  transform: translateX(-50%) translateY(18px); z-index: 9996;
+  background: rgba(10,10,11,0.94); border: 1px solid var(--accent); color: #fff;
+  font-weight: 800; font-size: 14px; padding: 11px 18px; border-radius: 30px;
+  box-shadow: 0 10px 28px -8px var(--accent); opacity: 0;
+  transition: opacity 0.3s ease, transform 0.3s ease; white-space: nowrap;
+}
+.skin-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+html[data-skin="onepiece"] .skin-toast { font-family: 'Bangers', sans-serif; letter-spacing: 1px; font-size: 16px; }
+html[data-skin="bluelock"] .skin-toast { font-family: 'Orbitron', sans-serif; }
+
+/* Themed form controls everywhere */
+html[data-skin="onepiece"] input,
+html[data-skin="onepiece"] progress,
+html[data-skin="bluelock"] input,
+html[data-skin="bluelock"] progress { accent-color: var(--accent); }
 `;
 
   const topbarHtml = `
@@ -875,6 +941,55 @@ html[data-skin="bluelock"] .skin-splash-tag {
     render();
     const btn = document.getElementById('topbarWaterAdd');
     if (btn) { btn.classList.add('flash'); setTimeout(() => btn.classList.remove('flash'), 220); }
+    spawnWaterBurst();
+  }
+
+  // Themed emoji burst when logging water
+  function spawnWaterBurst() {
+    const skin = getSkin();
+    if (!SKINS[skin]) return;
+    const btn = document.getElementById('topbarWaterAdd');
+    if (!btn) return;
+    const r = btn.getBoundingClientRect();
+    const em = skin === 'onepiece' ? ['🍖', '💰', '⭐', '🍖'] : ['⚡', '⚽', '💥', '⚡'];
+    for (let k = 0; k < 6; k++) {
+      const s = document.createElement('span');
+      s.className = 'skin-burst';
+      s.textContent = em[k % em.length];
+      s.style.left = (r.left + r.width / 2) + 'px';
+      s.style.top = (r.top + r.height / 2) + 'px';
+      s.style.setProperty('--bx', ((Math.random() * 2 - 1) * 64).toFixed(0) + 'px');
+      s.style.setProperty('--by', (-(38 + Math.random() * 54)).toFixed(0) + 'px');
+      document.body.appendChild(s);
+      setTimeout(() => s.remove(), 760);
+    }
+  }
+
+  // Light sweep across the top on page load (skin only)
+  function injectLoadSweep() {
+    if (!SKINS[getSkin()]) return;
+    const el = document.createElement('div');
+    el.className = 'skin-sweep';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 950);
+  }
+
+  // One-per-session themed welcome toast on the home screen
+  function showWelcomeToast() {
+    const skin = getSkin();
+    if (!SKINS[skin] || !isHomePage()) return;
+    try {
+      if (sessionStorage.getItem('skinWelcome:' + skin)) return;
+      sessionStorage.setItem('skinWelcome:' + skin, '1');
+    } catch (e) {}
+    const msg = skin === 'onepiece' ? 'Welcome aboard, Captain! 🏴‍☠️' : 'Step onto the pitch ⚡';
+    const t = document.createElement('div');
+    t.className = 'skin-toast';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    requestAnimationFrame(() => t.classList.add('show'));
+    setTimeout(() => t.classList.remove('show'), 2600);
+    setTimeout(() => t.remove(), 3000);
   }
 
   function blockGesture(e) { e.preventDefault(); }
@@ -908,6 +1023,8 @@ html[data-skin="bluelock"] .skin-splash-tag {
 
   function boot() {
     injectStyleAndHTML();
+    injectLoadSweep();
+    showWelcomeToast();
     const btn = document.getElementById('topbarWaterAdd');
     if (btn) btn.addEventListener('click', (e) => { e.preventDefault(); addWater(); });
     render();
