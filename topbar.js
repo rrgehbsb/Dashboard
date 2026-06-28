@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '1.5.1';
+const DASHBOARD_VERSION = '1.6.0';
 
 // =============================================================
 // THEME STYLES ("skins") — single source of truth.
@@ -131,24 +131,36 @@ if (typeof window !== 'undefined') window.SKIN_DEFS = SKIN_DEFS;
 // ── Companion personas (the on-screen buddy) ──
 // "default" is used when no skin is active; the rest mirror each Theme Style's lead.
 const DEFAULT_BUDDY = {
-  name:'Nova', face:'🌟', react:['✨','💫','⚡','🔮','🌟'], burst:['✨','💫','⭐'], lines:[
+  name:'Nova', face:'🌟', react:['✨','💫','⚡','🔮','🌟'], burst:['✨','💫','⭐'],
+  intro:"I'm Nova ✨ — your little spark of motivation. Talk to me anytime: vent, celebrate, or just say hi. I'll keep you company and help you win the day!",
+  lines:[
     "Hey! Ready to make today count? ✨","Tiny steps still move you forward. 🚀",
     "I believe in you — let's go!","One task at a time. You've got this. 💫","Future you is already cheering. ⭐"],
 };
 const BUDDY_DEFS = {
-  onepiece:{name:'Luffy', face:'👒', react:['😄','🤣','💪','🍖','🏴‍☠️'], burst:['🍖','⭐','🏴‍☠️'], lines:[
+  onepiece:{name:'Luffy', face:'👒', react:['😄','🤣','💪','🍖','🏴‍☠️'], burst:['🍖','⭐','🏴‍☠️'],
+    intro:"I'm Luffy! 👒 Your nakama on this adventure. Tell me anything — we're conquering today together. Shishishi!",
+    lines:[
     "Let's make today an adventure! 🏴‍☠️","Shishishi! You got this, nakama!",
     "I'm gonna be King — what'll YOU be?","Meat first, then conquer the day! 🍖","A real captain never gives up!"]},
-  bluelock:{name:'Isagi', face:'⚽', react:['🔥','😼','⚡','💢','🥅'], burst:['⚡','⚽','🔥'], lines:[
+  bluelock:{name:'Isagi', face:'⚽', react:['🔥','😼','⚡','💢','🥅'], burst:['⚡','⚽','🔥'],
+    intro:"Isagi here. ⚽ Think of me as your striker instinct — talk to me and I'll keep you sharp and pushing for the goal.",
+    lines:[
     "Devour every goal today. ⚽","Awaken your ego — go score!","Picture the win, then take it.",
     "No spectators. You're the striker.","Reaction speed: max. Move. ⚡"]},
-  sololeveling:{name:'Monarch', face:'🌑', react:['😼','⚔️','💜','👑','🐉'], burst:['⚔️','💜','🌑'], lines:[
+  sololeveling:{name:'Monarch', face:'🌑', react:['😼','⚔️','💜','👑','🐉'], burst:['⚔️','💜','🌑'],
+    intro:"They call me the Monarch. 🌑 Consider me your shadow — always at your side. Speak, and I'll help you level up.",
+    lines:[
     "Arise. Today is yours to conquer. 🌑","Every task is XP. Keep leveling.",
     "The weak have no will. You're not weak.","Only I level up — and so do you.","Shadows ready. Give the command. ⚔️"]},
-  jujutsu:{name:'Gojo', face:'🌀', react:['😎','🤙','🟣','💙','🫰'], burst:['🟣','💙','🌀'], lines:[
+  jujutsu:{name:'Gojo', face:'🌀', react:['😎','🤙','🟣','💙','🫰'], burst:['🟣','💙','🌀'],
+    intro:"Gojo. 🌀 The strongest companion you could ask for. Relax and talk to me — with me around, you've got this.",
+    lines:[
     "Relax — you've literally got me. 😎","Nah, you're the strongest today. 🟣",
     "Throughout the day, you alone are honored.","Bored? Go clear a task. 🤙","Domain: Productive Today. Expand it."]},
-  demonslayer:{name:'Tanjiro', face:'🌊', react:['😊','🔥','🗡️','🌸','💢'], burst:['🌊','🌸','🔥'], lines:[
+  demonslayer:{name:'Tanjiro', face:'🌊', react:['😊','🔥','🗡️','🌸','💢'], burst:['🌊','🌸','🔥'],
+    intro:"I'm Tanjiro. 🌊 I'll breathe steady beside you. Tell me what's on your heart and we'll keep it ablaze, together.",
+    lines:[
     "Set your heart ablaze! 🔥","Total concentration — one task at a time. 🌊",
     "Kindness and grit win the day.","Breathe. Then push forward.","Protect your goals like family. 🌸"]},
 };
@@ -1034,8 +1046,10 @@ html[data-skin]:not([data-skin="none"]) #saveBtn {
 
   // =============================================================
   // INTERACTIVE COMPANION — self-contained, lives on every page
-  // except settings (and inside iframes). Tap/drag, theme-aware
-  // persona, context lines, bond meter, water cheer, goal party.
+  // except settings (and inside iframes). Tap opens a chat panel
+  // where you can talk to a theme-aware character who reads your
+  // mood, replies with motivation, reacts with facial expressions,
+  // remembers the conversation, and levels up a bond meter.
   // =============================================================
   let _buddyOnWater = null;
   const buddyCss = `
@@ -1084,7 +1098,80 @@ html:not([data-skin]) .buddy-aura{animation:buddy-aura 3s ease-in-out infinite, 
   transform:translate(-50%,-50%);animation:buddy-particle 0.74s ease-out forwards;will-change:transform,opacity;}
 @keyframes buddy-particle{0%{opacity:1;transform:translate(-50%,-50%) scale(0.6);}
   100%{opacity:0;transform:translate(calc(-50% + var(--bx)),calc(-50% + var(--by))) scale(1.15);}}
-@media(max-width:480px){.buddy{right:12px;}}
+
+/* ── Chat panel ── */
+.bc-panel{position:fixed;right:16px;bottom:calc(96px + env(safe-area-inset-bottom));z-index:60;
+  width:min(330px,calc(100vw - 24px));height:min(460px,calc(100vh - 150px));
+  display:flex;flex-direction:column;overflow:hidden;
+  background:rgba(13,13,17,0.97);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  border:1px solid color-mix(in srgb,var(--accent,#a78bfa) 40%,transparent);border-radius:20px;
+  box-shadow:0 24px 60px -14px rgba(0,0,0,0.82),0 0 30px -8px color-mix(in srgb,var(--accent,#a78bfa) 55%,transparent);
+  opacity:0;transform:translateY(18px) scale(0.9);transform-origin:bottom right;pointer-events:none;
+  transition:opacity .26s ease,transform .28s cubic-bezier(.34,1.5,.5,1);}
+.bc-panel.open{opacity:1;transform:translateY(0) scale(1);pointer-events:auto;}
+html[data-theme="light"] .bc-panel{background:rgba(252,252,255,0.98);}
+.bc-head{display:flex;align-items:center;gap:11px;padding:12px 12px 11px;flex-shrink:0;
+  border-bottom:1px solid color-mix(in srgb,var(--accent,#a78bfa) 22%,transparent);
+  background:linear-gradient(120deg,color-mix(in srgb,var(--accent,#a78bfa) 16%,transparent),transparent 70%);}
+.bc-av{position:relative;width:44px;height:44px;flex-shrink:0;}
+.bc-av-aura{position:absolute;inset:-4px;border-radius:50%;
+  background:radial-gradient(circle,color-mix(in srgb,var(--accent,#a78bfa) 55%,transparent),transparent 70%);
+  filter:blur(5px);animation:buddy-aura 3s ease-in-out infinite;}
+.bc-av-face{position:absolute;inset:0;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:24px;background:rgba(18,18,22,0.9);
+  border:1.5px solid color-mix(in srgb,var(--accent,#a78bfa) 60%,transparent);
+  box-shadow:inset 0 0 14px color-mix(in srgb,var(--accent,#a78bfa) 25%,transparent);}
+.bc-av-face.react{animation:buddy-bounce 0.55s cubic-bezier(.34,1.7,.5,1);}
+.bc-head-info{flex:1;min-width:0;}
+.bc-name{font-size:14.5px;font-weight:800;color:var(--accent,#a78bfa);font-family:var(--skin-font,inherit);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bc-status{font-size:11px;color:var(--text-secondary,rgba(255,255,255,0.55));display:flex;align-items:center;gap:5px;}
+.bc-status::before{content:'';width:7px;height:7px;border-radius:50%;background:#6BE3A4;box-shadow:0 0 6px #6BE3A4;flex-shrink:0;}
+.bc-close{width:30px;height:30px;border-radius:9px;border:none;flex-shrink:0;cursor:pointer;
+  background:rgba(255,255,255,0.06);color:var(--text-secondary,#aaa);font-size:17px;line-height:1;
+  display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;transition:background .15s;}
+.bc-close:hover{background:rgba(255,255,255,0.12);}
+html[data-theme="light"] .bc-close{background:rgba(0,0,0,0.05);color:#444;}
+.bc-body{flex:1;overflow-y:auto;padding:13px 12px;display:flex;flex-direction:column;gap:9px;
+  scrollbar-width:none;}
+.bc-body::-webkit-scrollbar{display:none;}
+.bc-msg{max-width:82%;padding:8px 11px;font-size:13px;line-height:1.42;word-wrap:break-word;
+  animation:bc-pop .28s cubic-bezier(.34,1.56,.64,1);}
+@keyframes bc-pop{from{opacity:0;transform:translateY(6px) scale(0.96);}to{opacity:1;transform:none;}}
+.bc-msg.bot{align-self:flex-start;background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.08);border-radius:14px 14px 14px 5px;color:var(--text-primary,#fafafa);}
+.bc-msg.user{align-self:flex-end;background:var(--accent,#a78bfa);color:#0a0a0b;font-weight:600;
+  border-radius:14px 14px 5px 14px;}
+html[data-theme="light"] .bc-msg.bot{background:rgba(0,0,0,0.05);border-color:rgba(0,0,0,0.08);color:#1a1a1a;}
+.bc-typing{align-self:flex-start;display:flex;gap:4px;padding:11px 13px;border-radius:14px;
+  background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);}
+html[data-theme="light"] .bc-typing{background:rgba(0,0,0,0.05);}
+.bc-dot{width:6px;height:6px;border-radius:50%;background:var(--accent,#a78bfa);animation:bc-dot 1.2s infinite;}
+.bc-dot:nth-child(2){animation-delay:.18s;}
+.bc-dot:nth-child(3){animation-delay:.36s;}
+@keyframes bc-dot{0%,60%,100%{opacity:.3;transform:translateY(0);}30%{opacity:1;transform:translateY(-3px);}}
+.bc-chips{display:flex;gap:6px;overflow-x:auto;padding:7px 10px 0;flex-shrink:0;scrollbar-width:none;}
+.bc-chips::-webkit-scrollbar{display:none;}
+.bc-chip{white-space:nowrap;font-size:11px;font-weight:600;padding:6px 11px;border-radius:999px;cursor:pointer;
+  background:rgba(255,255,255,0.05);color:var(--text-primary,#fafafa);
+  border:1px solid color-mix(in srgb,var(--accent,#a78bfa) 28%,transparent);
+  -webkit-tap-highlight-color:transparent;transition:background .15s;flex-shrink:0;}
+.bc-chip:hover{background:color-mix(in srgb,var(--accent,#a78bfa) 18%,transparent);}
+html[data-theme="light"] .bc-chip{background:rgba(0,0,0,0.04);color:#1a1a1a;}
+.bc-input-row{display:flex;gap:7px;padding:10px;flex-shrink:0;
+  border-top:1px solid color-mix(in srgb,var(--accent,#a78bfa) 18%,transparent);}
+.bc-input{flex:1;min-width:0;background:rgba(255,255,255,0.06);border-radius:12px;font-size:13px;
+  border:1px solid rgba(255,255,255,0.1);padding:10px 12px;color:var(--text-primary,#fafafa);
+  outline:none;font-family:inherit;transition:border-color .15s;}
+.bc-input:focus{border-color:color-mix(in srgb,var(--accent,#a78bfa) 55%,transparent);}
+.bc-input::placeholder{color:var(--text-tertiary,rgba(255,255,255,0.35));}
+html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba(0,0,0,0.12);color:#1a1a1a;}
+.bc-send{width:42px;flex-shrink:0;border:none;border-radius:12px;cursor:pointer;
+  background:var(--accent,#a78bfa);color:#0a0a0b;font-size:18px;font-weight:800;line-height:1;
+  -webkit-tap-highlight-color:transparent;transition:transform .1s,filter .15s;}
+.bc-send:active{transform:scale(0.92);}
+.bc-send:hover{filter:brightness(1.08);}
+@media(max-width:480px){.buddy{right:12px;}.bc-panel{right:12px;}}
 `;
 
   function setupBuddy() {
@@ -1095,6 +1182,7 @@ html:not([data-skin]) .buddy-aura{animation:buddy-aura 3s ease-in-out infinite, 
     st.id = 'buddy-style'; st.textContent = buddyCss;
     document.head.appendChild(st);
 
+    // Floating disc
     const buddy = document.createElement('div');
     buddy.className = 'buddy'; buddy.id = 'buddy'; buddy.hidden = true;
     buddy.innerHTML =
@@ -1108,18 +1196,45 @@ html:not([data-skin]) .buddy-aura{animation:buddy-aura 3s ease-in-out infinite, 
       '<div class="buddy-pip" id="buddyPip">Lv1</div>';
     document.body.appendChild(buddy);
 
+    // Chat panel
+    const panel = document.createElement('div');
+    panel.className = 'bc-panel'; panel.id = 'bcPanel';
+    panel.innerHTML =
+      '<div class="bc-head">' +
+        '<div class="bc-av"><div class="bc-av-aura"></div><div class="bc-av-face" id="bcFace">🌟</div></div>' +
+        '<div class="bc-head-info"><div class="bc-name" id="bcName">Nova</div>' +
+          '<div class="bc-status" id="bcStatus">online · Lv1</div></div>' +
+        '<button class="bc-close" id="bcClose" aria-label="Close chat">×</button>' +
+      '</div>' +
+      '<div class="bc-body" id="bcBody"></div>' +
+      '<div class="bc-chips" id="bcChips"></div>' +
+      '<div class="bc-input-row">' +
+        '<input class="bc-input" id="bcInput" type="text" placeholder="Say something…" autocomplete="off" maxlength="240">' +
+        '<button class="bc-send" id="bcSend" aria-label="Send">➤</button>' +
+      '</div>';
+    document.body.appendChild(panel);
+
     const disc = buddy.querySelector('#buddyDisc');
     const bubble = buddy.querySelector('#buddyBubble');
     const nameEl = buddy.querySelector('#buddyName');
     const textEl = buddy.querySelector('#buddyText');
     const heartsEl = buddy.querySelector('#buddyHearts');
     const pip = buddy.querySelector('#buddyPip');
+    const faceEl = panel.querySelector('#bcFace');
+    const bcName = panel.querySelector('#bcName');
+    const bcStatus = panel.querySelector('#bcStatus');
+    const bcBody = panel.querySelector('#bcBody');
+    const bcChips = panel.querySelector('#bcChips');
+    const bcInput = panel.querySelector('#bcInput');
 
     let persona = DEFAULT_BUDDY;
     function loadPersona() {
       persona = BUDDY_DEFS[getSkin()] || DEFAULT_BUDDY;
       disc.textContent = persona.face;
       nameEl.textContent = persona.name;
+      bcName.textContent = persona.name;
+      faceEl.textContent = persona.face;
+      updateStatus();
     }
 
     const getAff = () => parseInt(localStorage.getItem('buddy_affinity') || '0', 10) || 0;
@@ -1130,43 +1245,11 @@ html:not([data-skin]) .buddy-aura{animation:buddy-aura 3s ease-in-out infinite, 
       pip.textContent = 'Lv' + lv;
       heartsEl.textContent = '★'.repeat(Math.min(lv, 5));
     }
+    let curStatus = 'online';
+    function updateStatus() { bcStatus.textContent = curStatus + ' · Lv' + level(getAff()); }
 
-    // Context-aware lines. Goals/streak are available on the home page
-    // (it exposes storeGet/getActiveDateString); water works everywhere.
-    function contextLines() {
-      const h = new Date().getHours(), out = [];
-      if (typeof window.storeGet === 'function' && typeof window.getActiveDateString === 'function') {
-        try {
-          const goals = window.storeGet('goals:' + window.getActiveDateString()) || [];
-          const total = goals.length, done = goals.filter((g) => g.done).length;
-          if (total === 0) out.push("No goals yet — add one to start! ✍️");
-          else if (done === total) out.push("All goals cleared! Legendary. 🔥");
-          else out.push((total - done) + " goal" + (total - done > 1 ? "s" : "") + " left today — let's go!");
-          const s = window.storeGet('goal_streak_v1') || { count: 0 };
-          if (s.count > 0) out.push("🔥 " + s.count + "-day streak — keep it alive!");
-        } catch (e) {}
-      }
-      try { const w = getWaterProgress(); if (w.total > 0 && w.done === 0 && h >= 17) out.push("Hydrate! No water logged yet. 💧"); } catch (e) {}
-      if (h < 6) out.push("Up late? Rest is part of the grind. 😴");
-      else if (h < 12) out.push("Good morning! Let's own today. ☀️");
-      else if (h >= 21) out.push("Winding down — plan tomorrow? 🌙");
-      return out;
-    }
-    function pickLine() {
-      const ctx = contextLines();
-      if (ctx.length && Math.random() < 0.55) return ctx[Math.floor(Math.random() * ctx.length)];
-      return persona.lines[Math.floor(Math.random() * persona.lines.length)];
-    }
-
-    let bubbleTimer = null, reactIdx = 0, comboCount = 0;
-    function say(text, dur) {
-      textEl.textContent = text; renderMeters();
-      bubble.classList.add('show');
-      clearTimeout(bubbleTimer);
-      bubbleTimer = setTimeout(() => bubble.classList.remove('show'), dur || 3800);
-    }
     function burst(emojis, n) {
-      const r = disc.getBoundingClientRect();
+      const r = (panel.classList.contains('open') ? faceEl : disc).getBoundingClientRect();
       for (let i = 0; i < (n || 6); i++) {
         const s = document.createElement('span');
         s.className = 'buddy-particle';
@@ -1179,23 +1262,189 @@ html:not([data-skin]) .buddy-aura{animation:buddy-aura 3s ease-in-out infinite, 
         setTimeout(() => s.remove(), 760);
       }
     }
-    function react(special) {
-      disc.classList.remove('react'); void disc.offsetWidth; disc.classList.add('react');
-      disc.textContent = persona.react[reactIdx++ % persona.react.length];
-      setTimeout(() => { disc.textContent = persona.face; }, 700);
-      burst(persona.burst, special ? 12 : 6);
-    }
-    function interact() {
-      const aff = getAff() + 1; setAff(aff); renderMeters();
-      comboCount++;
-      const special = (comboCount % 5 === 0);
-      react(special);
-      if (special) say("Combo x" + comboCount + "! We're in sync. 💥");
-      else if (aff % 10 === 0) say("Our bond leveled up — Lv" + level(aff) + "! ★");
-      else say(pickLine());
+    let bubbleTimer = null;
+    function say(text, dur) { // floating bubble (used when chat is closed)
+      textEl.textContent = text; renderMeters();
+      bubble.classList.add('show');
+      clearTimeout(bubbleTimer);
+      bubbleTimer = setTimeout(() => bubble.classList.remove('show'), dur || 3800);
     }
 
-    // Drag (with tap detection) + persisted position shared across pages
+    // ── Expression engine: the character reacts by mood ──
+    const MOOD_FACE = { happy:'😄', hype:'🔥', care:'🫂', calm:'😌', cool:'😎', love:'🥰', think:'🤔', party:'🎉' };
+    const MOOD_STATUS = { happy:'feeling great', hype:'hyped for you', care:'here for you', calm:'all good', cool:'locked in', love:'so wholesome', think:'thinking…', party:'celebrating!' };
+    let faceReset = null;
+    function expr(mood, hold) {
+      faceEl.classList.remove('react'); void faceEl.offsetWidth; faceEl.classList.add('react');
+      disc.classList.remove('react'); void disc.offsetWidth; disc.classList.add('react');
+      const f = (mood === 'hype') ? (persona.react[0] || MOOD_FACE.hype) : (MOOD_FACE[mood] || persona.face);
+      faceEl.textContent = f; disc.textContent = f;
+      curStatus = MOOD_STATUS[mood] || 'online'; updateStatus();
+      clearTimeout(faceReset);
+      faceReset = setTimeout(() => { faceEl.textContent = persona.face; disc.textContent = persona.face; }, hold || 2600);
+    }
+
+    // ── Conversation memory (persists across pages) ──
+    function getMsgs() { try { return JSON.parse(localStorage.getItem('buddy_chat')) || []; } catch (e) { return []; } }
+    function saveMsgs(a) { try { localStorage.setItem('buddy_chat', JSON.stringify(a.slice(-40))); } catch (e) {} }
+    function bubbleEl(from, text) {
+      const d = document.createElement('div');
+      d.className = 'bc-msg ' + from; d.textContent = text;
+      return d;
+    }
+    function scrollBottom() { bcBody.scrollTop = bcBody.scrollHeight; }
+    function renderHistory() {
+      bcBody.innerHTML = '';
+      getMsgs().forEach((m) => bcBody.appendChild(bubbleEl(m.from, m.text)));
+      scrollBottom();
+    }
+    function pushMsg(from, text) {
+      const a = getMsgs(); a.push({ from, text }); saveMsgs(a);
+      bcBody.appendChild(bubbleEl(from, text)); scrollBottom();
+    }
+
+    // ── Context lines (goals/streak on home, water everywhere) ──
+    function contextLine() {
+      const h = new Date().getHours(); const out = [];
+      if (typeof window.storeGet === 'function' && typeof window.getActiveDateString === 'function') {
+        try {
+          const goals = window.storeGet('goals:' + window.getActiveDateString()) || [];
+          const total = goals.length, done = goals.filter((g) => g.done).length;
+          if (total === 0) out.push("You've got no goals set today — want to add one? ✍️");
+          else if (done === total) out.push("By the way — every goal's done today. Legend. 🔥");
+          else out.push("You've still got " + (total - done) + " goal" + (total - done > 1 ? "s" : "") + " today. We've got this.");
+          const s = window.storeGet('goal_streak_v1') || { count: 0 };
+          if (s.count > 1) out.push("That " + s.count + "-day streak is looking strong. 🔥");
+        } catch (e) {}
+      }
+      try { const w = getWaterProgress(); if (w.total > 0 && w.done === 0 && h >= 16) out.push("Quick reminder: drink some water for me? 💧"); } catch (e) {}
+      return out;
+    }
+
+    // ── Reply engine: classify intent → persona-flavored answer ──
+    function classify(t) {
+      t = ' ' + t.toLowerCase() + ' ';
+      const has = (...a) => a.some((w) => t.indexOf(w) !== -1);
+      if (has("can't do", "cant do", "i can't", "i cant", 'give up', 'giving up', 'motivat', 'inspire', 'pump me', 'hype me', 'encourage', 'push me', 'no motivation')) return 'motivate';
+      if (has('exhaust', 'so tired', 'tired', 'sleepy', 'no energy', 'drained', 'burnt out', 'burned out', 'burnout')) return 'tired';
+      if (has('depress', 'lonely', 'hopeless', 'anxious', 'anxiety', 'stress', 'overwhelm', 'worried', 'scared', 'afraid', 'i feel sad', "i'm sad", 'im sad', 'feel down', 'feeling down', 'upset', 'cry')) return 'down';
+      if (has('thank', ' thx ', ' ty ', 'appreciate')) return 'thanks';
+      if (has('love you', ' ily ', "you're the best", 'youre the best', 'i like you', 'best friend', 'love u')) return 'love';
+      if (has('how are you', 'how r u', 'hows it going', "how's it going", 'you good', 'how you doing', 'how do you do', "what's up", 'whats up', ' sup ', ' wyd ')) return 'howareyou';
+      if (has('who are you', 'your name', 'what are you', 'who r u', "what's your name")) return 'whoareyou';
+      if (has('joke', 'funny', 'make me laugh')) return 'joke';
+      if (has('bored', 'boring', 'nothing to do')) return 'bored';
+      if (has('goodnight', 'good night', ' bye ', 'see ya', 'see you', ' later ', ' gtg ', 'good bye', ' cya ')) return 'bye';
+      if (has('finished', 'i did it', 'did it', 'crushed', 'smashed', 'completed', 'i won', ' aced ', 'passed', 'nailed', 'got it done')) return 'win';
+      if (has('happy', 'great', 'awesome', 'amazing', 'excited', 'feeling good', 'wonderful', 'fantastic', 'so good')) return 'happy';
+      if (has('gym', 'workout', 'work out', 'exercise', 'lift', 'training', ' run ', 'cardio')) return 'gym';
+      if (has('study', 'exam', ' test ', 'homework', 'school', ' class ', 'assignment', 'quiz', 'revision')) return 'school';
+      if (has(' goal', ' task', 'todo', 'to-do', 'to do', 'productive', 'focus', 'procrastinat')) return 'goals';
+      if (has(' hi ', 'hello', ' hey', ' yo ', 'heya', 'hiya', "what's good")) return 'greet';
+      if (has('?')) return 'question';
+      return 'fallback';
+    }
+    const REPLY = {
+      greet:     { mood:'happy', lines:["Hey hey! Great to see you. 😄 What's on your mind?","Yo! I'm right here. How's it going?","Hi! Ready to take on the day together?"] },
+      howareyou: { mood:'cool',  lines:["Charged up and ready — but more importantly, how are YOU?","Feeling unstoppable, especially now you're here. You good?","Living my best pixel life. 😎 How about you?"] },
+      motivate:  { mood:'hype',  lines:["Listen — you've survived 100% of your hardest days. Today's no match for you. 🔥","One small move right now beats a perfect plan later. Pick ONE thing and go. 💪","You don't have to feel ready. You just have to start. I'm right behind you.","Whatever's in your way — it's smaller than you. Go prove it."] },
+      tired:     { mood:'care',  lines:["Resting isn't quitting. Drink some water, breathe, and we'll take it slow. 💧","Even 5 minutes of doing nothing is allowed. You've earned a breather. 😌","Tired is data, not failure. Recharge, then we go again."] },
+      down:      { mood:'care',  lines:["I'm really glad you told me. Whatever it is, you're not facing it alone. 🫂","That sounds heavy. Be as kind to yourself as you'd be to a friend, okay?","Bad moments aren't the whole story. I've got you — want to talk about it?","Breathe with me for a sec. In… and out. You're safe. We'll get through this."] },
+      thanks:    { mood:'happy', lines:["Anytime! That's what I'm here for. ✨","You got it — now go be amazing.","Always. Proud of you, you know that?"] },
+      love:      { mood:'love',  lines:["Aww — right back at you! You've got a friend for life here. 🥰","You're the best part of my day too. 💜","Stuck with you forever. Deal? 🤝"] },
+      joke:      { mood:'happy', lines:["Why did the to-do list go to therapy? Too many unchecked issues. 😂","I'd tell you a procrastination joke… but I'll do it later. 😏","My favorite workout? Jumping… to conclusions. 🏃"] },
+      bored:     { mood:'cool',  lines:["Bored = free energy. Knock out one tiny task and ride the momentum. ⚡","Let's fix that — pick the smallest thing on your list and beat it in 2 minutes.","Adventure starts with one move. What've you been putting off?"] },
+      bye:       { mood:'calm',  lines:["Catch you later! I'll be right here when you're back. 👋","Go get 'em. Proud of you. 🌙","See ya! Rest well and come back strong."] },
+      win:       { mood:'party', lines:["LET'S GOOO! 🎉 That's the energy. I'm hyped for you!","Knew you had it in you. Put that W on the board. 🏆","Incredible. Now ride that momentum into the next one. 🔥"] },
+      happy:     { mood:'happy', lines:["Love to hear it! Keep that energy rolling. 😄","That's the spirit! Days like this are fuel.","Yes! Bottle that feeling and bring it tomorrow. ✨"] },
+      gym:       { mood:'hype',  lines:["Gym time? Every rep is a vote for who you're becoming. 💪","Warm up, lock in, leave it all on the floor. You've got this.","Strong body, strong mind. Go make those muscles earn it. 🔥"] },
+      school:    { mood:'cool',  lines:["Break it into tiny chunks — one page, one problem, one win. 📚","Future you will be SO grateful you studied today. Start with 10 minutes.","You don't have to ace it — just show up and try. That's enough."] },
+      goals:     { mood:'cool',  lines:["Pick the one that scares you a little and do it first. Momentum loves courage. 🎯","Tiny progress is still progress. What's the next checkbox?","Focus beats hustle. One task, full attention. Let's go."] },
+      question:  { mood:'think', lines:["Good question! Honestly, I think you already know — what does your gut say?","Hmm — my take: start small, stay kind to yourself, keep going.","I'd trust yourself on this one. You're sharper than you give yourself credit for."] },
+      fallback:  { mood:'cool',  lines:["I hear you. Tell me more — what's really on your mind?","Got it. Want a pep talk, a plan, or just someone to listen?","I'm with you. What would help most right now?","Mhm. Keep going, I'm listening. 👂"] },
+    };
+    function generateReply(text) {
+      const intent = classify(text);
+      if (intent === 'whoareyou') return { text: persona.intro, mood: 'cool' };
+      const pool = REPLY[intent] || REPLY.fallback;
+      let reply;
+      // Persona flavor: sometimes answer with the character's own catchphrase
+      if ((intent === 'motivate' || intent === 'greet' || intent === 'win') && Math.random() < 0.45) {
+        reply = persona.lines[Math.floor(Math.random() * persona.lines.length)];
+      } else {
+        reply = pool.lines[Math.floor(Math.random() * pool.lines.length)];
+      }
+      // Occasionally tack on a live dashboard nudge
+      const ctx = contextLine();
+      if (ctx.length && (intent === 'greet' || intent === 'howareyou' || intent === 'goals') && Math.random() < 0.6) {
+        reply += '\n\n' + ctx[Math.floor(Math.random() * ctx.length)];
+      }
+      return { text: reply, mood: pool.mood };
+    }
+
+    let typingEl = null;
+    function showTyping() {
+      if (typingEl) return;
+      typingEl = document.createElement('div');
+      typingEl.className = 'bc-typing';
+      typingEl.innerHTML = '<span class="bc-dot"></span><span class="bc-dot"></span><span class="bc-dot"></span>';
+      bcBody.appendChild(typingEl); scrollBottom();
+      faceEl.textContent = MOOD_FACE.think;
+    }
+    function hideTyping() { if (typingEl) { typingEl.remove(); typingEl = null; } }
+    function botReply(text, mood, party) {
+      showTyping();
+      const delay = 500 + Math.min(1500, text.length * 16);
+      setTimeout(() => {
+        hideTyping();
+        pushMsg('bot', text);
+        expr(mood);
+        burst(party ? ['🎉', '🎊', '⭐'] : persona.burst, party ? 12 : 5);
+      }, delay);
+    }
+    function sendUser(text) {
+      text = (text || '').trim();
+      if (!text) return;
+      pushMsg('user', text);
+      const aff = getAff() + 1; setAff(aff); renderMeters(); updateStatus();
+      const r = generateReply(text);
+      botReply(r.text, r.mood);
+    }
+
+    // Quick-reply chips
+    const CHIPS = [['💪 Motivate me', 'motivate me'], ['😴 I\'m tired', "i'm tired"], ['🎯 My goals', 'my goals'], ['😄 How are you?', 'how are you?'], ['😂 Tell a joke', 'tell me a joke']];
+    CHIPS.forEach(([label, payload]) => {
+      const c = document.createElement('button');
+      c.className = 'bc-chip'; c.type = 'button'; c.textContent = label;
+      c.addEventListener('click', () => sendUser(payload));
+      bcChips.appendChild(c);
+    });
+
+    // ── Open / close chat ──
+    let opened = false;
+    function openChat() {
+      panel.classList.add('open');
+      buddy.hidden = true;
+      renderHistory();
+      if (getMsgs().length === 0) {
+        // First-ever open: introduce + greet
+        botReply(persona.intro, 'happy');
+      } else if (!opened) {
+        // Returning: a warm welcome-back line
+        const ctx = contextLine();
+        const greet = ctx.length ? ctx[0] : pickGreet();
+        botReply(greet, 'happy');
+      }
+      opened = true;
+      setTimeout(() => bcInput.focus({ preventScroll: true }), 200);
+    }
+    function pickGreet() { return ["Welcome back! 😄 What's up?", "Hey, missed you! How's it going?", "There you are! Ready to win?"][Math.floor(Math.random() * 3)]; }
+    function closeChat() { panel.classList.remove('open'); buddy.hidden = false; }
+    panel.querySelector('#bcClose').addEventListener('click', closeChat);
+    panel.querySelector('#bcSend').addEventListener('click', () => { sendUser(bcInput.value); bcInput.value = ''; });
+    bcInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { sendUser(bcInput.value); bcInput.value = ''; } });
+
+    // ── Drag the disc (tap opens chat) ──
     let down = false, moved = false, sx = 0, sy = 0, ox = 0, oy = 0;
     function place(x, y) {
       const w = buddy.offsetWidth || 60, h = buddy.offsetHeight || 60;
@@ -1219,31 +1468,29 @@ html:not([data-skin]) .buddy-aura{animation:buddy-aura 3s ease-in-out infinite, 
     buddy.addEventListener('pointerup', () => {
       down = false; buddy.classList.remove('dragging');
       if (moved) { const r = buddy.getBoundingClientRect(); try { localStorage.setItem('buddy_pos', JSON.stringify({ x: r.left, y: r.top })); } catch (e) {} }
-      else interact();
+      else openChat();
     });
     window.addEventListener('resize', () => { if (buddy.style.left) { const r = buddy.getBoundingClientRect(); place(r.left, r.top); } });
 
-    // Auto-celebrate when every goal is done (home page only, re-arms on change)
+    // ── Ambient reactions (chat message if open, floating bubble if closed) ──
+    function ambient(text, mood, party) {
+      if (panel.classList.contains('open')) { pushMsg('bot', text); expr(mood, 3200); burst(party ? ['🎉', '🎊', '⭐'] : persona.burst, party ? 12 : 6); }
+      else { expr(mood, 2400); say(text, party ? 4500 : 3000); }
+    }
     let celebrated = false;
     window.addEventListener('goals-changed', () => {
       if (typeof window.storeGet !== 'function' || typeof window.getActiveDateString !== 'function') return;
       try {
         const goals = window.storeGet('goals:' + window.getActiveDateString()) || [];
         if (goals.length > 0 && goals.every((g) => g.done)) {
-          if (!celebrated) { celebrated = true; react(true); say("Every goal done! You're unstoppable. 🏆", 4500); }
+          if (!celebrated) { celebrated = true; ambient("Every goal done today! You're unstoppable. 🏆", 'party', true); }
         } else celebrated = false;
       } catch (e) {}
     });
-    // Cheer when water is logged from the top bar
-    _buddyOnWater = () => {
-      react(false);
-      say(["Nice, stay hydrated! 💧", "Glug glug — keep going! 💧", "Hydration = focus. 💧"][Math.floor(Math.random() * 3)], 2600);
-    };
-    // Let settings re-skin the buddy live
+    _buddyOnWater = () => ambient(["Nice, stay hydrated! 💧", "Glug glug — keep going! 💧", "Hydration = focus. 💧"][Math.floor(Math.random() * 3)], 'happy');
     window.dashRefreshBuddy = loadPersona;
 
-    loadPersona(); renderMeters(); loadPos(); buddy.hidden = false;
-    setTimeout(() => say(pickLine(), 4200), 1400); // greet after a beat
+    loadPersona(); renderMeters(); updateStatus(); loadPos(); buddy.hidden = false;
   }
 
   function boot() {
