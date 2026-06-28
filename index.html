@@ -330,6 +330,17 @@ body::after{
   font-size:11px;font-weight:700;text-transform:uppercase;
   letter-spacing:0.10em;font-variant-numeric:tabular-nums;color:var(--text-tertiary);
 }
+/* Yesterday notice */
+.gm-yesterday-notice{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:11px 14px;margin-bottom:10px;
+  background:rgba(242,192,99,0.07);border:1px solid rgba(242,192,99,0.22);
+  border-radius:12px;position:relative;z-index:1;
+}
+.gm-yesterday-icon{font-size:14px;flex-shrink:0;color:#F2C063;line-height:1.5;}
+.gm-yesterday-text{font-size:12px;color:#FFE2A8;line-height:1.5;}
+/* Carried-over goal rows */
+.gm-goal-row.gm-carried:not(.gm-done){box-shadow:inset 3px 0 0 0 rgba(242,192,99,0.45);}
 
 /* Tab bar */
 .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;justify-content:center;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:linear-gradient(180deg,rgba(5,5,6,0) 0%,rgba(5,5,6,0.78) 38%,rgba(5,5,6,0.94) 100%);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);pointer-events:none;}
@@ -597,6 +608,65 @@ body::after{
 .mood-dot-wrap:hover .mood-dot-tip{display:block;}
 .mood-dot-label{font-size:9px;color:var(--text-tertiary);font-weight:600;font-variant-numeric:tabular-nums;}
 .mood-empty-dots{font-size:11px;color:var(--text-tertiary);font-style:italic;}
+
+/* ── Buddy companion ── */
+.buddy{
+  position:fixed;z-index:45;width:60px;height:60px;cursor:grab;touch-action:none;
+  right:16px;bottom:calc(96px + env(safe-area-inset-bottom));
+  -webkit-tap-highlight-color:transparent;user-select:none;
+}
+.buddy.dragging{cursor:grabbing;}
+.buddy.dragging .buddy-disc{animation:none;}
+.buddy-aura{
+  position:absolute;inset:-6px;border-radius:50%;
+  background:radial-gradient(circle,color-mix(in srgb,var(--accent) 50%,transparent),transparent 70%);
+  filter:blur(7px);animation:buddy-aura 3s ease-in-out infinite;pointer-events:none;
+}
+@keyframes buddy-aura{0%,100%{transform:scale(0.9);opacity:0.65;}50%{transform:scale(1.14);opacity:1;}}
+/* Default (no skin) gets an extra rotating starfield aura */
+html[data-skin="none"] .buddy-aura,
+html:not([data-skin]) .buddy-aura{animation:buddy-aura 3s ease-in-out infinite, buddy-spin 9s linear infinite;}
+@keyframes buddy-spin{to{transform:rotate(360deg);}}
+.buddy-disc{
+  position:absolute;inset:0;border-radius:50%;
+  background:rgba(18,18,22,0.85);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  border:1.5px solid color-mix(in srgb,var(--accent) 60%,transparent);
+  box-shadow:0 7px 22px -5px rgba(0,0,0,0.65),inset 0 0 16px color-mix(in srgb,var(--accent) 22%,transparent);
+  display:flex;align-items:center;justify-content:center;font-size:30px;line-height:1;
+  animation:buddy-float 4s ease-in-out infinite;
+}
+@keyframes buddy-float{0%,100%{transform:translateY(0) rotate(0);}50%{transform:translateY(-7px) rotate(2deg);}}
+.buddy-disc.react{animation:buddy-bounce 0.55s cubic-bezier(.34,1.7,.5,1);}
+@keyframes buddy-bounce{0%{transform:scale(1);}28%{transform:scale(1.28) rotate(-9deg);}58%{transform:scale(0.9) rotate(7deg);}100%{transform:scale(1);}}
+.buddy-pip{
+  position:absolute;right:-3px;top:-3px;min-width:20px;height:18px;padding:0 5px;border-radius:9px;
+  background:var(--accent);color:#0a0a0b;font-size:10px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums;
+  box-shadow:0 2px 7px rgba(0,0,0,0.45);pointer-events:none;
+}
+.buddy-bubble{
+  position:absolute;bottom:70px;right:0;width:max-content;max-width:212px;
+  background:rgba(15,15,19,0.97);border:1px solid color-mix(in srgb,var(--accent) 45%,transparent);
+  border-radius:14px;padding:10px 13px;
+  box-shadow:0 12px 32px -8px rgba(0,0,0,0.72),0 0 20px -6px color-mix(in srgb,var(--accent) 55%,transparent);
+  opacity:0;transform:translateY(8px) scale(0.9);transform-origin:bottom right;
+  transition:opacity 0.22s ease,transform 0.22s cubic-bezier(.34,1.56,.64,1);pointer-events:none;
+}
+.buddy-bubble.show{opacity:1;transform:translateY(0) scale(1);}
+.buddy-bubble::after{
+  content:'';position:absolute;bottom:-7px;right:22px;width:12px;height:12px;
+  background:rgba(15,15,19,0.97);
+  border-right:1px solid color-mix(in srgb,var(--accent) 45%,transparent);
+  border-bottom:1px solid color-mix(in srgb,var(--accent) 45%,transparent);
+  transform:rotate(45deg);
+}
+.buddy-bubble-name{
+  font-size:10px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent);margin-bottom:4px;display:flex;align-items:center;gap:6px;
+}
+.buddy-bubble-hearts{font-size:9px;letter-spacing:1px;opacity:0.95;}
+.buddy-bubble-text{font-size:12.5px;line-height:1.45;color:var(--text-primary);}
+@media(max-width:480px){.buddy{right:12px;}}
 </style>
 </head>
 <body>
@@ -753,6 +823,11 @@ body::after{
 <div class="section">
   <div class="section-title">To Do List</div>
 
+  <div class="gm-yesterday-notice" id="gmYesterdayNotice" style="display:none">
+    <span class="gm-yesterday-icon">↩</span>
+    <span class="gm-yesterday-text" id="gmYesterdayText"></span>
+  </div>
+
   <div class="gm-card" id="todayCard">
     <div class="gm-card-header">
       <div>
@@ -785,7 +860,7 @@ body::after{
     <div class="gm-card-header">
       <div>
         <div class="gm-eyebrow" id="tomorrowLabel">Plan tomorrow — …</div>
-        <div class="gm-tomorrow-sub">Write tonight, locked until 6 AM.</div>
+        <div class="gm-tomorrow-sub">Plan tonight, activates at midnight.</div>
       </div>
       <div class="gm-tomorrow-count" id="gmTomorrowCount">0 planned</div>
     </div>
@@ -934,14 +1009,10 @@ function storeListKeys(prefix){
 function padZ(n){return String(n).padStart(2,'0');}
 function toDateStr(d){return `${d.getFullYear()}-${padZ(d.getMonth()+1)}-${padZ(d.getDate())}`;}
 function getActiveDateString(){
-  const now=new Date();
-  if(now.getHours()<6){const d=new Date(now);d.setDate(d.getDate()-1);return toDateStr(d);}
-  return toDateStr(now);
+  return toDateStr(new Date());
 }
 function getTomorrowDateString(){
-  const now=new Date();
-  if(now.getHours()<6) return toDateStr(now);
-  const d=new Date(now);d.setDate(d.getDate()+1);return toDateStr(d);
+  const d=new Date();d.setDate(d.getDate()+1);return toDateStr(d);
 }
 function formatDate(str){
   const[y,m,d]=str.split('-').map(Number);
@@ -963,7 +1034,7 @@ function runRollover(){
     if(undone.length===0) return;
     const todayGoals=storeGet(`goals:${activeDate}`)||[];
     const existing=new Set(todayGoals.map(g=>g.text));
-    undone.forEach(g=>{if(!existing.has(g.text)) todayGoals.push({text:g.text,done:false});});
+    undone.forEach(g=>{if(!existing.has(g.text)) todayGoals.push({text:g.text,done:false,carriedFrom:g.carriedFrom||dateStr});});
     storeSet(`goals:${activeDate}`,todayGoals);
   });
 }
@@ -1145,6 +1216,19 @@ function renderTodayHeader(){
   const pb=document.getElementById('gmPushBtn');
   pb.classList.toggle('visible',total>0&&goals.some(g=>!g.done));
   document.getElementById('todayLabel').textContent=`Today — ${formatDate(getActiveDateString())}`;
+  // Yesterday notice — carried-over incomplete tasks
+  const carried=goals.filter(g=>g.carriedFrom&&!g.done);
+  const noticeEl=document.getElementById('gmYesterdayNotice');
+  const noticeTextEl=document.getElementById('gmYesterdayText');
+  if(noticeEl&&noticeTextEl){
+    if(carried.length>0){
+      const preview=carried.slice(0,2).map(g=>g.text).join(', ')+(carried.length>2?` +${carried.length-2} more`:'');
+      noticeTextEl.textContent=`${carried.length} task${carried.length>1?'s':''} not finished yesterday: ${preview}`;
+      noticeEl.style.display='flex';
+    } else {
+      noticeEl.style.display='none';
+    }
+  }
 }
 function renderStreak(){
   const s=storeGet('goal_streak_v1')||{count:0};
@@ -1160,7 +1244,8 @@ function renderTomorrowCount(){
 // Build row
 function buildGoalRow(g,idx,goals,key,readOnly){
   const li=document.createElement('li');
-  li.className='gm-goal-row'+(g.done?' gm-done':'')+(g.queued?' gm-queued':'');
+  li.className='gm-goal-row'+(g.done?' gm-done':'')+(g.queued?' gm-queued':'')+(g.carriedFrom&&!g.done?' gm-carried':'');
+  if(g.carriedFrom) li.title='↩ Carried from '+formatDate(g.carriedFrom);
   li.dataset.idx=idx;
 
   const handle=document.createElement('span');
@@ -1169,7 +1254,7 @@ function buildGoalRow(g,idx,goals,key,readOnly){
 
   const cbWrap=document.createElement('label');cbWrap.className='gm-checkbox-wrap';
   const cb=document.createElement('input');cb.type='checkbox';cb.checked=!!g.done;
-  if(readOnly){cb.disabled=true;cb.title='Activates at 6 AM tomorrow';}
+  if(readOnly){cb.disabled=true;cb.title='Activates at midnight';}
   const cbVis=document.createElement('div');cbVis.className='gm-checkbox-visual';
   cbWrap.appendChild(cb);cbWrap.appendChild(cbVis);
   li.appendChild(cbWrap);
@@ -1516,9 +1601,7 @@ const MOOD_COLORS=['','#DC3C3C','#EB8232','#E6C332','#82C850','#28B464'];
 const MOOD_EMOJIS=['','😞','😕','😐','🙂','😊'];
 
 function moodTodayStr(){
-  const n=new Date();
-  if(n.getHours()<6){const d=new Date(n);d.setDate(d.getDate()-1);return toDateStr(d);}
-  return toDateStr(n);
+  return toDateStr(new Date());
 }
 
 function getMoodData(){return storeGet(MOOD_KEY)||{entries:[]};}
@@ -1697,6 +1780,16 @@ loadTomorrow();
 renderStreak();
 updateDayBar();
 setInterval(updateDayBar,60*1000);
+// Auto-rollover at midnight — fires while the page is open
+(function scheduleNextMidnight(){
+  const now=new Date();
+  const ms=new Date(now.getFullYear(),now.getMonth(),now.getDate()+1,0,0,0)-now;
+  setTimeout(()=>{
+    runRollover();runStreakCheck();
+    loadToday();loadTomorrow();renderStreak();updateTicker();
+    scheduleNextMidnight();
+  },ms);
+})();
 updateTicker();
 updateCmdBar();
 updateDoNow();
@@ -2132,6 +2225,206 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
 })();
 
 // Transport is on transport.html (🚌 tab in bottom nav)
+</script>
+
+<!-- ── Interactive themed companion ── -->
+<div class="buddy" id="buddy" hidden>
+  <div class="buddy-bubble" id="buddyBubble">
+    <div class="buddy-bubble-name">
+      <span id="buddyName">Nova</span>
+      <span class="buddy-bubble-hearts" id="buddyHearts"></span>
+    </div>
+    <div class="buddy-bubble-text" id="buddyText"></div>
+  </div>
+  <div class="buddy-aura"></div>
+  <div class="buddy-disc" id="buddyDisc">🌟</div>
+  <div class="buddy-pip" id="buddyPip">Lv1</div>
+</div>
+
+<script>
+// ── Buddy: a tappable, draggable companion that matches the active Theme Style.
+//    Knows your goals/streak/water, reacts with animations + speech, levels up a
+//    bond meter, and celebrates when you finish everything. ─────────────────────
+(function(){
+  const buddy=document.getElementById('buddy');
+  if(!buddy) return;
+  const disc=document.getElementById('buddyDisc');
+  const bubble=document.getElementById('buddyBubble');
+  const nameEl=document.getElementById('buddyName');
+  const textEl=document.getElementById('buddyText');
+  const heartsEl=document.getElementById('buddyHearts');
+  const pip=document.getElementById('buddyPip');
+
+  // Default companion (no skin) — a glowing AI sprite, "Nova"
+  const DEFAULT_BUDDY={
+    name:'Nova', face:'🌟',
+    react:['✨','💫','⚡','🔮','🌟'], burst:['✨','💫','⭐'],
+    lines:[
+      "Hey! Ready to make today count? ✨",
+      "Tiny steps still move you forward. 🚀",
+      "I believe in you — let's go!",
+      "One task at a time. You've got this. 💫",
+      "Future you is already cheering. ⭐",
+    ],
+  };
+  // Per-skin personas — the lead character of each Theme Style
+  const BUDDIES={
+    onepiece:{name:'Luffy', face:'👒', react:['😄','🤣','💪','🍖','🏴‍☠️'], burst:['🍖','⭐','🏴‍☠️'], lines:[
+      "Let's make today an adventure! 🏴‍☠️","Shishishi! You got this, nakama!",
+      "I'm gonna be King — what'll YOU be?","Meat first, then conquer the day! 🍖","A real captain never gives up!"]},
+    bluelock:{name:'Isagi', face:'⚽', react:['🔥','😼','⚡','💢','🥅'], burst:['⚡','⚽','🔥'], lines:[
+      "Devour every goal today. ⚽","Awaken your ego — go score!","Picture the win, then take it.",
+      "No spectators. You're the striker.","Reaction speed: max. Move. ⚡"]},
+    sololeveling:{name:'Monarch', face:'🌑', react:['😼','⚔️','💜','👑','🐉'], burst:['⚔️','💜','🌑'], lines:[
+      "Arise. Today is yours to conquer. 🌑","Every task is XP. Keep leveling.",
+      "The weak have no will. You're not weak.","Only I level up — and so do you.","Shadows ready. Give the command. ⚔️"]},
+    jujutsu:{name:'Gojo', face:'🌀', react:['😎','🤙','🟣','💙','🫰'], burst:['🟣','💙','🌀'], lines:[
+      "Relax — you've literally got me. 😎","Nah, you're the strongest today. 🟣",
+      "Throughout the day, you alone are honored.","Bored? Go clear a task. 🤙","Domain: Productive Today. Expand it."]},
+    demonslayer:{name:'Tanjiro', face:'🌊', react:['😊','🔥','🗡️','🌸','💢'], burst:['🌊','🌸','🔥'], lines:[
+      "Set your heart ablaze! 🔥","Total concentration — one task at a time. 🌊",
+      "Kindness and grit win the day.","Breathe. Then push forward.","Protect your goals like family. 🌸"]},
+  };
+
+  function getSkinName(){ try{return JSON.parse(localStorage.getItem('dashboard:settings:v1')||'{}').skin||'none';}catch(e){return 'none';} }
+  let persona=DEFAULT_BUDDY;
+  function loadPersona(){
+    persona=BUDDIES[getSkinName()]||DEFAULT_BUDDY;
+    disc.textContent=persona.face;
+    nameEl.textContent=persona.name;
+  }
+
+  // Bond / affinity — grows as you interact, persisted locally
+  function getAff(){ return parseInt(localStorage.getItem('buddy_affinity')||'0',10)||0; }
+  function setAff(n){ try{localStorage.setItem('buddy_affinity',String(n));}catch(e){} }
+  const level=t=>Math.floor(t/10)+1;
+  function renderMeters(){
+    const lv=level(getAff());
+    pip.textContent='Lv'+lv;
+    heartsEl.textContent='★'.repeat(Math.min(lv,5));
+  }
+
+  // Smart, context-aware lines from your live dashboard state
+  function contextLines(){
+    const h=new Date().getHours(), out=[];
+    try{
+      const goals=(typeof storeGet==='function'?storeGet('goals:'+getActiveDateString()):null)||[];
+      const total=goals.length, done=goals.filter(g=>g.done).length;
+      if(total===0) out.push("No goals yet — add one to start! ✍️");
+      else if(done===total) out.push("All goals cleared! Legendary. 🔥");
+      else out.push((total-done)+" goal"+(total-done>1?"s":"")+" left today — let's go!");
+    }catch(e){}
+    try{
+      const s=(typeof storeGet==='function'?storeGet('goal_streak_v1'):null)||{count:0};
+      if(s.count>0) out.push("🔥 "+s.count+"-day streak — keep it alive!");
+    }catch(e){}
+    try{
+      const ws=JSON.parse(localStorage.getItem('po_water_v1'))||{};
+      if(h>=17 && !((ws.logs||{})[getActiveDateString()])) out.push("Hydrate! No water logged yet. 💧");
+    }catch(e){}
+    if(h<6) out.push("Up late? Rest is part of the grind. 😴");
+    else if(h<12) out.push("Good morning! Let's own today. ☀️");
+    else if(h>=21) out.push("Winding down — plan tomorrow? 🌙");
+    return out;
+  }
+  function pickLine(){
+    const ctx=contextLines();
+    if(ctx.length && Math.random()<0.55) return ctx[Math.floor(Math.random()*ctx.length)];
+    return persona.lines[Math.floor(Math.random()*persona.lines.length)];
+  }
+
+  let bubbleTimer=null, reactIdx=0, comboCount=0;
+  function say(text,dur){
+    textEl.textContent=text; renderMeters();
+    bubble.classList.add('show');
+    clearTimeout(bubbleTimer);
+    bubbleTimer=setTimeout(()=>bubble.classList.remove('show'), dur||3800);
+  }
+  function burst(emojis,n){
+    const r=disc.getBoundingClientRect();
+    for(let i=0;i<(n||6);i++){
+      const s=document.createElement('span');
+      s.className='skin-burst';
+      s.textContent=emojis[i%emojis.length];
+      s.style.left=(r.left+r.width/2)+'px';
+      s.style.top=(r.top+r.height/2)+'px';
+      s.style.setProperty('--bx',((Math.random()*2-1)*72).toFixed(0)+'px');
+      s.style.setProperty('--by',(-(40+Math.random()*62)).toFixed(0)+'px');
+      document.body.appendChild(s);
+      setTimeout(()=>s.remove(),760);
+    }
+  }
+  function react(special){
+    disc.classList.remove('react'); void disc.offsetWidth; disc.classList.add('react');
+    disc.textContent=persona.react[reactIdx++%persona.react.length];
+    setTimeout(()=>{disc.textContent=persona.face;},700);
+    burst(persona.burst, special?12:6);
+  }
+  function interact(){
+    const aff=getAff()+1; setAff(aff); renderMeters();
+    comboCount++;
+    const special=(comboCount%5===0);
+    react(special);
+    if(special) say("Combo x"+comboCount+"! We're in sync. 💥");
+    else if(aff%10===0) say("Our bond leveled up — Lv"+level(aff)+"! ★");
+    else say(pickLine());
+  }
+
+  // ── Drag (with tap detection) + persisted position ──
+  let down=false, moved=false, sx=0, sy=0, ox=0, oy=0;
+  function place(x,y){
+    const w=buddy.offsetWidth||60, h=buddy.offsetHeight||60;
+    x=Math.max(6,Math.min(window.innerWidth-w-6,x));
+    y=Math.max(60,Math.min(window.innerHeight-h-6,y));
+    buddy.style.left=x+'px'; buddy.style.top=y+'px';
+    buddy.style.right='auto'; buddy.style.bottom='auto';
+  }
+  function loadPos(){ try{const p=JSON.parse(localStorage.getItem('buddy_pos')); if(p) place(p.x,p.y);}catch(e){} }
+  buddy.addEventListener('pointerdown',e=>{
+    down=true; moved=false; buddy.classList.add('dragging');
+    const r=buddy.getBoundingClientRect(); ox=r.left; oy=r.top; sx=e.clientX; sy=e.clientY;
+    try{buddy.setPointerCapture(e.pointerId);}catch(err){}
+  });
+  buddy.addEventListener('pointermove',e=>{
+    if(!down) return;
+    const dx=e.clientX-sx, dy=e.clientY-sy;
+    if(Math.abs(dx)>4||Math.abs(dy)>4) moved=true;
+    if(moved){ place(ox+dx,oy+dy); bubble.classList.remove('show'); }
+  });
+  buddy.addEventListener('pointerup',()=>{
+    down=false; buddy.classList.remove('dragging');
+    if(moved){ const r=buddy.getBoundingClientRect(); try{localStorage.setItem('buddy_pos',JSON.stringify({x:r.left,y:r.top}));}catch(e){} }
+    else interact();
+  });
+  window.addEventListener('resize',()=>{ if(buddy.style.left){const r=buddy.getBoundingClientRect(); place(r.left,r.top);} });
+
+  // Auto-celebrate when every goal is done (re-arms if you add/uncheck)
+  let celebrated=false;
+  window.addEventListener('goals-changed',()=>{
+    try{
+      const goals=storeGet('goals:'+getActiveDateString())||[];
+      if(goals.length>0 && goals.every(g=>g.done)){
+        if(!celebrated){ celebrated=true; react(true); say("Every goal done! You're unstoppable. 🏆",4500); }
+      } else celebrated=false;
+    }catch(e){}
+  });
+  // Cheer when you log water from the top bar
+  document.addEventListener('click',e=>{
+    if(e.target&&e.target.closest&&e.target.closest('#topbarWaterAdd')){
+      react(false);
+      say(["Nice, stay hydrated! 💧","Glug glug — keep going! 💧","Hydration = focus. 💧"][Math.floor(Math.random()*3)],2600);
+    }
+  });
+  // Let settings re-skin the buddy live if needed
+  window.dashRefreshBuddy=loadPersona;
+
+  function boot(){
+    loadPersona(); renderMeters(); loadPos(); buddy.hidden=false;
+    setTimeout(()=>say(pickLine(),4200),1400); // greet after a beat
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot,{once:true});
+  else boot();
+})();
 </script>
 
 </body>

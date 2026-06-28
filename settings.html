@@ -14,8 +14,9 @@
       var __accent = __cfg.theme==='light' ? __ac.l : __ac.d;
       var __skin = __cfg.skin || 'none';
       document.documentElement.setAttribute('data-skin', __skin);
-      if (__skin === 'onepiece') __accent = '#F4A91F';
-      else if (__skin === 'bluelock') __accent = '#1FA2FF';
+      // Skin accent pairs (full theming comes from topbar.js once it loads)
+      var __SK = {onepiece:['#F4A91F','#E63946'],bluelock:['#1FA2FF','#00E5FF'],sololeveling:['#9D6CFF','#2DD4FF'],jujutsu:['#3B82F6','#EF4444'],demonslayer:['#2DD4BF','#FB7185']}[__skin];
+      if (__SK) { __accent = __SK[0]; document.documentElement.style.setProperty('--accent2', __SK[1]); }
       document.documentElement.style.setProperty('--accent', __accent);
       document.documentElement.style.setProperty('--card-radius', {sharp:'6px',rounded:'14px',pill:'24px'}[__cfg.cardStyle||'rounded']||'14px');
     } catch(e) {}
@@ -378,6 +379,39 @@
           <div class="st-skin-check">✓</div>
         </div>
 
+        <div class="st-skin-card" data-val="sololeveling">
+          <div class="st-skin-glow" style="background:linear-gradient(100deg, rgba(157,108,255,0.26), rgba(45,212,255,0.16) 60%, transparent)"></div>
+          <div class="st-skin-shine"></div>
+          <div class="st-skin-emoji">🌑</div>
+          <div class="st-skin-info">
+            <div class="st-skin-name">Solo Leveling</div>
+            <div class="st-skin-desc">Shadow Monarch · violet &amp; cyan · ⚔️👑🐉</div>
+          </div>
+          <div class="st-skin-check">✓</div>
+        </div>
+
+        <div class="st-skin-card" data-val="jujutsu">
+          <div class="st-skin-glow" style="background:linear-gradient(100deg, rgba(59,130,246,0.24), rgba(239,68,68,0.18) 60%, transparent)"></div>
+          <div class="st-skin-shine"></div>
+          <div class="st-skin-emoji">🌀</div>
+          <div class="st-skin-info">
+            <div class="st-skin-name">Jujutsu Kaisen</div>
+            <div class="st-skin-desc">Cursed energy · blue &amp; crimson · 🟣👊⛩️</div>
+          </div>
+          <div class="st-skin-check">✓</div>
+        </div>
+
+        <div class="st-skin-card" data-val="demonslayer">
+          <div class="st-skin-glow" style="background:linear-gradient(100deg, rgba(45,212,191,0.24), rgba(251,113,133,0.18) 60%, transparent)"></div>
+          <div class="st-skin-shine"></div>
+          <div class="st-skin-emoji">🗡️</div>
+          <div class="st-skin-info">
+            <div class="st-skin-name">Demon Slayer</div>
+            <div class="st-skin-desc">Hashira corps · teal &amp; pink · 🌊🌸🔥</div>
+          </div>
+          <div class="st-skin-check">✓</div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -547,11 +581,50 @@ const ACCENTS = {
 function load() {
   try { return JSON.parse(localStorage.getItem(SK) || '{}'); } catch { return {}; }
 }
+let _autoSyncTimer=null;
 function save(s) {
   localStorage.setItem(SK, JSON.stringify(s));
   applyCSS(s);
+  // Auto-sync to cloud 1.5 s after any setting change
+  clearTimeout(_autoSyncTimer);
+  _autoSyncTimer=setTimeout(autoSync,1500);
 }
-const SKIN_ACCENT = { onepiece: '#F4A91F', bluelock: '#1FA2FF' };
+async function autoSync(){
+  const sb=getSB();if(!sb) return;
+  const uid=localStorage.getItem('_dashUid');if(!uid) return;
+  try{
+    const s=load();
+    await sb.from('app_state').upsert(
+      {key:uid+':settings',data:s,updated_at:new Date().toISOString()},
+      {onConflict:'key'}
+    );
+    const st=document.getElementById('saveStatus');
+    if(st){
+      st.textContent='✓ Synced to all devices';
+      st.style.color='var(--accent)';st.style.opacity='1';
+      setTimeout(()=>{st.style.opacity='0';},2500);
+    }
+  }catch(e){console.warn('Settings auto-sync failed',e);}
+}
+// Compact skin visuals for the settings page (flash-prevent layer).
+// Full theming/animation is injected by topbar.js, which shares these values.
+const SKIN_VIS = {
+  onepiece:     { accent:'#F4A91F', accent2:'#E63946', font:"'Bangers', sans-serif",
+                  bgDark:'radial-gradient(ellipse 95% 55% at 50% -10%, #2a1206 0%, #0a0a0b 58%)',
+                  bgLight:'linear-gradient(180deg, #fff3e0 0%, #f2f2f7 42%)' },
+  bluelock:     { accent:'#1FA2FF', accent2:'#00E5FF', font:"'Orbitron', sans-serif",
+                  bgDark:'radial-gradient(ellipse 95% 55% at 50% -10%, #04203f 0%, #06080d 58%)',
+                  bgLight:'linear-gradient(180deg, #e2f1ff 0%, #f2f2f7 42%)' },
+  sololeveling: { accent:'#9D6CFF', accent2:'#2DD4FF', font:"'Oxanium', sans-serif",
+                  bgDark:'radial-gradient(ellipse 90% 52% at 50% -10%, #1a0b2e 0%, #06060d 60%)',
+                  bgLight:'linear-gradient(180deg, #ede9fe 0%, #f2f2f7 42%)' },
+  jujutsu:      { accent:'#3B82F6', accent2:'#EF4444', font:"'Rajdhani', sans-serif",
+                  bgDark:'radial-gradient(ellipse 95% 55% at 50% -10%, #101034 0%, #07060c 60%)',
+                  bgLight:'linear-gradient(180deg, #e0e7ff 0%, #f2f2f7 42%)' },
+  demonslayer:  { accent:'#2DD4BF', accent2:'#FB7185', font:"'Cinzel', serif",
+                  bgDark:'radial-gradient(ellipse 95% 55% at 50% -10%, #062a25 0%, #0a0a0b 58%)',
+                  bgLight:'linear-gradient(180deg, #d9f5ef 0%, #f2f2f7 42%)' },
+};
 
 function applyCSS(s) {
   const dark = s.theme !== 'light';
@@ -561,21 +634,23 @@ function applyCSS(s) {
   root.setAttribute('data-skin', skin);
   const ac = ACCENTS[s.accent || 'purple'];
   let accent = dark ? ac.d : ac.l;
-  if (SKIN_ACCENT[skin]) accent = SKIN_ACCENT[skin];
+  const vis = SKIN_VIS[skin];
+  if (vis) {
+    accent = vis.accent;
+    root.style.setProperty('--accent2', vis.accent2);
+    root.style.setProperty('--skin-font', vis.font);
+  } else {
+    root.style.setProperty('--accent2', accent);
+    root.style.removeProperty('--skin-font');
+  }
   root.style.setProperty('--accent', accent);
   root.style.setProperty('--card-radius', {sharp:'6px',rounded:'14px',pill:'24px'}[s.cardStyle||'rounded'] || '14px');
   root.style.setProperty('--base-font', {small:'13px',medium:'15px',large:'17px'}[s.fontSize||'medium'] || '15px');
 
   // Skin background (matches topbar.js so settings page is themed too)
   let early = document.getElementById('skin-early');
-  if (skin === 'onepiece' || skin === 'bluelock') {
-    const bg = dark
-      ? (skin === 'onepiece'
-          ? 'radial-gradient(ellipse 95% 55% at 50% -10%, #2a1206 0%, #0a0a0b 58%)'
-          : 'radial-gradient(ellipse 95% 55% at 50% -10%, #04203f 0%, #06080d 58%)')
-      : (skin === 'onepiece'
-          ? 'linear-gradient(180deg, #fff3e0 0%, #f2f2f7 42%)'
-          : 'linear-gradient(180deg, #e2f1ff 0%, #f2f2f7 42%)');
+  if (vis) {
+    const bg = dark ? vis.bgDark : vis.bgLight;
     if (!early) { early = document.createElement('style'); early.id = 'skin-early'; document.head.appendChild(early); }
     early.textContent = 'body{background:' + bg + ' !important; background-attachment:fixed !important;}';
   } else if (early) {
@@ -731,6 +806,7 @@ async function saveToCloud() {
   btn.disabled = true;
   status.textContent = 'Saving…';
   status.style.opacity = '1';
+  clearTimeout(_autoSyncTimer);
   try {
     const s = load();
     const sb = getSB();
@@ -740,7 +816,7 @@ async function saveToCloud() {
       { key: uid + ':settings', data: s, updated_at: new Date().toISOString() },
       { onConflict: 'key' }
     );
-    status.textContent = '✓ Saved — settings will sync to all devices';
+    status.textContent = '✓ Synced to all devices';
     status.style.color = 'var(--accent)';
   } catch(e) {
     status.textContent = '✗ Save failed — check your connection';
