@@ -516,6 +516,7 @@ function toggleHabit(id, date) {
   const log = getLog();
   const dayLog = Object.assign({}, log[date] || {});
   dayLog[id] = !dayLog[id];
+  if (dayLog[id] && window.dashAddXp) window.dashAddXp(15, 'Completed a habit 🔥');
   if (!dayLog[id]) delete dayLog[id];
   const newLog = Object.assign({}, log);
   if (Object.keys(dayLog).length === 0) delete newLog[date];

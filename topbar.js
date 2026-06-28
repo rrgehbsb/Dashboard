@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '1.6.0';
+const DASHBOARD_VERSION = '1.7.0';
 
 // =============================================================
 // THEME STYLES ("skins") — single source of truth.
@@ -644,6 +644,10 @@ html[data-skin]:not([data-skin="none"]) #saveBtn {
   const topbarHtml = `
 <header class="topbar" id="topbar" role="navigation" aria-label="Quick actions">
   <span class="topbar-version">v${DASHBOARD_VERSION}</span>
+  <button class="topbar-level" id="topbarLevel" type="button" aria-label="Your level and XP">
+    <span class="tl-star">⭐</span><span class="tl-lv" id="topbarLevelNum">Lv1</span>
+    <span class="tl-bar"><span class="tl-fill" id="topbarLevelFill"></span></span>
+  </button>
   <div class="topbar-water-wrap">
     <a href="health.html#water" class="topbar-water-pill" id="topbarWater" aria-label="Water progress">
       <span class="topbar-pill-dot"></span>
@@ -660,36 +664,204 @@ html[data-skin]:not([data-skin="none"]) #saveBtn {
   const minimalTopbarHtml = `
 <header class="topbar" id="topbar" role="navigation" aria-label="Quick actions">
   <span class="topbar-version">v${DASHBOARD_VERSION}</span>
+  <button class="topbar-level" id="topbarLevel" type="button" aria-label="Your level and XP">
+    <span class="tl-star">⭐</span><span class="tl-lv" id="topbarLevelNum">Lv1</span>
+    <span class="tl-bar"><span class="tl-fill" id="topbarLevelFill"></span></span>
+  </button>
   <a href="settings.html" class="topbar-settings-btn" id="topbarSettings" aria-label="Settings">⚙️</a>
 </header>`;
 
-  const bottombarHtml = `
-<nav class="bottombar" id="bottombar" role="navigation" aria-label="Main tabs">
-  <a href="index.html" class="bottombar-tab" data-page="main">
-    <span class="bottombar-tab-icon">🏠</span><span>Main</span>
-  </a>
-  <a href="health.html" class="bottombar-tab" data-page="health">
-    <span class="bottombar-tab-icon">💊</span><span>Health</span>
-  </a>
-  <a href="gym.html" class="bottombar-tab" data-page="fitness">
-    <span class="bottombar-tab-icon">💪</span><span>Fitness</span>
-  </a>
-  <a href="school.html" class="bottombar-tab" data-page="school">
-    <span class="bottombar-tab-icon">📚</span><span>School</span>
-  </a>
-  <a href="habits.html" class="bottombar-tab" data-page="habits">
-    <span class="bottombar-tab-icon">🔥</span><span>Habits</span>
-  </a>
-  <a href="transport.html" class="bottombar-tab" data-page="transport">
-    <span class="bottombar-tab-icon">🚌</span><span>Transport</span>
-  </a>
-  <a href="projects.html" class="bottombar-tab" data-page="projects">
-    <span class="bottombar-tab-icon">🗂️</span><span>Projects</span>
-  </a>
-  <a href="settings.html" class="bottombar-tab" data-page="settings">
-    <span class="bottombar-tab-icon">⚙️</span><span>Settings</span>
-  </a>
-</nav>`;
+  // Canonical list of every bottom-bar destination.
+  const ALL_TABS = [
+    { key:'main',      href:'index.html',     icon:'🏠',  label:'Main' },
+    { key:'health',    href:'health.html',    icon:'💊',  label:'Health' },
+    { key:'fitness',   href:'gym.html',       icon:'💪',  label:'Fitness' },
+    { key:'school',    href:'school.html',    icon:'📚',  label:'School' },
+    { key:'habits',    href:'habits.html',    icon:'🔥',  label:'Habits' },
+    { key:'transport', href:'transport.html', icon:'🚌',  label:'Transport' },
+    { key:'projects',  href:'projects.html',  icon:'🗂️', label:'Projects' },
+    { key:'settings',  href:'settings.html',  icon:'⚙️',  label:'Settings' },
+  ];
+  const TAB_BY_KEY = {}; ALL_TABS.forEach((t) => { TAB_BY_KEY[t.key] = t; });
+
+  function readSettings() {
+    try { return JSON.parse(localStorage.getItem('dashboard:settings:v1')) || {}; } catch (e) { return {}; }
+  }
+  // Resolve which tabs are visible vs. tucked into "More", per the custom config.
+  function resolveNav() {
+    const s = readSettings();
+    if (!s.navCustom) return { visible: ALL_TABS.slice(), leftover: [] };
+    let pinned = Array.isArray(s.navPinned) ? s.navPinned.map((k) => TAB_BY_KEY[k]).filter(Boolean) : [];
+    if (!pinned.length) pinned = ALL_TABS.slice(0, 4);
+    const pinnedKeys = pinned.map((t) => t.key);
+    const leftover = ALL_TABS.filter((t) => pinnedKeys.indexOf(t.key) === -1);
+    return { visible: pinned, leftover };
+  }
+
+  const navExtraCss = `
+.bottombar-tab.more-tab{cursor:pointer;background:none;border:none;font-family:inherit;}
+.nav-more-backdrop{position:fixed;inset:0;z-index:55;background:rgba(0,0,0,0.5);
+  opacity:0;pointer-events:none;transition:opacity .25s;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);}
+.nav-more-backdrop.show{opacity:1;pointer-events:auto;}
+.nav-more-sheet{position:fixed;left:0;right:0;bottom:0;z-index:56;max-width:460px;
+  margin:0 auto;padding:8px 12px calc(14px + env(safe-area-inset-bottom));
+  background:#0e0e12;border:1px solid color-mix(in srgb,var(--accent,#a78bfa) 24%,transparent);border-bottom:none;
+  border-radius:22px 22px 0 0;box-shadow:0 -18px 44px -14px rgba(0,0,0,0.7);
+  transform:translateY(112%);transition:transform .32s cubic-bezier(.34,1.4,.5,1);}
+.nav-more-sheet.show{transform:translateY(0);}
+html[data-theme="light"] .nav-more-sheet{background:#fff;}
+.nav-more-grip{width:38px;height:4px;border-radius:2px;background:rgba(255,255,255,0.18);margin:6px auto 10px;}
+html[data-theme="light"] .nav-more-grip{background:rgba(0,0,0,0.18);}
+.nav-more-title{font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;
+  color:var(--text-tertiary,rgba(255,255,255,0.4));padding:0 6px 8px;}
+.nav-more-item{display:flex;align-items:center;gap:13px;padding:12px;border-radius:13px;text-decoration:none;
+  color:var(--text-primary,#fafafa);-webkit-tap-highlight-color:transparent;transition:background .15s;}
+.nav-more-item:active{background:rgba(255,255,255,0.06);}
+.nav-more-item.active{background:color-mix(in srgb,var(--accent,#a78bfa) 16%,transparent);}
+.nav-more-item-icon{font-size:23px;width:28px;text-align:center;}
+.nav-more-item-label{font-size:15px;font-weight:600;}
+html[data-theme="light"] .nav-more-item:active{background:rgba(0,0,0,0.05);}
+`;
+
+  const xpCss = `
+/* Level chip in the top bar */
+.topbar-level{display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 9px;
+  border-radius:9px;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;
+  background:rgba(255,255,255,0.05);border:1px solid color-mix(in srgb,var(--accent,#a78bfa) 38%,transparent);
+  transition:background .15s;}
+.topbar-level:hover{background:rgba(255,255,255,0.1);}
+html[data-theme="light"] .topbar-level{background:rgba(0,0,0,0.04);}
+.tl-star{font-size:12px;line-height:1;}
+.tl-lv{font-size:11px;font-weight:800;color:var(--accent,#a78bfa);font-variant-numeric:tabular-nums;}
+.tl-bar{width:34px;height:5px;border-radius:3px;background:rgba(255,255,255,0.14);overflow:hidden;}
+html[data-theme="light"] .tl-bar{background:rgba(0,0,0,0.12);}
+.tl-fill{display:block;height:100%;width:0;border-radius:3px;background:var(--accent,#a78bfa);
+  box-shadow:0 0 7px color-mix(in srgb,var(--accent,#a78bfa) 70%,transparent);transition:width .6s cubic-bezier(.22,1,.36,1);}
+
+/* iOS-style XP gain banner */
+.xp-toast{position:fixed;top:calc(env(safe-area-inset-top) + 8px);left:50%;z-index:9999;
+  width:min(390px,calc(100vw - 24px));display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:18px;
+  background:rgba(20,20,24,0.92);backdrop-filter:blur(18px) saturate(1.3);-webkit-backdrop-filter:blur(18px) saturate(1.3);
+  border:1px solid color-mix(in srgb,var(--accent,#a78bfa) 40%,transparent);
+  box-shadow:0 16px 40px -10px rgba(0,0,0,0.7),0 0 24px -8px color-mix(in srgb,var(--accent,#a78bfa) 55%,transparent);
+  transform:translateX(-50%) translateY(-170%);opacity:0;pointer-events:none;
+  transition:transform .42s cubic-bezier(.22,1.2,.36,1),opacity .3s;}
+.xp-toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
+html[data-theme="light"] .xp-toast{background:rgba(255,255,255,0.95);}
+.xp-toast.levelup{border-color:#F2C063;box-shadow:0 16px 44px -8px rgba(0,0,0,0.7),0 0 32px -4px rgba(242,192,99,0.7);}
+.xp-toast-badge{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  width:44px;height:44px;border-radius:13px;flex-shrink:0;
+  background:color-mix(in srgb,var(--accent,#a78bfa) 22%,transparent);
+  border:1px solid color-mix(in srgb,var(--accent,#a78bfa) 45%,transparent);}
+.xp-tb-star{font-size:15px;line-height:1;}
+.xp-tb-lv{font-size:10px;font-weight:800;color:var(--accent,#a78bfa);font-variant-numeric:tabular-nums;margin-top:1px;}
+.xp-toast-mid{flex:1;min-width:0;}
+.xp-toast-reason{font-size:12.5px;font-weight:700;color:var(--text-primary,#fafafa);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.xp-toast.levelup .xp-toast-reason{color:#F2C063;letter-spacing:0.04em;}
+.xp-toast-bar{height:7px;border-radius:4px;margin:5px 0 3px;background:rgba(255,255,255,0.14);overflow:hidden;}
+html[data-theme="light"] .xp-toast-bar{background:rgba(0,0,0,0.1);}
+.xp-toast-fill{display:block;height:100%;width:0;border-radius:4px;
+  background:linear-gradient(90deg,var(--accent,#a78bfa),color-mix(in srgb,var(--accent,#a78bfa) 40%,#fff));
+  box-shadow:0 0 8px color-mix(in srgb,var(--accent,#a78bfa) 70%,transparent);}
+.xp-toast-sub{font-size:10px;font-weight:600;color:var(--text-tertiary,rgba(255,255,255,0.45));font-variant-numeric:tabular-nums;}
+.xp-toast-gain{display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;line-height:1;
+  font-size:19px;font-weight:800;color:var(--accent,#a78bfa);font-variant-numeric:tabular-nums;}
+.xp-toast-gain span{font-size:9px;font-weight:700;letter-spacing:0.08em;opacity:0.7;margin-top:1px;}
+.xp-toast.levelup .xp-toast-gain{color:#F2C063;}
+
+/* Level / XP modal */
+.xp-modal-bg{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;
+  background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);opacity:0;pointer-events:none;transition:opacity .2s;}
+.xp-modal-bg.show{opacity:1;pointer-events:auto;}
+.xp-modal{width:100%;max-width:380px;max-height:86vh;overflow-y:auto;position:relative;scrollbar-width:none;
+  background:#131318;border:1px solid color-mix(in srgb,var(--accent,#a78bfa) 35%,transparent);
+  border-radius:20px;padding:22px 20px;box-shadow:0 24px 60px -12px rgba(0,0,0,0.8);}
+.xp-modal::-webkit-scrollbar{display:none;}
+html[data-theme="light"] .xp-modal{background:#fff;}
+.xp-modal-close{position:absolute;top:14px;right:14px;width:30px;height:30px;border:none;border-radius:9px;cursor:pointer;
+  background:rgba(255,255,255,0.06);color:var(--text-secondary,#aaa);font-size:18px;line-height:1;}
+html[data-theme="light"] .xp-modal-close{background:rgba(0,0,0,0.05);color:#444;}
+.xp-modal-lv{font-size:26px;font-weight:800;letter-spacing:-0.02em;color:var(--text-primary,#fafafa);
+  margin-bottom:14px;font-family:var(--skin-font,inherit);}
+.xp-modal-bar{height:12px;border-radius:7px;background:rgba(255,255,255,0.1);overflow:hidden;}
+html[data-theme="light"] .xp-modal-bar{background:rgba(0,0,0,0.08);}
+.xp-modal-fill{display:block;height:100%;border-radius:7px;
+  background:linear-gradient(90deg,var(--accent,#a78bfa),color-mix(in srgb,var(--accent,#a78bfa) 35%,#fff));
+  box-shadow:0 0 10px color-mix(in srgb,var(--accent,#a78bfa) 70%,transparent);}
+.xp-modal-meta{display:flex;justify-content:space-between;font-size:11px;font-weight:600;margin-top:7px;
+  color:var(--text-tertiary,rgba(255,255,255,0.45));font-variant-numeric:tabular-nums;}
+.xp-modal-sub{font-size:12px;color:var(--accent,#a78bfa);font-weight:700;margin-top:3px;}
+.xp-modal-h{font-size:10px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;
+  color:var(--text-tertiary,rgba(255,255,255,0.4));margin:18px 0 8px;}
+.xp-logrow,.xp-rate{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px;
+  border-radius:11px;background:rgba(255,255,255,0.04);margin-bottom:5px;font-size:13px;color:var(--text-primary,#fafafa);}
+html[data-theme="light"] .xp-logrow,html[data-theme="light"] .xp-rate{background:rgba(0,0,0,0.04);}
+.xp-logamt,.xp-rate-amt{font-weight:800;color:var(--accent,#a78bfa);font-variant-numeric:tabular-nums;flex-shrink:0;}
+.xp-rate-ic{font-size:17px;flex-shrink:0;}
+.xp-rate-name{flex:1;min-width:0;}
+.xp-rate-name em{font-style:normal;color:var(--text-tertiary,rgba(255,255,255,0.4));font-size:11px;}
+.xp-log-empty{font-size:12px;color:var(--text-tertiary,rgba(255,255,255,0.4));font-style:italic;padding:6px 2px;}
+`;
+
+  function buildTabEl(tab) {
+    const a = document.createElement('a');
+    a.href = tab.href; a.className = 'bottombar-tab'; a.setAttribute('data-page', tab.key);
+    a.innerHTML = '<span class="bottombar-tab-icon">' + tab.icon + '</span><span>' + tab.label + '</span>';
+    return a;
+  }
+  function closeMoreSheet() {
+    const bd = document.getElementById('navMoreBackdrop'), sheet = document.getElementById('navMoreSheet');
+    if (bd) bd.classList.remove('show');
+    if (sheet) sheet.classList.remove('show');
+  }
+  function openMoreSheet(leftover) {
+    let bd = document.getElementById('navMoreBackdrop'), sheet = document.getElementById('navMoreSheet');
+    if (!bd) { bd = document.createElement('div'); bd.className = 'nav-more-backdrop'; bd.id = 'navMoreBackdrop'; document.body.appendChild(bd); bd.addEventListener('click', closeMoreSheet); }
+    if (!sheet) { sheet = document.createElement('div'); sheet.className = 'nav-more-sheet'; sheet.id = 'navMoreSheet'; document.body.appendChild(sheet); }
+    const active = currentPageKey();
+    const navMap = (SKINS[getSkin()] && SKINS[getSkin()].nav) || null;
+    sheet.innerHTML = '<div class="nav-more-grip"></div><div class="nav-more-title">More</div>' +
+      leftover.map((t) => '<a class="nav-more-item' + (t.key === active ? ' active' : '') + '" href="' + t.href + '">' +
+        '<span class="nav-more-item-icon">' + ((navMap && navMap[t.key]) || t.icon) + '</span>' +
+        '<span class="nav-more-item-label">' + t.label + '</span></a>').join('');
+    requestAnimationFrame(() => { bd.classList.add('show'); sheet.classList.add('show'); });
+  }
+  function makeBottombar() {
+    const nav = document.createElement('nav');
+    nav.className = 'bottombar'; nav.id = 'bottombar';
+    nav.setAttribute('role', 'navigation'); nav.setAttribute('aria-label', 'Main tabs');
+    const { visible, leftover } = resolveNav();
+    const active = currentPageKey();
+    visible.forEach((t) => { const el = buildTabEl(t); if (t.key === active) el.classList.add('active'); nav.appendChild(el); });
+    if (leftover.length) {
+      const more = document.createElement('button');
+      more.type = 'button'; more.className = 'bottombar-tab more-tab'; more.setAttribute('data-page', 'more');
+      more.innerHTML = '<span class="bottombar-tab-icon">⋯</span><span>More</span>';
+      if (leftover.some((t) => t.key === active)) more.classList.add('active');
+      more.addEventListener('click', () => openMoreSheet(leftover));
+      nav.appendChild(more);
+    }
+    return nav;
+  }
+  function applySkinIconsTo(nav) {
+    const navMap = SKINS[getSkin()] && SKINS[getSkin()].nav;
+    if (!navMap) return;
+    nav.querySelectorAll('.bottombar-tab').forEach((t) => {
+      const k = t.getAttribute('data-page');
+      const ic = t.querySelector('.bottombar-tab-icon');
+      if (ic && navMap[k]) ic.textContent = navMap[k];
+    });
+  }
+  // Rebuild the bar live (used by settings.html when the nav config changes)
+  window.dashRebuildNav = function () {
+    const old = document.getElementById('bottombar');
+    if (!old) return;
+    closeMoreSheet();
+    const nav = makeBottombar();
+    old.replaceWith(nav);
+    applySkinIconsTo(nav);
+  };
 
   function isFinancePage() {
     const p = (window.location.pathname || '').toLowerCase();
@@ -732,13 +904,11 @@ html[data-skin]:not([data-skin="none"]) #saveBtn {
     }
     // Bottom tabs on all non-finance, non-iframe pages
     if (!document.getElementById('bottombar')) {
-      const bottomWrap = document.createElement('div');
-      bottomWrap.innerHTML = bottombarHtml.trim();
-      document.body.appendChild(bottomWrap.firstChild);
-      const active = currentPageKey();
-      document.querySelectorAll('.bottombar-tab').forEach((t) => {
-        t.classList.toggle('active', t.getAttribute('data-page') === active);
-      });
+      if (!document.getElementById('nav-extra-style')) {
+        const ns = document.createElement('style'); ns.id = 'nav-extra-style'; ns.textContent = navExtraCss;
+        document.head.appendChild(ns);
+      }
+      document.body.appendChild(makeBottombar());
       document.body.classList.add('has-bottombar');
     }
 
@@ -966,6 +1136,7 @@ html[data-skin]:not([data-skin="none"]) #saveBtn {
     if (btn) { btn.classList.add('flash'); setTimeout(() => btn.classList.remove('flash'), 220); }
     spawnWaterBurst();
     if (_buddyOnWater) _buddyOnWater();
+    if (window.dashAddXp) window.dashAddXp(5, 'Drank water 💧');
   }
 
   // Themed emoji burst when logging water
@@ -1493,11 +1664,217 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
     loadPersona(); renderMeters(); updateStatus(); loadPos(); buddy.hidden = false;
   }
 
+  // =============================================================
+  // XP & LEVELS — earn XP across the app; a top-bar chip shows your
+  // level + progress and opens a full breakdown. Each gain pops an
+  // iOS-style banner. XP is monotonic, so cross-device sync just
+  // takes the max total. window.dashAddXp(amount, reason, opts).
+  // =============================================================
+  const XP_KEY = 'dashboard:xp:v1';
+  // Reference table (also shown in the modal). Daily-capped ones use a claim key.
+  const XP_RATES = [
+    { reason:'Daily check-in',     amount:20, daily:'login',  icon:'📅' },
+    { reason:'Logged your weight', amount:25, daily:'weight', icon:'⚖️' },
+    { reason:'Logged your mood',   amount:10, daily:'mood',   icon:'🙂' },
+    { reason:'Completed a habit',  amount:15, icon:'🔥' },
+    { reason:'Completed a goal',   amount:10, icon:'✅' },
+    { reason:'Cleared all goals',  amount:50, daily:'allgoals', icon:'🏆' },
+    { reason:'Logged a meal',      amount:8,  icon:'🍽️' },
+    { reason:'Logged a workout',   amount:12, icon:'💪' },
+    { reason:'Drank water (+1)',   amount:5,  icon:'💧' },
+  ];
+
+  function xpToday() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function xpLoad() {
+    try { const s = JSON.parse(localStorage.getItem(XP_KEY)); if (s && typeof s.total === 'number') return s; } catch (e) {}
+    return { total: 0, claims: {}, log: [] };
+  }
+  function xpSave(s) { try { localStorage.setItem(XP_KEY, JSON.stringify(s)); } catch (e) {} }
+  function pruneClaims(s) {
+    const today = xpToday();
+    Object.keys(s.claims || {}).forEach((k) => { if (k.split('::')[1] !== today) delete s.claims[k]; });
+  }
+  // Level curve: 100 XP for L1→2, growing ~18% each level (rounded to 5).
+  function levelInfo(total) {
+    let level = 1, need = 100, used = 0;
+    while (total >= used + need) { used += need; level++; need = Math.round(need * 1.18 / 5) * 5; }
+    const into = total - used;
+    return { level, into, span: need, pct: Math.max(0, Math.min(1, into / need)) };
+  }
+
+  let _xpToast, _xpFill, _xpBadge, _xpGain, _xpReason, _xpSub, _xpQueue = [], _xpBusy = false, _xpToastTimer = null, _xpCloudTimer = null;
+  function setupXp() {
+    if (isEmbedded()) return;
+    // Styles (own block so it also works on pages without the topbar chrome)
+    if (!document.getElementById('xp-style')) {
+      const xs = document.createElement('style'); xs.id = 'xp-style'; xs.textContent = xpCss;
+      document.head.appendChild(xs);
+    }
+    // Banner element
+    if (!document.getElementById('xpToast')) {
+      const t = document.createElement('div'); t.className = 'xp-toast'; t.id = 'xpToast';
+      t.innerHTML =
+        '<div class="xp-toast-badge"><span class="xp-tb-star">⭐</span><span class="xp-tb-lv" id="xpToastLv">Lv1</span></div>' +
+        '<div class="xp-toast-mid"><div class="xp-toast-reason" id="xpToastReason"></div>' +
+          '<div class="xp-toast-bar"><span class="xp-toast-fill" id="xpToastFill"></span></div>' +
+          '<div class="xp-toast-sub" id="xpToastSub"></div></div>' +
+        '<div class="xp-toast-gain" id="xpToastGain">+0<span>XP</span></div>';
+      document.body.appendChild(t);
+      _xpToast = t; _xpFill = t.querySelector('#xpToastFill'); _xpBadge = t.querySelector('#xpToastLv');
+      _xpGain = t.querySelector('#xpToastGain'); _xpReason = t.querySelector('#xpToastReason'); _xpSub = t.querySelector('#xpToastSub');
+    }
+    // Level chip → opens modal
+    const chip = document.getElementById('topbarLevel');
+    if (chip && !chip._wired) { chip._wired = true; chip.addEventListener('click', openXpModal); }
+    updateChip();
+    // Cloud pull then daily check-in
+    xpCloudPull().then(grantDailyLogin);
+  }
+
+  function updateChip() {
+    const info = levelInfo(xpLoad().total);
+    const num = document.getElementById('topbarLevelNum');
+    const fill = document.getElementById('topbarLevelFill');
+    if (num) num.textContent = 'Lv' + info.level;
+    if (fill) fill.style.width = (info.pct * 100).toFixed(1) + '%';
+  }
+
+  function addXp(amount, reason, opts) {
+    opts = opts || {};
+    amount = Math.round(amount || 0);
+    if (amount <= 0) return;
+    const s = xpLoad();
+    if (opts.daily) {
+      const ck = opts.daily + '::' + xpToday();
+      if (s.claims[ck]) return; // already earned today
+      s.claims[ck] = 1;
+    }
+    const before = levelInfo(s.total);
+    s.total += amount;
+    const after = levelInfo(s.total);
+    s.log = (s.log || []); s.log.unshift({ r: reason, a: amount, t: Date.now() }); s.log = s.log.slice(0, 20);
+    pruneClaims(s); xpSave(s);
+    updateChip();
+    _xpQueue.push({ amount, reason, info: after, levelUp: before.level !== after.level ? after.level : 0 });
+    runXpToast();
+    clearTimeout(_xpCloudTimer); _xpCloudTimer = setTimeout(xpCloudPush, 1200);
+  }
+  // Public API used across pages
+  window.dashAddXp = (amount, reason) => addXp(amount, reason);
+  window.dashAddXpDaily = (amount, reason, key) => addXp(amount, reason, { daily: key });
+
+  function runXpToast() {
+    if (_xpBusy || !_xpQueue.length || !_xpToast) return;
+    _xpBusy = true;
+    const t = _xpQueue.shift();
+    _xpBadge.textContent = 'Lv' + t.info.level;
+    _xpGain.innerHTML = '+' + t.amount + '<span>XP</span>';
+    _xpReason.textContent = t.levelUp ? ('LEVEL UP!  ➜  Lv' + t.levelUp) : t.reason;
+    _xpSub.textContent = t.info.into + ' / ' + t.info.span + ' XP';
+    _xpToast.classList.toggle('levelup', !!t.levelUp);
+    // animate the bar
+    const startPct = t.levelUp ? 0 : Math.max(0, (t.info.into - t.amount) / t.info.span);
+    _xpFill.style.transition = 'none'; _xpFill.style.width = (startPct * 100) + '%';
+    void _xpFill.offsetWidth;
+    _xpFill.style.transition = 'width 0.75s cubic-bezier(.22,1,.36,1)';
+    _xpFill.style.width = (t.info.pct * 100) + '%';
+    _xpToast.classList.add('show');
+    if (t.levelUp) xpConfetti();
+    clearTimeout(_xpToastTimer);
+    _xpToastTimer = setTimeout(() => {
+      _xpToast.classList.remove('show');
+      setTimeout(() => { _xpBusy = false; runXpToast(); }, 380);
+    }, t.levelUp ? 3400 : 2500);
+  }
+  function xpConfetti() {
+    const r = _xpToast.getBoundingClientRect();
+    const ems = ['🎉', '⭐', '✨', '🎊'];
+    for (let i = 0; i < 14; i++) {
+      const s = document.createElement('span'); s.className = 'buddy-particle'; s.textContent = ems[i % ems.length];
+      s.style.left = (r.left + r.width * Math.random()) + 'px'; s.style.top = (r.bottom - 6) + 'px';
+      s.style.setProperty('--bx', ((Math.random() * 2 - 1) * 120).toFixed(0) + 'px');
+      s.style.setProperty('--by', ((Math.random() * 70) + 20).toFixed(0) + 'px');
+      document.body.appendChild(s); setTimeout(() => s.remove(), 760);
+    }
+  }
+
+  function grantDailyLogin() {
+    const s = xpLoad();
+    if (s.claims['login::' + xpToday()]) return;
+    setTimeout(() => addXp(20, 'Daily check-in 📅', { daily: 'login' }), 900);
+  }
+
+  // ── Cloud sync (best-effort; XP only goes up, so merge by max) ──
+  function xpSupa() {
+    if (!window.supabase || TOPBAR_SUPABASE_URL.indexOf('PASTE-') === 0) return null;
+    try { return window.supabase.createClient(TOPBAR_SUPABASE_URL, TOPBAR_SUPABASE_KEY); } catch (e) { return null; }
+  }
+  async function xpUid(supa) {
+    let uid = localStorage.getItem('_dashUid');
+    if (uid) return uid;
+    try { const { data } = await supa.auth.getSession(); if (data && data.session) { uid = data.session.user.id; localStorage.setItem('_dashUid', uid); } } catch (e) {}
+    return uid;
+  }
+  async function xpCloudPull() {
+    const supa = xpSupa(); if (!supa) return;
+    try {
+      const uid = await xpUid(supa); if (!uid) return;
+      const { data } = await supa.from('app_state').select('data').eq('key', uid + ':xp').maybeSingle();
+      if (data && data.data && typeof data.data.total === 'number') {
+        const local = xpLoad();
+        if (data.data.total > local.total) {
+          local.total = data.data.total;
+          if (Array.isArray(data.data.log) && data.data.log.length >= (local.log || []).length) local.log = data.data.log;
+          xpSave(local); updateChip();
+        }
+      }
+    } catch (e) {}
+  }
+  async function xpCloudPush() {
+    const supa = xpSupa(); if (!supa) return;
+    try {
+      const uid = await xpUid(supa); if (!uid) return;
+      const s = xpLoad();
+      await supa.from('app_state').upsert({ key: uid + ':xp', data: { total: s.total, log: s.log }, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+    } catch (e) {}
+  }
+
+  // ── Level / XP modal ──
+  function openXpModal() {
+    if (document.getElementById('xpModal')) { document.getElementById('xpModal').classList.add('show'); return; }
+    const s = xpLoad(); const info = levelInfo(s.total);
+    const m = document.createElement('div'); m.className = 'xp-modal-bg show'; m.id = 'xpModal';
+    const rates = XP_RATES.map((r) => '<div class="xp-rate"><span class="xp-rate-ic">' + r.icon + '</span>' +
+      '<span class="xp-rate-name">' + r.reason + (r.daily ? ' <em>· daily</em>' : '') + '</span>' +
+      '<span class="xp-rate-amt">+' + r.amount + '</span></div>').join('');
+    const logHtml = (s.log && s.log.length)
+      ? s.log.slice(0, 8).map((e) => '<div class="xp-logrow"><span>' + e.r + '</span><span class="xp-logamt">+' + e.a + '</span></div>').join('')
+      : '<div class="xp-log-empty">No XP yet — go log something! 🚀</div>';
+    m.innerHTML =
+      '<div class="xp-modal">' +
+        '<button class="xp-modal-close" id="xpModalClose" aria-label="Close">×</button>' +
+        '<div class="xp-modal-lv">⭐ Level ' + info.level + '</div>' +
+        '<div class="xp-modal-bar"><span class="xp-modal-fill" style="width:' + (info.pct * 100).toFixed(1) + '%"></span></div>' +
+        '<div class="xp-modal-meta"><span>' + info.into + ' / ' + info.span + ' XP</span><span>' + s.total + ' total</span></div>' +
+        '<div class="xp-modal-sub">' + (info.span - info.into) + ' XP to Level ' + (info.level + 1) + '</div>' +
+        '<div class="xp-modal-h">Recent activity</div><div class="xp-loglist">' + logHtml + '</div>' +
+        '<div class="xp-modal-h">How to earn XP</div><div class="xp-ratelist">' + rates + '</div>' +
+      '</div>';
+    document.body.appendChild(m);
+    const close = () => m.classList.remove('show');
+    m.addEventListener('click', (e) => { if (e.target === m) close(); });
+    m.querySelector('#xpModalClose').addEventListener('click', close);
+  }
+
   function boot() {
     injectStyleAndHTML();
     injectLoadSweep();
     showWelcomeToast();
     setupBuddy();
+    setupXp();
     const btn = document.getElementById('topbarWaterAdd');
     if (btn) btn.addEventListener('click', (e) => { e.preventDefault(); addWater(); });
     render();

@@ -2433,6 +2433,7 @@ function toggleEaten(mealId){
   if(nowEaten){days[dk][mealId].eatenAt=Date.now();delete days[dk][mealId].uneatenAt;}
   else{days[dk][mealId].uneatenAt=Date.now();delete days[dk][mealId].eatenAt;}
   saveDays(days);renderAll();
+  if(nowEaten&&window.dashAddXp)window.dashAddXp(8,'Logged a meal 🍽️');
 }
 
 function openLogModal(mealId){

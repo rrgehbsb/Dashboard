@@ -3026,6 +3026,7 @@ img, video, canvas, svg { max-width: 100%; }
     else { wtEntries.push({ dateKey: key, weight }); wtEntries.sort((a,b) => a.dateKey.localeCompare(b.dateKey)); }
     wtSave(wtEntries);
     wtRender();
+    if (window.dashAddXpDaily) window.dashAddXpDaily(25, 'Logged your weight ⚖️', 'weight');
   }
 
   function wtRender() {
@@ -4279,6 +4280,7 @@ function saveSetVal(exId,idx,val,side){
   const l=getLogs(),dk=todayKey();
   if(!l[dk])l[dk]={};if(!l[dk][exId])l[dk][exId]={};
   l[dk][exId]['set'+idx+(side==='R'?'R':'')]=val;saveLogs(l);
+  if(val&&String(val).trim()&&window.dashAddXpDaily) window.dashAddXpDaily(12,'Logged a workout 💪','workout');
 }
 function saveNotes(exId,val){
   const l=getLogs(),dk=todayKey();

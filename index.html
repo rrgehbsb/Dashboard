@@ -1219,7 +1219,13 @@ function buildGoalRow(g,idx,goals,key,readOnly){
       else { goals[idx].undoneAt=Date.now(); delete goals[idx].doneAt; }
       storeSet(key,goals);
       li.classList.toggle('gm-done',cb.checked);
-      if(key===`goals:${getActiveDateString()}`) renderTodayHeader();else renderTomorrowCount();
+      if(key===`goals:${getActiveDateString()}`){
+        if(cb.checked&&window.dashAddXp){
+          window.dashAddXp(10,'Completed a goal ✅');
+          if(goals.length>0&&goals.every(g=>g.done)&&window.dashAddXpDaily) window.dashAddXpDaily(50,'Cleared all goals 🏆','allgoals');
+        }
+        renderTodayHeader();
+      } else renderTomorrowCount();
     });
   }
   qBtn.addEventListener('click',()=>{
@@ -1625,6 +1631,7 @@ function logMood(score){
   data.entries=data.entries.filter(e=>new Date(e.date)>=cutoff);
   saveMoodData(data);
   renderMood();
+  if(data.entries.find(e=>e.date===today)&&window.dashAddXpDaily) window.dashAddXpDaily(10,'Logged your mood 🙂','mood');
 }
 
 function saveMoodNote(note){

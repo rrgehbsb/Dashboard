@@ -328,6 +328,28 @@
       transition: opacity 0.18s, transform 0.18s; position: relative; z-index: 1; flex-shrink: 0;
     }
     .st-skin-card.active .st-skin-check { opacity: 1; transform: scale(1); }
+
+    /* ---- Custom nav bar ---- */
+    .nav-sub { padding: 4px 0 6px; border-top: 1px solid var(--s-sep); }
+    .nav-pick { display: flex; flex-wrap: wrap; gap: 7px; }
+    .nav-pick-item {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 11px; border-radius: 11px; cursor: pointer;
+      font-size: 13px; font-weight: 600; font-family: inherit;
+      border: 1.5px solid var(--s-ctrl-border); background: var(--s-ctrl); color: var(--s-text);
+      -webkit-tap-highlight-color: transparent; transition: border-color .15s, background .15s, opacity .15s;
+    }
+    .nav-pick-item.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
+    .nav-pick-item.disabled { opacity: 0.38; pointer-events: none; }
+    .nav-pick-em { font-size: 15px; }
+    .nav-preview {
+      display: flex; gap: 9px; flex-wrap: wrap; align-items: center;
+      font-size: 21px; padding: 11px 13px; border-radius: 12px; background: var(--s-ctrl);
+    }
+    .nav-preview .pv-more { font-size: 12px; font-weight: 800; color: var(--accent); letter-spacing: 0.04em; }
+    .nav-col { flex-direction: column; align-items: stretch; gap: 9px; }
+    .nav-col .st-row-label { flex: initial; }
+    .nav-hint { color: var(--s-text2); font-weight: 400; font-size: 12px; }
   </style>
 </head>
 <body>
@@ -453,6 +475,46 @@
           <button class="st-pbtn" data-val="small">S</button>
           <button class="st-pbtn" data-val="medium">M</button>
           <button class="st-pbtn" data-val="large">L</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- NAVIGATION BAR -->
+  <div class="st-group">
+    <div class="st-group-label">Navigation Bar</div>
+    <div class="st-body">
+
+      <div class="st-row">
+        <div class="st-row-icon">📱</div>
+        <div class="st-row-label">Customizable Bar</div>
+        <div class="st-pill" id="navCustomPill">
+          <button class="st-pbtn" data-val="off">Off</button>
+          <button class="st-pbtn" data-val="on">On</button>
+        </div>
+      </div>
+
+      <div id="navCustomPanel" style="display:none">
+        <div class="st-row nav-sub">
+          <div class="st-row-icon">🔢</div>
+          <div class="st-row-label">Items in Bar</div>
+          <div class="st-stepper">
+            <button class="st-sbtn" id="navDown">−</button>
+            <span class="st-sval" id="navCountVal">5</span>
+            <span class="st-sunit">slots</span>
+            <button class="st-sbtn" id="navUp">+</button>
+          </div>
+        </div>
+
+        <div class="st-row nav-col">
+          <div class="st-row-label">Shown in bar <span class="nav-hint" id="navPickHint"></span></div>
+          <div class="nav-pick" id="navPick"></div>
+        </div>
+
+        <div class="st-row nav-col">
+          <div class="st-row-label">Preview</div>
+          <div class="nav-preview" id="navPreview"></div>
         </div>
       </div>
 
@@ -765,10 +827,74 @@ document.getElementById('resetRow').addEventListener('click', () => {
   save(s); renderAll(s);
 });
 
+// ---- Customizable navigation bar ----
+const NAV_TABS = [
+  {key:'main',icon:'🏠',label:'Main'},{key:'health',icon:'💊',label:'Health'},
+  {key:'fitness',icon:'💪',label:'Fitness'},{key:'school',icon:'📚',label:'School'},
+  {key:'habits',icon:'🔥',label:'Habits'},{key:'transport',icon:'🚌',label:'Transport'},
+  {key:'projects',icon:'🗂️',label:'Projects'},{key:'settings',icon:'⚙️',label:'Settings'},
+];
+const NAV_ORDER = NAV_TABS.map(t => t.key);
+function navState(s) {
+  const valid = (Array.isArray(s.navPinned) ? s.navPinned : []).filter(k => NAV_ORDER.indexOf(k) !== -1);
+  return {
+    on: !!s.navCustom,
+    count: Math.min(7, Math.max(3, s.navCount || 5)),
+    pinned: valid.length ? valid : ['main','health','fitness','habits'],
+  };
+}
+function rebuildNav() { if (window.dashRebuildNav) window.dashRebuildNav(); }
+function renderNav(s) {
+  const ns = navState(s);
+  pillSync('navCustomPill', ns.on ? 'on' : 'off');
+  document.getElementById('navCustomPanel').style.display = ns.on ? 'block' : 'none';
+  document.getElementById('navCountVal').textContent = ns.count;
+  const maxPin = ns.count - 1;
+  document.getElementById('navPickHint').textContent = '(pick up to ' + maxPin + ' — the rest go under “More”)';
+  const pick = document.getElementById('navPick'); pick.innerHTML = '';
+  NAV_TABS.forEach(t => {
+    const on = ns.pinned.indexOf(t.key) !== -1;
+    const b = document.createElement('button'); b.type = 'button';
+    b.className = 'nav-pick-item' + (on ? ' on' : '') + ((!on && ns.pinned.length >= maxPin) ? ' disabled' : '');
+    b.innerHTML = '<span class="nav-pick-em">' + t.icon + '</span>' + t.label;
+    b.addEventListener('click', () => {
+      const cur = load(); const st = navState(cur);
+      let pin = st.pinned.slice();
+      if (pin.indexOf(t.key) !== -1) pin = pin.filter(k => k !== t.key);
+      else { if (pin.length >= st.count - 1) return; pin.push(t.key); }
+      pin = NAV_ORDER.filter(k => pin.indexOf(k) !== -1); // keep canonical order
+      cur.navPinned = pin; save(cur); renderNav(cur); rebuildNav();
+    });
+    pick.appendChild(b);
+  });
+  const pv = document.getElementById('navPreview'); pv.innerHTML = '';
+  NAV_TABS.filter(t => ns.pinned.indexOf(t.key) !== -1).forEach(t => {
+    const sp = document.createElement('span'); sp.textContent = t.icon; pv.appendChild(sp);
+  });
+  if (NAV_TABS.some(t => ns.pinned.indexOf(t.key) === -1)) {
+    const m = document.createElement('span'); m.className = 'pv-more'; m.textContent = '⋯ More'; pv.appendChild(m);
+  }
+}
+document.getElementById('navCustomPill').addEventListener('click', e => {
+  const b = e.target.closest('.st-pbtn'); if (!b) return;
+  const s = load(); s.navCustom = (b.dataset.val === 'on');
+  if (s.navCustom) { if (!s.navCount) s.navCount = 5; if (!Array.isArray(s.navPinned) || !s.navPinned.length) s.navPinned = ['main','health','fitness','habits']; }
+  save(s); renderNav(s); rebuildNav();
+});
+document.getElementById('navUp').addEventListener('click', () => {
+  const s = load(); s.navCount = Math.min(7, navState(s).count + 1); save(s); renderNav(s); rebuildNav();
+});
+document.getElementById('navDown').addEventListener('click', () => {
+  const s = load(); const nc = Math.max(3, navState(s).count - 1); s.navCount = nc;
+  let pin = navState(s).pinned.slice(); if (pin.length > nc - 1) pin = pin.slice(0, nc - 1);
+  s.navPinned = pin; save(s); renderNav(s); rebuildNav();
+});
+
 // Init
 const s0 = load();
 applyCSS(s0);
 renderAll(s0);
+renderNav(s0);
 setTimeout(() => {
   const vl = document.getElementById('verLabel');
   if (vl && typeof DASHBOARD_VERSION !== 'undefined')
