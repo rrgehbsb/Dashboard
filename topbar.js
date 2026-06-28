@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '1.5.0';
+const DASHBOARD_VERSION = '1.5.1';
 
 // =============================================================
 // THEME STYLES ("skins") — single source of truth.
@@ -127,6 +127,31 @@ const SKIN_DEFS = {
   },
 };
 if (typeof window !== 'undefined') window.SKIN_DEFS = SKIN_DEFS;
+
+// ── Companion personas (the on-screen buddy) ──
+// "default" is used when no skin is active; the rest mirror each Theme Style's lead.
+const DEFAULT_BUDDY = {
+  name:'Nova', face:'🌟', react:['✨','💫','⚡','🔮','🌟'], burst:['✨','💫','⭐'], lines:[
+    "Hey! Ready to make today count? ✨","Tiny steps still move you forward. 🚀",
+    "I believe in you — let's go!","One task at a time. You've got this. 💫","Future you is already cheering. ⭐"],
+};
+const BUDDY_DEFS = {
+  onepiece:{name:'Luffy', face:'👒', react:['😄','🤣','💪','🍖','🏴‍☠️'], burst:['🍖','⭐','🏴‍☠️'], lines:[
+    "Let's make today an adventure! 🏴‍☠️","Shishishi! You got this, nakama!",
+    "I'm gonna be King — what'll YOU be?","Meat first, then conquer the day! 🍖","A real captain never gives up!"]},
+  bluelock:{name:'Isagi', face:'⚽', react:['🔥','😼','⚡','💢','🥅'], burst:['⚡','⚽','🔥'], lines:[
+    "Devour every goal today. ⚽","Awaken your ego — go score!","Picture the win, then take it.",
+    "No spectators. You're the striker.","Reaction speed: max. Move. ⚡"]},
+  sololeveling:{name:'Monarch', face:'🌑', react:['😼','⚔️','💜','👑','🐉'], burst:['⚔️','💜','🌑'], lines:[
+    "Arise. Today is yours to conquer. 🌑","Every task is XP. Keep leveling.",
+    "The weak have no will. You're not weak.","Only I level up — and so do you.","Shadows ready. Give the command. ⚔️"]},
+  jujutsu:{name:'Gojo', face:'🌀', react:['😎','🤙','🟣','💙','🫰'], burst:['🟣','💙','🌀'], lines:[
+    "Relax — you've literally got me. 😎","Nah, you're the strongest today. 🟣",
+    "Throughout the day, you alone are honored.","Bored? Go clear a task. 🤙","Domain: Productive Today. Expand it."]},
+  demonslayer:{name:'Tanjiro', face:'🌊', react:['😊','🔥','🗡️','🌸','💢'], burst:['🌊','🌸','🔥'], lines:[
+    "Set your heart ablaze! 🔥","Total concentration — one task at a time. 🌊",
+    "Kindness and grit win the day.","Breathe. Then push forward.","Protect your goals like family. 🌸"]},
+};
 
 // Apply saved theme + skin before anything renders (prevents flash)
 (function() {
@@ -928,6 +953,7 @@ html[data-skin]:not([data-skin="none"]) #saveBtn {
     const btn = document.getElementById('topbarWaterAdd');
     if (btn) { btn.classList.add('flash'); setTimeout(() => btn.classList.remove('flash'), 220); }
     spawnWaterBurst();
+    if (_buddyOnWater) _buddyOnWater();
   }
 
   // Themed emoji burst when logging water
@@ -1006,10 +1032,225 @@ html[data-skin]:not([data-skin="none"]) #saveBtn {
     sync();
   }
 
+  // =============================================================
+  // INTERACTIVE COMPANION — self-contained, lives on every page
+  // except settings (and inside iframes). Tap/drag, theme-aware
+  // persona, context lines, bond meter, water cheer, goal party.
+  // =============================================================
+  let _buddyOnWater = null;
+  const buddyCss = `
+.buddy{position:fixed;z-index:45;width:60px;height:60px;cursor:grab;touch-action:none;
+  right:16px;bottom:calc(96px + env(safe-area-inset-bottom));
+  -webkit-tap-highlight-color:transparent;user-select:none;}
+.buddy[hidden]{display:none;}
+.buddy.dragging{cursor:grabbing;}
+.buddy.dragging .buddy-disc{animation:none;}
+.buddy-aura{position:absolute;inset:-6px;border-radius:50%;
+  background:radial-gradient(circle,color-mix(in srgb,var(--accent,#a78bfa) 50%,transparent),transparent 70%);
+  filter:blur(7px);animation:buddy-aura 3s ease-in-out infinite;pointer-events:none;}
+@keyframes buddy-aura{0%,100%{transform:scale(0.9);opacity:0.65;}50%{transform:scale(1.14);opacity:1;}}
+html[data-skin="none"] .buddy-aura,
+html:not([data-skin]) .buddy-aura{animation:buddy-aura 3s ease-in-out infinite, buddy-spin 9s linear infinite;}
+@keyframes buddy-spin{to{transform:rotate(360deg);}}
+.buddy-disc{position:absolute;inset:0;border-radius:50%;
+  background:rgba(18,18,22,0.85);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  border:1.5px solid color-mix(in srgb,var(--accent,#a78bfa) 60%,transparent);
+  box-shadow:0 7px 22px -5px rgba(0,0,0,0.65),inset 0 0 16px color-mix(in srgb,var(--accent,#a78bfa) 22%,transparent);
+  display:flex;align-items:center;justify-content:center;font-size:30px;line-height:1;
+  animation:buddy-float 4s ease-in-out infinite;}
+@keyframes buddy-float{0%,100%{transform:translateY(0) rotate(0);}50%{transform:translateY(-7px) rotate(2deg);}}
+.buddy-disc.react{animation:buddy-bounce 0.55s cubic-bezier(.34,1.7,.5,1);}
+@keyframes buddy-bounce{0%{transform:scale(1);}28%{transform:scale(1.28) rotate(-9deg);}58%{transform:scale(0.9) rotate(7deg);}100%{transform:scale(1);}}
+.buddy-pip{position:absolute;right:-3px;top:-3px;min-width:20px;height:18px;padding:0 5px;border-radius:9px;
+  background:var(--accent,#a78bfa);color:#0a0a0b;font-size:10px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums;
+  box-shadow:0 2px 7px rgba(0,0,0,0.45);pointer-events:none;}
+.buddy-bubble{position:absolute;bottom:70px;right:0;width:max-content;max-width:212px;
+  background:rgba(15,15,19,0.97);border:1px solid color-mix(in srgb,var(--accent,#a78bfa) 45%,transparent);
+  border-radius:14px;padding:10px 13px;
+  box-shadow:0 12px 32px -8px rgba(0,0,0,0.72),0 0 20px -6px color-mix(in srgb,var(--accent,#a78bfa) 55%,transparent);
+  opacity:0;transform:translateY(8px) scale(0.9);transform-origin:bottom right;
+  transition:opacity 0.22s ease,transform 0.22s cubic-bezier(.34,1.56,.64,1);pointer-events:none;}
+.buddy-bubble.show{opacity:1;transform:translateY(0) scale(1);}
+.buddy-bubble::after{content:'';position:absolute;bottom:-7px;right:22px;width:12px;height:12px;
+  background:rgba(15,15,19,0.97);
+  border-right:1px solid color-mix(in srgb,var(--accent,#a78bfa) 45%,transparent);
+  border-bottom:1px solid color-mix(in srgb,var(--accent,#a78bfa) 45%,transparent);transform:rotate(45deg);}
+.buddy-bubble-name{font-size:10px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#a78bfa);margin-bottom:4px;display:flex;align-items:center;gap:6px;}
+.buddy-bubble-hearts{font-size:9px;letter-spacing:1px;opacity:0.95;}
+.buddy-bubble-text{font-size:12.5px;line-height:1.45;color:var(--text-primary,#fafafa);}
+.buddy-particle{position:fixed;z-index:9998;font-size:18px;pointer-events:none;
+  transform:translate(-50%,-50%);animation:buddy-particle 0.74s ease-out forwards;will-change:transform,opacity;}
+@keyframes buddy-particle{0%{opacity:1;transform:translate(-50%,-50%) scale(0.6);}
+  100%{opacity:0;transform:translate(calc(-50% + var(--bx)),calc(-50% + var(--by))) scale(1.15);}}
+@media(max-width:480px){.buddy{right:12px;}}
+`;
+
+  function setupBuddy() {
+    if (isEmbedded() || isSettingsPage()) return;
+    if (document.getElementById('buddy')) return;
+
+    const st = document.createElement('style');
+    st.id = 'buddy-style'; st.textContent = buddyCss;
+    document.head.appendChild(st);
+
+    const buddy = document.createElement('div');
+    buddy.className = 'buddy'; buddy.id = 'buddy'; buddy.hidden = true;
+    buddy.innerHTML =
+      '<div class="buddy-bubble" id="buddyBubble">' +
+        '<div class="buddy-bubble-name"><span id="buddyName">Nova</span>' +
+        '<span class="buddy-bubble-hearts" id="buddyHearts"></span></div>' +
+        '<div class="buddy-bubble-text" id="buddyText"></div>' +
+      '</div>' +
+      '<div class="buddy-aura"></div>' +
+      '<div class="buddy-disc" id="buddyDisc">🌟</div>' +
+      '<div class="buddy-pip" id="buddyPip">Lv1</div>';
+    document.body.appendChild(buddy);
+
+    const disc = buddy.querySelector('#buddyDisc');
+    const bubble = buddy.querySelector('#buddyBubble');
+    const nameEl = buddy.querySelector('#buddyName');
+    const textEl = buddy.querySelector('#buddyText');
+    const heartsEl = buddy.querySelector('#buddyHearts');
+    const pip = buddy.querySelector('#buddyPip');
+
+    let persona = DEFAULT_BUDDY;
+    function loadPersona() {
+      persona = BUDDY_DEFS[getSkin()] || DEFAULT_BUDDY;
+      disc.textContent = persona.face;
+      nameEl.textContent = persona.name;
+    }
+
+    const getAff = () => parseInt(localStorage.getItem('buddy_affinity') || '0', 10) || 0;
+    const setAff = (n) => { try { localStorage.setItem('buddy_affinity', String(n)); } catch (e) {} };
+    const level = (t) => Math.floor(t / 10) + 1;
+    function renderMeters() {
+      const lv = level(getAff());
+      pip.textContent = 'Lv' + lv;
+      heartsEl.textContent = '★'.repeat(Math.min(lv, 5));
+    }
+
+    // Context-aware lines. Goals/streak are available on the home page
+    // (it exposes storeGet/getActiveDateString); water works everywhere.
+    function contextLines() {
+      const h = new Date().getHours(), out = [];
+      if (typeof window.storeGet === 'function' && typeof window.getActiveDateString === 'function') {
+        try {
+          const goals = window.storeGet('goals:' + window.getActiveDateString()) || [];
+          const total = goals.length, done = goals.filter((g) => g.done).length;
+          if (total === 0) out.push("No goals yet — add one to start! ✍️");
+          else if (done === total) out.push("All goals cleared! Legendary. 🔥");
+          else out.push((total - done) + " goal" + (total - done > 1 ? "s" : "") + " left today — let's go!");
+          const s = window.storeGet('goal_streak_v1') || { count: 0 };
+          if (s.count > 0) out.push("🔥 " + s.count + "-day streak — keep it alive!");
+        } catch (e) {}
+      }
+      try { const w = getWaterProgress(); if (w.total > 0 && w.done === 0 && h >= 17) out.push("Hydrate! No water logged yet. 💧"); } catch (e) {}
+      if (h < 6) out.push("Up late? Rest is part of the grind. 😴");
+      else if (h < 12) out.push("Good morning! Let's own today. ☀️");
+      else if (h >= 21) out.push("Winding down — plan tomorrow? 🌙");
+      return out;
+    }
+    function pickLine() {
+      const ctx = contextLines();
+      if (ctx.length && Math.random() < 0.55) return ctx[Math.floor(Math.random() * ctx.length)];
+      return persona.lines[Math.floor(Math.random() * persona.lines.length)];
+    }
+
+    let bubbleTimer = null, reactIdx = 0, comboCount = 0;
+    function say(text, dur) {
+      textEl.textContent = text; renderMeters();
+      bubble.classList.add('show');
+      clearTimeout(bubbleTimer);
+      bubbleTimer = setTimeout(() => bubble.classList.remove('show'), dur || 3800);
+    }
+    function burst(emojis, n) {
+      const r = disc.getBoundingClientRect();
+      for (let i = 0; i < (n || 6); i++) {
+        const s = document.createElement('span');
+        s.className = 'buddy-particle';
+        s.textContent = emojis[i % emojis.length];
+        s.style.left = (r.left + r.width / 2) + 'px';
+        s.style.top = (r.top + r.height / 2) + 'px';
+        s.style.setProperty('--bx', ((Math.random() * 2 - 1) * 72).toFixed(0) + 'px');
+        s.style.setProperty('--by', (-(40 + Math.random() * 62)).toFixed(0) + 'px');
+        document.body.appendChild(s);
+        setTimeout(() => s.remove(), 760);
+      }
+    }
+    function react(special) {
+      disc.classList.remove('react'); void disc.offsetWidth; disc.classList.add('react');
+      disc.textContent = persona.react[reactIdx++ % persona.react.length];
+      setTimeout(() => { disc.textContent = persona.face; }, 700);
+      burst(persona.burst, special ? 12 : 6);
+    }
+    function interact() {
+      const aff = getAff() + 1; setAff(aff); renderMeters();
+      comboCount++;
+      const special = (comboCount % 5 === 0);
+      react(special);
+      if (special) say("Combo x" + comboCount + "! We're in sync. 💥");
+      else if (aff % 10 === 0) say("Our bond leveled up — Lv" + level(aff) + "! ★");
+      else say(pickLine());
+    }
+
+    // Drag (with tap detection) + persisted position shared across pages
+    let down = false, moved = false, sx = 0, sy = 0, ox = 0, oy = 0;
+    function place(x, y) {
+      const w = buddy.offsetWidth || 60, h = buddy.offsetHeight || 60;
+      x = Math.max(6, Math.min(window.innerWidth - w - 6, x));
+      y = Math.max(60, Math.min(window.innerHeight - h - 6, y));
+      buddy.style.left = x + 'px'; buddy.style.top = y + 'px';
+      buddy.style.right = 'auto'; buddy.style.bottom = 'auto';
+    }
+    function loadPos() { try { const p = JSON.parse(localStorage.getItem('buddy_pos')); if (p) place(p.x, p.y); } catch (e) {} }
+    buddy.addEventListener('pointerdown', (e) => {
+      down = true; moved = false; buddy.classList.add('dragging');
+      const r = buddy.getBoundingClientRect(); ox = r.left; oy = r.top; sx = e.clientX; sy = e.clientY;
+      try { buddy.setPointerCapture(e.pointerId); } catch (err) {}
+    });
+    buddy.addEventListener('pointermove', (e) => {
+      if (!down) return;
+      const dx = e.clientX - sx, dy = e.clientY - sy;
+      if (Math.abs(dx) > 4 || Math.abs(dy) > 4) moved = true;
+      if (moved) { place(ox + dx, oy + dy); bubble.classList.remove('show'); }
+    });
+    buddy.addEventListener('pointerup', () => {
+      down = false; buddy.classList.remove('dragging');
+      if (moved) { const r = buddy.getBoundingClientRect(); try { localStorage.setItem('buddy_pos', JSON.stringify({ x: r.left, y: r.top })); } catch (e) {} }
+      else interact();
+    });
+    window.addEventListener('resize', () => { if (buddy.style.left) { const r = buddy.getBoundingClientRect(); place(r.left, r.top); } });
+
+    // Auto-celebrate when every goal is done (home page only, re-arms on change)
+    let celebrated = false;
+    window.addEventListener('goals-changed', () => {
+      if (typeof window.storeGet !== 'function' || typeof window.getActiveDateString !== 'function') return;
+      try {
+        const goals = window.storeGet('goals:' + window.getActiveDateString()) || [];
+        if (goals.length > 0 && goals.every((g) => g.done)) {
+          if (!celebrated) { celebrated = true; react(true); say("Every goal done! You're unstoppable. 🏆", 4500); }
+        } else celebrated = false;
+      } catch (e) {}
+    });
+    // Cheer when water is logged from the top bar
+    _buddyOnWater = () => {
+      react(false);
+      say(["Nice, stay hydrated! 💧", "Glug glug — keep going! 💧", "Hydration = focus. 💧"][Math.floor(Math.random() * 3)], 2600);
+    };
+    // Let settings re-skin the buddy live
+    window.dashRefreshBuddy = loadPersona;
+
+    loadPersona(); renderMeters(); loadPos(); buddy.hidden = false;
+    setTimeout(() => say(pickLine(), 4200), 1400); // greet after a beat
+  }
+
   function boot() {
     injectStyleAndHTML();
     injectLoadSweep();
     showWelcomeToast();
+    setupBuddy();
     const btn = document.getElementById('topbarWaterAdd');
     if (btn) btn.addEventListener('click', (e) => { e.preventDefault(); addWater(); });
     render();
