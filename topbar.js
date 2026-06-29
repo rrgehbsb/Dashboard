@@ -811,6 +811,42 @@ html[data-theme="light"] .xp-logrow,html[data-theme="light"] .xp-rate{background
 .xp-rate-name{flex:1;min-width:0;}
 .xp-rate-name em{font-style:normal;color:var(--text-tertiary,rgba(255,255,255,0.4));font-size:11px;}
 .xp-log-empty{font-size:12px;color:var(--text-tertiary,rgba(255,255,255,0.4));font-style:italic;padding:6px 2px;}
+/* Achievement-unlock banner variant */
+.xp-toast.achievement{border-color:#F2C063;box-shadow:0 16px 44px -8px rgba(0,0,0,0.7),0 0 34px -4px rgba(242,192,99,0.75);}
+.xp-toast.achievement .xp-toast-badge{background:rgba(242,192,99,0.2);border-color:rgba(242,192,99,0.5);font-size:22px;}
+.xp-toast.achievement .xp-tb-star{display:none;}
+.xp-toast.achievement .xp-toast-reason{color:#F2C063;}
+.xp-toast.achievement .xp-toast-fill{background:linear-gradient(90deg,#F2C063,#ffe6a0);}
+.xp-toast.achievement .xp-toast-gain{font-size:22px;}
+/* Achievements grid */
+.xp-ach-count{float:right;color:var(--accent,#a78bfa);font-weight:800;}
+.xp-badges{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.xp-badge{display:flex;flex-direction:column;align-items:center;gap:5px;padding:11px 4px;border-radius:12px;
+  background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);text-align:center;opacity:0.5;
+  filter:grayscale(0.8);transition:transform .12s;}
+.xp-badge.got{opacity:1;filter:none;background:color-mix(in srgb,var(--accent,#a78bfa) 12%,transparent);
+  border-color:color-mix(in srgb,var(--accent,#a78bfa) 35%,transparent);}
+.xp-badge.got:active{transform:scale(0.94);}
+html[data-theme="light"] .xp-badge{background:rgba(0,0,0,0.04);}
+.xp-badge-ic{font-size:23px;line-height:1;}
+.xp-badge-name{font-size:8.5px;font-weight:700;line-height:1.15;color:var(--text-secondary,rgba(255,255,255,0.6));}
+.xp-badge.got .xp-badge-name{color:var(--text-primary,#fafafa);}
+/* Streak freeze box */
+.xp-freeze{background:rgba(255,255,255,0.04);border:1px solid color-mix(in srgb,var(--accent,#a78bfa) 22%,transparent);
+  border-radius:13px;padding:13px;}
+html[data-theme="light"] .xp-freeze{background:rgba(0,0,0,0.04);}
+.xp-freeze-top{display:flex;align-items:center;gap:11px;}
+.xp-freeze-ic{font-size:26px;flex-shrink:0;}
+.xp-freeze-title{font-size:14px;font-weight:700;color:var(--text-primary,#fafafa);}
+.xp-freeze-title strong{color:var(--accent,#a78bfa);}
+.xp-freeze-desc{font-size:11.5px;color:var(--text-tertiary,rgba(255,255,255,0.5));line-height:1.35;margin-top:2px;}
+.xp-freeze-buy{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:11px;
+  padding-top:11px;border-top:1px solid rgba(255,255,255,0.07);}
+.xp-freeze-bal{font-size:12px;font-weight:700;color:var(--text-secondary,rgba(255,255,255,0.6));font-variant-numeric:tabular-nums;}
+.xp-freeze-btn{border:none;border-radius:10px;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:800;
+  padding:9px 14px;background:var(--accent,#a78bfa);color:#0a0a0b;-webkit-tap-highlight-color:transparent;transition:filter .15s,opacity .15s;}
+.xp-freeze-btn:hover{filter:brightness(1.08);}
+.xp-freeze-btn:disabled{opacity:0.4;cursor:not-allowed;}
 `;
 
   function buildTabEl(tab) {
@@ -1543,14 +1579,21 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
       question:  { mood:'think', lines:["Good question! Honestly, I think you already know — what does your gut say?","Hmm — my take: start small, stay kind to yourself, keep going.","I'd trust yourself on this one. You're sharper than you give yourself credit for."] },
       fallback:  { mood:'cool',  lines:["I hear you. Tell me more — what's really on your mind?","Got it. Want a pep talk, a plan, or just someone to listen?","I'm with you. What would help most right now?","Mhm. Keep going, I'm listening. 👂"] },
     };
+    // Bonus buddy lines unlocked as your level climbs (leveling "gives" something)
+    const LEVEL_LINES = [[5, "Level 5 already? You're on a roll. 🚀"], [10, "Double digits — look at you go! ⭐"], [20, "Level 20… that's serious dedication. 💎"], [35, "Honestly? You inspire ME now. 🌟"]];
+    function curLevel() { try { return levelInfo(xpLoad().total).level; } catch (e) { return 1; } }
+    function personaLines() {
+      const lv = curLevel();
+      return persona.lines.concat(LEVEL_LINES.filter((l) => lv >= l[0]).map((l) => l[1]));
+    }
     function generateReply(text) {
       const intent = classify(text);
       if (intent === 'whoareyou') return { text: persona.intro, mood: 'cool' };
       const pool = REPLY[intent] || REPLY.fallback;
       let reply;
-      // Persona flavor: sometimes answer with the character's own catchphrase
+      // Persona flavor: sometimes answer with the character's own (level-unlocked) lines
       if ((intent === 'motivate' || intent === 'greet' || intent === 'win') && Math.random() < 0.45) {
-        reply = persona.lines[Math.floor(Math.random() * persona.lines.length)];
+        const pl = personaLines(); reply = pl[Math.floor(Math.random() * pl.length)];
       } else {
         reply = pool.lines[Math.floor(Math.random() * pool.lines.length)];
       }
@@ -1693,14 +1736,80 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
     { reason:'Drank water (+1)',   amount:5,  icon:'💧' },
   ];
 
+  const FREEZE_COST = 150; // spendable XP per streak freeze
+  // Achievement badges — each tests against the xp state (counts/level/streak/etc.)
+  const ACHIEVEMENTS = [
+    { id:'first_xp',   icon:'✨', name:'First Steps',    desc:'Earn your first XP',            test:(s) => s.total > 0 },
+    { id:'lv5',        icon:'🌱', name:'Getting Going',   desc:'Reach Level 5',                 test:(s) => levelInfo(s.total).level >= 5 },
+    { id:'lv10',       icon:'⭐', name:'Rising Star',     desc:'Reach Level 10',                test:(s) => levelInfo(s.total).level >= 10 },
+    { id:'lv25',       icon:'🌟', name:'Seasoned',        desc:'Reach Level 25',                test:(s) => levelInfo(s.total).level >= 25 },
+    { id:'goals10',    icon:'✅', name:'Go-Getter',       desc:'Complete 10 goals',             test:(s) => (s.counts.goal || 0) >= 10 },
+    { id:'goals100',   icon:'🏅', name:'Centurion',       desc:'Complete 100 goals',            test:(s) => (s.counts.goal || 0) >= 100 },
+    { id:'allgoals',   icon:'🧹', name:'Clean Sweep',     desc:'Clear all goals in a day',      test:(s) => (s.counts.allgoals || 0) >= 1 },
+    { id:'habit25',    icon:'🔥', name:'Habitual',        desc:'Complete 25 habits',            test:(s) => (s.counts.habit || 0) >= 25 },
+    { id:'weight7',    icon:'⚖️', name:'On the Scale',    desc:'Log your weight 7 times',       test:(s) => (s.counts.weight || 0) >= 7 },
+    { id:'water50',    icon:'💧', name:'Well Hydrated',   desc:'Log water 50 times',            test:(s) => (s.counts.water || 0) >= 50 },
+    { id:'mood7',      icon:'🙂', name:'Self-Aware',      desc:'Log your mood 7 times',         test:(s) => (s.counts.mood || 0) >= 7 },
+    { id:'meal30',     icon:'🍽️', name:'Meal Prepper',    desc:'Log 30 meals',                  test:(s) => (s.counts.meal || 0) >= 30 },
+    { id:'perfectday', icon:'👑', name:'Perfect Day',     desc:'Earn XP in 5 categories in one day', test:(s) => Object.keys(s.dayCats || {}).some((d) => (s.dayCats[d] || []).length >= 5) },
+    { id:'streak7',    icon:'📅', name:'Consistent',      desc:'Reach a 7-day goal streak',     test:(s) => (s.maxStreak || 0) >= 7 },
+    { id:'streak30',   icon:'💎', name:'Unbreakable',     desc:'Reach a 30-day goal streak',    test:(s) => (s.maxStreak || 0) >= 30 },
+  ];
+
   function xpToday() {
     const d = new Date();
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
-  function xpLoad() {
-    try { const s = JSON.parse(localStorage.getItem(XP_KEY)); if (s && typeof s.total === 'number') return s; } catch (e) {}
-    return { total: 0, claims: {}, log: [] };
+  function xpYesterday() {
+    const d = new Date(); d.setDate(d.getDate() - 1);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
+  function xpLoad() {
+    let s = null;
+    try { s = JSON.parse(localStorage.getItem(XP_KEY)); } catch (e) {}
+    if (!s || typeof s.total !== 'number') s = { total: 0 };
+    s.claims = s.claims || {}; s.log = s.log || []; s.counts = s.counts || {}; s.dayCats = s.dayCats || {};
+    s.badges = s.badges || {}; s.spent = s.spent || 0; s.freezesBought = s.freezesBought || 0;
+    s.freezesUsed = s.freezesUsed || 0; s.maxStreak = s.maxStreak || 0;
+    return s;
+  }
+  // Infer a category from the reason text (so page hooks don't need to pass one)
+  function catOf(reason) {
+    const r = (reason || '').toLowerCase();
+    if (r.indexOf('all goal') !== -1) return 'allgoals';
+    if (r.indexOf('goal') !== -1) return 'goal';
+    if (r.indexOf('habit') !== -1) return 'habit';
+    if (r.indexOf('weight') !== -1) return 'weight';
+    if (r.indexOf('mood') !== -1) return 'mood';
+    if (r.indexOf('meal') !== -1) return 'meal';
+    if (r.indexOf('workout') !== -1) return 'workout';
+    if (r.indexOf('water') !== -1) return 'water';
+    if (r.indexOf('check-in') !== -1) return 'login';
+    return 'other';
+  }
+  function checkAchievements(s, silent) {
+    let changed = false;
+    ACHIEVEMENTS.forEach((a) => {
+      if (!s.badges[a.id]) { try { if (a.test(s)) { s.badges[a.id] = Date.now(); changed = true; if (!silent) _xpQueue.push({ ach: a }); } } catch (e) {} }
+    });
+    if (changed) { xpSave(s); if (!silent) runXpToast(); }
+    return changed;
+  }
+  function freezesOwned(s) { s = s || xpLoad(); return Math.max(0, (s.freezesBought || 0) - (s.freezesUsed || 0)); }
+  function spendable(s) { s = s || xpLoad(); return Math.max(0, s.total - (s.spent || 0)); }
+  // Public helpers for streak freeze (used by index.html)
+  window.dashGetFreezes = () => freezesOwned();
+  window.dashUseFreeze = () => {
+    const s = xpLoad();
+    if (freezesOwned(s) <= 0) return false;
+    s.freezesUsed = (s.freezesUsed || 0) + 1; xpSave(s);
+    clearTimeout(_xpCloudTimer); _xpCloudTimer = setTimeout(xpCloudPush, 1200);
+    return true;
+  };
+  window.dashNoteStreak = (count) => {
+    const s = xpLoad();
+    if ((count || 0) > (s.maxStreak || 0)) { s.maxStreak = count; xpSave(s); checkAchievements(s); }
+  };
   function xpSave(s) { try { localStorage.setItem(XP_KEY, JSON.stringify(s)); } catch (e) {} }
   function pruneClaims(s) {
     const today = xpToday();
@@ -1739,8 +1848,8 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
     const chip = document.getElementById('topbarLevel');
     if (chip && !chip._wired) { chip._wired = true; chip.addEventListener('click', openXpModal); }
     updateChip();
-    // Cloud pull then daily check-in
-    xpCloudPull().then(grantDailyLogin);
+    // Cloud pull, reconcile badges silently, then daily check-in
+    xpCloudPull().then(() => { checkAchievements(xpLoad(), true); updateChip(); grantDailyLogin(); });
   }
 
   function updateChip() {
@@ -1764,10 +1873,18 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
     const before = levelInfo(s.total);
     s.total += amount;
     const after = levelInfo(s.total);
-    s.log = (s.log || []); s.log.unshift({ r: reason, a: amount, t: Date.now() }); s.log = s.log.slice(0, 20);
+    s.log.unshift({ r: reason, a: amount, t: Date.now() }); s.log = s.log.slice(0, 20);
+    // Lifetime category counters + per-day categories (for "Perfect Day")
+    const cat = catOf(reason);
+    s.counts[cat] = (s.counts[cat] || 0) + 1;
+    const today = xpToday(), yest = xpYesterday();
+    s.dayCats[today] = s.dayCats[today] || [];
+    if (s.dayCats[today].indexOf(cat) === -1) s.dayCats[today].push(cat);
+    Object.keys(s.dayCats).forEach((d) => { if (d !== today && d !== yest) delete s.dayCats[d]; });
     pruneClaims(s); xpSave(s);
     updateChip();
     _xpQueue.push({ amount, reason, info: after, levelUp: before.level !== after.level ? after.level : 0 });
+    checkAchievements(s); // queues any newly-earned badge toasts (after the XP toast)
     runXpToast();
     clearTimeout(_xpCloudTimer); _xpCloudTimer = setTimeout(xpCloudPush, 1200);
   }
@@ -1779,6 +1896,23 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
     if (_xpBusy || !_xpQueue.length || !_xpToast) return;
     _xpBusy = true;
     const t = _xpQueue.shift();
+    if (t.ach) {
+      // Achievement-unlock banner (reuses the toast frame)
+      _xpToast.classList.add('achievement'); _xpToast.classList.remove('levelup');
+      _xpBadge.textContent = t.ach.icon;
+      _xpGain.innerHTML = '🏆';
+      _xpReason.textContent = 'Achievement: ' + t.ach.name;
+      _xpSub.textContent = t.ach.desc;
+      _xpFill.style.transition = 'none'; _xpFill.style.width = '100%';
+      _xpToast.classList.add('show'); xpConfetti();
+      clearTimeout(_xpToastTimer);
+      _xpToastTimer = setTimeout(() => {
+        _xpToast.classList.remove('show');
+        setTimeout(() => { _xpToast.classList.remove('achievement'); _xpBusy = false; runXpToast(); }, 380);
+      }, 3400);
+      return;
+    }
+    _xpToast.classList.remove('achievement');
     _xpBadge.textContent = 'Lv' + t.info.level;
     _xpGain.innerHTML = '+' + t.amount + '<span>XP</span>';
     _xpReason.textContent = t.levelUp ? ('LEVEL UP!  ➜  Lv' + t.levelUp) : t.reason;
@@ -1832,13 +1966,19 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
     try {
       const uid = await xpUid(supa); if (!uid) return;
       const { data } = await supa.from('app_state').select('data').eq('key', uid + ':xp').maybeSingle();
-      if (data && data.data && typeof data.data.total === 'number') {
+      const d = data && data.data;
+      if (d && typeof d.total === 'number') {
         const local = xpLoad();
-        if (data.data.total > local.total) {
-          local.total = data.data.total;
-          if (Array.isArray(data.data.log) && data.data.log.length >= (local.log || []).length) local.log = data.data.log;
-          xpSave(local); updateChip();
-        }
+        // Every field is monotonic → merge by max / union, so devices converge
+        local.total = Math.max(local.total, d.total);
+        local.spent = Math.max(local.spent || 0, d.spent || 0);
+        local.freezesBought = Math.max(local.freezesBought || 0, d.freezesBought || 0);
+        local.freezesUsed = Math.max(local.freezesUsed || 0, d.freezesUsed || 0);
+        local.maxStreak = Math.max(local.maxStreak || 0, d.maxStreak || 0);
+        if (d.counts) Object.keys(d.counts).forEach((k) => { local.counts[k] = Math.max(local.counts[k] || 0, d.counts[k] || 0); });
+        if (d.badges) Object.keys(d.badges).forEach((k) => { if (!local.badges[k]) local.badges[k] = d.badges[k]; });
+        if (Array.isArray(d.log) && d.log.length >= (local.log || []).length) local.log = d.log;
+        xpSave(local); updateChip();
       }
     } catch (e) {}
   }
@@ -1847,35 +1987,72 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
     try {
       const uid = await xpUid(supa); if (!uid) return;
       const s = xpLoad();
-      await supa.from('app_state').upsert({ key: uid + ':xp', data: { total: s.total, log: s.log }, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+      await supa.from('app_state').upsert({ key: uid + ':xp', data: {
+        total: s.total, spent: s.spent, freezesBought: s.freezesBought, freezesUsed: s.freezesUsed,
+        maxStreak: s.maxStreak, counts: s.counts, badges: s.badges, log: s.log,
+      }, updated_at: new Date().toISOString() }, { onConflict: 'key' });
     } catch (e) {}
   }
 
   // ── Level / XP modal ──
-  function openXpModal() {
-    if (document.getElementById('xpModal')) { document.getElementById('xpModal').classList.add('show'); return; }
+  function xpModalInner() {
     const s = xpLoad(); const info = levelInfo(s.total);
-    const m = document.createElement('div'); m.className = 'xp-modal-bg show'; m.id = 'xpModal';
+    const unlocked = ACHIEVEMENTS.filter((a) => s.badges[a.id]).length;
     const rates = XP_RATES.map((r) => '<div class="xp-rate"><span class="xp-rate-ic">' + r.icon + '</span>' +
       '<span class="xp-rate-name">' + r.reason + (r.daily ? ' <em>· daily</em>' : '') + '</span>' +
       '<span class="xp-rate-amt">+' + r.amount + '</span></div>').join('');
     const logHtml = (s.log && s.log.length)
-      ? s.log.slice(0, 8).map((e) => '<div class="xp-logrow"><span>' + e.r + '</span><span class="xp-logamt">+' + e.a + '</span></div>').join('')
+      ? s.log.slice(0, 6).map((e) => '<div class="xp-logrow"><span>' + e.r + '</span><span class="xp-logamt">+' + e.a + '</span></div>').join('')
       : '<div class="xp-log-empty">No XP yet — go log something! 🚀</div>';
-    m.innerHTML =
-      '<div class="xp-modal">' +
+    const badges = ACHIEVEMENTS.map((a) => {
+      const got = !!s.badges[a.id];
+      return '<div class="xp-badge' + (got ? ' got' : '') + '" title="' + a.name + ' — ' + a.desc + '">' +
+        '<span class="xp-badge-ic">' + (got ? a.icon : '🔒') + '</span>' +
+        '<span class="xp-badge-name">' + a.name + '</span></div>';
+    }).join('');
+    const fz = freezesOwned(s), bal = spendable(s);
+    const freezeBox =
+      '<div class="xp-freeze">' +
+        '<div class="xp-freeze-top"><span class="xp-freeze-ic">❄️</span>' +
+          '<div class="xp-freeze-info"><div class="xp-freeze-title">Streak Freeze <strong>×' + fz + '</strong></div>' +
+          '<div class="xp-freeze-desc">Auto-protects your goal streak on a missed day.</div></div></div>' +
+        '<div class="xp-freeze-buy"><span class="xp-freeze-bal">' + bal + ' XP to spend</span>' +
+          '<button class="xp-freeze-btn" id="xpBuyFreeze"' + (bal < FREEZE_COST ? ' disabled' : '') + '>Buy · ' + FREEZE_COST + ' XP</button></div>' +
+      '</div>';
+    return '<div class="xp-modal">' +
         '<button class="xp-modal-close" id="xpModalClose" aria-label="Close">×</button>' +
         '<div class="xp-modal-lv">⭐ Level ' + info.level + '</div>' +
         '<div class="xp-modal-bar"><span class="xp-modal-fill" style="width:' + (info.pct * 100).toFixed(1) + '%"></span></div>' +
         '<div class="xp-modal-meta"><span>' + info.into + ' / ' + info.span + ' XP</span><span>' + s.total + ' total</span></div>' +
         '<div class="xp-modal-sub">' + (info.span - info.into) + ' XP to Level ' + (info.level + 1) + '</div>' +
+        '<div class="xp-modal-h">Streak freeze</div>' + freezeBox +
+        '<div class="xp-modal-h">Achievements <span class="xp-ach-count">' + unlocked + ' / ' + ACHIEVEMENTS.length + '</span></div>' +
+        '<div class="xp-badges">' + badges + '</div>' +
         '<div class="xp-modal-h">Recent activity</div><div class="xp-loglist">' + logHtml + '</div>' +
         '<div class="xp-modal-h">How to earn XP</div><div class="xp-ratelist">' + rates + '</div>' +
       '</div>';
-    document.body.appendChild(m);
+  }
+  function wireXpModal(m) {
     const close = () => m.classList.remove('show');
     m.addEventListener('click', (e) => { if (e.target === m) close(); });
     m.querySelector('#xpModalClose').addEventListener('click', close);
+    const buy = m.querySelector('#xpBuyFreeze');
+    if (buy) buy.addEventListener('click', () => {
+      const s = xpLoad();
+      if (spendable(s) < FREEZE_COST) return;
+      s.spent = (s.spent || 0) + FREEZE_COST; s.freezesBought = (s.freezesBought || 0) + 1;
+      xpSave(s); updateChip();
+      clearTimeout(_xpCloudTimer); _xpCloudTimer = setTimeout(xpCloudPush, 1200);
+      m.innerHTML = xpModalInner(); wireXpModal(m); // re-render
+    });
+  }
+  function openXpModal() {
+    let m = document.getElementById('xpModal');
+    if (m) { m.innerHTML = xpModalInner(); wireXpModal(m); m.classList.add('show'); return; }
+    m = document.createElement('div'); m.className = 'xp-modal-bg show'; m.id = 'xpModal';
+    m.innerHTML = xpModalInner();
+    document.body.appendChild(m);
+    wireXpModal(m);
   }
 
   function boot() {

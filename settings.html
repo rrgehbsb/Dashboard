@@ -328,6 +328,14 @@
       transition: opacity 0.18s, transform 0.18s; position: relative; z-index: 1; flex-shrink: 0;
     }
     .st-skin-card.active .st-skin-check { opacity: 1; transform: scale(1); }
+    .st-skin-card.locked { opacity: 0.6; }
+    .st-skin-card.locked .st-skin-name, .st-skin-card.locked .st-skin-emoji { filter: grayscale(0.7); }
+    .st-skin-lock {
+      position: absolute; top: 12px; right: 12px; z-index: 2;
+      font-size: 11px; font-weight: 800; color: var(--s-text);
+      background: var(--s-ctrl); border: 1px solid var(--s-ctrl-border);
+      border-radius: 8px; padding: 3px 8px; white-space: nowrap;
+    }
 
     /* ---- Custom nav bar ---- */
     .nav-sub { padding: 4px 0 6px; border-top: 1px solid var(--s-sep); }
@@ -747,10 +755,30 @@ function themePillSync(s) {
     b.classList.toggle('active', b.dataset.val === (s.theme || 'dark')));
 }
 
+// Skins unlock as you level up (XP from topbar). 'none'/onepiece are free.
+const SKIN_LOCK = { none:0, onepiece:0, bluelock:3, sololeveling:6, jujutsu:10, demonslayer:15 };
+function userLevel() {
+  let total = 0; try { total = (JSON.parse(localStorage.getItem('dashboard:xp:v1')) || {}).total || 0; } catch (e) {}
+  let level = 1, need = 100, used = 0;
+  while (total >= used + need) { used += need; level++; need = Math.round(need * 1.18 / 5) * 5; }
+  return level;
+}
+function skinLocked(val) { return userLevel() < (SKIN_LOCK[val] || 0); }
 function skinSync(s) {
   const cur = s.skin || 'none';
-  document.querySelectorAll('#skinPicker .st-skin-card').forEach(c =>
-    c.classList.toggle('active', c.dataset.val === cur));
+  const lv = userLevel();
+  document.querySelectorAll('#skinPicker .st-skin-card').forEach(c => {
+    const val = c.dataset.val;
+    c.classList.toggle('active', val === cur);
+    const need = SKIN_LOCK[val] || 0;
+    const locked = lv < need;
+    c.classList.toggle('locked', locked);
+    let badge = c.querySelector('.st-skin-lock');
+    if (locked) {
+      if (!badge) { badge = document.createElement('div'); badge.className = 'st-skin-lock'; c.appendChild(badge); }
+      badge.textContent = '🔒 Lv ' + need;
+    } else if (badge) badge.remove();
+  });
 }
 
 function renderAll(s) {
@@ -801,6 +829,12 @@ document.getElementById('swatches').addEventListener('click', e => {
 // Skin / Theme Style picker
 document.getElementById('skinPicker').addEventListener('click', e => {
   const card = e.target.closest('.st-skin-card'); if (!card) return;
+  if (skinLocked(card.dataset.val)) {
+    const ss = document.getElementById('saveStatus');
+    if (ss) { ss.textContent = '🔒 Reach Level ' + SKIN_LOCK[card.dataset.val] + ' to unlock this style'; ss.style.color = '#f87171'; ss.style.opacity = '1'; setTimeout(() => { ss.style.opacity = '0'; }, 2600); }
+    card.animate([{ transform:'translateX(0)' }, { transform:'translateX(-6px)' }, { transform:'translateX(6px)' }, { transform:'translateX(0)' }], { duration: 260 });
+    return;
+  }
   const prev = (load().skin || 'none');
   const s = load(); s.skin = card.dataset.val;
   save(s); renderAll(s);

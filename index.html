@@ -13,7 +13,7 @@
 <title>My Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="topbar.js" defer></script>
-<style>
+<style> 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
   --text-primary:#FAFAFA;
@@ -990,6 +990,10 @@ function runStreakCheck(){
     const goals=storeGet(`goals:${d}`)||[];
     if(goals.length===0) return;
     if(goals.every(g=>g.done)) streak.count++;
+    else if(window.dashUseFreeze && window.dashUseFreeze()){
+      // A streak freeze absorbed the miss — streak survives
+      streak.frozen=(streak.frozen||[]); streak.frozen.push(d); streak.frozen=streak.frozen.slice(-20);
+    }
     else streak.count=0;
     streak.lastProcessedDate=d;
   });
@@ -1175,6 +1179,7 @@ function renderStreak(){
   const s=storeGet('goal_streak_v1')||{count:0};
   document.getElementById('gmStreakNum').textContent=s.count;
   document.getElementById('gmStreak').classList.toggle('gm-streak-active',s.count>0);
+  if(window.dashNoteStreak) window.dashNoteStreak(s.count);
 }
 function renderTomorrowCount(){
   const goals=storeGet(`goals:${getTomorrowDateString()}`)||[];
@@ -1722,10 +1727,15 @@ document.getElementById('moodNote').addEventListener('input',e=>{
 
 // Init
 runRollover();
-runStreakCheck();
 loadToday();
 loadTomorrow();
 renderStreak();
+// Streak processing waits for the XP/freeze API (topbar.js loads deferred), so a
+// streak freeze can absorb a missed day before the streak resets.
+(function streakWhenReady(n){
+  if(window.dashUseFreeze || n>30){ runStreakCheck(); renderStreak(); }
+  else setTimeout(()=>streakWhenReady(n+1),80);
+})(0);
 updateDayBar();
 setInterval(updateDayBar,60*1000);
 // Auto-rollover at midnight — fires while the page is open
