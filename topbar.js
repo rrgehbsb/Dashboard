@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '1.7.0';
+const DASHBOARD_VERSION = '1.7.1';
 
 // =============================================================
 // THEME STYLES ("skins") — single source of truth.
@@ -687,11 +687,20 @@ html[data-skin]:not([data-skin="none"]) #saveBtn {
   function readSettings() {
     try { return JSON.parse(localStorage.getItem('dashboard:settings:v1')) || {}; } catch (e) { return {}; }
   }
+  // Bottom-bar layout is DEVICE-ONLY (localStorage 'dashboard:nav:v1') — never synced,
+  // since the ideal bar differs per screen. Falls back to legacy synced fields once.
+  function readNavCfg() {
+    let n = null;
+    try { n = JSON.parse(localStorage.getItem('dashboard:nav:v1')); } catch (e) {}
+    if (n && typeof n === 'object' && n.navCustom !== undefined) return n;
+    const s = readSettings();
+    return { navCustom: s.navCustom, navCount: s.navCount, navPinned: s.navPinned };
+  }
   // Resolve which tabs are visible vs. tucked into "More", per the custom config.
   function resolveNav() {
-    const s = readSettings();
-    if (!s.navCustom) return { visible: ALL_TABS.slice(), leftover: [] };
-    let pinned = Array.isArray(s.navPinned) ? s.navPinned.map((k) => TAB_BY_KEY[k]).filter(Boolean) : [];
+    const n = readNavCfg();
+    if (!n.navCustom) return { visible: ALL_TABS.slice(), leftover: [] };
+    let pinned = Array.isArray(n.navPinned) ? n.navPinned.map((k) => TAB_BY_KEY[k]).filter(Boolean) : [];
     if (!pinned.length) pinned = ALL_TABS.slice(0, 4);
     const pinnedKeys = pinned.map((t) => t.key);
     const leftover = ALL_TABS.filter((t) => pinnedKeys.indexOf(t.key) === -1);
