@@ -4013,5 +4013,88 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 })();
 </script>
 
+<script>
+// ── Savings Goals — wires the existing (previously inert) Savings tab ──
+(function () {
+  function sGet(k) { try { const r = localStorage.getItem(k); return r == null ? null : JSON.parse(r); } catch (e) { return null; } }
+  function sSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  const SAV_KEY = 'dashboard:savings:v1';
+  const PALETTE = ['#34d399', '#60a5fa', '#fbbf24', '#f472b6', '#a78bfa', '#2dd4bf', '#fb923c'];
+  const $ = (id) => document.getElementById(id);
+  const list = $('savGoalList'), empty = $('savEmpty');
+  if (!list) return;
+
+  function getSav() { const d = sGet(SAV_KEY) || {}; return { goals: Array.isArray(d.goals) ? d.goals : [], currency: d.currency || '₪' }; }
+  function saveSav(d) { sSet(SAV_KEY, d); }
+  function fmt(n) { n = Number(n) || 0; return (Math.round(n * 100) / 100).toLocaleString(); }
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+  function render() {
+    const d = getSav(), cur = d.currency || '₪';
+    const ci = $('savCurrencyInput'); if (ci && document.activeElement !== ci) ci.value = cur;
+    list.innerHTML = '';
+    if (!d.goals.length) { if (empty) empty.style.display = ''; return; }
+    if (empty) empty.style.display = 'none';
+    d.goals.forEach((g) => {
+      const target = Number(g.target) || 0, current = Math.max(0, Number(g.current) || 0);
+      const pct = target > 0 ? Math.min(100, Math.round(current / target * 100)) : 0;
+      const color = g.color || '#a78bfa', togo = Math.max(0, target - current);
+      let deadline = '';
+      if (g.deadline) { const dd = new Date(g.deadline + 'T00:00'); const days = Math.ceil((dd - new Date()) / 864e5);
+        deadline = days >= 0 ? (days + ' day' + (days !== 1 ? 's' : '') + ' left') : 'overdue'; }
+      const card = document.createElement('div');
+      card.className = 'sav-goal-card'; card.style.borderLeftColor = color;
+      card.innerHTML =
+        '<div class="sav-goal-head"><div class="sav-goal-title"><span class="sav-goal-icon">' + (esc(g.icon) || '🎯') + '</span>' + esc(g.name || 'Goal') + '</div>' +
+          '<div class="sav-goal-pct">' + pct + '%</div></div>' +
+        '<div class="sav-track"><div class="sav-fill" style="width:' + pct + '%;background:' + color + '"></div></div>' +
+        '<div class="sav-goal-foot"><span class="sav-goal-amounts">' + cur + fmt(current) + ' / ' + cur + fmt(target) + '</span>' +
+          (deadline ? '<span class="sav-goal-deadline">' + deadline + '</span>' : '') + '</div>' +
+        (togo > 0 ? '<div class="sav-goal-togo">' + cur + fmt(togo) + ' to go</div>' : '<div class="sav-goal-togo">🎉 Goal reached!</div>');
+      card.addEventListener('click', () => openGoal(g));
+      list.appendChild(card);
+    });
+  }
+  function openGoal(g) {
+    $('savGoalModalTitle').textContent = g ? 'Edit Goal' : 'Add Goal';
+    $('savGoalId').value = g ? g.id : '';
+    $('savGoalIcon').value = g ? (g.icon || '') : '';
+    $('savGoalName').value = g ? (g.name || '') : '';
+    $('savGoalTarget').value = g ? (g.target || '') : '';
+    $('savGoalCurrent').value = g ? (g.current || '') : '';
+    $('savGoalDeadline').value = g ? (g.deadline || '') : '';
+    $('savGoalDelete').style.display = g ? '' : 'none';
+    $('savGoalModal').classList.add('show');
+    setTimeout(() => { const n = $('savGoalName'); if (n) n.focus(); }, 60);
+  }
+  function closeGoal() { $('savGoalModal').classList.remove('show'); }
+
+  $('savAddBtn').addEventListener('click', () => openGoal(null));
+  $('savGoalCancel').addEventListener('click', closeGoal);
+  $('savGoalModal').addEventListener('click', (e) => { if (e.target === $('savGoalModal')) closeGoal(); });
+  $('savGoalSave').addEventListener('click', () => {
+    const name = ($('savGoalName').value || '').trim();
+    const target = parseFloat($('savGoalTarget').value);
+    if (!name || isNaN(target) || target <= 0) { $('savGoalName').focus(); return; }
+    const d = getSav(), id = $('savGoalId').value;
+    const obj = { id: id || ('g_' + Date.now()), icon: ($('savGoalIcon').value || '').trim() || '🎯', name,
+      target, current: Math.max(0, parseFloat($('savGoalCurrent').value) || 0), deadline: $('savGoalDeadline').value || '' };
+    if (id) { const i = d.goals.findIndex((x) => x.id === id); if (i !== -1) { obj.color = d.goals[i].color; d.goals[i] = obj; } else { obj.color = PALETTE[d.goals.length % PALETTE.length]; d.goals.push(obj); } }
+    else { obj.color = PALETTE[d.goals.length % PALETTE.length]; d.goals.push(obj); }
+    saveSav(d); closeGoal(); render();
+  });
+  $('savGoalDelete').addEventListener('click', () => {
+    const id = $('savGoalId').value; if (!id) return;
+    if (!confirm('Delete this goal?')) return;
+    const d = getSav(); d.goals = d.goals.filter((x) => x.id !== id); saveSav(d); closeGoal(); render();
+  });
+  const ci = $('savCurrencyInput');
+  if (ci) ci.addEventListener('input', () => { const d = getSav(); d.currency = (ci.value || '₪').trim() || '₪'; saveSav(d); render(); });
+
+  document.querySelectorAll('.bot-tab[data-tab="savings"]').forEach((b) => b.addEventListener('click', render));
+  render();
+})();
+</script>
+
 </body>
 </html>
