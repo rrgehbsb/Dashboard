@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#050506">
+<title>Trends — Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Apply saved theme/accent immediately to prevent flash -->
+<script>
+  try {
+    var __c = JSON.parse(localStorage.getItem('dashboard:settings:v1') || '{}');
+    document.documentElement.setAttribute('data-theme', __c.theme === 'light' ? 'light' : 'dark');
+    var __ac = {purple:{d:'#a78bfa',l:'#7c3aed'},blue:{d:'#60a5fa',l:'#2563eb'},green:{d:'#34d399',l:'#059669'},orange:{d:'#fb923c',l:'#ea580c'},pink:{d:'#f472b6',l:'#db2777'},red:{d:'#f87171',l:'#dc2626'},yellow:{d:'#fbbf24',l:'#d97706'},teal:{d:'#2dd4bf',l:'#0d9488'}}[__c.accent||'purple']||{d:'#a78bfa',l:'#7c3aed'};
+    var __a = __c.theme === 'light' ? __ac.l : __ac.d;
+    var __sk = {onepiece:['#F4A91F','#E63946'],bluelock:['#1FA2FF','#00E5FF'],sololeveling:['#9D6CFF','#2DD4FF'],jujutsu:['#3B82F6','#EF4444'],demonslayer:['#2DD4BF','#FB7185']}[__c.skin];
+    if (__sk) { __a = __sk[0]; document.documentElement.style.setProperty('--accent2', __sk[1]); }
+    document.documentElement.style.setProperty('--accent', __a);
+  } catch (e) {}
+</script>
+<script src="topbar.js" defer></script>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  :root{--accent:#a78bfa;--bg:#050506;--t1:#fafafa;--t2:rgba(255,255,255,0.55);--t3:rgba(255,255,255,0.35);
+    --card:rgba(255,255,255,0.04);--bord:rgba(255,255,255,0.08);}
+  html[data-theme="light"]{--bg:#f2f2f7;--t1:#1a1a1a;--t2:rgba(0,0,0,0.5);--t3:rgba(0,0,0,0.32);
+    --card:rgba(255,255,255,0.9);--bord:rgba(0,0,0,0.08);}
+  body{background:var(--bg);color:var(--t1);min-height:100vh;
+    font-family:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Roboto,sans-serif;
+    max-width:680px;margin:0 auto;padding:max(env(safe-area-inset-top,0px),22px) 16px 110px;
+    transition:background .25s,color .25s;}
+  .tr-head{display:flex;align-items:center;gap:6px;margin-bottom:6px;}
+  .tr-back{background:none;border:none;color:var(--accent);font-size:15px;font-weight:600;font-family:inherit;
+    cursor:pointer;padding:0;display:inline-flex;align-items:center;gap:5px;}
+  h1{font-size:30px;font-weight:800;letter-spacing:-0.02em;margin:10px 0 3px;
+    background:linear-gradient(160deg,var(--t1),var(--t2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+  .tr-sub{font-size:13px;color:var(--t2);margin-bottom:20px;}
+  .tr-sec{font-size:10px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--t3);
+    margin:24px 0 11px;display:flex;align-items:center;gap:10px;}
+  .tr-sec::after{content:'';flex:1;height:1px;background:var(--bord);}
+  .card{background:var(--card);border:1px solid var(--bord);border-radius:16px;padding:16px;margin-bottom:11px;}
+  .ins{display:flex;gap:13px;align-items:flex-start;}
+  .ins-ic{font-size:26px;flex-shrink:0;line-height:1;margin-top:1px;}
+  .ins-body{flex:1;min-width:0;}
+  .ins-head{font-size:15px;font-weight:700;margin-bottom:3px;line-height:1.3;}
+  .ins-head .hl{color:var(--accent);}
+  .ins-sub{font-size:12.5px;color:var(--t2);line-height:1.45;}
+  .ins-tag{display:inline-block;margin-top:7px;font-size:10.5px;font-weight:800;letter-spacing:0.04em;
+    text-transform:uppercase;padding:3px 9px;border-radius:999px;
+    background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent);}
+  .chart-title{font-size:13px;font-weight:700;margin-bottom:2px;display:flex;justify-content:space-between;align-items:baseline;}
+  .chart-meta{font-size:11px;color:var(--t3);font-weight:600;}
+  canvas{width:100%;display:block;margin-top:8px;}
+  .empty{font-size:13px;color:var(--t2);line-height:1.5;text-align:center;padding:30px 16px;}
+  .empty-big{font-size:34px;display:block;margin-bottom:10px;}
+  .stat-row{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-bottom:11px;}
+  .stat{background:var(--card);border:1px solid var(--bord);border-radius:14px;padding:13px 14px;}
+  .stat-val{font-size:24px;font-weight:800;letter-spacing:-0.02em;line-height:1;}
+  .stat-lab{font-size:11px;color:var(--t3);font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin-top:5px;}
+  .loading{text-align:center;color:var(--t2);padding:50px 0;font-size:14px;}
+</style>
+</head>
+<body>
+
+<div class="tr-head">
+  <button class="tr-back" onclick="history.length>1?history.back():location.href='index.html'">← Back</button>
+</div>
+<h1>Trends &amp; Insights</h1>
+<div class="tr-sub">Patterns across your mood, sleep, habits &amp; weight.</div>
+
+<div id="trContent"><div class="loading">Crunching your data… 📊</div></div>
+
+<script>
+const SB_URL = 'https://mtuoqwbrujxutofhyahb.supabase.co';
+const SB_KEY = 'sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
+
+function dstr(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function lastNDates(n){const a=[];const now=new Date();for(let i=n-1;i>=0;i--){const d=new Date(now);d.setDate(d.getDate()-i);a.push(dstr(d));}return a;}
+function avg(arr){return arr.length?arr.reduce((s,x)=>s+x,0)/arr.length:0;}
+function pearson(pairs){
+  const n=pairs.length; if(n<4) return null;
+  let sx=0,sy=0,sxy=0,sxx=0,syy=0;
+  pairs.forEach(([x,y])=>{sx+=x;sy+=y;sxy+=x*y;sxx+=x*x;syy+=y*y;});
+  const den=Math.sqrt((n*sxx-sx*sx)*(n*syy-sy*sy));
+  return den===0?null:(n*sxy-sx*sy)/den;
+}
+function corrWord(r){const a=Math.abs(r);return (a>=0.6?'Strong':a>=0.35?'Clear':a>=0.15?'Slight':'No')+' '+(r>=0?'link':'inverse link');}
+
+async function load(){
+  if(!window.supabase){setTimeout(load,60);return;}
+  const sb=window.supabase.createClient(SB_URL,SB_KEY);
+  let session;
+  try{ session=(await sb.auth.getSession()).data.session; }catch(e){}
+  if(!session){location.href='login.html';return;}
+  const uid=session.user.id; localStorage.setItem('_dashUid',uid);
+  let rows=[];
+  try{ rows=(await sb.from('app_state').select('key,data').like('key',uid+':%')).data||[]; }catch(e){}
+  const D={};
+  rows.forEach(r=>{ if(r.data&&typeof r.data==='object') Object.assign(D,r.data); });
+  render(D);
+}
+
+function render(D){
+  const mood=((D['dashboard:mood:v1']||{}).entries)||[];
+  const sleep=((D['dashboard:sleep:v1']||{}).entries)||[];
+  const weight=D['po_coach_weights']||[];
+  const water=((D['po_water_v1']||{}).logs)||{};
+  const habitLog=D['habits:log']||{};
+
+  const moodBy={}; mood.forEach(e=>{if(e.score)moodBy[e.date]=e.score;});
+  const sleepBy={}; sleep.forEach(e=>{if(e.hours)sleepBy[e.date]=Number(e.hours);});
+  const weightBy={}; weight.forEach(e=>{if(e.weight!=null)weightBy[e.dateKey]=Number(e.weight);});
+  const habitBy={}; Object.keys(habitLog).forEach(d=>{const o=habitLog[d]||{};habitBy[d]=Object.keys(o).filter(k=>o[k]).length;});
+
+  const html=[];
+  const moodCount=Object.keys(moodBy).length;
+
+  // ── Insights ──
+  const insights=[];
+  // Mood × Sleep
+  (function(){
+    const good=[],poor=[],pairs=[];
+    Object.keys(moodBy).forEach(d=>{ if(sleepBy[d]!=null){ pairs.push([sleepBy[d],moodBy[d]]); (sleepBy[d]>=7?good:poor).push(moodBy[d]); }});
+    if(good.length>=3&&poor.length>=3){
+      const r=pearson(pairs);
+      insights.push({ic:'😴',head:'You feel better when you sleep more.',
+        sub:'Avg mood <span class="hl">'+avg(good).toFixed(1)+'/5</span> on nights you slept 7h+ vs <span class="hl">'+avg(poor).toFixed(1)+'/5</span> when you slept less.',
+        tag:r!=null?corrWord(r)+' · mood/sleep':null});
+    }
+  })();
+  // Mood × Habits
+  (function(){
+    const withH=[],noH=[];
+    Object.keys(moodBy).forEach(d=>{ const c=habitBy[d]||0; (c>=1?withH:noH).push(moodBy[d]); });
+    if(withH.length>=3&&noH.length>=3){
+      insights.push({ic:'🔥',head:'Keeping habits lifts your mood.',
+        sub:'Avg mood <span class="hl">'+avg(withH).toFixed(1)+'/5</span> on days you completed a habit vs <span class="hl">'+avg(noH).toFixed(1)+'/5</span> on days you didn\'t.'});
+    }
+  })();
+  // Mood × Water
+  (function(){
+    const hyd=[],dry=[];
+    Object.keys(moodBy).forEach(d=>{ const c=water[d]||0; (c>=4?hyd:dry).push(moodBy[d]); });
+    if(hyd.length>=3&&dry.length>=3&&Math.abs(avg(hyd)-avg(dry))>=0.3){
+      insights.push({ic:'💧',head:'Hydration tracks with your mood.',
+        sub:'Avg mood <span class="hl">'+avg(hyd).toFixed(1)+'/5</span> on well-hydrated days vs <span class="hl">'+avg(dry).toFixed(1)+'/5</span> otherwise.'});
+    }
+  })();
+  // Best weekday for mood
+  (function(){
+    if(moodCount<7) return;
+    const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat']; const buckets={};
+    Object.keys(moodBy).forEach(d=>{ const wd=new Date(d+'T00:00').getDay(); (buckets[wd]=buckets[wd]||[]).push(moodBy[d]); });
+    let best=-1,bestV=0,worst=-1,worstV=99;
+    Object.keys(buckets).forEach(wd=>{ if(buckets[wd].length<2)return; const a=avg(buckets[wd]); if(a>bestV){bestV=a;best=wd;} if(a<worstV){worstV=a;worst=wd;} });
+    if(best>=0&&worst>=0&&best!==worst){
+      insights.push({ic:'📆',head:'<span class="hl">'+days[best]+'</span> is your best day.',
+        sub:'Mood averages '+bestV.toFixed(1)+'/5 on '+days[best]+'s — your lowest is '+days[worst]+' ('+worstV.toFixed(1)+'/5).'});
+    }
+  })();
+  // Weight trend
+  (function(){
+    const ks=Object.keys(weightBy).sort();
+    if(ks.length>=2){
+      const cut=dstr(new Date(Date.now()-30*864e5));
+      const recent=ks.filter(k=>k>=cut);
+      if(recent.length>=2){
+        const diff=weightBy[recent[recent.length-1]]-weightBy[recent[0]];
+        insights.push({ic:'⚖️',head:(Math.abs(diff)<0.2?'Your weight is holding steady.':('You\'re '+(diff<0?'down':'up')+' <span class="hl">'+Math.abs(diff).toFixed(1)+'</span> over ~30 days.')),
+          sub:'Latest: '+weightBy[ks[ks.length-1]].toFixed(1)+' · '+ks.length+' entries logged.'});
+      }
+    }
+  })();
+
+  if(insights.length){
+    html.push('<div class="tr-sec">Insights</div>');
+    insights.forEach(i=>{
+      html.push('<div class="card"><div class="ins"><div class="ins-ic">'+i.ic+'</div><div class="ins-body">'+
+        '<div class="ins-head">'+i.head+'</div><div class="ins-sub">'+i.sub+'</div>'+
+        (i.tag?'<span class="ins-tag">'+i.tag+'</span>':'')+'</div></div></div>');
+    });
+  }
+
+  // ── Quick stats ──
+  const wkMood=lastNDates(7).map(d=>moodBy[d]).filter(Boolean);
+  const wkSleep=lastNDates(7).map(d=>sleepBy[d]).filter(Boolean);
+  html.push('<div class="tr-sec">Last 7 days</div><div class="stat-row">'+
+    '<div class="stat"><div class="stat-val">'+(wkMood.length?avg(wkMood).toFixed(1):'—')+'</div><div class="stat-lab">Avg mood</div></div>'+
+    '<div class="stat"><div class="stat-val">'+(wkSleep.length?avg(wkSleep).toFixed(1)+'h':'—')+'</div><div class="stat-lab">Avg sleep</div></div>'+
+  '</div>');
+
+  // ── Charts ──
+  function chart(title,meta,id){ html.push('<div class="card"><div class="chart-title"><span>'+title+'</span><span class="chart-meta">'+meta+'</span></div><canvas id="'+id+'" height="120"></canvas></div>'); }
+  html.push('<div class="tr-sec">Over time</div>');
+  if(moodCount) chart('🙂 Mood','last 21 days','cMood');
+  if(Object.keys(sleepBy).length) chart('😴 Sleep','hours · last 21 days','cSleep');
+  if(Object.keys(weightBy).length>=2) chart('⚖️ Weight','last 60 days','cWeight');
+
+  if(!insights.length && !moodCount && !Object.keys(sleepBy).length){
+    document.getElementById('trContent').innerHTML='<div class="empty"><span class="empty-big">📊</span>Not enough data yet. Log your mood, sleep, habits and weight for a week and your trends will appear here.</div>';
+    return;
+  }
+  document.getElementById('trContent').innerHTML=html.join('');
+
+  // draw charts
+  const dates21=lastNDates(21), dates60=lastNDates(60);
+  drawLine('cMood',dates21.map(d=>moodBy[d]!=null?{x:d,y:moodBy[d]}:null),1,5);
+  drawLine('cSleep',dates21.map(d=>sleepBy[d]!=null?{x:d,y:sleepBy[d]}:null),0,12);
+  drawLine('cWeight',dates60.map(d=>weightBy[d]!=null?{x:d,y:weightBy[d]}:null));
+}
+
+function drawLine(id,series,fixedMin,fixedMax){
+  const cv=document.getElementById(id); if(!cv) return;
+  const pts=series.map((p,i)=>p?{i,y:p.y,label:p.x}:null).filter(Boolean);
+  const dpr=window.devicePixelRatio||1, W=cv.offsetWidth, H=cv.offsetHeight;
+  cv.width=W*dpr; cv.height=H*dpr; const ctx=cv.getContext('2d'); ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,W,H);
+  if(pts.length<1){ ctx.fillStyle=getCss('--t3'); ctx.font='12px system-ui'; ctx.textAlign='center'; ctx.fillText('Not enough data yet',W/2,H/2); return; }
+  const ys=pts.map(p=>p.y);
+  let mn=fixedMin!=null?fixedMin:Math.min.apply(null,ys), mx=fixedMax!=null?fixedMax:Math.max.apply(null,ys);
+  if(mn===mx){mn-=1;mx+=1;}
+  const pad={t:10,r:8,b:18,l:26}, gw=W-pad.l-pad.r, gh=H-pad.t-pad.b;
+  const n=series.length;
+  const px=i=>pad.l+(i/Math.max(n-1,1))*gw;
+  const py=v=>pad.t+gh-((v-mn)/(mx-mn))*gh;
+  const acc=getCss('--accent');
+  // gridlines
+  ctx.strokeStyle=getCss('--bord'); ctx.lineWidth=1;
+  [0,0.5,1].forEach(f=>{const y=pad.t+gh*f;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+gw,y);ctx.stroke();});
+  ctx.fillStyle=getCss('--t3'); ctx.font='9px system-ui'; ctx.textAlign='right';
+  ctx.fillText(mx.toFixed(mx%1?1:0),pad.l-4,pad.t+4); ctx.fillText(mn.toFixed(mn%1?1:0),pad.l-4,pad.t+gh);
+  // area + line
+  const grad=ctx.createLinearGradient(0,pad.t,0,pad.t+gh);
+  grad.addColorStop(0,hexA(acc,0.28)); grad.addColorStop(1,hexA(acc,0.02));
+  ctx.beginPath(); pts.forEach((p,k)=>{const X=px(p.i),Y=py(p.y);k?ctx.lineTo(X,Y):ctx.moveTo(X,Y);});
+  const last=pts[pts.length-1], first=pts[0];
+  ctx.lineTo(px(last.i),pad.t+gh); ctx.lineTo(px(first.i),pad.t+gh); ctx.closePath(); ctx.fillStyle=grad; ctx.fill();
+  ctx.beginPath(); pts.forEach((p,k)=>{const X=px(p.i),Y=py(p.y);k?ctx.lineTo(X,Y):ctx.moveTo(X,Y);});
+  ctx.strokeStyle=acc; ctx.lineWidth=2; ctx.lineJoin='round'; ctx.stroke();
+  pts.forEach(p=>{ctx.beginPath();ctx.arc(px(p.i),py(p.y),2.6,0,Math.PI*2);ctx.fillStyle=acc;ctx.fill();});
+  // x labels (first & last)
+  ctx.fillStyle=getCss('--t3'); ctx.font='9px system-ui'; ctx.textAlign='center';
+  const fmt=s=>{const p=s.split('-');return parseInt(p[1])+'/'+parseInt(p[2]);};
+  ctx.fillText(fmt(first.label),px(first.i),H-3);
+  if(pts.length>1) ctx.fillText(fmt(last.label),px(last.i),H-3);
+}
+function getCss(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()||'#a78bfa';}
+function hexA(c,a){ // accept hex or rgb; return rgba-ish via color-mix fallback
+  if(c.indexOf('#')===0){const n=c.slice(1);const r=parseInt(n.substr(0,2),16),g=parseInt(n.substr(2,2),16),b=parseInt(n.substr(4,2),16);return 'rgba('+r+','+g+','+b+','+a+')';}
+  return c;
+}
+window.addEventListener('resize',()=>{ /* charts redraw on next load; keep simple */ });
+load();
+</script>
+</body>
+</html>
