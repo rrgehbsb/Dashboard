@@ -1634,12 +1634,59 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
       botReply(r.text, r.mood);
     }
 
-    // Quick-reply chips
-    const CHIPS = [['💪 Motivate me', 'motivate me'], ['😴 I\'m tired', "i'm tired"], ['🎯 My goals', 'my goals'], ['😄 How are you?', 'how are you?'], ['😂 Tell a joke', 'tell me a joke']];
+    // ── Weekly recap ──
+    function recapDateStr(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+    function weeklyRecap() {
+      const days = []; const now = new Date();
+      for (let i = 0; i < 7; i++) { const d = new Date(now); d.setDate(d.getDate() - i); days.push(recapDateStr(d)); }
+      const lines = [];
+      if (typeof window.storeGet === 'function') {
+        try {
+          let total = 0, done = 0;
+          days.forEach((ds) => { const g = window.storeGet('goals:' + ds) || []; total += g.length; done += g.filter((x) => x.done).length; });
+          if (total) lines.push('✅ Goals: ' + done + '/' + total + ' done');
+          const streak = (window.storeGet('goal_streak_v1') || {}).count || 0;
+          if (streak) lines.push('🔥 Streak: ' + streak + ' day' + (streak > 1 ? 's' : ''));
+          const mood = (window.storeGet('dashboard:mood:v1') || {}).entries || [];
+          const wk = mood.filter((e) => days.indexOf(e.date) !== -1 && e.score);
+          if (wk.length) lines.push('🙂 Mood: avg ' + (wk.reduce((s, e) => s + e.score, 0) / wk.length).toFixed(1) + '/5 (' + wk.length + ' logs)');
+        } catch (e) {}
+      }
+      try {
+        const w = JSON.parse(localStorage.getItem('po_coach_weights')) || [];
+        const r = w.filter((e) => days.indexOf(e.dateKey) !== -1);
+        if (r.length >= 2) { const diff = r[r.length - 1].weight - r[0].weight; lines.push('⚖️ Weight: ' + (diff >= 0 ? '+' : '') + diff.toFixed(1)); }
+        else if (r.length === 1) lines.push('⚖️ Weight: ' + r[0].weight);
+      } catch (e) {}
+      try {
+        const ws = JSON.parse(localStorage.getItem('po_water_v1')) || {}; const logs = ws.logs || {};
+        let cups = 0; days.forEach((ds) => { cups += logs[ds] || 0; });
+        if (cups) lines.push('💧 Water: ' + cups + ' logged');
+      } catch (e) {}
+      try {
+        const xp = JSON.parse(localStorage.getItem('dashboard:xp:v1')) || {}; const log = xp.log || [];
+        const weekAgo = Date.now() - 7 * 864e5;
+        const gained = log.filter((e) => e.t >= weekAgo).reduce((s, e) => s + (e.a || 0), 0);
+        if (gained) lines.push('⭐ XP: +' + gained + ' earned');
+      } catch (e) {}
+      return lines;
+    }
+    function doRecap() {
+      const lines = weeklyRecap();
+      const head = '📊 Here\'s your week:';
+      const tail = lines.length
+        ? ['Proud of you — let\'s make next week even better. 💪', 'Solid week. Keep the momentum rolling! 🚀', 'Look at all that. You showed up. ⭐'][Math.floor(Math.random() * 3)]
+        : 'Not much logged this week yet — let\'s change that! Open the app daily and I\'ll track it all. 🚀';
+      const body = lines.length ? (head + '\n' + lines.join('\n') + '\n\n' + tail) : tail;
+      botReply(body, 'party', lines.length >= 3);
+    }
+
+    // Quick-reply chips ('__recap__' is special)
+    const CHIPS = [['📊 My week', '__recap__'], ['💪 Motivate me', 'motivate me'], ['😴 I\'m tired', "i'm tired"], ['🎯 My goals', 'my goals'], ['😂 Tell a joke', 'tell me a joke']];
     CHIPS.forEach(([label, payload]) => {
       const c = document.createElement('button');
       c.className = 'bc-chip'; c.type = 'button'; c.textContent = label;
-      c.addEventListener('click', () => sendUser(payload));
+      c.addEventListener('click', () => { if (payload === '__recap__') { pushMsg('user', '📊 How was my week?'); doRecap(); } else sendUser(payload); });
       bcChips.appendChild(c);
     });
 
@@ -1650,14 +1697,19 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
       buddy.hidden = true;
       renderHistory();
       if (getMsgs().length === 0) {
-        // First-ever open: introduce + greet
-        botReply(persona.intro, 'happy');
+        botReply(persona.intro, 'happy'); // first-ever open
       } else if (!opened) {
-        // Returning: a warm welcome-back line
         const ctx = contextLine();
-        const greet = ctx.length ? ctx[0] : pickGreet();
-        botReply(greet, 'happy');
+        botReply(ctx.length ? ctx[0] : pickGreet(), 'happy'); // welcome back
       }
+      // Auto-offer a recap on Sundays, once per week
+      try {
+        const wk = recapDateStr(new Date()).slice(0, 7) + '-w' + Math.ceil(new Date().getDate() / 7);
+        if (new Date().getDay() === 0 && localStorage.getItem('buddy_recap_week') !== wk) {
+          localStorage.setItem('buddy_recap_week', wk);
+          setTimeout(doRecap, 1400);
+        }
+      } catch (e) {}
       opened = true;
       setTimeout(() => bcInput.focus({ preventScroll: true }), 200);
     }
