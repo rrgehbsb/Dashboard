@@ -597,6 +597,19 @@
     </div>
   </div>
 
+  <!-- DATA -->
+  <div class="st-group">
+    <div class="st-group-label">Data</div>
+    <div class="st-body">
+      <div class="st-row" id="exportRow" style="cursor:pointer">
+        <div class="st-row-icon">⬇️</div>
+        <div class="st-row-label">Export My Data</div>
+        <span style="color:var(--s-text2);font-size:13px;font-weight:600">JSON</span>
+      </div>
+    </div>
+    <div class="nav-note" style="border-top:none;padding-top:8px">💾 Downloads a backup of everything — your settings, logs, goals, gym, habits &amp; more.</div>
+  </div>
+
   <!-- ABOUT -->
   <div class="st-group">
     <div class="st-group-label">About</div>
@@ -1039,6 +1052,32 @@ document.getElementById('logoutRow').addEventListener('click', async () => {
   localStorage.removeItem('_dashUid');
   window.location.href = 'login.html';
 });
+
+// ---- Export all data to a JSON backup ----
+async function exportData() {
+  const status = document.getElementById('saveStatus');
+  if (status) { status.textContent = 'Gathering your data…'; status.style.opacity = '1'; status.style.color = 'var(--accent)'; }
+  const bundle = { app: 'Dashboard', version: (typeof DASHBOARD_VERSION !== 'undefined' ? DASHBOARD_VERSION : ''), exportedAt: new Date().toISOString(), cloud: {}, local: {} };
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    try { bundle.local[k] = JSON.parse(localStorage.getItem(k)); } catch (e) { bundle.local[k] = localStorage.getItem(k); }
+  }
+  try {
+    const sb = getSB(); const uid = localStorage.getItem('_dashUid');
+    if (sb && uid) { const { data } = await sb.from('app_state').select('key,data').like('key', uid + ':%'); (data || []).forEach((r) => { bundle.cloud[r.key] = r.data; }); }
+  } catch (e) { console.warn('Cloud export failed', e); }
+  try {
+    const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url;
+    a.download = 'dashboard-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    if (status) { status.textContent = '✓ Backup downloaded'; setTimeout(() => { status.style.opacity = '0'; }, 2500); }
+  } catch (e) {
+    if (status) { status.textContent = '✗ Export failed'; status.style.color = '#f87171'; }
+  }
+}
+document.getElementById('exportRow').addEventListener('click', exportData);
 
 // Pull cloud settings on load
 document.addEventListener('DOMContentLoaded', loadFromCloud);
