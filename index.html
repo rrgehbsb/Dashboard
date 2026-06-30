@@ -608,6 +608,71 @@ body::after{
 .mood-dot-wrap:hover .mood-dot-tip{display:block;}
 .mood-dot-label{font-size:9px;color:var(--text-tertiary);font-weight:600;font-variant-numeric:tabular-nums;}
 .mood-empty-dots{font-size:11px;color:var(--text-tertiary);font-style:italic;}
+
+/* ============================================================
+   PREMIUM POLISH — slicker default look (accent-aware, also
+   flatters skins since everything keys off --accent).
+   ============================================================ */
+html{background:#060608;}
+body{
+  background:
+    radial-gradient(1100px 560px at 50% -8%, color-mix(in srgb,var(--accent,#a78bfa) 13%, transparent), transparent 58%),
+    radial-gradient(820px 460px at 100% 1%, rgba(255,255,255,0.032), transparent 56%),
+    linear-gradient(180deg,#0b0b0e 0%,#070709 44%,#060608 100%) fixed;
+}
+.bg-wash-warm{background:radial-gradient(ellipse,color-mix(in srgb,var(--accent,#a78bfa) 17%, transparent) 0%,transparent 70%);}
+.bg-wash-cool{background:radial-gradient(ellipse,rgba(185,190,215,0.07) 0%,transparent 70%);}
+
+/* Title — bolder with an accent-kissed gradient + soft depth */
+.dash-title{
+  font-size:31px;font-weight:800;letter-spacing:-0.035em;margin-bottom:16px;
+  background:linear-gradient(135deg,#ffffff 0%,#d9d7e4 52%,color-mix(in srgb,var(--accent,#a78bfa) 60%, #ffffff) 125%);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 2px 12px rgba(0,0,0,0.45));
+}
+
+/* Unified premium glass for the main cards */
+.gm-card,.day-ring-card,.mood-card,.rm-card{
+  background:linear-gradient(180deg,rgba(255,255,255,0.058) 0%,rgba(255,255,255,0.022) 100%) !important;
+  border:1px solid rgba(255,255,255,0.08);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.06), 0 20px 50px -20px rgba(0,0,0,0.65) !important;
+}
+.do-now-card{
+  background:linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.022));
+  border:1px solid rgba(255,255,255,0.08);
+  border-left:3px solid var(--accent,#a78bfa);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.05), 0 12px 30px -16px rgba(0,0,0,0.55);
+}
+.goal-ticker{
+  background-image:linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02));
+  border:1px solid rgba(255,255,255,0.07);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+/* Dash mini-cards — premium + lift on hover */
+.dash-mini-card{
+  background:linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02));
+  border:1px solid rgba(255,255,255,0.07);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.05), 0 8px 24px -14px rgba(0,0,0,0.55);
+  transition:transform 0.2s cubic-bezier(.22,1,.36,1),border-color 0.2s,box-shadow 0.2s,background 0.2s;
+}
+.dash-mini-card:hover{
+  transform:translateY(-3px);
+  border-color:color-mix(in srgb,var(--accent,#a78bfa) 45%, transparent);
+  background:linear-gradient(180deg,rgba(255,255,255,0.075),rgba(255,255,255,0.03));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.08), 0 18px 34px -16px rgba(0,0,0,0.65), 0 0 0 1px color-mix(in srgb,var(--accent,#a78bfa) 16%, transparent);
+}
+.dm-eyebrow{color:color-mix(in srgb,var(--accent,#a78bfa) 55%, var(--text-tertiary));}
+.dm-value{color:#fdfdff;text-shadow:0 1px 10px rgba(0,0,0,0.35);}
+
+/* Day-ring gear button — subtle */
+.day-ring-gear{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);}
+
+/* Add button — accent gradient (default feels designed, not stock white) */
+.gm-add-btn{
+  background:linear-gradient(180deg,color-mix(in srgb,var(--accent,#a78bfa) 92%, #fff) 0%,var(--accent,#a78bfa) 100%);
+  color:#0a0a0b;box-shadow:0 1px 0 rgba(255,255,255,0.4) inset, 0 8px 20px -8px color-mix(in srgb,var(--accent,#a78bfa) 70%, transparent);
+}
 </style>
 </head>
 <body>

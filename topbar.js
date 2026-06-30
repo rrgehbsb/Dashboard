@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '1.8.0';
+const DASHBOARD_VERSION = '1.8.1';
 
 // =============================================================
 // THEME STYLES ("skins") — single source of truth.
@@ -221,8 +221,10 @@ const BUDDY_DEFS = {
   display: flex; justify-content: flex-end; align-items: center;
   gap: 8px;
   padding: max(10px, env(safe-area-inset-top)) 14px 8px;
-  background: #0a0a0b;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(10, 10, 13, 0.72);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
   font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
 }
 .topbar-water-wrap { display: flex; align-items: stretch; }
@@ -286,8 +288,10 @@ const BUDDY_DEFS = {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 40;
   display: flex; justify-content: space-around; align-items: stretch;
   padding: 6px 0 calc(6px + env(safe-area-inset-bottom));
-  background: #0a0a0b;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(10, 10, 13, 0.72);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
   font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
 }
 .bottombar-tab {
@@ -308,6 +312,16 @@ const BUDDY_DEFS = {
   filter: grayscale(100%) brightness(1.6); opacity: 1;
 }
 .bottombar-tab:active .bottombar-tab-icon { transform: scale(0.92); }
+/* Default theme: accent active indicator + glow for a designed feel */
+html[data-skin="none"] .bottombar-tab { position: relative; }
+html[data-skin="none"] .bottombar-tab.active { color: var(--accent); }
+html[data-skin="none"] .bottombar-tab.active .bottombar-tab-icon { opacity: 1; }
+html[data-skin="none"] .bottombar-tab.active span:last-child { text-shadow: 0 0 10px color-mix(in srgb, var(--accent) 60%, transparent); }
+html[data-skin="none"] .bottombar-tab.active::before {
+  content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  width: 20px; height: 3px; border-radius: 0 0 3px 3px;
+  background: var(--accent); box-shadow: 0 0 9px var(--accent);
+}
 body.has-bottombar {
   padding-bottom: calc(72px + env(safe-area-inset-bottom)) !important;
 }
