@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '1.8.1';
+const DASHBOARD_VERSION = '1.9.0';
 
 // =============================================================
 // THEME STYLES ("skins") — single source of truth.
@@ -694,6 +694,7 @@ html[data-skin]:not([data-skin="none"]) #saveBtn {
     { key:'habits',    href:'habits.html',    icon:'🔥',  label:'Habits' },
     { key:'transport', href:'transport.html', icon:'🚌',  label:'Transport' },
     { key:'projects',  href:'projects.html',  icon:'🗂️', label:'Projects' },
+    { key:'friends',   href:'friends.html',   icon:'👥',  label:'Friends' },
     { key:'settings',  href:'settings.html',  icon:'⚙️',  label:'Settings' },
   ];
   const TAB_BY_KEY = {}; ALL_TABS.forEach((t) => { TAB_BY_KEY[t.key] = t; });
@@ -945,6 +946,7 @@ html[data-theme="light"] .xp-freeze{background:rgba(0,0,0,0.04);}
     if (p.endsWith('habits.html')) return 'habits';
     if (p.endsWith('transport.html')) return 'transport';
     if (p.endsWith('projects.html')) return 'projects';
+    if (p.endsWith('friends.html')) return 'friends';
     if (p.endsWith('settings.html')) return 'settings';
     return 'main';
   }
@@ -1856,7 +1858,7 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
   function checkAchievements(s, silent) {
     let changed = false;
     ACHIEVEMENTS.forEach((a) => {
-      if (!s.badges[a.id]) { try { if (a.test(s)) { s.badges[a.id] = Date.now(); changed = true; if (!silent) _xpQueue.push({ ach: a }); } } catch (e) {} }
+      if (!s.badges[a.id]) { try { if (a.test(s)) { s.badges[a.id] = Date.now(); changed = true; if (!silent) { _xpQueue.push({ ach: a }); postActivity('badge', 'unlocked the "' + a.name + '" badge ' + a.icon); } } } catch (e) {} }
     });
     if (changed) { xpSave(s); if (!silent) runXpToast(); }
     return changed;
@@ -1874,8 +1876,38 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
   };
   window.dashNoteStreak = (count) => {
     const s = xpLoad();
-    if ((count || 0) > (s.maxStreak || 0)) { s.maxStreak = count; xpSave(s); checkAchievements(s); }
+    s.curStreak = count || 0;
+    if (s.curStreak > (s.maxStreak || 0)) s.maxStreak = s.curStreak;
+    xpSave(s); checkAchievements(s); scheduleProfileSync();
   };
+
+  // ── Friends: keep your public profile card fresh + post activity ──
+  let _profTimer = null;
+  function scheduleProfileSync() { clearTimeout(_profTimer); _profTimer = setTimeout(syncFriendProfile, 1500); }
+  function weekXp(s) {
+    const now = new Date(), day = (now.getDay() + 6) % 7, mon = new Date(now);
+    mon.setDate(now.getDate() - day); mon.setHours(0, 0, 0, 0);
+    return (s.log || []).filter((e) => e.t >= mon.getTime()).reduce((a, e) => a + (e.a || 0), 0);
+  }
+  async function syncFriendProfile() {
+    let p = null; try { p = JSON.parse(localStorage.getItem('friend_profile')); } catch (e) {}
+    if (!p || !p.username) return; // no profile published yet
+    const supa = xpSupa(); if (!supa) return;
+    const uid = await xpUid(supa); if (!uid) return;
+    const s = xpLoad();
+    try {
+      await supa.from('profiles').update({
+        level: levelInfo(s.total).level, xp: s.total, xp_week: weekXp(s),
+        streak: s.curStreak || 0, skin: getSkin(), updated_at: new Date().toISOString(),
+      }).eq('id', uid);
+    } catch (e) {}
+  }
+  function postActivity(kind, text) {
+    let p = null; try { p = JSON.parse(localStorage.getItem('friend_profile')); } catch (e) {}
+    if (!p || !p.username) return;
+    const supa = xpSupa(); if (!supa) return;
+    xpUid(supa).then((uid) => { if (uid) supa.from('activity').insert({ user_id: uid, kind, text }).then(function () {}, function () {}); });
+  }
   function xpSave(s) { try { localStorage.setItem(XP_KEY, JSON.stringify(s)); } catch (e) {} }
   function pruneClaims(s) {
     const today = xpToday();
@@ -1915,7 +1947,7 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
     if (chip && !chip._wired) { chip._wired = true; chip.addEventListener('click', openXpModal); }
     updateChip();
     // Cloud pull, reconcile badges silently, then daily check-in
-    xpCloudPull().then(() => { checkAchievements(xpLoad(), true); updateChip(); grantDailyLogin(); });
+    xpCloudPull().then(() => { checkAchievements(xpLoad(), true); updateChip(); grantDailyLogin(); scheduleProfileSync(); });
   }
 
   function updateChip() {
@@ -1949,10 +1981,13 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
     Object.keys(s.dayCats).forEach((d) => { if (d !== today && d !== yest) delete s.dayCats[d]; });
     pruneClaims(s); xpSave(s);
     updateChip();
-    _xpQueue.push({ amount, reason, info: after, levelUp: before.level !== after.level ? after.level : 0 });
+    const levelUp = before.level !== after.level ? after.level : 0;
+    _xpQueue.push({ amount, reason, info: after, levelUp });
+    if (levelUp) postActivity('level', 'reached Level ' + levelUp + ' ⭐');
     checkAchievements(s); // queues any newly-earned badge toasts (after the XP toast)
     runXpToast();
     clearTimeout(_xpCloudTimer); _xpCloudTimer = setTimeout(xpCloudPush, 1200);
+    scheduleProfileSync();
   }
   // Public API used across pages
   window.dashAddXp = (amount, reason) => addXp(amount, reason);
