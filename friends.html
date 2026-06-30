@@ -163,6 +163,8 @@ const AVATARS = ['🙂','😎','🔥','🚀','💪','🦊','🐉','👑','🌟',
 let sb, uid, me=null, friends=[], inc=[], out=[], boardMode='xp', tab='board', friendIds=[];
 
 function escapeHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function isNoTable(e){ if(!e) return false; const m=((e.message||'')+' '+(e.details||'')+' '+(e.hint||'')).toLowerCase();
+  return e.code==='42P01'||e.code==='PGRST205'||e.code==='PGRST204'||m.indexOf('does not exist')!==-1||m.indexOf('schema cache')!==-1||m.indexOf('could not find the table')!==-1; }
 function levelOf(xp){let l=1,need=100,used=0;while((xp||0)>=used+need){used+=need;l++;need=Math.round(need*1.18/5)*5;}return l;}
 function localStats(){
   let x={}; try{x=JSON.parse(localStorage.getItem('dashboard:xp:v1'))||{};}catch(e){}
@@ -181,8 +183,11 @@ async function init(){
   let session; try{session=(await sb.auth.getSession()).data.session;}catch(e){}
   if(!session){location.href='login.html';return;}
   uid=session.user.id; localStorage.setItem('_dashUid',uid);
-  try{ me=(await sb.from('profiles').select('*').eq('id',uid).maybeSingle()).data; }
-  catch(e){ schemaError(); return; }
+  let sel;
+  try{ sel=await sb.from('profiles').select('*').eq('id',uid).maybeSingle(); }
+  catch(e){ sel={error:e}; }
+  if(sel.error && isNoTable(sel.error)){ schemaError(); return; }
+  me=sel.data;
   if(!me){ openProfile(true); document.getElementById('frRoot').innerHTML='<div class="empty"><span class="big">👋</span>Create a profile to start adding friends.</div>'; return; }
   await publishStats();
   await refresh();
@@ -376,17 +381,23 @@ async function saveProfile(){
   let user=(document.getElementById('profUser').value||'').trim().toLowerCase().replace(/^@/,'');
   if(!name){err.textContent='Pick a display name.';return;}
   if(!me){
-    if(!/^[a-z0-9_]{3,20}$/.test(user)){err.textContent='Username: 3–20 letters, numbers or _.';return;}
-    const taken=(await sb.from('profiles').select('id').eq('username',user).maybeSingle()).data;
-    if(taken){err.textContent='@'+user+' is taken — try another.';return;}
+    if(!/^[a-z0-9_]{3,20}$/.test(user)){err.textContent='Username: 3–20 letters, numbers or _ (no spaces).';return;}
+    const chk=await sb.from('profiles').select('id').eq('username',user).maybeSingle();
+    if(chk.error && isNoTable(chk.error)){ err.innerHTML='⚠️ Database not set up yet. Run <b>friends-setup.sql</b> in your Supabase SQL editor, then reload.'; return; }
+    if(chk.data){err.textContent='@'+user+' is taken — try another.';return;}
   }
   const s=localStats();
   const payload={id:uid,display_name:name,avatar:chosenAvatar,level:s.level,xp:s.xp,xp_week:s.xp_week,streak:s.streak,skin:s.skin,updated_at:new Date().toISOString()};
   if(!me) payload.username=user;
-  try{
-    const { error }=await sb.from('profiles').upsert(payload,{onConflict:'id'});
-    if(error){ err.textContent=(error.message||'').indexOf('duplicate')!==-1?'That username is taken.':'Could not save.'; return; }
-  }catch(e){ err.textContent='Could not save.'; return; }
+  let res;
+  try{ res=await sb.from('profiles').upsert(payload,{onConflict:'id'}); }
+  catch(e){ res={error:e}; }
+  if(res.error){
+    if(isNoTable(res.error)){ err.innerHTML='⚠️ Database not set up yet. Run <b>friends-setup.sql</b> in your Supabase SQL editor, then reload.'; }
+    else if(((res.error.message||'').toLowerCase()).indexOf('duplicate')!==-1){ err.textContent='That username is taken.'; }
+    else { err.textContent=(res.error.message||'Could not save').slice(0,140); }
+    return;
+  }
   localStorage.setItem('friend_profile',JSON.stringify({username:me?me.username:user,display_name:name,avatar:chosenAvatar}));
   document.getElementById('profModal').classList.remove('show');
   me=null; await init();
