@@ -1357,6 +1357,24 @@ img, video, canvas, svg { max-width: 100%; }
 .gt-coach-chip.hold     { background: rgba(255,255,255,0.06); color: var(--text-2); }
 .gt-coach-chip.lower    { background: rgba(255,138,138,0.12); color: var(--bad); }
 .gt-coach-chip.nodata   { background: transparent; color: var(--text-4); font-size: 10px; }
+
+/* ── Last-session recall + one-tap prefill ── */
+.gt-prep { margin: 2px 0 10px; padding: 9px 11px; border-radius: 11px;
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); }
+.gt-prep-last { font-size: 11px; color: var(--text-3); font-family: ui-monospace,"SF Mono",Menlo,monospace;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 7px; }
+.gt-prep-fill { display: flex; align-items: center; gap: 7px; width: 100%; text-align: left; cursor: pointer;
+  font-family: inherit; font-size: 12.5px; font-weight: 700; color: var(--text-1);
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 9px;
+  padding: 9px 11px; -webkit-tap-highlight-color: transparent; transition: background .15s, transform .1s; }
+.gt-prep-fill:hover { background: rgba(255,255,255,0.08); }
+.gt-prep-fill:active { transform: scale(0.985); }
+.gt-prep-cta { margin-left: auto; font-size: 11px; font-weight: 800; color: var(--accent,#a78bfa); white-space: nowrap; }
+.gt-prep-fill.act-up { border-color: rgba(110,231,183,0.4); }
+.gt-prep-fill.act-up .gt-prep-cta { color: var(--good,#6ee7b7); }
+.gt-prep-fill.act-lower { border-color: rgba(255,138,138,0.4); }
+.gt-prep-fill.act-lower .gt-prep-cta { color: var(--bad,#ff8a8a); }
+
 .gt-cards { display: none; }
 .gt-card {
   background: var(--bg-card); border: 1px solid var(--border);
@@ -3978,6 +3996,65 @@ function getExReps(ex,exLog){
   return reps;
 }
 
+// ── Last-session recall + one-tap progression prefill ──────────────────
+function trimNum(n){ return String(Math.round((Number(n)||0)*100)/100); }
+function exUnit(ex){ return /lb/i.test((ex&&ex.target)||'') ? 'lb' : 'kg'; }
+function fmtPrevSet(ex,p){ return (ex.bw||p.weight==null) ? (trimNum(p.reps)+'r') : (trimNum(p.weight)+exUnit(ex)+'×'+trimNum(p.reps)); }
+function exStep(ex){ if(ex.step)return ex.step; const tw=parseFloat(ex.target); return (isNaN(tw)||tw>12)?2.5:1.25; }
+// Most recent PRIOR session that has parseable sets for this exercise
+function prevSessionOf(ex,allL,dk){
+  const dates=Object.keys(allL||{}).filter(d=>d<dk&&(allL[d]||{})[ex.id]).sort().reverse();
+  for(const d of dates){
+    const log=allL[d][ex.id]||{}; const parsed=[];
+    for(let i=0;i<ex.sets;i++){
+      const cells=ex.unilateral?[log['set'+i+'R'],log['set'+i]]:[log['set'+i]];
+      cells.forEach(cv=>{const p=parseSetText(cv||'');if(p.parseable&&p.reps!=null)parsed.push(p);});
+    }
+    if(parsed.length){
+      const ws=parsed.map(p=>p.weight).filter(w=>w!=null);
+      return {date:d,parsed,reps:parsed.map(p=>p.reps),weight:ws.length?Math.max.apply(null,ws):null};
+    }
+  }
+  return null;
+}
+// This session's prescription, derived fresh from last session (not stale advice)
+function prescription(ex,prev){
+  const rmin=ex.repMin,rmax=ex.repMax,step=exStep(ex);
+  if(!prev){
+    const tw=parseFloat(ex.target);
+    if(ex.bw||isNaN(tw))return{bw:!!ex.bw,weight:null,reps:rmin,action:'start',label:'Start · '+rmin+' reps'};
+    return{weight:tw,reps:rmin,action:'start',label:'Start · '+trimNum(tw)+exUnit(ex)+' × '+rmin};
+  }
+  const avg=prev.reps.reduce((a,b)=>a+b,0)/prev.reps.length;
+  if(ex.bw){
+    if(avg>=rmin){const t=Math.ceil(avg)+1;return{bw:true,weight:null,reps:t,action:avg>=rmax?'up':'hold',label:'Beat · '+t+' reps'};}
+    return{bw:true,weight:null,reps:rmin,action:'lower',label:'Aim · '+rmin+' reps'};
+  }
+  const w=prev.weight!=null?prev.weight:(parseFloat(ex.target)||0);
+  if(avg>=rmax){const nw=Math.round((w+step)/step)*step;return{weight:nw,reps:rmin,action:'up',label:'Add weight · '+trimNum(nw)+exUnit(ex)+' × '+rmin};}
+  if(avg>=rmin){const t=Math.ceil(avg)+1;return{weight:w,reps:t,action:'hold',label:'Beat reps · '+trimNum(w)+exUnit(ex)+' × '+t};}
+  return{weight:w,reps:rmin,action:'lower',label:'Repeat · '+trimNum(w)+exUnit(ex)+' × '+rmin};
+}
+function fillString(ex,rx){ return (rx.bw||rx.weight==null) ? String(rx.reps) : (trimNum(rx.weight)+exUnit(ex)+' x '+rx.reps); }
+function prepHTML(ex,allL,dk){
+  const prev=prevSessionOf(ex,allL,dk), rx=prescription(ex,prev), fill=fillString(ex,rx);
+  const last=prev?('Last time · '+prev.parsed.map(p=>fmtPrevSet(ex,p)).join(' · ')):'First time — no history yet';
+  const icon=rx.action==='up'?'⏫':rx.action==='lower'?'⏬':rx.action==='start'?'▶':'🎯';
+  return '<div class="gt-prep"><div class="gt-prep-last">'+esc(last)+'</div>'+
+    '<button class="gt-prep-fill act-'+rx.action+'" type="button" data-exid="'+ex.id+'" data-fill="'+esc(fill)+'">'+
+    icon+' '+esc(rx.label)+'<span class="gt-prep-cta">Fill →</span></button></div>';
+}
+// Prefill today's EMPTY sets with the suggested weight×reps
+function applyPrefill(day,exId,fillStr){
+  const ex=(day.exercises||[]).find(e=>e.id===exId); if(!ex) return;
+  const cur=(getLogs()[todayKey()]||{})[exId]||{};
+  for(let i=0;i<ex.sets;i++){
+    if(!((cur['set'+i]||'').trim())) saveSetVal(exId,i,fillStr);
+    if(ex.unilateral && !((cur['set'+i+'R']||'').trim())) saveSetVal(exId,i,fillStr,'R');
+  }
+  renderAll();
+}
+
 function analyzeExercise(ex,exLog,allLogs,todayDk){
   const isBW=!!ex.bw;
   const todayReps=getExReps(ex,exLog);
@@ -4163,7 +4240,7 @@ function renderRows(day,dayL,allL,dk){
       return`<input class="gt-set-input${v?' has-value':''}" type="text" inputmode="decimal" placeholder="—" value="${esc(v)}" data-exid="${ex.id}" data-set="${i}" autocomplete="off">`;
     }).join('');
     return `<div class="gt-table-row">
-      <div class="gt-td" style="display:flex;align-items:center;gap:4px"><div style="flex:1;min-width:0"><div class="gt-ex-name" data-edit-ex="${ex.id}" data-day="${day.id}" tabindex="0" role="button">${esc(ex.name)}</div>${ex.notes?`<div class="gt-ex-detail">${esc(ex.notes)}</div>`:''}</div><div class="gt-ex-reorder"><button class="gt-reorder-btn" data-move-exid="${ex.id}" data-move-dir="up" data-day="${day.id}" title="Move up">↑</button><button class="gt-reorder-btn" data-move-exid="${ex.id}" data-move-dir="down" data-day="${day.id}" title="Move down">↓</button></div></div>
+      <div class="gt-td" style="display:flex;align-items:flex-start;gap:4px"><div style="flex:1;min-width:0"><div class="gt-ex-name" data-edit-ex="${ex.id}" data-day="${day.id}" tabindex="0" role="button">${esc(ex.name)}</div>${ex.notes?`<div class="gt-ex-detail">${esc(ex.notes)}</div>`:''}${prepHTML(ex,allL,dk)}</div><div class="gt-ex-reorder"><button class="gt-reorder-btn" data-move-exid="${ex.id}" data-move-dir="up" data-day="${day.id}" title="Move up">↑</button><button class="gt-reorder-btn" data-move-exid="${ex.id}" data-move-dir="down" data-day="${day.id}" title="Move down">↓</button></div></div>
       <div class="gt-td" style="color:var(--text-3);font-size:12px">${ex.sets}× ${ex.repMin}–${ex.repMax}</div>
       <div class="gt-td"><span class="gt-target-chip">${esc(ex.target||'—')}</span></div>
       <div class="gt-td"><div class="gt-sets-cell">${inputs}</div></div>
@@ -4196,6 +4273,7 @@ function renderRows(day,dayL,allL,dk){
     el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' ')openEdit(el.dataset.editEx,el.dataset.day);});
   });
   c.querySelectorAll('.gt-reorder-btn').forEach(btn=>btn.addEventListener('click',()=>moveEx(btn.dataset.moveExid,btn.dataset.day,btn.dataset.moveDir)));
+  c.querySelectorAll('.gt-prep-fill').forEach(b=>b.addEventListener('click',()=>applyPrefill(day,b.dataset.exid,b.dataset.fill)));
 }
 
 function renderCards(day,dayL,allL,dk){
@@ -4225,6 +4303,7 @@ function renderCards(day,dayL,allL,dk){
       <span class="gt-meta-chip">${ex.repMin}–${ex.repMax} reps</span>
       ${ex.target?`<span class="gt-meta-chip">${esc(ex.target)}</span>`:''}
     </div>
+    ${prepHTML(ex,allL,dk)}
     <div class="gt-sets-row" style="grid-template-columns:repeat(${cols},1fr)">${setCols}</div>
     <input class="gt-card-notes" type="text" placeholder="Notes…" value="${esc(el.notes||'')}" data-exid="${ex.id}" autocomplete="off">
     <div class="gt-card-footer"><span class="gt-coach-chip ${chip.cls}">${chip.label}</span></div>`;
@@ -4245,6 +4324,7 @@ function renderCards(day,dayL,allL,dk){
     card.querySelector('[data-edit-ex]').addEventListener('click',()=>openEdit(ex.id,day.id));
     card.querySelector('[data-del-ex]').addEventListener('click',()=>delEx(ex.id,day.id));
     card.querySelectorAll('.gt-reorder-btn').forEach(btn=>btn.addEventListener('click',()=>moveEx(btn.dataset.moveExid,btn.dataset.day,btn.dataset.moveDir)));
+    const _pf=card.querySelector('.gt-prep-fill'); if(_pf)_pf.addEventListener('click',()=>applyPrefill(day,ex.id,_pf.dataset.fill));
     c.appendChild(card);
   });
 }
