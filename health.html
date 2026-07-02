@@ -1330,7 +1330,8 @@ details[open] .mp-details-summary::before { content: '▾ '; }
 <script>
 // Health page shared sync store — same pattern as index.html _db
 window._dbH = {};
-window._dbHSchedulePush = function(){};
+// Even before cloud sync is wired, persist writes to a durable local mirror
+window._dbHSchedulePush = function(){ try{ const b=Object.assign({}, window._dbH); b._localAt=Date.now(); localStorage.setItem('dashboard:sync:health:v1', JSON.stringify(b)); }catch(e){} };
 
 (() => {
   'use strict';
@@ -1852,11 +1853,20 @@ window._dbHSchedulePush = function(){};
     let lastRemoteAt=0,hasPendingPush=false,pushTimer=null,_sb=null;
     function client(){if(!_sb)_sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);return _sb;}
 
+    // Durable local mirror so nothing is lost on reload before the cloud push lands
+    const SYNC_LS='dashboard:sync:health:v1'; let _localAt=0;
+    function persistLocal(){ try{ const db=window._dbH; const b={}; Object.keys(db).forEach(k=>{b[k]=db[k];}); _localAt=Date.now(); b._localAt=_localAt; localStorage.setItem(SYNC_LS,JSON.stringify(b)); }catch(e){} }
+    function _mirrorAt(at){ try{ const db=window._dbH; const b={}; Object.keys(db).forEach(k=>{b[k]=db[k];}); _localAt=at||_localAt; b._localAt=_localAt; localStorage.setItem(SYNC_LS,JSON.stringify(b)); }catch(e){} }
+    (function(){ try{ const b=JSON.parse(localStorage.getItem(SYNC_LS)); if(b&&typeof b==='object'){ const db=window._dbH; Object.keys(b).forEach(k=>{ if(k!=='_localAt'&&isSynced(k))db[k]=b[k]; }); _localAt=b._localAt||0; } }catch(e){} })();
+
     function applyRemote(data){
       if(!data) return;
+      const remoteAt=data._pushAt||0;
+      if(remoteAt<_localAt) return; // don't let a stale remote wipe newer local
       const db=window._dbH;
       Object.keys(db).forEach(k=>{delete db[k];});
-      Object.keys(data).forEach(k=>{if(k!=='_pushAt'&&isSynced(k))db[k]=data[k];});
+      Object.keys(data).forEach(k=>{if(k!=='_pushAt'&&k!=='_localAt'&&isSynced(k))db[k]=data[k];});
+      _mirrorAt(remoteAt);
       try{render();}catch(e){}
       try{if(typeof window.wRenderAll==='function')window.wRenderAll();}catch(e){}
       try{if(typeof window.mpRenderAll==='function')window.mpRenderAll();}catch(e){}
@@ -1866,6 +1876,7 @@ window._dbHSchedulePush = function(){};
     }
 
     function schedulePush(){
+      persistLocal();
       hasPendingPush=true;
       clearTimeout(pushTimer);
       pushTimer=setTimeout(doPush,500);
@@ -1895,8 +1906,11 @@ window._dbHSchedulePush = function(){};
       APP_KEY = _uid + ':' + APP_KEY_BASE;
       try{
         const{data:row}=await client().from('app_state').select('data').eq('key',APP_KEY).maybeSingle();
-        if(row&&row.data&&Object.keys(row.data).length>0){
-          lastRemoteAt=row.data._pushAt||0;
+        const remoteAt=(row&&row.data&&row.data._pushAt)||0;
+        const hasRemote=!!(row&&row.data&&Object.keys(row.data).length>0);
+        if(hasRemote && remoteAt>=_localAt){
+          // remote is at least as new as our local — adopt it (else keep local, pushed below)
+          lastRemoteAt=remoteAt;
           applyRemote(row.data);
         }
         // Migrate any synced keys from actual localStorage not yet in _dbH
@@ -1918,7 +1932,7 @@ window._dbHSchedulePush = function(){};
       }catch(e){console.warn('Health sync init failed:',e);}
       // Now safe for writes — hook up the external schedule function
       window._dbHSchedulePush=schedulePush;
-      if(hasPendingPush) schedulePush();
+      if(hasPendingPush || _localAt>lastRemoteAt) schedulePush(); // push local up if it's newer than cloud
       try{render();}catch{}
       try{if(typeof window.wRenderAll==='function')window.wRenderAll();}catch{}
       try{if(typeof window.mpRenderAll==='function')window.mpRenderAll();}catch{}

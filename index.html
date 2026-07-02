@@ -995,18 +995,30 @@ function timeValueToHour(v) {
 // Storage — synced keys live in _db (Supabase-backed); everything else uses localStorage
 const _db={};
 let _schedulePush=()=>{};
+// Durable local mirror of the synced store, so nothing is EVER lost on reload
+// even if the Supabase push hasn't landed yet. _localAt = time of last local change.
+const SYNC_LS='dashboard:sync:v1';
+let _localAt=0;
+function persistLocal(){
+  try{ const blob={}; Object.keys(_db).forEach(k=>{blob[k]=_db[k];}); _localAt=Date.now(); blob._localAt=_localAt; localStorage.setItem(SYNC_LS,JSON.stringify(blob)); }catch(e){}
+}
+function _seedLocal(){
+  try{ const blob=JSON.parse(localStorage.getItem(SYNC_LS)); if(blob&&typeof blob==='object'){ Object.keys(blob).forEach(k=>{ if(k!=='_localAt') _db[k]=blob[k]; }); _localAt=blob._localAt||0; } }catch(e){}
+}
+_seedLocal();
+function _mirrorAt(at){ try{ const blob={}; Object.keys(_db).forEach(k=>{blob[k]=_db[k];}); _localAt=at||_localAt; blob._localAt=_localAt; localStorage.setItem(SYNC_LS,JSON.stringify(blob)); }catch(e){} }
 function _isSynced(k){return k==='goal_streak_v1'||k==='day_schedule'||k.startsWith('goals:')||k==='dashboard:mood:v1';}
 function storeGet(key){
   if(_isSynced(key)) return _db.hasOwnProperty(key)?_db[key]:null;
   try{return JSON.parse(localStorage.getItem(key));}catch{return null;}
 }
 function storeSet(key,value){
-  if(_isSynced(key)){_db[key]=value;_schedulePush();}
+  if(_isSynced(key)){_db[key]=value;persistLocal();_schedulePush();}
   else localStorage.setItem(key,JSON.stringify(value));
   if(key.startsWith('goals:')) window.dispatchEvent(new CustomEvent('goals-changed'));
 }
 function storeDelete(key){
-  if(_isSynced(key)){delete _db[key];_schedulePush();}
+  if(_isSynced(key)){delete _db[key];persistLocal();_schedulePush();}
   else localStorage.removeItem(key);
 }
 function storeListKeys(prefix){
@@ -1869,9 +1881,12 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
 
   function applyRemote(data){
     if(!data) return;
-    // Replace _db entirely — remote is the single source of truth
+    // NEVER let a stale remote wipe newer local changes made on this device
+    const remoteAt=data._pushAt||0;
+    if(remoteAt < _localAt) return;
     Object.keys(_db).forEach(k=>{delete _db[k];});
-    Object.keys(data).forEach(k=>{if(k!=='_pushAt')_db[k]=data[k];});
+    Object.keys(data).forEach(k=>{if(k!=='_pushAt'&&k!=='_localAt')_db[k]=data[k];});
+    _mirrorAt(remoteAt); // persist the applied remote + align the local clock
     try{loadToday();}catch(e){}
     try{loadTomorrow();}catch(e){}
     try{renderStreak();}catch(e){}
@@ -1890,21 +1905,20 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
     localStorage.setItem('_dashUid', _uid);
     APP_KEY = _uid + ':' + APP_KEY_BASE;
     try{
-      const{data:row}=await client().from('app_state').select('data').eq('key',APP_KEY).single();
-      if(row&&row.data&&Object.keys(row.data).length>0){
-        lastRemoteAt=row.data._pushAt||0;
+      const{data:row}=await client().from('app_state').select('data').eq('key',APP_KEY).maybeSingle();
+      const remoteAt=(row&&row.data&&row.data._pushAt)||0;
+      const hasRemote=!!(row&&row.data&&Object.keys(row.data).length>0);
+      if(hasRemote && remoteAt>=_localAt){
+        // Remote is at least as new as our local — adopt it
+        lastRemoteAt=remoteAt;
         applyRemote(row.data);
-      } else {
-        // No remote data yet — bootstrap from localStorage if available
-        const migrated={};
-        for(let i=0;i<localStorage.length;i++){
-          const k=localStorage.key(i);
-          if(k&&_isSynced(k)){try{migrated[k]=JSON.parse(localStorage.getItem(k));}catch{}}
-        }
-        if(Object.keys(migrated).length>0){
-          Object.assign(_db,migrated);
-          await doPush();
-        }
+      } else if(Object.keys(_db).length>0){
+        // We have local data (seeded from the durable mirror) that's newer than
+        // the cloud (or the cloud is empty) — push it up so nothing is lost
+        await doPush();
+      } else if(hasRemote){
+        lastRemoteAt=remoteAt;
+        applyRemote(row.data);
       }
     }catch(e){console.warn('Sync init failed:',e);}
     // Refresh UI with whatever _db has after init

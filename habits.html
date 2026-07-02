@@ -366,7 +366,13 @@ const APP_KEY_BASE = 'habits'; let APP_KEY = APP_KEY_BASE;
 
 // ── in-memory store ──
 let _db = {};
-let schedulePush = function(){};  // no-op until initSync runs
+// Durable local mirror so nothing is lost on reload before the cloud push lands
+const SYNC_LS='dashboard:sync:habits:v1';
+let _localAt=0;
+function persistLocal(){ try{ const b={}; Object.keys(_db).forEach(k=>{b[k]=_db[k];}); _localAt=Date.now(); b._localAt=_localAt; localStorage.setItem(SYNC_LS,JSON.stringify(b)); }catch(e){} }
+function _mirrorAt(at){ try{ const b={}; Object.keys(_db).forEach(k=>{b[k]=_db[k];}); _localAt=at||_localAt; b._localAt=_localAt; localStorage.setItem(SYNC_LS,JSON.stringify(b)); }catch(e){} }
+(function(){ try{ const b=JSON.parse(localStorage.getItem(SYNC_LS)); if(b&&typeof b==='object'){ Object.keys(b).forEach(k=>{ if(k!=='_localAt')_db[k]=b[k]; }); _localAt=b._localAt||0; } }catch(e){} })();
+let schedulePush = function(){ persistLocal(); };  // persist locally even before cloud sync is ready
 let _sb = null;
 let lastRemoteAt = 0;
 let pushTimer = null;
@@ -590,8 +596,11 @@ document.getElementById('hbEditDelete').addEventListener('click', () => {
 // ── Supabase sync ──
 function applyRemote(data) {
   if (!data) return;
+  const remoteAt = data._pushAt || 0;
+  if (remoteAt < _localAt) return; // don't let a stale remote wipe newer local
   Object.keys(_db).forEach(k => delete _db[k]);
-  Object.keys(data).forEach(k => { if (k !== '_pushAt') _db[k] = data[k]; });
+  Object.keys(data).forEach(k => { if (k !== '_pushAt' && k !== '_localAt') _db[k] = data[k]; });
+  _mirrorAt(remoteAt);
   renderAll();
 }
 
@@ -607,6 +616,7 @@ function doPush() {
 }
 
 function realSchedulePush() {
+  persistLocal();
   clearTimeout(pushTimer);
   pushTimer = setTimeout(doPush, 500);
 }
@@ -638,13 +648,19 @@ async function initSync() {
   APP_KEY = _uid + ':' + APP_KEY_BASE;
   try {
     const {data: row} = await client().from('app_state').select('data').eq('key', APP_KEY).maybeSingle();
-    if (row && row.data && Object.keys(row.data).length > 0) {
-      lastRemoteAt = row.data._pushAt || 0;
+    const remoteAt = (row && row.data && row.data._pushAt) || 0;
+    const hasRemote = !!(row && row.data && Object.keys(row.data).length > 0);
+    schedulePush = realSchedulePush; // enable real pushes (retry works)
+    if (hasRemote && remoteAt >= _localAt) {
+      lastRemoteAt = remoteAt;
+      applyRemote(row.data);
+    } else if (Object.keys(_db).length > 0) {
+      doPush(); // local (from durable mirror) is newer / cloud empty — push it up
+    } else if (hasRemote) {
+      lastRemoteAt = remoteAt;
       applyRemote(row.data);
     }
-  } catch(e) { console.warn('Habits sync init failed:', e); }
-  // now safe for writes
-  schedulePush = realSchedulePush;
+  } catch(e) { console.warn('Habits sync init failed:', e); schedulePush = realSchedulePush; }
   renderAll();
 }
 
