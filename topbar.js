@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '1.9.3';
+const DASHBOARD_VERSION = '1.10.0';
 
 // =============================================================
 // THEME STYLES ("skins") — single source of truth.
@@ -177,6 +177,7 @@ const BUDDY_DEFS = {
 
     var _skin = _s.skin || 'none';
     document.documentElement.setAttribute('data-skin', _skin);
+    document.documentElement.setAttribute('data-ui', _s.uiStyle || 'default');
     var _def = SKIN_DEFS[_skin];
     if (_def) {
       _accentVal = _def.accent;
@@ -863,6 +864,40 @@ html[data-theme="light"] .xp-freeze{background:rgba(0,0,0,0.04);}
 .xp-freeze-btn:hover{filter:brightness(1.08);}
 .xp-freeze-btn:disabled{opacity:0.4;cursor:not-allowed;}
 `;
+
+  // ===== SURFACE / UI STYLE ENGINE =====
+  // One variable-driven rule re-skins every card surface; each style just
+  // sets the vars. Applied on top of the theme + anime skin.
+  const UI_SURFACES = '.section,.gm-card,.hb-card,.hb-header-card,.fin-card,.sch-card,.hth-card,.dash-mini-card,.pom-card,.kn-col,.sum-stat,.gt-card,.gt-today-card,.mood-card,.rm-card,.day-ring-card,.do-now-card,.goal-ticker,.st-body,.card,.me-card,.row';
+  const uiCss = `
+html[data-ui]:not([data-ui="default"]) :is(${UI_SURFACES}){
+  background: var(--ui-bg) !important; border: var(--ui-border) !important;
+  border-radius: var(--ui-radius) !important; box-shadow: var(--ui-shadow) !important;
+  backdrop-filter: var(--ui-blur, none) !important; -webkit-backdrop-filter: var(--ui-blur, none) !important;
+}
+html[data-ui="skeuomorphism"]{ --ui-bg:linear-gradient(180deg,rgba(255,255,255,0.12),rgba(255,255,255,0.02) 55%,rgba(0,0,0,0.18)); --ui-border:1px solid rgba(255,255,255,0.16); --ui-radius:14px; --ui-shadow:inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -3px 5px rgba(0,0,0,0.35), 0 8px 16px rgba(0,0,0,0.5); }
+html[data-ui="neomorphism"]{ --ui-bg:linear-gradient(145deg,rgba(255,255,255,0.04),rgba(0,0,0,0.14)); --ui-border:1px solid transparent; --ui-radius:22px; --ui-shadow:-6px -6px 14px rgba(255,255,255,0.05), 8px 8px 20px rgba(0,0,0,0.55); }
+html[data-ui="glassmorphism"]{ --ui-bg:rgba(255,255,255,0.08); --ui-border:1px solid rgba(255,255,255,0.18); --ui-radius:18px; --ui-shadow:0 12px 40px rgba(0,0,0,0.35); --ui-blur:blur(16px) saturate(1.5); }
+html[data-ui="claymorphism"]{ --ui-bg:linear-gradient(180deg,rgba(255,255,255,0.07),rgba(255,255,255,0.02)); --ui-border:1px solid transparent; --ui-radius:30px; --ui-shadow:inset 6px 6px 12px rgba(255,255,255,0.08), inset -8px -8px 18px rgba(0,0,0,0.5), 0 22px 44px -14px rgba(0,0,0,0.55); }
+html[data-ui="minimalism"]{ --ui-bg:transparent; --ui-border:1px solid rgba(255,255,255,0.08); --ui-radius:6px; --ui-shadow:none; }
+html[data-ui="maximalism"]{ --ui-bg:linear-gradient(135deg, color-mix(in srgb,var(--accent) 24%,transparent), rgba(255,255,255,0.05)); --ui-border:2px solid var(--accent); --ui-radius:22px; --ui-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 30%,transparent), 0 18px 44px -10px color-mix(in srgb,var(--accent) 60%,transparent); }
+html[data-ui="brutalism"]{ --ui-bg:rgba(18,18,20,0.92); --ui-border:2px solid rgba(255,255,255,0.9); --ui-radius:0px; --ui-shadow:7px 7px 0 rgba(0,0,0,0.85); }
+html[data-ui="liquidglass"]{ --ui-bg:linear-gradient(180deg,rgba(255,255,255,0.16),rgba(255,255,255,0.05)); --ui-border:1px solid rgba(255,255,255,0.28); --ui-radius:24px; --ui-shadow:inset 0 1px 0 rgba(255,255,255,0.55), inset 0 0 22px rgba(255,255,255,0.06), 0 18px 50px -12px rgba(0,0,0,0.5); --ui-blur:blur(22px) saturate(1.9); }
+html[data-ui="bento"]{ --ui-bg:rgba(255,255,255,0.05); --ui-border:1px solid rgba(255,255,255,0.09); --ui-radius:20px; --ui-shadow:0 3px 12px rgba(0,0,0,0.3); }
+html[data-ui="spatial"]{ --ui-bg:rgba(255,255,255,0.07); --ui-border:1px solid rgba(255,255,255,0.16); --ui-radius:26px; --ui-shadow:0 30px 60px -16px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.2); --ui-blur:blur(18px); }
+/* Style-specific extras */
+html[data-ui="brutalism"] :is(button,input,select,textarea,.tab,.bottombar-tab,.st-input,.gt-set-input,.gt-set-input-mobile){ border-radius:0 !important; }
+html[data-ui="brutalism"] :is(.section-title,.dash-title,.st-title){ font-family:ui-monospace,"SF Mono",Menlo,monospace !important; }
+html[data-theme="light"][data-ui="brutalism"]{ --ui-border:2px solid #111; }
+html[data-theme="light"] :is([data-ui="glassmorphism"],[data-ui="liquidglass"],[data-ui="spatial"],[data-ui="bento"]){ --ui-bg:rgba(0,0,0,0.045); --ui-border:1px solid rgba(0,0,0,0.1); }
+`;
+  function injectUiStyle() {
+    if (document.getElementById('ui-style')) return;
+    const u = document.createElement('style'); u.id = 'ui-style'; u.textContent = uiCss;
+    document.head.appendChild(u);
+  }
+  // Live-apply from settings (CSS is injected globally; just toggle the attribute)
+  window.dashApplyUi = function (v) { injectUiStyle(); document.documentElement.setAttribute('data-ui', v || 'default'); };
 
   function buildTabEl(tab) {
     const a = document.createElement('a');
@@ -2169,6 +2204,7 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
 
   function boot() {
     injectStyleAndHTML();
+    injectUiStyle();
     injectLoadSweep();
     showWelcomeToast();
     setupBuddy();
