@@ -485,13 +485,20 @@ main {
 .water-bar-zone{position:absolute;top:0;bottom:0;width:1px;background:rgba(255,255,255,0.18);}
 .water-bar-labels{display:flex;justify-content:space-between;margin-top:6px;font-size:10px;color:var(--text-tertiary);font-family:var(--font-mono);}
 .water-bar-labels .water-zone-name{color:#6ee7b7;font-weight:700;letter-spacing:0.10em;text-transform:lowercase;}
-.water-actions{display:grid;grid-template-columns:56px 1fr;gap:10px;align-items:stretch;}
-.water-minus-btn{background:rgba(255,255,255,0.06);border:none;border-radius:16px;color:var(--text-primary);font-size:22px;font-weight:700;cursor:pointer;transition:background 0.15s;-webkit-tap-highlight-color:transparent;}
-.water-minus-btn:hover{background:rgba(255,255,255,0.10);}
-.water-minus-btn:disabled{opacity:0.3;cursor:not-allowed;}
-.water-plus-btn{background:linear-gradient(180deg,#ffffff 0%,#e8e5dd 100%);color:#0a0a0b;border:none;border-radius:16px;font-family:inherit;font-size:16px;font-weight:700;cursor:pointer;padding:16px;display:flex;align-items:center;justify-content:center;gap:8px;-webkit-tap-highlight-color:transparent;box-shadow:inset 0 1px 0 rgba(255,255,255,0.55),0 4px 14px rgba(0,0,0,0.40);transition:transform 0.15s;}
-.water-plus-btn:hover{transform:translateY(-1px);}
-.water-plus-btn:active{transform:scale(0.98);}
+.water-quick{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}
+.water-q-btn{display:flex;flex-direction:column;align-items:center;gap:3px;padding:13px 6px;border:1px solid var(--border);border-radius:16px;
+  background:linear-gradient(180deg,rgba(125,211,252,0.10),rgba(110,231,183,0.05));color:var(--text-primary);
+  font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.12s,background 0.15s,border-color 0.15s;}
+.water-q-btn:hover{background:linear-gradient(180deg,rgba(125,211,252,0.16),rgba(110,231,183,0.08));border-color:rgba(125,211,252,0.35);}
+.water-q-btn:active{transform:scale(0.95);}
+.wq-emoji{font-size:24px;line-height:1;}
+.wq-name{font-size:12px;font-weight:700;}
+.wq-ml{font-size:11px;color:var(--text-tertiary);font-family:var(--font-mono);font-variant-numeric:tabular-nums;}
+.water-undo-btn{width:100%;margin-top:9px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:13px;
+  color:var(--text-secondary);font-family:inherit;font-size:13px;font-weight:600;padding:11px;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;transition:background 0.15s;}
+.water-undo-btn:hover{background:rgba(255,255,255,0.09);color:var(--text-primary);}
+.water-undo-btn:disabled{opacity:0.35;cursor:not-allowed;}
 .water-helper{text-align:center;font-size:12px;color:var(--text-tertiary);margin-top:12px;font-style:italic;}
 .water-helper.good{color:#6ee7b7;font-style:normal;}
 .why-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;background:transparent;border:1px solid var(--border);color:var(--text-secondary);border-radius:10px;padding:11px 14px;cursor:pointer;margin-top:14px;font-family:inherit;font-size:12px;font-weight:600;letter-spacing:0.04em;-webkit-tap-highlight-color:transparent;transition:background 0.18s,color 0.18s;}
@@ -1054,14 +1061,19 @@ details[open] .mp-details-summary::before { content: '▾ '; }
         <span id="waterBarMax">12+</span>
       </div>
     </div>
-    <div class="water-actions">
-      <button class="water-minus-btn" id="waterMinusBtn" type="button" aria-label="Undo last">&minus;</button>
-      <button class="water-plus-btn" id="waterPlusBtn" type="button">
-        <span id="waterPlusLabel">Drank a bottle</span>
-        <span>+</span>
+    <div class="water-quick">
+      <button class="water-q-btn" data-size="cup" type="button">
+        <span class="wq-emoji">🥤</span><span class="wq-name">Cup</span><span class="wq-ml">250 ml</span>
+      </button>
+      <button class="water-q-btn" data-size="bottle" type="button">
+        <span class="wq-emoji">🍶</span><span class="wq-name">Bottle</span><span class="wq-ml">500 ml</span>
+      </button>
+      <button class="water-q-btn" data-size="big" type="button">
+        <span class="wq-emoji">🧴</span><span class="wq-name">Big bottle</span><span class="wq-ml">1 L</span>
       </button>
     </div>
-    <div class="water-helper" id="waterHelper">Start the day &mdash; first one in.</div>
+    <button class="water-undo-btn" id="waterMinusBtn" type="button" aria-label="Undo last">&minus; Undo last</button>
+    <div class="water-helper" id="waterHelper">Start the day &mdash; first glass in.</div>
     <button class="why-toggle" id="whyToggle" type="button" aria-expanded="false">
       <span>Why this target?</span>
       <span class="why-arrow">&#9662;</span>
@@ -1264,25 +1276,20 @@ details[open] .mp-details-summary::before { content: '▾ '; }
       </div>
     </div>
     <div class="w-set-section">
-      <h4>Display</h4>
-      <div class="w-field">
-        <label>Show water as</label>
-        <div class="w-seg" id="wSetUnit">
-          <button data-u="bottle">Bottles</button>
-          <button data-u="glass">Glasses</button>
-          <button data-u="oz">oz</button>
-          <button data-u="ml">ml</button>
-        </div>
-      </div>
+      <h4>Quick-add sizes (ml)</h4>
       <div class="w-field-row">
         <div class="w-field">
-          <label>Bottle size (ml)</label>
-          <input type="number" id="wSetBottleMl" min="100" max="2000" step="50">
+          <label>🥤 Cup</label>
+          <input type="number" id="wSetCupMl" min="20" max="1000" step="10">
         </div>
         <div class="w-field">
-          <label>Glass size (ml)</label>
-          <input type="number" id="wSetGlassMl" min="100" max="500" step="10">
+          <label>🍶 Bottle</label>
+          <input type="number" id="wSetBottleMl" min="50" max="2000" step="50">
         </div>
+      </div>
+      <div class="w-field">
+        <label>🧴 Big bottle</label>
+        <input type="number" id="wSetBigMl" min="100" max="3000" step="50">
       </div>
     </div>
     <div class="w-set-section">
@@ -1998,6 +2005,7 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catc
     s.unit = s.unit || 'bottle';
     s.bottleMl = s.bottleMl || 500;
     s.glassMl  = s.glassMl  || 250;
+    s.sizes = Object.assign({ cup: 250, bottle: (s.bottleMl || 500), big: 1000 }, s.sizes || {});
     s.weightUnit = s.weightUnit || 'kg';
     s.profile = Object.assign({ weightKg:75, age:25, sex:'m', activityHrsPerWeek:5 }, s.profile || {});
     s.caffeineMgPerDay = (s.caffeineMgPerDay != null) ? s.caffeineMgPerDay : 200;
@@ -2011,8 +2019,34 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catc
 
   function dKey(d) { return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
   function todayKey() { return dKey(new Date()); }
-  function todayCount() { return wState.logs[todayKey()] || 0; }
-  function setTodayCount(n) { const k=todayKey(); if(n<=0) delete wState.logs[k]; else wState.logs[k]=n; saveState(); }
+  // Logs now store MILLILITRES per day. Old data was a count of one unit —
+  // migrate once (×unit size) and flag it so the other pages read ml too.
+  function migrateMl(s) {
+    const unitMl = s.unit==='bottle' ? (s.bottleMl||500) : s.unit==='glass' ? (s.glassMl||250) : s.unit==='oz' ? 30 : 1;
+    const nl = {};
+    Object.keys(s.logs || {}).forEach(k => { const c = s.logs[k]; nl[k] = Math.max(0, Math.round((typeof c === 'number' ? c : 0) * unitMl)); });
+    s.logs = nl; s._mlV2 = true; return s;
+  }
+  function todayMl() { return wState.logs[todayKey()] || 0; }
+  function addMl(ml) {
+    if (!ml) return;
+    const k = todayKey();
+    wState.logs[k] = (wState.logs[k] || 0) + ml;
+    wState.hist = wState.hist || {}; (wState.hist[k] = wState.hist[k] || []).push(ml);
+    saveState(); renderWater();
+    if (window.dashAddXp) window.dashAddXp(5, 'Drank water 💧');
+  }
+  function undoMl() {
+    const k = todayKey();
+    wState.hist = wState.hist || {};
+    const h = wState.hist[k] || [];
+    let amt = h.pop();
+    if (amt == null) amt = Math.min(wState.logs[k] || 0, (wState.sizes && wState.sizes.cup) || 250);
+    wState.logs[k] = Math.max(0, (wState.logs[k] || 0) - amt);
+    if (wState.logs[k] <= 0) delete wState.logs[k];
+    if (h.length) wState.hist[k] = h; else delete wState.hist[k];
+    saveState(); renderWater();
+  }
 
   function computeTarget() {
     const p = wState.profile;
@@ -2040,26 +2074,31 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catc
 
   function renderWater() {
     const calc = computeTarget();
-    const target = Math.ceil(calc.total / unitVolMl());
-    const count = todayCount();
-    w$('waterUnitLabel').textContent = uPlural().toUpperCase() + ' DRANK TODAY';
-    w$('waterNum').textContent = count;
-    w$('waterTarget').textContent = '/ ' + target;
-    w$('waterPlusLabel').textContent = 'Drank a ' + uSingular();
-    const pctRaw = (count / target) * 100;
+    const target = Math.max(1, Math.round(calc.total)); // ml
+    const done = todayMl();
+    w$('waterUnitLabel').textContent = 'WATER TODAY';
+    w$('waterNum').textContent = fmtMl(done);
+    w$('waterTarget').textContent = '/ ' + fmtMl(target);
+    const pctRaw = (done / target) * 100;
     const fill = w$('waterBarFill');
     fill.style.width = Math.min(150, pctRaw) / 1.5 + '%';
     fill.classList.toggle('over', pctRaw > 100);
-    w$('waterBarMax').textContent = Math.ceil(target * 1.5) + '+';
+    w$('waterBarMin').textContent = '0';
+    w$('waterBarMax').textContent = fmtMl(target) + ' goal';
     w$('waterBarZoneStart').style.left = (65/1.5) + '%';
     w$('waterBarZoneEnd').style.left   = (100/1.5) + '%';
+    const remain = Math.max(0, target - done);
     const helper = w$('waterHelper');
-    if      (count === 0)    { helper.textContent = 'Start the day — first one in.';               helper.classList.remove('good'); }
-    else if (pctRaw < 50)    { helper.textContent = 'Behind pace — drink one in the next hour.';   helper.classList.remove('good'); }
-    else if (pctRaw < 100)   { helper.textContent = (target - count) + ' to go. Pacing well.';         helper.classList.remove('good'); }
-    else if (pctRaw < 130)   { helper.textContent = '✓ Target hit — top up if you train tonight.'; helper.classList.add('good'); }
-    else                     { helper.textContent = 'Strong — way past target.';                   helper.classList.add('good'); }
-    w$('waterMinusBtn').disabled = count <= 0;
+    if      (done === 0)   { helper.textContent = 'Start the day — first glass in.';               helper.classList.remove('good'); }
+    else if (pctRaw < 50)  { helper.textContent = 'Behind pace — ' + fmtMl(remain) + ' to go.';    helper.classList.remove('good'); }
+    else if (pctRaw < 100) { helper.textContent = fmtMl(remain) + ' to go. Pacing well.';          helper.classList.remove('good'); }
+    else if (pctRaw < 130) { helper.textContent = '✓ Target hit — top up if you train tonight.';   helper.classList.add('good'); }
+    else                   { helper.textContent = 'Strong — way past target.';                     helper.classList.add('good'); }
+    const mb = w$('waterMinusBtn'); if (mb) mb.disabled = done <= 0;
+    const sizes = wState.sizes || { cup:250, bottle:500, big:1000 };
+    document.querySelectorAll('.water-q-btn').forEach(b => {
+      const ml = sizes[b.dataset.size]; const el = b.querySelector('.wq-ml'); if (el && ml != null) el.textContent = fmtMl(ml);
+    });
     renderWhy(calc, target);
     renderHistory(target);
     renderSparkline(target);
@@ -2072,7 +2111,7 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catc
     if (calc.caffeine > 0) html += '<div class="why-row"><span class="why-label">+ Caffeine (' + wState.caffeineMgPerDay + ' mg/day)</span><span class="why-val">+ ' + fmtMl(calc.caffeine) + '</span></div>';
     (wState.substances||[]).forEach(s => { html += '<div class="why-row"><span class="why-label">+ ' + wEsc(s.name) + ' (' + wEsc(subDoseLabel(s)) + ')</span><span class="why-val">+ ' + fmtMl(subExtraMl(s)) + '</span></div>'; });
     if (calc.adjust > 0) html += '<div class="why-row"><span class="why-label">+ Sex / age adjustment</span><span class="why-val">+ ' + fmtMl(calc.adjust) + '</span></div>';
-    html += '<div class="why-row total"><span class="why-label">Daily target</span><span class="why-val">' + fmtMl(calc.total) + ' → ' + target + ' ' + uPlural() + '</span></div>';
+    html += '<div class="why-row total"><span class="why-label">Daily target</span><span class="why-val">' + fmtMl(calc.total) + '</span></div>';
     w$('whyBody').innerHTML = html;
   }
 
@@ -2083,7 +2122,7 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catc
     w$('histList').innerHTML = days.map(({date,count}) => {
       const lbl = dows[date.getDay()] + ' ' + (date.getMonth()+1) + '/' + date.getDate();
       const pct = Math.min(100, (count/target)*100);
-      return '<div class="hist-row"><span class="hist-date">'+lbl+'</span><div class="hist-bar-wrap"><div class="hist-bar-fill'+(count<target?' miss':'')+'" style="width:'+pct+'%"></div></div><span class="hist-count">'+count+'/'+target+'</span></div>';
+      return '<div class="hist-row"><span class="hist-date">'+lbl+'</span><div class="hist-bar-wrap"><div class="hist-bar-fill'+(count<target?' miss':'')+'" style="width:'+pct+'%"></div></div><span class="hist-count">'+fmtMl(count)+'</span></div>';
     }).join('') || '<div style="text-align:center;font-size:12px;color:var(--text-tertiary);padding:12px 0">No logs yet.</div>';
   }
 
@@ -2102,15 +2141,17 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catc
     w$('sparkSvg').innerHTML = html;
   }
 
-  function renderAll() { wState = loadState(); renderWater(); }
+  function renderAll() { wState = loadState(); if (!wState._mlV2) { migrateMl(wState); saveState(); } renderWater(); }
   window.wRenderAll = renderAll;
 
-  w$('waterPlusBtn').addEventListener('click', () => {
-    setTodayCount(todayCount()+1); renderWater();
-    const btn=w$('waterPlusBtn'); btn.style.transform='scale(0.97)';
-    setTimeout(()=>{ btn.style.transform=''; },120);
+  document.querySelectorAll('.water-q-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      const sizes = wState.sizes || {};
+      addMl(sizes[b.dataset.size] || 0);
+      b.style.transform='scale(0.95)'; setTimeout(()=>{ b.style.transform=''; },120);
+    });
   });
-  w$('waterMinusBtn').addEventListener('click', () => { setTodayCount(Math.max(0,todayCount()-1)); renderWater(); });
+  w$('waterMinusBtn').addEventListener('click', () => undoMl());
   w$('whyToggle').addEventListener('click', () => {
     const open = w$('whyBody').classList.toggle('show');
     w$('whyToggle').setAttribute('aria-expanded', open ? 'true' : 'false');
@@ -2128,19 +2169,21 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catc
       });
     });
   }
-  wBindSeg('wSetUnit',       'u', v=>{ wState.unit=v;              saveState(); renderWater(); });
   wBindSeg('wSetWeightUnit', 'u', v=>{ wState.weightUnit=v;        saveState(); renderWater(); });
   wBindSeg('wSetSex',        's', v=>{ wState.profile.sex=v;       saveState(); renderWater(); });
 
-  ['wSetWeight','wSetAge','wSetActivity','wSetCaffeine','wSetBottleMl','wSetGlassMl'].forEach(id => {
-    w$(id).addEventListener('input', () => {
-      const v = parseFloat(w$(id).value);
+  ['wSetWeight','wSetAge','wSetActivity','wSetCaffeine','wSetCupMl','wSetBottleMl','wSetBigMl'].forEach(id => {
+    const el = w$(id); if (!el) return;
+    el.addEventListener('input', () => {
+      const v = parseFloat(el.value);
+      wState.sizes = wState.sizes || { cup:250, bottle:500, big:1000 };
       if      (id==='wSetWeight')   wState.profile.weightKg=v||0;
       else if (id==='wSetAge')      wState.profile.age=v||0;
       else if (id==='wSetActivity') wState.profile.activityHrsPerWeek=v||0;
       else if (id==='wSetCaffeine') wState.caffeineMgPerDay=v||0;
-      else if (id==='wSetBottleMl') wState.bottleMl=v||500;
-      else if (id==='wSetGlassMl')  wState.glassMl=v||250;
+      else if (id==='wSetCupMl')    wState.sizes.cup=v||250;
+      else if (id==='wSetBottleMl') { wState.sizes.bottle=v||500; wState.bottleMl=v||500; }
+      else if (id==='wSetBigMl')    wState.sizes.big=v||1000;
       saveState(); renderWater();
     });
   });
@@ -2199,9 +2242,10 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catc
     w$('wSetAge').value=wState.profile.age;
     w$('wSetActivity').value=wState.profile.activityHrsPerWeek;
     w$('wSetCaffeine').value=wState.caffeineMgPerDay;
-    w$('wSetBottleMl').value=wState.bottleMl;
-    w$('wSetGlassMl').value=wState.glassMl;
-    wSegActive('wSetUnit',wState.unit);
+    const sz=wState.sizes||{cup:250,bottle:500,big:1000};
+    if(w$('wSetCupMl'))w$('wSetCupMl').value=sz.cup;
+    if(w$('wSetBottleMl'))w$('wSetBottleMl').value=sz.bottle;
+    if(w$('wSetBigMl'))w$('wSetBigMl').value=sz.big;
     wSegActive('wSetWeightUnit',wState.weightUnit);
     wSegActive('wSetSex',wState.profile.sex);
     renderSubsList();

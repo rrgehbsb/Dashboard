@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '1.9.1';
+const DASHBOARD_VERSION = '1.9.2';
 
 // =============================================================
 // THEME STYLES ("skins") — single source of truth.
@@ -1119,13 +1119,16 @@ html[data-theme="light"] .xp-freeze{background:rgba(0,0,0,0.04);}
     if (p.sex === 'm') adjust += 200;
     if ((p.age || 0) >= 50) adjust += 100;
     const totalMl = base + exercise + caffeine + subs + adjust;
+    // New ml model (logs store millilitres); flagged with _mlV2.
+    if (state._mlV2) return { done: done, total: Math.max(1, Math.round(totalMl)), ml: true };
+    // Legacy count model.
     let unitVol;
     if (state.unit === 'glass') unitVol = state.glassMl || 250;
     else if (state.unit === 'oz') unitVol = 30;
     else if (state.unit === 'ml') unitVol = 1;
     else unitVol = state.bottleMl || 500;
     const total = Math.max(1, Math.ceil(totalMl / unitVol));
-    return { done, total };
+    return { done, total, ml: false };
   }
   function classifyStatus(done, total) {
     if (total === 0) return 'idle';
@@ -1144,13 +1147,17 @@ html[data-theme="light"] .xp-freeze{background:rgba(0,0,0,0.04);}
     if (!waterEl) return;
     const w = getWaterProgress();
     const countEl = document.getElementById('topbarWaterCount');
-    if (countEl) countEl.textContent = w.total ? w.done + '/' + w.total : '0/0';
+    if (countEl) {
+      if (w.ml) countEl.textContent = (w.done / 1000).toFixed(1) + '/' + (w.total / 1000).toFixed(1) + 'L';
+      else countEl.textContent = w.total ? w.done + '/' + w.total : '0/0';
+    }
     setPillStatus(waterEl, classifyStatus(w.done, w.total));
   }
 
   function defaultWaterState() {
     return {
       unit: 'bottle', bottleMl: 500, glassMl: 250, weightUnit: 'kg',
+      sizes: { cup: 250, bottle: 500, big: 1000 }, _mlV2: true,
       profile: { weightKg: 75, age: 25, sex: 'm', activityHrsPerWeek: 5 },
       caffeineMgPerDay: 200, substances: [], logs: {}
     };
@@ -1180,7 +1187,9 @@ html[data-theme="light"] .xp-freeze{background:rgba(0,0,0,0.04);}
       state = window._dbH['po_water_v1'] ? JSON.parse(JSON.stringify(window._dbH['po_water_v1'])) : defaultWaterState();
       state.logs = state.logs || {};
       const k = calendarDateKey();
-      state.logs[k] = (state.logs[k] || 0) + 1;
+      const _winc = state._mlV2 ? ((state.sizes && state.sizes.bottle) || 500) : 1;
+      state.logs[k] = (state.logs[k] || 0) + _winc;
+      if (state._mlV2) { state.hist = state.hist || {}; (state.hist[k] = state.hist[k] || []).push(_winc); }
       window._dbH['po_water_v1'] = state;
       window._dbHSchedulePush();
     } else {
@@ -1188,7 +1197,9 @@ html[data-theme="light"] .xp-freeze{background:rgba(0,0,0,0.04);}
       if (!state || typeof state !== 'object') state = defaultWaterState();
       state.logs = state.logs || {};
       const k = calendarDateKey();
-      state.logs[k] = (state.logs[k] || 0) + 1;
+      const _winc = state._mlV2 ? ((state.sizes && state.sizes.bottle) || 500) : 1;
+      state.logs[k] = (state.logs[k] || 0) + _winc;
+      if (state._mlV2) { state.hist = state.hist || {}; (state.hist[k] = state.hist[k] || []).push(_winc); }
       try { localStorage.setItem('po_water_v1', JSON.stringify(state)); } catch (e) {}
       pushWaterMergedToSupabase(state);
     }

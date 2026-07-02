@@ -1494,12 +1494,16 @@ function updateCmdBar(){
       const done=(ws.logs||{})[today]||0;
       const profile=ws.profile||{weightKg:75};
       const wKg=ws.weightUnit==='lb'?(profile.weightKg||0)/2.20462:(profile.weightKg||0);
-      const base=wKg*35;
-      const totalMl=base;
-      let unitVol=ws.unit==='glass'?(ws.glassMl||250):ws.unit==='ml'?1:ws.unit==='oz'?30:(ws.bottleMl||500);
-      const total=Math.max(1,Math.ceil(totalMl/unitVol));
-      if(done||total) waterEl.textContent=`💧 ${done}/${total}`;
-      else waterEl.textContent='';
+      const totalMl=wKg*35;
+      if(ws._mlV2){
+        const tot=Math.max(1,Math.round(totalMl));
+        waterEl.textContent=done?`💧 ${(done/1000).toFixed(1)}/${(tot/1000).toFixed(1)}L`:'';
+      } else {
+        let unitVol=ws.unit==='glass'?(ws.glassMl||250):ws.unit==='ml'?1:ws.unit==='oz'?30:(ws.bottleMl||500);
+        const total=Math.max(1,Math.ceil(totalMl/unitVol));
+        if(done||total) waterEl.textContent=`💧 ${done}/${total}`;
+        else waterEl.textContent='';
+      }
     }catch{waterEl.textContent='';}
   }
 }
