@@ -38,10 +38,34 @@
     -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
 
   /* Your card */
-  .me-card{display:flex;align-items:center;gap:14px;padding:16px;border-radius:18px;margin-bottom:16px;
-    background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 16%,transparent),color-mix(in srgb,var(--accent) 5%,transparent));
+  .me-card{padding:16px;border-radius:20px;margin-bottom:16px;
+    background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 18%,transparent),color-mix(in srgb,var(--accent) 5%,transparent));
     border:1px solid color-mix(in srgb,var(--accent) 32%,transparent);
     box-shadow:inset 0 1px 0 rgba(255,255,255,0.07),0 18px 44px -20px rgba(0,0,0,0.6);}
+  .me-top{display:flex;align-items:center;gap:14px;}
+  .me-bar{height:9px;border-radius:6px;background:rgba(0,0,0,0.28);overflow:hidden;margin:14px 0 5px;}
+  .me-bar-fill{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--accent),color-mix(in srgb,var(--accent) 40%,#fff));
+    box-shadow:0 0 12px color-mix(in srgb,var(--accent) 70%,transparent);transition:width .5s cubic-bezier(.22,1,.36,1);}
+  .me-bar-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--t2);font-variant-numeric:tabular-nums;font-weight:600;}
+  .me-tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-top:14px;}
+  .me-tile{background:rgba(0,0,0,0.22);border-radius:12px;padding:10px 4px;text-align:center;}
+  .me-tile-ic{font-size:15px;line-height:1;}
+  .me-tile-val{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:3px;letter-spacing:-0.02em;}
+  .me-tile-lab{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--t3);margin-top:2px;}
+  @media(max-width:420px){.me-tiles{grid-template-columns:repeat(3,1fr);} .me-tile:nth-child(4),.me-tile:nth-child(5){grid-column:span 1;}}
+  /* Leaderboard podium */
+  .lb-podium{display:flex;align-items:flex-end;justify-content:center;gap:10px;margin:6px 0 16px;}
+  .lb-pod{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;max-width:110px;
+    background:var(--card);border:1px solid var(--bord);border-radius:16px;padding:12px 6px 10px;}
+  .lb-pod.p1{transform:translateY(-8px);border-color:color-mix(in srgb,#F2C063 50%,transparent);background:color-mix(in srgb,#F2C063 12%,var(--card));}
+  .lb-pod.me{border-color:color-mix(in srgb,var(--accent) 55%,transparent);}
+  .lb-pod-medal{font-size:20px;line-height:1;}
+  .lb-pod-av{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;
+    background:rgba(255,255,255,0.06);border:1px solid var(--bord);}
+  .lb-pod.p1 .lb-pod-av{width:52px;height:52px;font-size:26px;}
+  .lb-pod-name{font-size:12px;font-weight:700;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .lb-pod-val{font-size:14px;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums;}
+  .lb-pod-sub{font-size:10px;color:var(--t3);}
   .me-av{width:56px;height:56px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;
     font-size:30px;background:rgba(0,0,0,0.25);border:1.5px solid color-mix(in srgb,var(--accent) 50%,transparent);}
   .me-info{flex:1;min-width:0;}
@@ -223,17 +247,32 @@ async function refresh(){
   renderMe(); renderTabs(); renderBody();
 }
 
+function levelInfo(xp){ let l=1,need=100,used=0; xp=xp||0; while(xp>=used+need){used+=need;l++;need=Math.round(need*1.18/5)*5;} return {level:l,into:xp-used,span:need,pct:Math.max(0,Math.min(1,(xp-used)/need))}; }
+function myRank(){ const all=[me,...friends].slice().sort((a,c)=>(c.xp||0)-(a.xp||0)); const i=all.findIndex(p=>p.id===uid); return i>=0?i+1:'—'; }
+function myBadges(){ try{ const x=JSON.parse(localStorage.getItem('dashboard:xp:v1'))||{}; return Object.keys(x.badges||{}).length; }catch(e){ return 0; } }
+function meTile(ic,val,lab){ return '<div class="me-tile"><div class="me-tile-ic">'+ic+'</div><div class="me-tile-val">'+val+'</div><div class="me-tile-lab">'+lab+'</div></div>'; }
 function renderMe(){
   const root=document.getElementById('frRoot');
   if(!document.getElementById('meCard')){
     root.innerHTML='<div class="me-card" id="meCard"></div><div class="fr-tabs" id="frTabs"></div><div id="frBody"></div>';
   }
+  const info=levelInfo(me.xp);
   document.getElementById('meCard').innerHTML=
-    '<div class="me-av">'+escapeHtml(me.avatar||'🙂')+'</div>'+
-    '<div class="me-info"><div class="me-name">'+escapeHtml(me.display_name||me.username)+'</div>'+
-      '<div class="me-user">@'+escapeHtml(me.username)+'</div>'+
-      '<div class="me-stats"><span>Lv <b>'+me.level+'</b></span><span><b>'+me.xp+'</b> XP</span><span>🔥 <b>'+me.streak+'</b></span></div></div>'+
-    '<button class="me-edit" onclick="openProfile(false)">Edit</button>';
+    '<div class="me-top">'+
+      '<div class="me-av">'+escapeHtml(me.avatar||'🙂')+'</div>'+
+      '<div class="me-info"><div class="me-name">'+escapeHtml(me.display_name||me.username)+'</div>'+
+        '<div class="me-user">@'+escapeHtml(me.username)+' · Level '+info.level+'</div></div>'+
+      '<button class="me-edit" onclick="openProfile(false)">Edit</button>'+
+    '</div>'+
+    '<div class="me-bar"><span class="me-bar-fill" style="width:'+(info.pct*100).toFixed(0)+'%"></span></div>'+
+    '<div class="me-bar-meta"><span>'+info.into+' / '+info.span+' XP</span><span>'+(info.span-info.into)+' to Lv '+(info.level+1)+'</span></div>'+
+    '<div class="me-tiles">'+
+      meTile('🏆','#'+myRank(),'Rank')+
+      meTile('⭐',me.xp,'Total XP')+
+      meTile('🏁',me.xp_week||0,'This week')+
+      meTile('🔥',me.streak||0,'Streak')+
+      meTile('🎖️',myBadges(),'Badges')+
+    '</div>';
 }
 function renderTabs(){
   const t=document.getElementById('frTabs');
@@ -260,17 +299,29 @@ function renderBoard(b){
   if(everyone.length<=1 && !friends.length){
     html+='<div class="empty"><span class="big">🏆</span>Add friends to start competing!<br>Head to the Friends tab.</div>';
   } else {
-    html+=everyone.map((p,i)=>{
-      const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1);
-      const val=(p[key]||0);
+    // Podium for the top 3 (order: 2nd, 1st, 3rd)
+    const top=everyone.slice(0,3);
+    const podOrder=[top[1],top[0],top[2]].map((p,idx)=>({p,place:idx===1?1:(idx===0?2:3)})).filter(x=>x.p);
+    const medals={1:'🥇',2:'🥈',3:'🥉'};
+    html+='<div class="lb-podium">'+podOrder.map(({p,place})=>
+      '<div class="lb-pod p'+place+(p.id===uid?' me':'')+'"><div class="lb-pod-medal">'+medals[place]+'</div>'+
+      '<div class="lb-pod-av">'+escapeHtml(p.avatar||'🙂')+'</div>'+
+      '<div class="lb-pod-name">'+escapeHtml(p.display_name||p.username)+'</div>'+
+      '<div class="lb-pod-val">'+(p[key]||0)+'</div>'+
+      '<div class="lb-pod-sub">Lv '+(p.level||1)+' · 🔥'+(p.streak||0)+'</div></div>').join('')+'</div>';
+    // Rows for rank 4+
+    const rest=everyone.slice(3);
+    if(rest.length) html+=rest.map((p,i)=>{
+      const other=key==='xp'?('🏁 '+(p.xp_week||0)):('⭐ '+(p.xp||0));
       return '<div class="row'+(p.id===uid?' me':'')+'">'+
-        '<div class="rank'+(i<3?' top':'')+'">'+medal+'</div>'+
+        '<div class="rank">'+(i+4)+'</div>'+
         '<div class="av">'+escapeHtml(p.avatar||'🙂')+'</div>'+
         '<div class="who"><div class="who-name">'+escapeHtml(p.display_name||p.username)+(p.id===uid?' (you)':'')+'</div>'+
-          '<div class="who-sub"><span>@'+escapeHtml(p.username)+'</span><span>🔥 '+(p.streak||0)+'</span></div></div>'+
+          '<div class="who-sub"><span>@'+escapeHtml(p.username)+'</span><span>🔥 '+(p.streak||0)+'</span><span>'+other+'</span></div></div>'+
         '<span class="lvl">Lv '+(p.level||1)+'</span>'+
-        '<span class="xpval">'+val+(key==='xp_week'?'':'')+'</span></div>';
+        '<span class="xpval">'+(p[key]||0)+'</span></div>';
     }).join('');
+    else if(everyone.length<=3) html+='<div class="empty" style="padding:16px 0">Add more friends to fill the board! 🚀</div>';
   }
   b.innerHTML=html;
   b.querySelectorAll('.seg button').forEach(x=>x.addEventListener('click',()=>{boardMode=x.dataset.m;renderBody();}));
