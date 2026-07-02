@@ -1304,14 +1304,20 @@ img, video, canvas, svg { max-width: 100%; }
 .gt-table-head,
 .gt-table-row {
   display: grid;
-  grid-template-columns: minmax(150px,2fr) 120px 80px 1fr 1.2fr 105px;
+  grid-template-columns: minmax(150px,1.8fr) 96px 78px minmax(120px,1.2fr) minmax(90px,1fr) 100px;
   align-items: center;
 }
 .gt-table-head {
   background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border);
 }
-.gt-table-row { border-bottom: 1px solid var(--border); }
-.gt-table-row:last-child { border-bottom: none; }
+.gt-table-row { border-bottom: none; }
+/* Prep (last session + Fill) gets its own full-width row so nothing truncates */
+.gt-prep-row { padding: 2px 12px 12px; border-bottom: 1px solid var(--border); }
+.gt-prep-row:last-child { border-bottom: none; }
+.gt-prep-row .gt-prep { margin: 0; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.gt-prep-row .gt-prep-last { margin-bottom: 0; flex: 1 1 220px; min-width: 200px; white-space: normal; overflow: visible; text-overflow: clip; }
+.gt-prep-row .gt-prep-fill { width: auto; flex: 0 0 auto; }
+.gt-prep-row .gt-prep-plan { overflow: visible; text-overflow: clip; }
 .gt-th {
   padding: 9px 10px; font-size: 10px; font-weight: 700;
   letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3);
@@ -1324,20 +1330,20 @@ img, video, canvas, svg { max-width: 100%; }
 .gt-ex-name:hover { border-color: var(--text-3); }
 .gt-ex-detail { font-size: 11px; color: var(--text-3); margin-top: 2px; }
 .gt-target-chip { font-size: 12px; font-family: var(--font-mono); color: var(--text-2); }
-.gt-sets-cell { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+.gt-sets-cell { display: flex; flex-direction: column; gap: 4px; align-items: stretch; }
 .gt-set-input {
-  width: 52px; background: transparent;
-  border: 1px solid rgba(255,255,255,0.08); border-radius: 7px;
-  color: var(--text-2); font-size: 13px; padding: 5px 4px;
+  width: 100%; background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
+  color: var(--text-2); font-size: 13px; padding: 6px 8px;
   font-family: var(--font-mono); text-align: center; outline: none;
   transition: border-color 0.15s, background 0.15s;
 }
 .gt-set-input::placeholder { color: var(--text-4); }
-.gt-set-input:focus { border-color: rgba(255,255,255,0.22); background: rgba(255,255,255,0.04); }
-.gt-set-input.has-value { color: var(--text-1); border-color: rgba(255,255,255,0.14); }
-.gt-uni-pair { display: flex; gap: 3px; align-items: center; }
-.gt-uni-label { font-size: 9px; font-weight: 700; color: var(--text-4); min-width: 7px; text-align: center; }
-.gt-uni-pair .gt-set-input { width: 36px; }
+.gt-set-input:focus { border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.06); }
+.gt-set-input.has-value { color: var(--text-1); border-color: rgba(110,231,183,0.3); background: rgba(110,231,183,0.05); }
+.gt-uni-pair { display: flex; gap: 4px; align-items: center; }
+.gt-uni-label { font-size: 9px; font-weight: 700; color: var(--text-4); min-width: 9px; text-align: center; }
+.gt-uni-pair .gt-set-input { width: 100%; }
 .gt-uni-label-row { display: flex; gap: 3px; align-items: center; }
 .gt-uni-label-row .gt-set-input-mobile { flex: 1; }
 .gt-uni-mobile-pair { display: flex; flex-direction: column; gap: 3px; }
@@ -4270,13 +4276,14 @@ function renderRows(day,dayL,allL,dk){
       return`<input class="gt-set-input${v?' has-value':''}" type="text" inputmode="decimal" placeholder="—" value="${esc(v)}" data-exid="${ex.id}" data-set="${i}" autocomplete="off">`;
     }).join('');
     return `<div class="gt-table-row">
-      <div class="gt-td" style="display:flex;align-items:flex-start;gap:4px"><div style="flex:1;min-width:0"><div class="gt-ex-name" data-edit-ex="${ex.id}" data-day="${day.id}" tabindex="0" role="button">${esc(ex.name)}</div>${ex.notes?`<div class="gt-ex-detail">${esc(ex.notes)}</div>`:''}${prepHTML(ex,allL,dk)}</div><div class="gt-ex-reorder"><button class="gt-reorder-btn" data-move-exid="${ex.id}" data-move-dir="up" data-day="${day.id}" title="Move up">↑</button><button class="gt-reorder-btn" data-move-exid="${ex.id}" data-move-dir="down" data-day="${day.id}" title="Move down">↓</button></div></div>
+      <div class="gt-td" style="display:flex;align-items:center;gap:4px"><div style="flex:1;min-width:0"><div class="gt-ex-name" data-edit-ex="${ex.id}" data-day="${day.id}" tabindex="0" role="button">${esc(ex.name)}</div>${ex.notes?`<div class="gt-ex-detail">${esc(ex.notes)}</div>`:''}</div><div class="gt-ex-reorder"><button class="gt-reorder-btn" data-move-exid="${ex.id}" data-move-dir="up" data-day="${day.id}" title="Move up">↑</button><button class="gt-reorder-btn" data-move-exid="${ex.id}" data-move-dir="down" data-day="${day.id}" title="Move down">↓</button></div></div>
       <div class="gt-td" style="color:var(--text-3);font-size:12px">${ex.sets}× ${ex.repMin}–${ex.repMax}</div>
       <div class="gt-td"><span class="gt-target-chip">${esc(ex.target||'—')}</span></div>
       <div class="gt-td"><div class="gt-sets-cell">${inputs}</div></div>
       <div class="gt-td"><input class="gt-notes-input" type="text" placeholder="notes…" value="${esc(el.notes||'')}" data-exid="${ex.id}" autocomplete="off"></div>
       <div class="gt-td"><span class="gt-coach-chip ${chip.cls}">${chip.label}</span></div>
-    </div>`;
+    </div>
+    <div class="gt-prep-row">${prepHTML(ex,allL,dk)}</div>`;
   }).join('');
 
   c.querySelectorAll('.gt-set-input').forEach(inp=>{
