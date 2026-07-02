@@ -1266,33 +1266,36 @@ img, video, canvas, svg { max-width: 100%; }
 }
 .gt-icon-btn:hover { background: rgba(255,255,255,0.1); }
 .gt-today-card {
-  background: var(--bg-card); border: 1px solid var(--border);
-  border-radius: 14px; padding: 14px 16px 12px; margin-bottom: 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.022));
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 18px; padding: 16px 18px 14px; margin-bottom: 14px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 16px 40px -22px rgba(0,0,0,0.6);
 }
 .gt-today-head {
-  display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;
+  display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 11px;
 }
 .gt-today-date { font-size: 12px; color: var(--text-3); }
-.gt-today-day { font-size: 16px; font-weight: 700; color: var(--text-1); }
+.gt-today-day { font-size: 16px; font-weight: 800; color: var(--text-1); }
 .gt-progress-bar {
-  height: 5px; background: rgba(255,255,255,0.07);
-  border-radius: 9999px; overflow: hidden; margin-bottom: 7px;
+  height: 8px; background: rgba(255,255,255,0.07);
+  border-radius: 9999px; overflow: hidden; margin-bottom: 8px;
 }
 .gt-progress-fill {
-  height: 100%; background: var(--good); border-radius: 9999px;
-  transition: width 0.4s ease; width: 0%;
+  height: 100%; background: linear-gradient(90deg, #6ee7b7, #7DD3FC); border-radius: 9999px;
+  transition: width 0.5s cubic-bezier(.22,1,.36,1); width: 0%;
+  box-shadow: 0 0 12px rgba(110,231,183,0.4);
 }
-.gt-progress-stats { font-size: 11px; color: var(--text-3); }
-.gt-day-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.gt-progress-stats { font-size: 11.5px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.gt-day-tabs { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 14px; }
 .gt-day-tab {
-  padding: 5px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;
-  border: 1px solid var(--border); background: transparent; color: var(--text-3);
-  cursor: pointer; transition: all 0.15s;
+  padding: 8px 15px; border-radius: 999px; font-size: 13px; font-weight: 700;
+  border: 1px solid var(--border); background: rgba(255,255,255,0.03); color: var(--text-3);
+  cursor: pointer; transition: all 0.15s; -webkit-tap-highlight-color: transparent;
 }
-.gt-day-tab:hover { background: rgba(255,255,255,0.06); color: var(--text-2); }
+.gt-day-tab:hover { background: rgba(255,255,255,0.07); color: var(--text-2); }
 .gt-day-tab.active {
-  background: rgba(255,255,255,0.12);
-  border-color: rgba(255,255,255,0.22); color: var(--text-1);
+  background: #fff; border-color: transparent; color: #0a0a0b;
+  box-shadow: 0 6px 18px -8px rgba(255,255,255,0.4);
 }
 .gt-table-wrap {
   overflow-x: auto; border: 1px solid var(--border);
@@ -1359,53 +1362,65 @@ img, video, canvas, svg { max-width: 100%; }
 .gt-coach-chip.nodata   { background: transparent; color: var(--text-4); font-size: 10px; }
 
 /* ── Last-session recall + one-tap prefill ── */
-.gt-prep { margin: 2px 0 10px; padding: 9px 11px; border-radius: 11px;
-  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); }
+.gt-prep { margin: 9px 0 12px; }
 .gt-prep-last { font-size: 11px; color: var(--text-3); font-family: ui-monospace,"SF Mono",Menlo,monospace;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 7px; }
-.gt-prep-fill { display: flex; align-items: center; gap: 7px; width: 100%; text-align: left; cursor: pointer;
-  font-family: inherit; font-size: 12.5px; font-weight: 700; color: var(--text-1);
-  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 9px;
-  padding: 9px 11px; -webkit-tap-highlight-color: transparent; transition: background .15s, transform .1s; }
-.gt-prep-fill:hover { background: rgba(255,255,255,0.08); }
-.gt-prep-fill:active { transform: scale(0.985); }
-.gt-prep-cta { margin-left: auto; font-size: 11px; font-weight: 800; color: var(--accent,#a78bfa); white-space: nowrap; }
-.gt-prep-fill.act-up { border-color: rgba(110,231,183,0.4); }
-.gt-prep-fill.act-up .gt-prep-cta { color: var(--good,#6ee7b7); }
-.gt-prep-fill.act-lower { border-color: rgba(255,138,138,0.4); }
-.gt-prep-fill.act-lower .gt-prep-cta { color: var(--bad,#ff8a8a); }
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 7px; letter-spacing: 0.01em; }
+.gt-prep-fill { display: flex; align-items: center; gap: 9px; width: 100%; cursor: pointer; white-space: nowrap;
+  font-family: inherit; font-size: 13px; font-weight: 700; color: var(--text-1); text-align: left;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px;
+  padding: 11px 13px; -webkit-tap-highlight-color: transparent; transition: filter .15s, transform .08s, background .15s; }
+.gt-prep-fill:hover { filter: brightness(1.15); }
+.gt-prep-fill:active { transform: scale(0.98); }
+.gt-prep-plan { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.gt-prep-verb { font-weight: 800; }
+.gt-prep-cta { flex-shrink: 0; font-size: 10.5px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-1); background: rgba(255,255,255,0.12); padding: 4px 10px; border-radius: 999px; }
+.gt-prep-fill.act-up { background: linear-gradient(180deg,rgba(110,231,183,0.15),rgba(110,231,183,0.05)); border-color: rgba(110,231,183,0.42); }
+.gt-prep-fill.act-up .gt-prep-verb { color: var(--good); }
+.gt-prep-fill.act-up .gt-prep-cta { color: var(--good); background: rgba(110,231,183,0.16); }
+.gt-prep-fill.act-lower { background: linear-gradient(180deg,rgba(255,138,138,0.13),rgba(255,138,138,0.04)); border-color: rgba(255,138,138,0.42); }
+.gt-prep-fill.act-lower .gt-prep-verb { color: var(--bad); }
+.gt-prep-fill.act-lower .gt-prep-cta { color: var(--bad); background: rgba(255,138,138,0.16); }
+.gt-prep-fill.undo { justify-content: space-between; background: rgba(255,255,255,0.045); border-color: var(--border-strong); color: var(--text-2); }
+.gt-table-row .gt-prep { margin: 6px 0 2px; }
+.gt-table-row .gt-prep-fill { font-size: 12px; padding: 8px 11px; }
 
 .gt-cards { display: none; }
 .gt-card {
-  background: var(--bg-card); border: 1px solid var(--border);
-  border-radius: 14px; padding: 14px; margin-bottom: 10px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.022));
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 18px; padding: 16px; margin-bottom: 11px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 16px 40px -22px rgba(0,0,0,0.65);
 }
 .gt-card-header {
   display: flex; justify-content: space-between; align-items: flex-start;
-  margin-bottom: 6px; gap: 8px;
+  margin-bottom: 8px; gap: 8px;
 }
-.gt-card-name { font-weight: 700; font-size: 14px; color: var(--text-1); }
-.gt-card-meta { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 10px; }
+.gt-card-name { font-weight: 800; font-size: 15.5px; letter-spacing: -0.01em; color: var(--text-1); }
+.gt-card-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
 .gt-meta-chip {
-  font-size: 11px; padding: 2px 8px; border-radius: 8px;
-  background: rgba(255,255,255,0.07); color: var(--text-3);
+  font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.06);
+  color: var(--text-3); letter-spacing: 0.02em;
 }
-.gt-sets-row { display: grid; gap: 6px; margin-bottom: 8px; }
-.gt-set-cell { display: flex; flex-direction: column; gap: 3px; align-items: center; }
+.gt-sets-row { display: grid; gap: 7px; margin-bottom: 9px; }
+.gt-set-cell { display: flex; flex-direction: column; gap: 4px; align-items: center; }
 .gt-set-label {
-  font-size: 10px; color: var(--text-4); font-weight: 700;
-  letter-spacing: 0.04em; text-transform: uppercase;
+  font-size: 9.5px; color: var(--text-4); font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
 }
 .gt-set-input-mobile {
-  width: 100%; background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;
-  color: var(--text-2); font-size: 15px; padding: 8px 6px;
+  width: 100%; background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1); border-radius: 11px;
+  color: var(--text-2); font-size: 16px; font-weight: 600; padding: 11px 6px;
   font-family: var(--font-mono); text-align: center; outline: none;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
 }
-.gt-set-input-mobile::placeholder { color: var(--text-4); }
-.gt-set-input-mobile:focus { border-color: rgba(255,255,255,0.2); }
-.gt-set-input-mobile.has-value { color: var(--text-1); border-color: rgba(255,255,255,0.14); }
+.gt-set-input-mobile::placeholder { color: var(--text-4); font-weight: 400; }
+.gt-set-input-mobile:focus { border-color: rgba(255,255,255,0.34); background: rgba(255,255,255,0.08);
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.06); }
+.gt-set-input-mobile.has-value { color: var(--text-1); border-color: rgba(110,231,183,0.35);
+  background: rgba(110,231,183,0.06); }
 .gt-card-notes {
   width: 100%; background: transparent;
   border: 1px solid rgba(255,255,255,0.06); border-radius: 8px;
@@ -4036,24 +4051,39 @@ function prescription(ex,prev){
   return{weight:w,reps:rmin,action:'lower',label:'Repeat · '+trimNum(w)+exUnit(ex)+' × '+rmin};
 }
 function fillString(ex,rx){ return (rx.bw||rx.weight==null) ? String(rx.reps) : (trimNum(rx.weight)+exUnit(ex)+' x '+rx.reps); }
+let _lastFill = null; // { exId, slots:[{i,side}] } — enables one-tap Undo
 function prepHTML(ex,allL,dk){
+  // Just filled? Show an Undo affordance instead of Fill.
+  if(_lastFill && _lastFill.exId===ex.id){
+    return '<div class="gt-prep"><button class="gt-prep-fill undo" type="button" data-undo="'+ex.id+'">'+
+      '<span class="gt-prep-plan">✓ Filled</span><span class="gt-prep-cta">↩ Undo</span></button></div>';
+  }
   const prev=prevSessionOf(ex,allL,dk), rx=prescription(ex,prev), fill=fillString(ex,rx);
-  const last=prev?('Last time · '+prev.parsed.map(p=>fmtPrevSet(ex,p)).join(' · ')):'First time — no history yet';
-  const icon=rx.action==='up'?'⏫':rx.action==='lower'?'⏬':rx.action==='start'?'▶':'🎯';
+  const last=prev?('Last · '+prev.parsed.map(p=>fmtPrevSet(ex,p)).join('  ·  ')):'First session — set your baseline';
+  const plan=(rx.bw||rx.weight==null)?(rx.reps+' reps'):(trimNum(rx.weight)+exUnit(ex)+' × '+rx.reps);
+  const verb=rx.action==='up'?'Add weight':rx.action==='lower'?'Repeat':rx.action==='start'?'Start':'Beat';
   return '<div class="gt-prep"><div class="gt-prep-last">'+esc(last)+'</div>'+
     '<button class="gt-prep-fill act-'+rx.action+'" type="button" data-exid="'+ex.id+'" data-fill="'+esc(fill)+'">'+
-    icon+' '+esc(rx.label)+'<span class="gt-prep-cta">Fill →</span></button></div>';
+    '<span class="gt-prep-plan"><span class="gt-prep-verb">'+verb+'</span> '+esc(plan)+'</span>'+
+    '<span class="gt-prep-cta">Fill</span></button></div>';
 }
-// Prefill today's EMPTY sets with the suggested weight×reps
+// Prefill today's EMPTY sets with the suggested weight×reps (remembers what it filled)
 function applyPrefill(day,exId,fillStr){
   const ex=(day.exercises||[]).find(e=>e.id===exId); if(!ex) return;
   const cur=(getLogs()[todayKey()]||{})[exId]||{};
+  const slots=[];
   for(let i=0;i<ex.sets;i++){
-    if(!((cur['set'+i]||'').trim())) saveSetVal(exId,i,fillStr);
-    if(ex.unilateral && !((cur['set'+i+'R']||'').trim())) saveSetVal(exId,i,fillStr,'R');
+    if(!((cur['set'+i]||'').trim())){ saveSetVal(exId,i,fillStr); slots.push({i:i}); }
+    if(ex.unilateral && !((cur['set'+i+'R']||'').trim())){ saveSetVal(exId,i,fillStr,'R'); slots.push({i:i,side:'R'}); }
   }
+  _lastFill = slots.length ? { exId:exId, slots:slots } : null;
   renderAll();
 }
+function undoPrefill(exId){
+  if(_lastFill && _lastFill.exId===exId){ _lastFill.slots.forEach(s=>saveSetVal(exId,s.i,'',s.side)); }
+  _lastFill=null; renderAll();
+}
+function prepFillClick(day,btn){ if(btn.dataset.undo) undoPrefill(btn.dataset.undo); else applyPrefill(day,btn.dataset.exid,btn.dataset.fill); }
 
 function analyzeExercise(ex,exLog,allLogs,todayDk){
   const isBW=!!ex.bw;
@@ -4252,6 +4282,7 @@ function renderRows(day,dayL,allL,dk){
   c.querySelectorAll('.gt-set-input').forEach(inp=>{
     inp.addEventListener('input',()=>{
       inp.classList.toggle('has-value',!!inp.value.trim());
+      if(_lastFill&&_lastFill.exId===inp.dataset.exid)_lastFill=null;
       saveSetVal(inp.dataset.exid,inp.dataset.set,inp.value,inp.dataset.side);
       updateProgress(day);
       const row=inp.closest('.gt-table-row');
@@ -4273,7 +4304,7 @@ function renderRows(day,dayL,allL,dk){
     el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' ')openEdit(el.dataset.editEx,el.dataset.day);});
   });
   c.querySelectorAll('.gt-reorder-btn').forEach(btn=>btn.addEventListener('click',()=>moveEx(btn.dataset.moveExid,btn.dataset.day,btn.dataset.moveDir)));
-  c.querySelectorAll('.gt-prep-fill').forEach(b=>b.addEventListener('click',()=>applyPrefill(day,b.dataset.exid,b.dataset.fill)));
+  c.querySelectorAll('.gt-prep-fill').forEach(b=>b.addEventListener('click',()=>prepFillClick(day,b)));
 }
 
 function renderCards(day,dayL,allL,dk){
@@ -4311,6 +4342,7 @@ function renderCards(day,dayL,allL,dk){
     card.querySelectorAll('.gt-set-input-mobile').forEach(inp=>{
       inp.addEventListener('input',()=>{
         inp.classList.toggle('has-value',!!inp.value.trim());
+        if(_lastFill&&_lastFill.exId===inp.dataset.exid)_lastFill=null;
         saveSetVal(inp.dataset.exid,inp.dataset.set,inp.value,inp.dataset.side);
         updateProgress(day);
         const allI=Array.from(card.querySelectorAll('.gt-set-input-mobile'));
@@ -4324,7 +4356,7 @@ function renderCards(day,dayL,allL,dk){
     card.querySelector('[data-edit-ex]').addEventListener('click',()=>openEdit(ex.id,day.id));
     card.querySelector('[data-del-ex]').addEventListener('click',()=>delEx(ex.id,day.id));
     card.querySelectorAll('.gt-reorder-btn').forEach(btn=>btn.addEventListener('click',()=>moveEx(btn.dataset.moveExid,btn.dataset.day,btn.dataset.moveDir)));
-    const _pf=card.querySelector('.gt-prep-fill'); if(_pf)_pf.addEventListener('click',()=>applyPrefill(day,ex.id,_pf.dataset.fill));
+    const _pf=card.querySelector('.gt-prep-fill'); if(_pf)_pf.addEventListener('click',()=>prepFillClick(day,_pf));
     c.appendChild(card);
   });
 }
