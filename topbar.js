@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '1.10.3';
+const DASHBOARD_VERSION = '1.10.4';
 
 // =============================================================
 // THEME STYLES ("skins") — single source of truth.
@@ -165,6 +165,22 @@ const BUDDY_DEFS = {
     "Kindness and grit win the day.","Breathe. Then push forward.","Protect your goals like family. 🌸"]},
 };
 
+// Page backgrounds per surface style — injected in the early boot below so the
+// final look renders in one shot (no flash from the skin bg to the UI-style bg).
+const UI_BG = {
+  skeuomorphism: 'linear-gradient(180deg,#2a251e,#171310)',
+  neomorphism: '#23262c',
+  glassmorphism: 'radial-gradient(at 18% 18%, #6d28d9 0%, transparent 42%), radial-gradient(at 82% 12%, #1d6fb8 0%, transparent 42%), radial-gradient(at 50% 88%, #be185d 0%, transparent 48%), #0a0a14',
+  claymorphism: 'linear-gradient(160deg,#2e2a55,#3b2c58)',
+  minimalism: '#0b0b0c',
+  maximalism: 'linear-gradient(135deg,#ff2d75,#7a2cff 48%,#00c2ff)',
+  brutalism: '#0c0c0c',
+  liquidglass: 'radial-gradient(at 28% 18%, rgba(58,160,255,0.5) 0%, transparent 46%), radial-gradient(at 76% 26%, rgba(255,94,199,0.5) 0%, transparent 46%), radial-gradient(at 50% 84%, rgba(34,224,192,0.45) 0%, transparent 50%), #06060c',
+  bento: '#0d0d10',
+  spatial: 'radial-gradient(at 50% 0%, #1a2340 0%, transparent 60%), #05060a',
+};
+const UI_BG_LIGHT = { brutalism: '#f2f0e9', neomorphism: '#e6e9ef', minimalism: '#fbfbfa' };
+
 // Apply saved theme + skin before anything renders (prevents flash)
 (function() {
   try {
@@ -193,6 +209,15 @@ const BUDDY_DEFS = {
       _se.id = 'skin-early';
       _se.textContent = 'body{background:' + _def.pattern + ' , ' + _grad + ' !important; background-attachment:fixed, fixed !important;}';
       (document.head || document.documentElement).appendChild(_se);
+    }
+
+    // Surface-style background — injected AFTER the skin bg so it wins immediately
+    var _uiStyle = _s.uiStyle || 'default';
+    var _uiBg = _dark ? UI_BG[_uiStyle] : (UI_BG_LIGHT[_uiStyle] || UI_BG[_uiStyle]);
+    if (_uiBg) {
+      var _ue = document.createElement('style'); _ue.id = 'ui-early';
+      _ue.textContent = 'body{background:' + _uiBg + ' !important; background-attachment:fixed !important;}';
+      (document.head || document.documentElement).appendChild(_ue);
     }
 
     document.documentElement.style.setProperty('--accent', _accentVal);
@@ -949,7 +974,19 @@ html[data-theme="light"] :is([data-ui="glassmorphism"],[data-ui="liquidglass"],[
     document.head.appendChild(u);
   }
   // Live-apply from settings (CSS is injected globally; just toggle the attribute)
-  window.dashApplyUi = function (v) { injectUiStyle(); document.documentElement.setAttribute('data-ui', v || 'default'); };
+  window.dashApplyUi = function (v) {
+    v = v || 'default';
+    injectUiStyle();
+    document.documentElement.setAttribute('data-ui', v);
+    // keep the critical early-bg in sync so switching back to Default clears it
+    let ue = document.getElementById('ui-early');
+    const dark = document.documentElement.getAttribute('data-theme') !== 'light';
+    const bg = dark ? UI_BG[v] : (UI_BG_LIGHT[v] || UI_BG[v]);
+    if (bg) {
+      if (!ue) { ue = document.createElement('style'); ue.id = 'ui-early'; document.head.appendChild(ue); }
+      ue.textContent = 'body{background:' + bg + ' !important; background-attachment:fixed !important;}';
+    } else if (ue) { ue.textContent = ''; }
+  };
 
   function buildTabEl(tab) {
     const a = document.createElement('a');
