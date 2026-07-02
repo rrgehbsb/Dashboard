@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '1.10.4';
+const DASHBOARD_VERSION = '2.0.0';
 
 // =============================================================
 // THEME STYLES ("skins") — single source of truth.
@@ -1332,7 +1332,7 @@ html[data-theme="light"] :is([data-ui="glassmorphism"],[data-ui="liquidglass"],[
     if (btn) { btn.classList.add('flash'); setTimeout(() => btn.classList.remove('flash'), 220); }
     spawnWaterBurst();
     if (_buddyOnWater) _buddyOnWater();
-    if (window.dashAddXp) window.dashAddXp(5, 'Drank water 💧');
+    if (window.dashAddXpCapped) window.dashAddXpCapped(5, 'Drank water 💧', 'water', 8);
   }
 
   // Themed emoji burst when logging water
@@ -1973,7 +1973,7 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
     if (!s || typeof s.total !== 'number') s = { total: 0 };
     s.claims = s.claims || {}; s.log = s.log || []; s.counts = s.counts || {}; s.dayCats = s.dayCats || {};
     s.badges = s.badges || {}; s.spent = s.spent || 0; s.freezesBought = s.freezesBought || 0;
-    s.freezesUsed = s.freezesUsed || 0; s.maxStreak = s.maxStreak || 0;
+    s.freezesUsed = s.freezesUsed || 0; s.maxStreak = s.maxStreak || 0; s.dayCaps = s.dayCaps || {};
     return s;
   }
   // Infer a category from the reason text (so page hooks don't need to pass one)
@@ -2100,8 +2100,15 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
     const s = xpLoad();
     if (opts.daily) {
       const ck = opts.daily + '::' + xpToday();
-      if (s.claims[ck]) return; // already earned today
+      if (s.claims[ck]) return; // already earned today (toggling off/on won't re-award)
       s.claims[ck] = 1;
+    }
+    if (opts.capKey) {
+      const ct = xpToday();
+      const kk = opts.capKey + '#' + ct;
+      if ((s.dayCaps[kk] || 0) >= (opts.cap || 1)) return; // hit today's cap
+      s.dayCaps[kk] = (s.dayCaps[kk] || 0) + 1;
+      Object.keys(s.dayCaps).forEach((k) => { if (k.split('#')[1] !== ct) delete s.dayCaps[k]; });
     }
     const before = levelInfo(s.total);
     s.total += amount;
@@ -2127,6 +2134,7 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
   // Public API used across pages
   window.dashAddXp = (amount, reason) => addXp(amount, reason);
   window.dashAddXpDaily = (amount, reason, key) => addXp(amount, reason, { daily: key });
+  window.dashAddXpCapped = (amount, reason, key, cap) => addXp(amount, reason, { capKey: key, cap: cap });
 
   function runXpToast() {
     if (_xpBusy || !_xpQueue.length || !_xpToast) return;
@@ -2291,6 +2299,113 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
     wireXpModal(m);
   }
 
+  // =============================================================
+  // COLLAPSIBLE + REORDERABLE PAGE SECTIONS
+  // A "section" = a header (.section-title) plus every block after it
+  // up to the next header. Tap a header to collapse it; ↑/↓ reorders.
+  // Saved per-device in dashboard:sections:v1.
+  // =============================================================
+  const SEC_KEY = 'dashboard:sections:v1';
+  const SEC_SKIP = '.topbar,.bottombar,.skin-banner,#buddy,.bc-panel,.xp-toast,#xpModal,.nav-more-sheet,.nav-more-backdrop,.skin-toast,.skin-splash,.install-card,.modal-bg,.po-modal-bg,.rm-modal-bg,.schedule-modal-bg,.w-modal-bg,.gt-modal-bg,.m-bg,.wt-overlay,.bg-wash,script,style,link,noscript,[id*="odal"],[id*="Overlay"]';
+  const secCss = `
+.section-title.sec-h{cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.sec-h .sec-right{margin-left:auto;display:inline-flex;align-items:center;gap:1px;flex-shrink:0;}
+.sec-move{background:none;border:none;cursor:pointer;color:inherit;opacity:0.32;font-size:12px;line-height:1;padding:2px 3px;font-family:inherit;-webkit-tap-highlight-color:transparent;transition:opacity .15s;}
+.sec-move:hover{opacity:0.85;}
+.sec-chev{display:inline-block;font-size:10px;opacity:0.55;transition:transform .2s;padding-left:6px;}
+.section-title.sec-collapsed .sec-chev{transform:rotate(-90deg);}
+`;
+  function secLoadAll(){ try{ return JSON.parse(localStorage.getItem(SEC_KEY)) || {}; }catch(e){ return {}; } }
+  function secSaveAll(a){ try{ localStorage.setItem(SEC_KEY, JSON.stringify(a)); }catch(e){} }
+  function secSlug(t){ return ((t.textContent||'').replace(/[↑↓▾▸]/g,'').trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40)) || 'sec'; }
+  function secToggleHide(el, hide){
+    if(el.nodeType !== 1) return;
+    if(hide){ if(!el.dataset.secHid){ el.dataset.secHid='1'; el.dataset.secDisp=el.style.display||''; el.style.display='none'; } }
+    else { if(el.dataset.secHid){ el.style.display=el.dataset.secDisp||''; delete el.dataset.secHid; delete el.dataset.secDisp; } }
+  }
+  function secSetCollapsed(run, collapsed){
+    run.title.classList.toggle('sec-collapsed', collapsed);
+    run.blocks.forEach((b)=>{ if(b!==run.titleBlock) secToggleHide(b, collapsed); });
+    if(run.titleBlock !== run.title){ let n=run.title.nextSibling; while(n){ secToggleHide(n, collapsed); n=n.nextSibling; } }
+  }
+  function secApplyOrder(runs, container, order){
+    if(!order || order.length<2) return;
+    const pos={}; order.forEach((k,i)=>{ pos[k]=i; });
+    const domSorted = runs.slice().sort((a,b)=> (a.blocks[0].compareDocumentPosition(b.blocks[0]) & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1);
+    const anchor = domSorted[0].blocks[0].previousSibling;
+    const sorted = runs.slice().sort((a,b)=> (pos[a.key]==null?99:pos[a.key]) - (pos[b.key]==null?99:pos[b.key]));
+    const frag = document.createDocumentFragment();
+    sorted.forEach((r)=> r.blocks.forEach((b)=> frag.appendChild(b)));
+    if(anchor && anchor.parentNode===container && anchor.after) anchor.after(frag);
+    else container.insertBefore(frag, container.firstChild);
+  }
+  function setupSections(){
+    try{
+      if(isEmbedded() || isSettingsPage() || isFinancePage()) return;
+      const titles = Array.from(document.querySelectorAll('.section-title'));
+      if(!titles.length) return;
+      if(!document.getElementById('sec-style')){ const st=document.createElement('style'); st.id='sec-style'; st.textContent=secCss; document.head.appendChild(st); }
+      const pageKey = currentPageKey();
+      const all = secLoadAll();
+      const cfg = all[pageKey] || {}; cfg.order = Array.isArray(cfg.order)?cfg.order:[]; cfg.collapsed = cfg.collapsed || {};
+      // container = single wrapper holding all titles, else <body>
+      let container = document.body;
+      Array.from(document.body.children).forEach((k)=>{ try{ if(k.querySelectorAll && k.querySelectorAll('.section-title').length === titles.length && !k.matches(SEC_SKIP)) container = k; }catch(e){} });
+      // build runs from container children
+      const runs = []; let cur = null; const seen = {};
+      Array.from(container.children).forEach((el)=>{
+        if(el.nodeType!==1) return;
+        let skip=false; try{ skip = el.matches(SEC_SKIP); }catch(e){}
+        if(skip) return;
+        let titleEl=null; try{ titleEl = el.matches('.section-title') ? el : el.querySelector('.section-title'); }catch(e){}
+        if(titleEl){
+          let k=secSlug(titleEl); if(seen[k]!=null){ seen[k]++; k=k+'-'+seen[k]; } else seen[k]=1;
+          cur = { key:k, title:titleEl, titleBlock:el, blocks:[el] }; runs.push(cur);
+        } else if(cur){ cur.blocks.push(el); }
+      });
+      if(!runs.length) return;
+      // wire each section
+      runs.forEach((run)=>{
+        const t = run.title;
+        if(t._secWired) return; t._secWired = true;
+        t.classList.add('sec-h');
+        t.style.display = 'flex'; t.style.alignItems = 'center';
+        const right = document.createElement('span'); right.className='sec-right';
+        if(runs.length>1){
+          const up=document.createElement('button'); up.className='sec-move'; up.type='button'; up.textContent='↑'; up.title='Move up';
+          const dn=document.createElement('button'); dn.className='sec-move'; dn.type='button'; dn.textContent='↓'; dn.title='Move down';
+          up.addEventListener('click',(e)=>{ e.stopPropagation(); secMove(run, runs, container, pageKey, -1); });
+          dn.addEventListener('click',(e)=>{ e.stopPropagation(); secMove(run, runs, container, pageKey, 1); });
+          right.appendChild(up); right.appendChild(dn);
+        }
+        const chev=document.createElement('span'); chev.className='sec-chev'; chev.textContent='▾'; right.appendChild(chev);
+        t.appendChild(right);
+        t.addEventListener('click',(e)=>{ if(e.target.closest('.sec-move')) return; secToggle(run, pageKey); });
+      });
+      // apply saved order + collapsed
+      if(runs.length>1 && cfg.order.length) secApplyOrder(runs, container, cfg.order);
+      runs.forEach((run)=>{ if(cfg.collapsed[run.key]) secSetCollapsed(run, true); });
+    }catch(e){ /* never break the page */ }
+  }
+  function secToggle(run, pageKey){
+    const collapsed = !run.title.classList.contains('sec-collapsed');
+    secSetCollapsed(run, collapsed);
+    const all=secLoadAll(); const cfg=all[pageKey]||{}; cfg.collapsed=cfg.collapsed||{};
+    if(collapsed) cfg.collapsed[run.key]=1; else delete cfg.collapsed[run.key];
+    all[pageKey]=cfg; secSaveAll(all);
+  }
+  function secMove(run, runs, container, pageKey, dir){
+    try{
+      const order = runs.map((r)=>r.key);
+      const i=order.indexOf(run.key), j=i+dir;
+      if(j<0 || j>=order.length) return;
+      const tmp=order[i]; order[i]=order[j]; order[j]=tmp;
+      secApplyOrder(runs, container, order);
+      const all=secLoadAll(); const cfg=all[pageKey]||{}; cfg.order=order; all[pageKey]=cfg; secSaveAll(all);
+      runs.sort((a,b)=> order.indexOf(a.key)-order.indexOf(b.key));
+    }catch(e){}
+  }
+
   function boot() {
     injectStyleAndHTML();
     injectUiStyle();
@@ -2298,6 +2413,7 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
     showWelcomeToast();
     setupBuddy();
     setupXp();
+    setupSections();
     const btn = document.getElementById('topbarWaterAdd');
     if (btn) btn.addEventListener('click', (e) => { e.preventDefault(); addWater(); });
     render();

@@ -2034,7 +2034,7 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catc
     wState.logs[k] = (wState.logs[k] || 0) + ml;
     wState.hist = wState.hist || {}; (wState.hist[k] = wState.hist[k] || []).push(ml);
     saveState(); renderWater();
-    if (window.dashAddXp) window.dashAddXp(5, 'Drank water 💧');
+    if (window.dashAddXpCapped) window.dashAddXpCapped(5, 'Drank water 💧', 'water', 8);
   }
   function undoMl() {
     const k = todayKey();
@@ -2477,7 +2477,7 @@ function toggleEaten(mealId){
   if(nowEaten){days[dk][mealId].eatenAt=Date.now();delete days[dk][mealId].uneatenAt;}
   else{days[dk][mealId].uneatenAt=Date.now();delete days[dk][mealId].eatenAt;}
   saveDays(days);renderAll();
-  if(nowEaten&&window.dashAddXp)window.dashAddXp(8,'Logged a meal 🍽️');
+  if(nowEaten&&window.dashAddXpDaily)window.dashAddXpDaily(8,'Logged a meal 🍽️','meal:'+mealId);
 }
 
 function openLogModal(mealId){

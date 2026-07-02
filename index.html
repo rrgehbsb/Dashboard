@@ -1295,9 +1295,9 @@ function buildGoalRow(g,idx,goals,key,readOnly){
       storeSet(key,goals);
       li.classList.toggle('gm-done',cb.checked);
       if(key===`goals:${getActiveDateString()}`){
-        if(cb.checked&&window.dashAddXp){
-          window.dashAddXp(10,'Completed a goal ✅');
-          if(goals.length>0&&goals.every(g=>g.done)&&window.dashAddXpDaily) window.dashAddXpDaily(50,'Cleared all goals 🏆','allgoals');
+        if(cb.checked&&window.dashAddXpDaily){
+          window.dashAddXpDaily(10,'Completed a goal ✅','goal:'+goals[idx].text);
+          if(goals.length>0&&goals.every(g=>g.done)) window.dashAddXpDaily(50,'Cleared all goals 🏆','allgoals');
         }
         renderTodayHeader();
       } else renderTomorrowCount();
