@@ -1664,7 +1664,6 @@ function renderMood(){
   const days7=[];
   for(let i=6;i>=0;i--){
     const d=new Date();
-    if(new Date().getHours()<6) d.setDate(d.getDate()-1);
     d.setDate(d.getDate()-i);
     days7.push(toDateStr(d));
   }
@@ -1772,7 +1771,6 @@ function renderMoodChart() {
   const points = [];
   for (let i = 13; i >= 0; i--) {
     const d = new Date();
-    if (new Date().getHours() < 6) d.setDate(d.getDate() - 1);
     d.setDate(d.getDate() - i);
     const dateStr = toDateStr(d);
     const entry = data.entries.find(e => e.date === dateStr);
