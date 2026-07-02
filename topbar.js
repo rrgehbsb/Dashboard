@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.0.1';
+const DASHBOARD_VERSION = '2.0.2';
 
 // =============================================================
 // THEME STYLES ("skins") — single source of truth.
@@ -2424,6 +2424,10 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
     window.addEventListener('health-synced', render);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) render(); });
     setInterval(render, 30 * 1000);
+    // Presence heartbeat — keeps your profile's updated_at fresh so friends see
+    // you as "online". Cheap: one profile update every ~2 min while visible.
+    setInterval(() => { if (!document.hidden) scheduleProfileSync(); }, 120 * 1000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) scheduleProfileSync(); });
   }
 
   if (document.readyState === 'loading') {

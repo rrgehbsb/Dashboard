@@ -94,6 +94,29 @@
   .vs-bar-r{background:#6ee7b7;justify-content:flex-end;}
   .vs-summary{text-align:center;font-size:15px;font-weight:900;margin-top:8px;}
   .vs-btn{width:100%;margin-top:14px;border:none;border-radius:12px;background:var(--accent);color:#0a0a0b;font-weight:800;font-size:14px;padding:12px;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;}
+  /* Presence dot */
+  .av,.lb-pod-av,.fd-av,.me-av{position:relative;}
+  .pres-dot{position:absolute;right:-1px;bottom:-1px;width:12px;height:12px;border-radius:50%;border:2px solid #0b0b0e;background:#6ee7b7;box-shadow:0 0 6px #6ee7b7;}
+  html[data-theme="light"] .pres-dot{border-color:#fff;}
+  /* Friend detail card */
+  .fd-head{display:flex;align-items:center;gap:14px;margin:4px 0 14px;}
+  .fd-av{width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;background:rgba(255,255,255,0.06);border:1px solid var(--bord);flex-shrink:0;}
+  .fd-name{font-size:19px;font-weight:800;letter-spacing:-0.01em;}
+  .fd-user{font-size:13px;color:var(--accent);font-weight:600;}
+  .fd-pres{font-size:11.5px;font-weight:700;margin-top:4px;display:inline-flex;align-items:center;gap:6px;}
+  .fd-pres.on{color:#6ee7b7;} .fd-pres.off{color:var(--t3);}
+  .fd-pres .d{width:8px;height:8px;border-radius:50%;background:currentColor;box-shadow:0 0 6px currentColor;}
+  .fd-bar{height:9px;border-radius:6px;background:rgba(255,255,255,0.08);overflow:hidden;margin:4px 0 5px;}
+  .fd-bar-fill{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--accent),color-mix(in srgb,var(--accent) 40%,#fff));}
+  .fd-bar-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--t3);font-weight:600;font-variant-numeric:tabular-nums;margin-bottom:13px;}
+  .fd-tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+  .fd-tile{background:rgba(255,255,255,0.04);border:1px solid var(--bord);border-radius:12px;padding:11px 12px;}
+  .fd-tile-lab{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--t3);}
+  .fd-tile-val{font-size:17px;font-weight:800;margin-top:3px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .fd-btns{display:flex;gap:8px;margin-top:15px;}
+  .fd-btns button{flex:1;border:none;border-radius:12px;font-weight:800;font-size:14px;padding:12px;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;}
+  .fd-duel{background:var(--accent);color:#0a0a0b;}
+  .fd-nudge{background:rgba(255,255,255,0.08);color:var(--t1);}
   .me-av{width:56px;height:56px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;
     font-size:30px;background:rgba(0,0,0,0.25);border:1.5px solid color-mix(in srgb,var(--accent) 50%,transparent);}
   .me-info{flex:1;min-width:0;}
@@ -276,6 +299,32 @@ async function refresh(){
 }
 
 function levelInfo(xp){ let l=1,need=100,used=0; xp=xp||0; while(xp>=used+need){used+=need;l++;need=Math.round(need*1.18/5)*5;} return {level:l,into:xp-used,span:need,pct:Math.max(0,Math.min(1,(xp-used)/need))}; }
+function isOnline(ts){ return !!ts && (Date.now()-new Date(ts).getTime()) < 5*60*1000; }
+function lastActive(ts){ if(!ts) return 'a while ago'; const s=(Date.now()-new Date(ts).getTime())/1000; if(s<300)return 'just now'; if(s<3600)return Math.floor(s/60)+'m ago'; if(s<86400)return Math.floor(s/3600)+'h ago'; return Math.floor(s/86400)+'d ago'; }
+const SKIN_NAMES={none:'Default',onepiece:'One Piece ⚔️',bluelock:'Blue Lock ⚽',sololeveling:'Solo Leveling 🌑',jujutsu:'Jujutsu Kaisen 🌀',demonslayer:'Demon Slayer 🗡️'};
+function fdTile(lab,val){ return '<div class="fd-tile"><div class="fd-tile-lab">'+lab+'</div><div class="fd-tile-val">'+val+'</div></div>'; }
+function openFriend(fid){
+  const f=[...friends,me].find(x=>x.id===fid); if(!f) return;
+  const info=levelInfo(f.xp); const on=isOnline(f.updated_at); const isFriend=friends.some(x=>x.id===fid);
+  let m=document.getElementById('fdModal'); if(!m){ m=document.createElement('div'); m.className='m-bg'; m.id='fdModal'; document.body.appendChild(m); }
+  m.innerHTML='<div class="m">'+
+    '<div class="fd-head"><div class="fd-av">'+escapeHtml(f.avatar||'🙂')+(on?'<span class="pres-dot"></span>':'')+'</div>'+
+      '<div style="flex:1;min-width:0"><div class="fd-name">'+escapeHtml(f.display_name||f.username)+'</div>'+
+        '<div class="fd-user">@'+escapeHtml(f.username)+'</div>'+
+        '<div class="fd-pres '+(on?'on':'off')+'"><span class="d"></span>'+(on?'Online now':'Active '+lastActive(f.updated_at))+'</div></div></div>'+
+    '<div class="fd-bar"><span class="fd-bar-fill" style="width:'+(info.pct*100).toFixed(0)+'%"></span></div>'+
+    '<div class="fd-bar-meta"><span>Level '+info.level+'</span><span>'+info.into+' / '+info.span+' XP · '+(info.span-info.into)+' to next</span></div>'+
+    '<div class="fd-tiles">'+
+      fdTile('Total XP',f.xp||0)+ fdTile('This week',(f.xp_week||0)+' XP')+
+      fdTile('Streak',(f.streak||0)+' 🔥')+ fdTile('Theme',SKIN_NAMES[f.skin]||'Default')+
+    '</div>'+
+    (isFriend?'<div class="fd-btns"><button class="fd-duel" id="fdDuel">⚔️ Duel</button><button class="fd-nudge" id="fdNudge">👋 Nudge</button></div>':'')+
+    '</div>';
+  m.classList.add('show');
+  m.onclick=(e)=>{ if(e.target===m) m.classList.remove('show'); };
+  const d=m.querySelector('#fdDuel'); if(d) d.onclick=()=>{ m.classList.remove('show'); openVersus(fid); };
+  const n=m.querySelector('#fdNudge'); if(n) n.onclick=()=>{ nudge(fid); m.classList.remove('show'); };
+}
 function myRank(){ const all=[me,...friends].slice().sort((a,c)=>(c.xp||0)-(a.xp||0)); const i=all.findIndex(p=>p.id===uid); return i>=0?i+1:'—'; }
 function myBadges(){ try{ const x=JSON.parse(localStorage.getItem('dashboard:xp:v1'))||{}; return Object.keys(x.badges||{}).length; }catch(e){ return 0; } }
 function meTile(ic,val,lab){ return '<div class="me-tile"><div class="me-tile-ic">'+ic+'</div><div class="me-tile-val">'+val+'</div><div class="me-tile-lab">'+lab+'</div></div>'; }
@@ -354,7 +403,7 @@ function renderBoard(b){
   const medals={1:'🥇',2:'🥈',3:'🥉'};
   html+='<div class="lb-podium">'+podOrder.map(({p,place})=>
     '<div class="lb-pod p'+place+(p.id===uid?' me':'')+'"'+(p.id!==uid?' data-fid="'+p.id+'"':'')+'><div class="lb-pod-medal">'+medals[place]+'</div>'+
-    '<div class="lb-pod-av">'+escapeHtml(p.avatar||'🙂')+'</div>'+
+    '<div class="lb-pod-av">'+escapeHtml(p.avatar||'🙂')+(isOnline(p.updated_at)?'<span class="pres-dot"></span>':'')+'</div>'+
     '<div class="lb-pod-name">'+escapeHtml(p.display_name||p.username)+'</div>'+
     '<div class="lb-pod-val">'+(p[key]||0)+'</div>'+
     '<div class="lb-pod-sub">Lv '+(p.level||1)+' · 🔥'+(p.streak||0)+'</div></div>').join('')+'</div>';
@@ -364,7 +413,7 @@ function renderBoard(b){
     const other=key==='xp'?('🏁 '+(p.xp_week||0)):key==='xp_week'?('⭐ '+(p.xp||0)):('⭐ '+(p.xp||0));
     return '<div class="row'+(p.id===uid?' me':' click')+'"'+(p.id!==uid?' data-fid="'+p.id+'"':'')+'>'+
       '<div class="rank">'+(i+4)+'</div>'+
-      '<div class="av">'+escapeHtml(p.avatar||'🙂')+'</div>'+
+      '<div class="av">'+escapeHtml(p.avatar||'🙂')+(isOnline(p.updated_at)?'<span class="pres-dot"></span>':'')+'</div>'+
       '<div class="who"><div class="who-name">'+escapeHtml(p.display_name||p.username)+(p.id===uid?' (you)':'')+'</div>'+
         '<div class="who-sub"><span>@'+escapeHtml(p.username)+'</span><span>🔥 '+(p.streak||0)+'</span><span>'+other+'</span></div></div>'+
       '<span class="lvl">Lv '+(p.level||1)+'</span>'+
@@ -373,7 +422,7 @@ function renderBoard(b){
   else if(everyone.length<=3 && friends.length) html+='<div class="empty" style="padding:14px 0;font-size:12px">Tap a friend above to see a head-to-head ⚔️</div>';
   b.innerHTML=html;
   b.querySelectorAll('.seg button').forEach(x=>x.addEventListener('click',()=>{boardMode=x.dataset.m;renderBody();}));
-  b.querySelectorAll('[data-fid]').forEach(el=>el.addEventListener('click',()=>openVersus(el.dataset.fid)));
+  b.querySelectorAll('[data-fid]').forEach(el=>el.addEventListener('click',()=>openFriend(el.dataset.fid)));
 }
 
 // ── Head-to-head duel ──
@@ -415,12 +464,14 @@ function renderFriends(b){
   b.innerHTML=html;
   document.getElementById('searchBtn').addEventListener('click',doSearch);
   document.getElementById('searchInput').addEventListener('keydown',e=>{if(e.key==='Enter')doSearch();});
-  b.querySelectorAll('[data-vs]').forEach(el=>el.addEventListener('click',()=>openVersus(el.dataset.vs)));
+  b.querySelectorAll('[data-vs]').forEach(el=>el.addEventListener('click',(e)=>{e.stopPropagation();openVersus(el.dataset.vs);}));
+  b.querySelectorAll('.row').forEach((el,i)=>{ if(!friends[i])return; el.classList.add('click'); el.addEventListener('click',(e)=>{ if(e.target.closest('button'))return; openFriend(friends[i].id); }); });
 }
 function row(p,actions){
-  return '<div class="row"><div class="av">'+escapeHtml(p.avatar||'🙂')+'</div>'+
+  const on=isOnline(p.updated_at);
+  return '<div class="row"><div class="av">'+escapeHtml(p.avatar||'🙂')+(on?'<span class="pres-dot"></span>':'')+'</div>'+
     '<div class="who"><div class="who-name">'+escapeHtml(p.display_name||p.username)+'</div>'+
-    '<div class="who-sub"><span>@'+escapeHtml(p.username)+'</span><span>Lv '+(p.level||1)+'</span><span>🔥 '+(p.streak||0)+'</span></div></div>'+(actions||'')+'</div>';
+    '<div class="who-sub"><span>@'+escapeHtml(p.username)+'</span><span>Lv '+(p.level||1)+'</span><span>🔥 '+(p.streak||0)+'</span><span>'+(on?'🟢 online':'· '+lastActive(p.updated_at))+'</span></div></div>'+(actions||'')+'</div>';
 }
 
 function renderRequests(b){
