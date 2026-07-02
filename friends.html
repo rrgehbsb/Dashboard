@@ -66,6 +66,34 @@
   .lb-pod-name{font-size:12px;font-weight:700;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .lb-pod-val{font-size:14px;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums;}
   .lb-pod-sub{font-size:10px;color:var(--t3);}
+  .lb-pod{cursor:pointer;transition:transform .1s;}
+  .lb-pod:active{transform:scale(0.97);}
+  .lb-pod.p1:active{transform:translateY(-8px) scale(0.97);}
+  /* Competitive standing + countdown */
+  .lb-standing{display:flex;align-items:center;gap:11px;padding:12px 14px;border-radius:14px;margin-bottom:11px;
+    background:linear-gradient(120deg,color-mix(in srgb,var(--accent) 16%,transparent),transparent);
+    border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);}
+  .lb-standing-ic{font-size:24px;flex-shrink:0;}
+  .lb-standing-txt{flex:1;min-width:0;font-size:13px;line-height:1.35;}
+  .lb-standing-txt b{color:var(--accent);font-weight:800;}
+  .lb-count{text-align:center;font-size:11.5px;font-weight:700;color:var(--t2);margin-bottom:12px;font-variant-numeric:tabular-nums;}
+  .lb-count b{color:var(--accent);}
+  .row.click{cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .1s;}
+  .row.click:active{transform:scale(0.99);}
+  /* Head-to-head duel modal */
+  .vs-head{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:6px 0 18px;}
+  .vs-side{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;min-width:0;}
+  .vs-av{width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:27px;background:rgba(255,255,255,0.06);border:1px solid var(--bord);}
+  .vs-name{font-size:13px;font-weight:800;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .vs-vs{font-size:15px;font-weight:900;color:var(--t3);flex:0 0 auto;padding:0 4px;}
+  .vs-metric{margin-bottom:12px;}
+  .vs-metric-lab{font-size:10px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--t3);margin-bottom:5px;display:flex;justify-content:space-between;}
+  .vs-bar{display:flex;height:26px;border-radius:9px;overflow:hidden;background:rgba(255,255,255,0.05);}
+  .vs-bar-l,.vs-bar-r{display:flex;align-items:center;padding:0 9px;color:#0a0a0b;font-size:11.5px;font-weight:800;font-variant-numeric:tabular-nums;flex-shrink:0;overflow:hidden;white-space:nowrap;}
+  .vs-bar-l{background:var(--accent);}
+  .vs-bar-r{background:#6ee7b7;justify-content:flex-end;}
+  .vs-summary{text-align:center;font-size:15px;font-weight:900;margin-top:8px;}
+  .vs-btn{width:100%;margin-top:14px;border:none;border-radius:12px;background:var(--accent);color:#0a0a0b;font-weight:800;font-size:14px;padding:12px;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;}
   .me-av{width:56px;height:56px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;
     font-size:30px;background:rgba(0,0,0,0.25);border:1.5px solid color-mix(in srgb,var(--accent) 50%,transparent);}
   .me-info{flex:1;min-width:0;}
@@ -290,41 +318,91 @@ function renderBody(){
   if(tab==='feed') return renderFeed(b);
 }
 
+function untilMonday(){
+  const now=new Date(); const add=((1-now.getDay()+7)%7)||7;
+  const d=new Date(now); d.setDate(now.getDate()+add); d.setHours(0,0,0,0);
+  let ms=d-now; const days=Math.floor(ms/864e5); ms-=days*864e5; const hrs=Math.floor(ms/36e5); ms-=hrs*36e5; const mins=Math.floor(ms/6e4);
+  return days>0?(days+'d '+hrs+'h'):(hrs>0?(hrs+'h '+mins+'m'):(mins+'m'));
+}
+function metricLabel(k){ return k==='xp'?'XP':k==='xp_week'?'this week':'day streak'; }
 function renderBoard(b){
   const everyone=[me,...friends];
   const key=boardMode;
   everyone.sort((a,c)=>(c[key]||0)-(a[key]||0));
-  let html='<div class="seg"><button class="'+(boardMode==='xp'?'on':'')+'" data-m="xp">All-time XP</button>'+
-    '<button class="'+(boardMode==='xp_week'?'on':'')+'" data-m="xp_week">This week 🏁</button></div>';
+  const modes=[['xp','All-time'],['xp_week','This week 🏁'],['streak','Streak 🔥']];
+  let html='<div class="seg">'+modes.map(([m,l])=>'<button class="'+(boardMode===m?'on':'')+'" data-m="'+m+'">'+l+'</button>').join('')+'</div>';
   if(everyone.length<=1 && !friends.length){
-    html+='<div class="empty"><span class="big">🏆</span>Add friends to start competing!<br>Head to the Friends tab.</div>';
-  } else {
-    // Podium for the top 3 (order: 2nd, 1st, 3rd)
-    const top=everyone.slice(0,3);
-    const podOrder=[top[1],top[0],top[2]].map((p,idx)=>({p,place:idx===1?1:(idx===0?2:3)})).filter(x=>x.p);
-    const medals={1:'🥇',2:'🥈',3:'🥉'};
-    html+='<div class="lb-podium">'+podOrder.map(({p,place})=>
-      '<div class="lb-pod p'+place+(p.id===uid?' me':'')+'"><div class="lb-pod-medal">'+medals[place]+'</div>'+
-      '<div class="lb-pod-av">'+escapeHtml(p.avatar||'🙂')+'</div>'+
-      '<div class="lb-pod-name">'+escapeHtml(p.display_name||p.username)+'</div>'+
-      '<div class="lb-pod-val">'+(p[key]||0)+'</div>'+
-      '<div class="lb-pod-sub">Lv '+(p.level||1)+' · 🔥'+(p.streak||0)+'</div></div>').join('')+'</div>';
-    // Rows for rank 4+
-    const rest=everyone.slice(3);
-    if(rest.length) html+=rest.map((p,i)=>{
-      const other=key==='xp'?('🏁 '+(p.xp_week||0)):('⭐ '+(p.xp||0));
-      return '<div class="row'+(p.id===uid?' me':'')+'">'+
-        '<div class="rank">'+(i+4)+'</div>'+
-        '<div class="av">'+escapeHtml(p.avatar||'🙂')+'</div>'+
-        '<div class="who"><div class="who-name">'+escapeHtml(p.display_name||p.username)+(p.id===uid?' (you)':'')+'</div>'+
-          '<div class="who-sub"><span>@'+escapeHtml(p.username)+'</span><span>🔥 '+(p.streak||0)+'</span><span>'+other+'</span></div></div>'+
-        '<span class="lvl">Lv '+(p.level||1)+'</span>'+
-        '<span class="xpval">'+(p[key]||0)+'</span></div>';
-    }).join('');
-    else if(everyone.length<=3) html+='<div class="empty" style="padding:16px 0">Add more friends to fill the board! 🚀</div>';
+    b.innerHTML=html+'<div class="empty"><span class="big">🏆</span>Add friends to start competing!<br>Head to the Friends tab.</div>';
+    b.querySelectorAll('.seg button').forEach(x=>x.addEventListener('click',()=>{boardMode=x.dataset.m;renderBody();}));
+    return;
   }
+  // ── Your standing / rivalry callout ──
+  const myIdx=everyone.findIndex(p=>p.id===uid);
+  const myVal=me[key]||0;
+  if(myIdx===0){
+    const lead=everyone[1]?(myVal-(everyone[1][key]||0)):0;
+    html+='<div class="lb-standing"><span class="lb-standing-ic">👑</span><span class="lb-standing-txt">'+
+      (everyone.length>1?'You\'re <b>#1</b> — '+lead+' '+metricLabel(key)+' ahead of @'+escapeHtml(everyone[1].username)+'. Defend it!':'You\'re <b>#1</b> — add friends to defend your crown!')+'</span></div>';
+  } else if(myIdx>0){
+    const above=everyone[myIdx-1]; const gap=(above[key]||0)-myVal+(key==='streak'?1:1);
+    html+='<div class="lb-standing"><span class="lb-standing-ic">🎯</span><span class="lb-standing-txt">You\'re <b>#'+(myIdx+1)+'</b> — just <b>'+Math.max(1,gap)+'</b> '+metricLabel(key)+' behind @'+escapeHtml(above.username)+'. Overtake them!</span></div>';
+  }
+  if(key==='xp_week') html+='<div class="lb-count">🏁 Weekly race resets in <b>'+untilMonday()+'</b></div>';
+  // ── Podium (top 3: 2nd, 1st, 3rd) ──
+  const top=everyone.slice(0,3);
+  const podOrder=[top[1],top[0],top[2]].map((p,idx)=>({p,place:idx===1?1:(idx===0?2:3)})).filter(x=>x.p);
+  const medals={1:'🥇',2:'🥈',3:'🥉'};
+  html+='<div class="lb-podium">'+podOrder.map(({p,place})=>
+    '<div class="lb-pod p'+place+(p.id===uid?' me':'')+'"'+(p.id!==uid?' data-fid="'+p.id+'"':'')+'><div class="lb-pod-medal">'+medals[place]+'</div>'+
+    '<div class="lb-pod-av">'+escapeHtml(p.avatar||'🙂')+'</div>'+
+    '<div class="lb-pod-name">'+escapeHtml(p.display_name||p.username)+'</div>'+
+    '<div class="lb-pod-val">'+(p[key]||0)+'</div>'+
+    '<div class="lb-pod-sub">Lv '+(p.level||1)+' · 🔥'+(p.streak||0)+'</div></div>').join('')+'</div>';
+  // ── Rows for rank 4+ ──
+  const rest=everyone.slice(3);
+  if(rest.length) html+=rest.map((p,i)=>{
+    const other=key==='xp'?('🏁 '+(p.xp_week||0)):key==='xp_week'?('⭐ '+(p.xp||0)):('⭐ '+(p.xp||0));
+    return '<div class="row'+(p.id===uid?' me':' click')+'"'+(p.id!==uid?' data-fid="'+p.id+'"':'')+'>'+
+      '<div class="rank">'+(i+4)+'</div>'+
+      '<div class="av">'+escapeHtml(p.avatar||'🙂')+'</div>'+
+      '<div class="who"><div class="who-name">'+escapeHtml(p.display_name||p.username)+(p.id===uid?' (you)':'')+'</div>'+
+        '<div class="who-sub"><span>@'+escapeHtml(p.username)+'</span><span>🔥 '+(p.streak||0)+'</span><span>'+other+'</span></div></div>'+
+      '<span class="lvl">Lv '+(p.level||1)+'</span>'+
+      '<span class="xpval">'+(p[key]||0)+'</span></div>';
+  }).join('');
+  else if(everyone.length<=3 && friends.length) html+='<div class="empty" style="padding:14px 0;font-size:12px">Tap a friend above to see a head-to-head ⚔️</div>';
   b.innerHTML=html;
   b.querySelectorAll('.seg button').forEach(x=>x.addEventListener('click',()=>{boardMode=x.dataset.m;renderBody();}));
+  b.querySelectorAll('[data-fid]').forEach(el=>el.addEventListener('click',()=>openVersus(el.dataset.fid)));
+}
+
+// ── Head-to-head duel ──
+function openVersus(fid){
+  const f=friends.find(x=>x.id===fid); if(!f) return;
+  const metrics=[['xp','⭐ Total XP'],['xp_week','🏁 This week'],['streak','🔥 Streak']];
+  let myWins=0,fWins=0;
+  const bars=metrics.map(([k,lab])=>{
+    const a=me[k]||0,bv=f[k]||0,tot=(a+bv)||1;
+    let ap=Math.round(a/tot*100); ap=Math.max(a>0?14:0,Math.min(a>0?100:0,ap)); const bp=100-ap;
+    if(a>bv)myWins++; else if(bv>a)fWins++;
+    return '<div class="vs-metric"><div class="vs-metric-lab"><span>'+lab+'</span><span>'+a+' vs '+bv+'</span></div>'+
+      '<div class="vs-bar"><span class="vs-bar-l" style="width:'+ap+'%">'+(a>=bv&&a>0?'👑':'')+'</span>'+
+      '<span class="vs-bar-r" style="width:'+bp+'%">'+(bv>a?'👑':'')+'</span></div></div>';
+  }).join('');
+  const summary=myWins>fWins?('🏆 You lead '+myWins+'–'+fWins):myWins<fWins?('@'+escapeHtml(f.username)+' leads '+fWins+'–'+myWins+' — chase them! 💪'):('Dead even — '+myWins+'–'+fWins+' 🔥');
+  let m=document.getElementById('vsModal');
+  if(!m){ m=document.createElement('div'); m.className='m-bg'; m.id='vsModal'; document.body.appendChild(m); }
+  m.innerHTML='<div class="m">'+
+    '<div class="vs-head"><div class="vs-side"><div class="vs-av">'+escapeHtml(me.avatar||'🙂')+'</div><div class="vs-name">You</div></div>'+
+      '<div class="vs-vs">VS</div>'+
+      '<div class="vs-side"><div class="vs-av">'+escapeHtml(f.avatar||'🙂')+'</div><div class="vs-name">'+escapeHtml(f.display_name||f.username)+'</div></div></div>'+
+    bars+
+    '<div class="vs-summary">'+summary+'</div>'+
+    '<button class="vs-btn" id="vsNudge">👋 Nudge @'+escapeHtml(f.username)+'</button>'+
+    '</div>';
+  m.classList.add('show');
+  m.onclick=(e)=>{ if(e.target===m) m.classList.remove('show'); };
+  m.querySelector('#vsNudge').onclick=()=>{ nudge(f.id); m.classList.remove('show'); };
 }
 
 function renderFriends(b){
@@ -332,11 +410,12 @@ function renderFriends(b){
   if(!friends.length){
     html+='<div class="empty"><span class="big">👥</span>No friends yet. Add someone by their username above!</div>';
   } else {
-    html+=friends.map(p=>row(p,'<button class="act-btn" title="Nudge" onclick="nudge(\''+p.id+'\')">👋</button><button class="act-btn no" title="Remove" onclick="removeFriend(\''+p.id+'\')">×</button>')).join('');
+    html+=friends.map(p=>row(p,'<button class="act-btn" title="Duel" data-vs="'+p.id+'">⚔️</button><button class="act-btn" title="Nudge" onclick="nudge(\''+p.id+'\')">👋</button><button class="act-btn no" title="Remove" onclick="removeFriend(\''+p.id+'\')">×</button>')).join('');
   }
   b.innerHTML=html;
   document.getElementById('searchBtn').addEventListener('click',doSearch);
   document.getElementById('searchInput').addEventListener('keydown',e=>{if(e.key==='Enter')doSearch();});
+  b.querySelectorAll('[data-vs]').forEach(el=>el.addEventListener('click',()=>openVersus(el.dataset.vs)));
 }
 function row(p,actions){
   return '<div class="row"><div class="av">'+escapeHtml(p.avatar||'🙂')+'</div>'+
