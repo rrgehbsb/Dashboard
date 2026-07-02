@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '1.10.0';
+const DASHBOARD_VERSION = '1.10.1';
 
 // =============================================================
 // THEME STYLES ("skins") — single source of truth.
@@ -866,30 +866,82 @@ html[data-theme="light"] .xp-freeze{background:rgba(0,0,0,0.04);}
 `;
 
   // ===== SURFACE / UI STYLE ENGINE =====
-  // One variable-driven rule re-skins every card surface; each style just
-  // sets the vars. Applied on top of the theme + anime skin.
+  // Each style is a full design language — surfaces, inputs, buttons, headings
+  // and the page background all shift together. Layered on the theme + skin.
   const UI_SURFACES = '.section,.gm-card,.hb-card,.hb-header-card,.fin-card,.sch-card,.hth-card,.dash-mini-card,.pom-card,.kn-col,.sum-stat,.gt-card,.gt-today-card,.mood-card,.rm-card,.day-ring-card,.do-now-card,.goal-ticker,.st-body,.card,.me-card,.row';
+  const UI_INPUTS = 'input:not([type=range]):not([type=checkbox]):not([type=radio]),textarea,select,.gt-set-input,.gt-set-input-mobile,.st-input,.bc-input';
+  const UI_BTNS = '.gm-add-btn,.m-save,.bc-send,.rm-add-btn-top,.water-q-btn';
   const uiCss = `
 html[data-ui]:not([data-ui="default"]) :is(${UI_SURFACES}){
   background: var(--ui-bg) !important; border: var(--ui-border) !important;
   border-radius: var(--ui-radius) !important; box-shadow: var(--ui-shadow) !important;
   backdrop-filter: var(--ui-blur, none) !important; -webkit-backdrop-filter: var(--ui-blur, none) !important;
 }
-html[data-ui="skeuomorphism"]{ --ui-bg:linear-gradient(180deg,rgba(255,255,255,0.12),rgba(255,255,255,0.02) 55%,rgba(0,0,0,0.18)); --ui-border:1px solid rgba(255,255,255,0.16); --ui-radius:14px; --ui-shadow:inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -3px 5px rgba(0,0,0,0.35), 0 8px 16px rgba(0,0,0,0.5); }
-html[data-ui="neomorphism"]{ --ui-bg:linear-gradient(145deg,rgba(255,255,255,0.04),rgba(0,0,0,0.14)); --ui-border:1px solid transparent; --ui-radius:22px; --ui-shadow:-6px -6px 14px rgba(255,255,255,0.05), 8px 8px 20px rgba(0,0,0,0.55); }
-html[data-ui="glassmorphism"]{ --ui-bg:rgba(255,255,255,0.08); --ui-border:1px solid rgba(255,255,255,0.18); --ui-radius:18px; --ui-shadow:0 12px 40px rgba(0,0,0,0.35); --ui-blur:blur(16px) saturate(1.5); }
-html[data-ui="claymorphism"]{ --ui-bg:linear-gradient(180deg,rgba(255,255,255,0.07),rgba(255,255,255,0.02)); --ui-border:1px solid transparent; --ui-radius:30px; --ui-shadow:inset 6px 6px 12px rgba(255,255,255,0.08), inset -8px -8px 18px rgba(0,0,0,0.5), 0 22px 44px -14px rgba(0,0,0,0.55); }
-html[data-ui="minimalism"]{ --ui-bg:transparent; --ui-border:1px solid rgba(255,255,255,0.08); --ui-radius:6px; --ui-shadow:none; }
-html[data-ui="maximalism"]{ --ui-bg:linear-gradient(135deg, color-mix(in srgb,var(--accent) 24%,transparent), rgba(255,255,255,0.05)); --ui-border:2px solid var(--accent); --ui-radius:22px; --ui-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 30%,transparent), 0 18px 44px -10px color-mix(in srgb,var(--accent) 60%,transparent); }
-html[data-ui="brutalism"]{ --ui-bg:rgba(18,18,20,0.92); --ui-border:2px solid rgba(255,255,255,0.9); --ui-radius:0px; --ui-shadow:7px 7px 0 rgba(0,0,0,0.85); }
-html[data-ui="liquidglass"]{ --ui-bg:linear-gradient(180deg,rgba(255,255,255,0.16),rgba(255,255,255,0.05)); --ui-border:1px solid rgba(255,255,255,0.28); --ui-radius:24px; --ui-shadow:inset 0 1px 0 rgba(255,255,255,0.55), inset 0 0 22px rgba(255,255,255,0.06), 0 18px 50px -12px rgba(0,0,0,0.5); --ui-blur:blur(22px) saturate(1.9); }
-html[data-ui="bento"]{ --ui-bg:rgba(255,255,255,0.05); --ui-border:1px solid rgba(255,255,255,0.09); --ui-radius:20px; --ui-shadow:0 3px 12px rgba(0,0,0,0.3); }
-html[data-ui="spatial"]{ --ui-bg:rgba(255,255,255,0.07); --ui-border:1px solid rgba(255,255,255,0.16); --ui-radius:26px; --ui-shadow:0 30px 60px -16px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.2); --ui-blur:blur(18px); }
-/* Style-specific extras */
-html[data-ui="brutalism"] :is(button,input,select,textarea,.tab,.bottombar-tab,.st-input,.gt-set-input,.gt-set-input-mobile){ border-radius:0 !important; }
-html[data-ui="brutalism"] :is(.section-title,.dash-title,.st-title){ font-family:ui-monospace,"SF Mono",Menlo,monospace !important; }
-html[data-theme="light"][data-ui="brutalism"]{ --ui-border:2px solid #111; }
-html[data-theme="light"] :is([data-ui="glassmorphism"],[data-ui="liquidglass"],[data-ui="spatial"],[data-ui="bento"]){ --ui-bg:rgba(0,0,0,0.045); --ui-border:1px solid rgba(0,0,0,0.1); }
+html[data-ui]:not([data-ui="default"]) :is(${UI_INPUTS}){
+  background: var(--ui-input-bg, rgba(255,255,255,0.05)) !important;
+  border: var(--ui-input-border, 1px solid rgba(255,255,255,0.1)) !important;
+  border-radius: var(--ui-input-radius, 10px) !important;
+  box-shadow: var(--ui-input-shadow, none) !important;
+}
+
+/* ─ SKEUOMORPHISM · tactile, glossy, beveled ─ */
+html[data-ui="skeuomorphism"]{ --ui-bg:linear-gradient(180deg,rgba(255,255,255,0.18),rgba(255,255,255,0.05) 9%,rgba(255,255,255,0.015) 50%,rgba(0,0,0,0.22)); --ui-border:1px solid rgba(0,0,0,0.45); --ui-radius:13px; --ui-shadow:inset 0 1px 0 rgba(255,255,255,0.55), inset 0 0 0 1px rgba(255,255,255,0.06), 0 2px 3px rgba(0,0,0,0.5), 0 10px 22px -6px rgba(0,0,0,0.6); --ui-input-bg:linear-gradient(180deg,rgba(0,0,0,0.4),rgba(0,0,0,0.15)); --ui-input-border:1px solid rgba(0,0,0,0.5); --ui-input-radius:8px; --ui-input-shadow:inset 0 2px 4px rgba(0,0,0,0.55), inset 0 -1px 0 rgba(255,255,255,0.07); }
+html[data-ui="skeuomorphism"] body{ background:linear-gradient(180deg,#2a251e,#171310) fixed !important; }
+html[data-ui="skeuomorphism"] :is(${UI_BTNS}){ background:linear-gradient(180deg,#5b5b64,#333339) !important; border:1px solid rgba(0,0,0,0.55) !important; border-radius:10px !important; color:#fff !important; text-shadow:0 -1px 0 rgba(0,0,0,0.5); box-shadow:inset 0 1px 0 rgba(255,255,255,0.45), 0 2px 4px rgba(0,0,0,0.55) !important; }
+
+/* ─ NEOMORPHISM · soft monochrome extrusion (bg = cards) ─ */
+html[data-ui="neomorphism"]{ --ui-bg:#23262c; --ui-border:1px solid rgba(255,255,255,0.02); --ui-radius:22px; --ui-shadow:8px 8px 18px rgba(0,0,0,0.55), -8px -8px 18px rgba(255,255,255,0.045); --ui-input-bg:#23262c; --ui-input-border:1px solid transparent; --ui-input-radius:14px; --ui-input-shadow:inset 5px 5px 10px rgba(0,0,0,0.5), inset -5px -5px 10px rgba(255,255,255,0.04); }
+html[data-ui="neomorphism"] body{ background:#23262c fixed !important; }
+html[data-ui="neomorphism"] :is(${UI_BTNS}){ background:#23262c !important; border:none !important; border-radius:14px !important; box-shadow:5px 5px 10px rgba(0,0,0,0.5), -5px -5px 10px rgba(255,255,255,0.045) !important; }
+html[data-theme="light"][data-ui="neomorphism"]{ --ui-bg:#e6e9ef; --ui-shadow:8px 8px 18px rgba(0,0,0,0.12), -8px -8px 18px #ffffff; --ui-input-bg:#e6e9ef; --ui-input-shadow:inset 5px 5px 10px rgba(0,0,0,0.1), inset -5px -5px 10px #ffffff; }
+html[data-theme="light"][data-ui="neomorphism"] body{ background:#e6e9ef fixed !important; }
+
+/* ─ GLASSMORPHISM · frosted translucency over colour ─ */
+html[data-ui="glassmorphism"]{ --ui-bg:rgba(255,255,255,0.1); --ui-border:1px solid rgba(255,255,255,0.22); --ui-radius:18px; --ui-shadow:0 8px 32px rgba(0,0,0,0.3); --ui-blur:blur(18px) saturate(1.6); --ui-input-bg:rgba(255,255,255,0.08); --ui-input-border:1px solid rgba(255,255,255,0.2); --ui-input-radius:12px; }
+html[data-ui="glassmorphism"] body{ background:radial-gradient(at 18% 18%, #6d28d9 0%, transparent 42%), radial-gradient(at 82% 12%, #1d6fb8 0%, transparent 42%), radial-gradient(at 50% 88%, #be185d 0%, transparent 48%), #0a0a14 fixed !important; }
+
+/* ─ CLAYMORPHISM · puffy, inflated clay ─ */
+html[data-ui="claymorphism"]{ --ui-bg:linear-gradient(145deg,rgba(255,255,255,0.16),rgba(255,255,255,0.05)); --ui-border:1px solid rgba(255,255,255,0.08); --ui-radius:32px; --ui-shadow:inset 6px 6px 12px rgba(255,255,255,0.12), inset -8px -8px 18px rgba(0,0,0,0.4), 0 22px 44px -12px rgba(0,0,0,0.5); --ui-input-bg:rgba(0,0,0,0.18); --ui-input-border:1px solid transparent; --ui-input-radius:18px; --ui-input-shadow:inset 4px 4px 9px rgba(0,0,0,0.35), inset -3px -3px 7px rgba(255,255,255,0.08); }
+html[data-ui="claymorphism"] body{ background:linear-gradient(160deg,#2e2a55,#3b2c58) fixed !important; }
+html[data-ui="claymorphism"] :is(${UI_BTNS}){ border-radius:18px !important; box-shadow:inset 2px 2px 5px rgba(255,255,255,0.25), inset -3px -3px 6px rgba(0,0,0,0.3), 0 8px 18px -6px rgba(0,0,0,0.5) !important; }
+
+/* ─ MINIMALISM · flat, bare, typographic ─ */
+html[data-ui="minimalism"]{ --ui-bg:rgba(255,255,255,0.022); --ui-border:none; --ui-radius:10px; --ui-shadow:none; --ui-input-bg:transparent; --ui-input-border:none; --ui-input-radius:0px; }
+html[data-ui="minimalism"] body{ background:#0b0b0c fixed !important; }
+html[data-ui="minimalism"] :is(${UI_INPUTS}){ border-bottom:1px solid rgba(255,255,255,0.16) !important; }
+html[data-ui="minimalism"] :is(.section-title,.st-group-label){ font-weight:400 !important; letter-spacing:0.16em !important; opacity:0.65; }
+html[data-theme="light"][data-ui="minimalism"]{ --ui-bg:rgba(0,0,0,0.02); }
+html[data-theme="light"][data-ui="minimalism"] body{ background:#fbfbfa fixed !important; }
+html[data-theme="light"][data-ui="minimalism"] :is(${UI_INPUTS}){ border-bottom:1px solid rgba(0,0,0,0.16) !important; }
+
+/* ─ MAXIMALISM · loud, saturated, bold ─ */
+html[data-ui="maximalism"]{ --ui-bg:linear-gradient(135deg, color-mix(in srgb,var(--accent) 30%, #000), rgba(0,0,0,0.55)); --ui-border:3px solid var(--accent); --ui-radius:22px; --ui-shadow:6px 6px 0 var(--accent), 0 22px 50px -12px color-mix(in srgb,var(--accent) 65%, transparent); --ui-input-bg:rgba(0,0,0,0.35); --ui-input-border:2px solid var(--accent); --ui-input-radius:12px; }
+html[data-ui="maximalism"] body{ background:linear-gradient(135deg,#ff2d75,#7a2cff 48%,#00c2ff) fixed !important; }
+html[data-ui="maximalism"] :is(.section-title,.st-group-label,.dash-title){ color:var(--accent) !important; font-weight:900 !important; letter-spacing:0.02em !important; }
+
+/* ─ BRUTALISM · raw, hard edges, offset shadows, mono ─ */
+html[data-ui="brutalism"]{ --ui-bg:#1a1a1c; --ui-border:3px solid #ffffff; --ui-radius:0px; --ui-shadow:8px 8px 0 var(--accent); --ui-input-bg:#0e0e0e; --ui-input-border:2px solid #fff; --ui-input-radius:0px; }
+html[data-ui="brutalism"] body{ background:#0c0c0c fixed !important; }
+html[data-ui="brutalism"] :is(button,input,select,textarea,.tab,.bottombar-tab,.ui-opt,.gt-day-tab,.st-pbtn,.st-theme-btn,.fr-tab){ border-radius:0 !important; }
+html[data-ui="brutalism"] :is(.section-title,.dash-title,.st-title,.gt-card-name,.me-name){ font-family:ui-monospace,"SF Mono",Menlo,monospace !important; text-transform:uppercase; }
+html[data-ui="brutalism"] :is(${UI_BTNS}){ background:var(--accent) !important; color:#000 !important; border:3px solid #fff !important; border-radius:0 !important; box-shadow:4px 4px 0 rgba(255,255,255,0.35) !important; font-weight:800 !important; text-shadow:none !important; }
+html[data-theme="light"][data-ui="brutalism"]{ --ui-bg:#fff; --ui-border:3px solid #111; --ui-shadow:8px 8px 0 #111; --ui-input-bg:#fff; --ui-input-border:2px solid #111; }
+html[data-theme="light"][data-ui="brutalism"] body{ background:#f2f0e9 fixed !important; }
+
+/* ─ LIQUID GLASS · luminous, refractive, glossy ─ */
+html[data-ui="liquidglass"]{ --ui-bg:linear-gradient(180deg,rgba(255,255,255,0.2),rgba(255,255,255,0.06)); --ui-border:1px solid rgba(255,255,255,0.35); --ui-radius:26px; --ui-shadow:inset 0 1px 1px rgba(255,255,255,0.65), inset 0 -12px 30px rgba(255,255,255,0.05), 0 20px 55px -12px rgba(0,0,0,0.55); --ui-blur:blur(24px) saturate(2); --ui-input-bg:rgba(255,255,255,0.12); --ui-input-border:1px solid rgba(255,255,255,0.4); --ui-input-radius:16px; }
+html[data-ui="liquidglass"] body{ background:radial-gradient(at 28% 18%, rgba(58,160,255,0.5) 0%, transparent 46%), radial-gradient(at 76% 26%, rgba(255,94,199,0.5) 0%, transparent 46%), radial-gradient(at 50% 84%, rgba(34,224,192,0.45) 0%, transparent 50%), #06060c fixed !important; }
+
+/* ─ BENTO GRID · tidy solid tiles ─ */
+html[data-ui="bento"]{ --ui-bg:rgba(255,255,255,0.05); --ui-border:1px solid rgba(255,255,255,0.09); --ui-radius:20px; --ui-shadow:inset 0 1px 0 rgba(255,255,255,0.04), 0 4px 16px rgba(0,0,0,0.35); --ui-input-bg:rgba(255,255,255,0.05); --ui-input-border:1px solid rgba(255,255,255,0.09); --ui-input-radius:12px; }
+html[data-ui="bento"] body{ background:#0d0d10 fixed !important; }
+
+/* ─ SPATIAL UI · floating translucent panels, deep shadow ─ */
+html[data-ui="spatial"]{ --ui-bg:rgba(255,255,255,0.06); --ui-border:1px solid rgba(255,255,255,0.14); --ui-radius:28px; --ui-shadow:0 40px 80px -20px rgba(0,0,0,0.8), 0 8px 22px -8px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.18); --ui-blur:blur(20px); --ui-input-bg:rgba(255,255,255,0.08); --ui-input-border:1px solid rgba(255,255,255,0.16); --ui-input-radius:16px; }
+html[data-ui="spatial"] body{ background:radial-gradient(at 50% 0%, #1a2340 0%, transparent 60%), #05060a fixed !important; }
+
+/* Light-theme fallback bg for the glassy families */
+html[data-theme="light"] :is([data-ui="glassmorphism"],[data-ui="liquidglass"],[data-ui="spatial"],[data-ui="bento"]){ --ui-bg:rgba(0,0,0,0.05); --ui-border:1px solid rgba(0,0,0,0.1); }
 `;
   function injectUiStyle() {
     if (document.getElementById('ui-style')) return;
