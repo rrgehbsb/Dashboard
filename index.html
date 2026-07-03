@@ -765,6 +765,63 @@ body{
   </div>
 </div>
 
+<style id="gem-css">
+.gem-card{ display:flex; align-items:center; gap:14px; width:100%; text-align:left; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:12px 14px; cursor:pointer; -webkit-tap-highlight-color:transparent; font-family:inherit; transition:transform .1s; }
+.gem-card:active{ transform:scale(0.99); }
+html[data-theme="light"] .gem-card{ background:rgba(0,0,0,0.025); border-color:rgba(0,0,0,0.08); }
+.gem-wrap{ position:relative; display:inline-flex; align-items:center; justify-content:center; }
+.gem-glow{ position:absolute; inset:-25%; border-radius:50%; filter:blur(7px); animation:gemPulse 3.6s ease-in-out infinite; pointer-events:none; }
+@keyframes gemPulse{ 0%,100%{transform:scale(0.9)} 50%{transform:scale(1.08)} }
+.gem-anim{ position:relative; animation:gemFloat 4.6s ease-in-out infinite; will-change:transform; }
+@keyframes gemFloat{ 0%,100%{transform:translateY(0) rotate(-2deg)} 50%{transform:translateY(-5px) rotate(2deg)} }
+.gem-svg{ display:block; filter:drop-shadow(0 5px 12px rgba(0,0,0,0.4)); }
+.gem-card-gem{ flex-shrink:0; }
+.gem-card-info{ flex:1; min-width:0; display:flex; flex-direction:column; }
+.gem-card-name{ font-size:16px; font-weight:800; color:#fff; letter-spacing:0.2px; }
+html[data-theme="light"] .gem-card-name{ color:#151515; }
+.gem-card-lv{ font-size:12px; color:rgba(255,255,255,0.55); margin-top:1px; }
+html[data-theme="light"] .gem-card-lv{ color:rgba(0,0,0,0.55); }
+.gem-card-barwrap{ height:6px; background:rgba(255,255,255,0.09); border-radius:5px; overflow:hidden; margin:8px 0 5px; }
+.gem-card-bar{ display:block; height:100%; width:0%; border-radius:5px; background:linear-gradient(90deg,var(--accent),color-mix(in srgb,var(--accent) 45%,#fff)); transition:width .4s; }
+.gem-card-next{ font-size:11px; color:var(--accent); font-weight:600; }
+.gem-modal-bg{ position:fixed; inset:0; background:rgba(0,0,0,0.6); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:center; padding:20px; z-index:1000; opacity:0; pointer-events:none; transition:opacity .2s; }
+.gem-modal-bg.show{ opacity:1; pointer-events:auto; }
+.gem-modal{ width:100%; max-width:380px; max-height:88vh; overflow:auto; background:#14151a; border:1px solid rgba(255,255,255,0.1); border-radius:22px; padding:22px 18px; text-align:center; }
+html[data-theme="light"] .gem-modal{ background:#fff; }
+.gem-hero{ display:flex; justify-content:center; margin:6px 0 4px; }
+.gem-h-name{ font-size:22px; font-weight:800; color:#fff; }
+html[data-theme="light"] .gem-h-name{ color:#151515; }
+.gem-h-sub{ font-size:12.5px; color:rgba(255,255,255,0.55); margin-top:3px; }
+.gem-prog{ margin:16px 4px 6px; }
+.gem-prog-bar{ height:8px; background:rgba(255,255,255,0.09); border-radius:6px; overflow:hidden; }
+.gem-prog-bar span{ display:block; height:100%; border-radius:6px; background:linear-gradient(90deg,var(--accent),color-mix(in srgb,var(--accent) 45%,#fff)); }
+.gem-prog-txt{ font-size:12.5px; color:rgba(255,255,255,0.7); margin-top:8px; }
+html[data-theme="light"] .gem-prog-txt{ color:rgba(0,0,0,0.65); }
+.gem-coll-label{ text-transform:uppercase; font-size:10.5px; font-weight:700; letter-spacing:0.18em; color:rgba(255,255,255,0.4); margin:18px 0 10px; text-align:left; }
+.gem-coll{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+.gem-cell{ background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:14px; padding:8px 4px 7px; }
+.gem-cell.cur{ border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+.gem-cell.locked{ opacity:0.55; }
+.gem-cell-gem{ display:flex; justify-content:center; }
+.gem-cell-name{ font-size:10.5px; font-weight:700; color:rgba(255,255,255,0.75); margin-top:2px; }
+html[data-theme="light"] .gem-cell-name{ color:rgba(0,0,0,0.7); }
+.gem-close{ margin-top:18px; width:100%; border:none; border-radius:12px; background:rgba(255,255,255,0.08); color:#fff; font-weight:700; font-size:14px; padding:12px; cursor:pointer; font-family:inherit; }
+html[data-theme="light"] .gem-close{ background:rgba(0,0,0,0.06); color:#151515; }
+</style>
+
+<div class="section" id="gemSection">
+  <div class="section-title">Companion</div>
+  <button class="gem-card" id="gemCard" type="button">
+    <span class="gem-card-gem" id="gemCardGem"></span>
+    <span class="gem-card-info">
+      <span class="gem-card-name" id="gemName">—</span>
+      <span class="gem-card-lv" id="gemLv">Level 1</span>
+      <span class="gem-card-barwrap"><span class="gem-card-bar" id="gemBar"></span></span>
+      <span class="gem-card-next" id="gemNext">Tap to view your gem →</span>
+    </span>
+  </button>
+</div>
+
 <style id="coach-css">
 .coach-card{ background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:14px 13px 7px; }
 .coach-headline{ font-size:14px; font-weight:700; color:rgba(255,255,255,0.92); margin:0 2px 12px; line-height:1.4; }
@@ -2414,6 +2471,104 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
   window.addEventListener('focus', renderCoach);
   window.addEventListener('health-synced', renderCoach);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) renderCoach(); });
+})();
+</script>
+
+<!-- ══ GEM · an evolving companion that levels up with your XP (free) ══ -->
+<script>
+(function(){
+  const XP_KEY = 'dashboard:xp:v1';
+  const GEMS = [
+    { min:1,  name:'Quartz',   c1:'#e6ebf2', c2:'#9aa6b8', glow:'#c3ccd9' },
+    { min:3,  name:'Amethyst', c1:'#d7a8ff', c2:'#7c3aed', glow:'#a855f7' },
+    { min:5,  name:'Sapphire', c1:'#8cc4ff', c2:'#1d4ed8', glow:'#3b82f6' },
+    { min:8,  name:'Emerald',  c1:'#7bf0bf', c2:'#059669', glow:'#10b981' },
+    { min:12, name:'Ruby',     c1:'#ff9cab', c2:'#be123c', glow:'#f43f5e' },
+    { min:16, name:'Topaz',    c1:'#ffdf9b', c2:'#d97706', glow:'#f59e0b' },
+    { min:22, name:'Diamond',  c1:'#f2fbff', c2:'#a9d8ff', glow:'#d8f0ff' },
+  ];
+  function levelOf(total){ let level=1, need=100, used=0; total=total||0; while(total>=used+need){ used+=need; level++; need=Math.round(need*1.18/5)*5; } return level; }
+  function xpTotal(){ try{ return (JSON.parse(localStorage.getItem(XP_KEY))||{}).total || 0; }catch(e){ return 0; } }
+  function tierIdxFor(level){ let idx=0; for(let i=0;i<GEMS.length;i++){ if(level>=GEMS[i].min) idx=i; } return idx; }
+  function pj(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
+
+  function gemSVG(g, size){
+    size = size || 120;
+    const u = 'g'+Math.random().toString(36).slice(2,7);
+    const V = [[60,14],[100,37],[100,83],[60,106],[20,83],[20,37]];
+    const T = [[60,38],[79,49],[79,71],[60,82],[41,71],[41,49]];
+    let lines = '';
+    V.forEach(p => lines += '<line x1="60" y1="60" x2="'+p[0]+'" y2="'+p[1]+'" stroke="rgba(255,255,255,0.16)" stroke-width="1"/>');
+    T.forEach((p,i) => lines += '<line x1="'+p[0]+'" y1="'+p[1]+'" x2="'+V[i][0]+'" y2="'+V[i][1]+'" stroke="rgba(255,255,255,0.10)" stroke-width="1"/>');
+    return '<svg viewBox="0 0 120 120" width="'+size+'" height="'+size+'" class="gem-svg">'+
+      '<defs>'+
+      '<linearGradient id="'+u+'f" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="'+g.c1+'"/><stop offset="1" stop-color="'+g.c2+'"/></linearGradient>'+
+      '<radialGradient id="'+u+'t" cx="0.4" cy="0.3" r="0.85"><stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/><stop offset="0.4" stop-color="'+g.c1+'" stop-opacity="0.9"/><stop offset="1" stop-color="'+g.c2+'" stop-opacity="0.65"/></radialGradient>'+
+      '</defs>'+
+      '<polygon points="'+V.map(p=>p.join(',')).join(' ')+'" fill="url(#'+u+'f)" stroke="'+g.c1+'" stroke-width="1.5" stroke-opacity="0.55"/>'+
+      lines+
+      '<polygon points="'+T.map(p=>p.join(',')).join(' ')+'" fill="url(#'+u+'t)"/>'+
+      '<polygon points="60,38 79,49 60,60" fill="#ffffff" fill-opacity="0.32"/>'+
+      '<polygon points="60,38 41,49 60,60" fill="#ffffff" fill-opacity="0.12"/>'+
+      '</svg>';
+  }
+  function gemNode(g, size, shine){
+    const op = (0.3 + (shine||0)/100 * 0.5).toFixed(2);
+    return '<span class="gem-wrap"><span class="gem-glow" style="background:radial-gradient(circle,'+g.glow+' 0%,transparent 62%);opacity:'+op+'"></span><span class="gem-anim">'+gemSVG(g,size)+'</span></span>';
+  }
+
+  // "Shine" = how much you've done today (brightens the gem)
+  function shineToday(){
+    const today = window.toDateStr ? toDateStr(new Date()) : '';
+    let s = 0;
+    try { const goals = (window.storeGet ? storeGet('goals:'+(window.getActiveDateString?getActiveDateString():today)) : null) || []; if (goals.length) s += 40 * goals.filter(g=>g&&g.done).length / goals.length; } catch(e){}
+    try { const hm = pj('dashboard:sync:habits:v1')||{}; const list = hm['habits:list']||[], log = hm['habits:log']||{}; if (list.length){ const d = log[today]||{}; s += 25 * Object.keys(d).filter(k=>d[k]).length / list.length; } } catch(e){}
+    try { const w = (pj('dashboard:sync:health:v1')||{})['po_water_v1']||{}; if ((w.logs||{})[today] > 0) s += 20; } catch(e){}
+    try { const md = (window.storeGet ? storeGet('dashboard:mood:v1') : null) || {entries:[]}; if ((md.entries||[]).some(e=>e.date===today)) s += 15; } catch(e){}
+    return Math.min(100, Math.round(s));
+  }
+  function progPct(lvl, g, next){ return next ? Math.max(4, Math.min(100, Math.round((lvl-g.min)/(next.min-g.min)*100))) : 100; }
+
+  function renderGem(){
+    const card = document.getElementById('gemCard'); if (!card) return;
+    const lvl = levelOf(xpTotal()), idx = tierIdxFor(lvl), g = GEMS[idx], next = GEMS[idx+1] || null, shine = shineToday();
+    document.getElementById('gemCardGem').innerHTML = gemNode(g, 74, shine);
+    document.getElementById('gemName').textContent = g.name;
+    document.getElementById('gemLv').textContent = 'Level ' + lvl + (shine >= 1 ? ' · shining ' + shine + '%' : ' · resting');
+    document.getElementById('gemBar').style.width = progPct(lvl, g, next) + '%';
+    document.getElementById('gemNext').textContent = next ? ('Reach Lv ' + next.min + ' → ' + next.name + ' →') : 'Max evolution ✨';
+  }
+  window.renderGem = renderGem;
+
+  function openGemModal(){
+    const lvl = levelOf(xpTotal()), idx = tierIdxFor(lvl), g = GEMS[idx], next = GEMS[idx+1] || null, shine = shineToday();
+    let m = document.getElementById('gemModalBg');
+    if (!m){ m = document.createElement('div'); m.id = 'gemModalBg'; m.className = 'gem-modal-bg'; document.body.appendChild(m); m.addEventListener('click', e => { if (e.target === m) m.classList.remove('show'); }); }
+    const coll = GEMS.map((gg,i) => {
+      const unlocked = lvl >= gg.min;
+      const drawn = unlocked ? gg : { c1:'#6b7280', c2:'#374151', glow:'#4b5563' };
+      return '<div class="gem-cell'+(i===idx?' cur':'')+(unlocked?'':' locked')+'"><div class="gem-cell-gem">'+gemSVG(drawn, 44)+'</div><div class="gem-cell-name">'+(unlocked?gg.name:'Lv '+gg.min)+'</div></div>';
+    }).join('');
+    const prog = next ? ('Reach <b>Level '+next.min+'</b> to evolve into <b>'+next.name+'</b>.') : "You've reached the <b>final evolution</b>. ✨";
+    m.innerHTML = '<div class="gem-modal">'+
+      '<div class="gem-hero">'+gemNode(g, 150, shine)+'</div>'+
+      '<div class="gem-h-name">'+g.name+'</div>'+
+      '<div class="gem-h-sub">Level '+lvl+' · shining '+shine+'% today</div>'+
+      '<div class="gem-prog"><div class="gem-prog-bar"><span style="width:'+progPct(lvl,g,next)+'%"></span></div><div class="gem-prog-txt">'+prog+'</div></div>'+
+      '<div class="gem-coll-label">Collection · '+GEMS.filter(x=>lvl>=x.min).length+'/'+GEMS.length+'</div>'+
+      '<div class="gem-coll">'+coll+'</div>'+
+      '<button class="gem-close" id="gemClose">Close</button>'+
+      '</div>';
+    m.classList.add('show');
+    m.querySelector('#gemClose').onclick = () => m.classList.remove('show');
+  }
+
+  function boot(){ const c = document.getElementById('gemCard'); if (c){ c.addEventListener('click', openGemModal); renderGem(); } }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+  window.addEventListener('focus', renderGem);
+  window.addEventListener('goals-changed', renderGem);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) renderGem(); });
+  setInterval(renderGem, 20000);
 })();
 </script>
 
