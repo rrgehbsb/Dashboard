@@ -1191,6 +1191,57 @@ details[open] .mp-details-summary::before { content: '▾ '; }
         <button class="mp-btn" id="mpManageBtn">Edit meals</button>
       </div>
     </div>
+    <style id="fuel-css">
+    .fuel-hero{ background:linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015)); border:1px solid rgba(255,255,255,0.09); border-radius:18px; padding:16px 16px 15px; margin-bottom:14px; }
+    .fuel-top{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; }
+    .fuel-title{ font-family:Georgia,'Times New Roman',serif; font-style:italic; font-weight:500; font-size:23px; color:var(--text-primary,#f3f6f9); letter-spacing:0.2px; }
+    .fuel-pill{ font-size:10px; font-weight:800; letter-spacing:0.12em; padding:5px 11px; border-radius:20px; text-transform:uppercase; white-space:nowrap; }
+    .fuel-pill.ok{ background:rgba(52,211,153,0.16); color:#34d399; border:1px solid rgba(52,211,153,0.42); }
+    .fuel-pill.idle{ background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.5); border:1px solid rgba(255,255,255,0.12); }
+    .fuel-pill.low{ background:rgba(96,165,250,0.16); color:#60a5fa; border:1px solid rgba(96,165,250,0.42); }
+    .fuel-pill.over{ background:rgba(251,146,60,0.16); color:#fb923c; border:1px solid rgba(251,146,60,0.42); }
+    .fuel-cal-main{ display:flex; align-items:baseline; gap:9px; }
+    .fuel-cal-num{ font-size:46px; font-weight:800; line-height:1; letter-spacing:-1px; color:var(--text-primary,#fff); font-variant-numeric:tabular-nums; }
+    .fuel-cal-left{ font-size:11px; font-weight:700; letter-spacing:0.1em; color:var(--text-tertiary,rgba(255,255,255,0.5)); }
+    .fuel-bar{ height:8px; background:rgba(255,255,255,0.08); border-radius:6px; overflow:hidden; margin:12px 0 7px; }
+    .fuel-bar-fill{ display:block; height:100%; width:0%; border-radius:6px; background:linear-gradient(90deg,#34d399,#22c55e); transition:width .35s ease; }
+    .fuel-cal-sub{ font-size:12px; color:var(--text-tertiary,rgba(255,255,255,0.5)); font-variant-numeric:tabular-nums; }
+    .fuel-macros{ display:grid; gap:12px; margin-top:15px; padding-top:14px; border-top:1px solid rgba(255,255,255,0.07); }
+    .fuel-macro-head{ display:flex; align-items:baseline; gap:8px; margin-bottom:6px; }
+    .fuel-macro-name{ font-size:10.5px; font-weight:800; letter-spacing:0.12em; color:var(--text-secondary,rgba(255,255,255,0.72)); }
+    .fuel-macro-val{ font-size:12px; color:var(--text-tertiary,rgba(255,255,255,0.55)); font-variant-numeric:tabular-nums; }
+    .fuel-macro-pct{ margin-left:auto; font-size:12px; font-weight:700; font-variant-numeric:tabular-nums; }
+    .fuel-macro-pct.p{ color:#34d399; } .fuel-macro-pct.c{ color:#60a5fa; } .fuel-macro-pct.f{ color:#fb923c; }
+    .fuel-macro-bar{ height:6px; background:rgba(255,255,255,0.07); border-radius:5px; overflow:hidden; }
+    .fuel-macro-fill{ display:block; height:100%; width:0%; border-radius:5px; transition:width .35s ease; }
+    .fuel-macro-fill.p{ background:#34d399; } .fuel-macro-fill.c{ background:#60a5fa; } .fuel-macro-fill.f{ background:#fb923c; }
+    .mp-macro-grid{ display:none !important; }
+    </style>
+    <div class="fuel-hero" id="fuelHero">
+      <div class="fuel-top">
+        <div class="fuel-title">Today's fuel</div>
+        <span class="fuel-pill idle" id="fuelPill">NOT STARTED</span>
+      </div>
+      <div class="fuel-cal">
+        <div class="fuel-cal-main"><span class="fuel-cal-num" id="fuelCalNum">0</span><span class="fuel-cal-left" id="fuelCalLeft">KCAL LEFT</span></div>
+        <div class="fuel-bar"><span class="fuel-bar-fill" id="fuelBarFill"></span></div>
+        <div class="fuel-cal-sub" id="fuelCalSub">0 eaten · — goal</div>
+      </div>
+      <div class="fuel-macros">
+        <div class="fuel-macro">
+          <div class="fuel-macro-head"><span class="fuel-macro-name">PROTEIN</span><span class="fuel-macro-val" id="fmProtVal">0 / — g</span><span class="fuel-macro-pct p" id="fmProtPct">0%</span></div>
+          <div class="fuel-macro-bar"><span class="fuel-macro-fill p" id="fmProtFill"></span></div>
+        </div>
+        <div class="fuel-macro">
+          <div class="fuel-macro-head"><span class="fuel-macro-name">CARBS</span><span class="fuel-macro-val" id="fmCarbsVal">0 / — g</span><span class="fuel-macro-pct c" id="fmCarbsPct">0%</span></div>
+          <div class="fuel-macro-bar"><span class="fuel-macro-fill c" id="fmCarbsFill"></span></div>
+        </div>
+        <div class="fuel-macro">
+          <div class="fuel-macro-head"><span class="fuel-macro-name">FAT</span><span class="fuel-macro-val" id="fmFatVal">0 / — g</span><span class="fuel-macro-pct f" id="fmFatPct">0%</span></div>
+          <div class="fuel-macro-bar"><span class="fuel-macro-fill f" id="fmFatFill"></span></div>
+        </div>
+      </div>
+    </div>
     <div class="mp-macro-grid">
       <div class="mp-macro-cell">
         <div class="mp-macro-val"><span id="mpKcalVal">0</span></div>
@@ -2429,6 +2480,35 @@ function renderAll(){
   setMacro('mpProt',fmtN(prot),`/ ${t.protein.min}–${t.protein.max}g protein`,prot,t.protein.max);
   setMacro('mpCarbs',fmtN(carbs),`/ ${t.carbs.min}–${t.carbs.max}g carbs`,carbs,t.carbs.max);
   setMacro('mpFat',fmtN(fat),`/ ${t.fat.min}–${t.fat.max}g fat`,fat,t.fat.max);
+
+  // —— Today's Fuel hero (reuses the same totals + targets) ——
+  try {
+    const goalK = Math.round((t.kcal.min + t.kcal.max) / 2);
+    const leftK = goalK - kcal;
+    const numEl = document.getElementById('fuelCalNum');
+    if (numEl) {
+      numEl.textContent = fmtKcal(Math.abs(leftK));
+      document.getElementById('fuelCalLeft').textContent = leftK >= 0 ? 'KCAL LEFT' : 'KCAL OVER';
+      document.getElementById('fuelCalSub').textContent = fmtKcal(kcal) + ' eaten · ' + fmtKcal(goalK) + ' goal';
+      document.getElementById('fuelBarFill').style.width = Math.min(100, goalK ? Math.round(kcal / goalK * 100) : 0) + '%';
+      const pill = document.getElementById('fuelPill');
+      let label = 'ON TRACK', cls = 'ok';
+      if (kcal === 0) { label = 'NOT STARTED'; cls = 'idle'; }
+      else if (kcal < t.kcal.min) { label = 'KEEP EATING'; cls = 'low'; }
+      else if (kcal > t.kcal.max) { label = 'OVER'; cls = 'over'; }
+      pill.textContent = label; pill.className = 'fuel-pill ' + cls;
+      const setFM = (id, cur, goal) => {
+        const g = goal || 1, pct = Math.round(cur / g * 100);
+        document.getElementById('fm' + id + 'Val').textContent = fmtN(cur) + ' / ' + fmtN(goal) + ' g';
+        document.getElementById('fm' + id + 'Pct').textContent = pct + '%';
+        document.getElementById('fm' + id + 'Fill').style.width = Math.min(100, pct) + '%';
+      };
+      setFM('Prot', prot, t.protein.max);
+      setFM('Carbs', carbs, t.carbs.max);
+      setFM('Fat', fat, t.fat.max);
+    }
+  } catch (e) {}
+
   renderList(tpl,dayLog);
 }
 
