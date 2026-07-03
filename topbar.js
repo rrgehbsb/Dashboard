@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.2.0';
+const DASHBOARD_VERSION = '2.3.0';
 
 // =============================================================
 // THEME STYLES ("skins") — single source of truth.
@@ -184,6 +184,10 @@ const UI_BG_LIGHT = { brutalism: '#f2f0e9', neomorphism: '#e6e9ef', minimalism: 
 // cinematic look renders in one shot, flash-free (wins over skin/ui bg).
 const HOME_BG = {
   cinematic: 'radial-gradient(130% 90% at 50% -12%, rgba(45,212,191,0.16), rgba(8,11,16,0) 55%), radial-gradient(90% 70% at 82% 8%, rgba(56,189,248,0.10), rgba(8,11,16,0) 50%), #06090e',
+  neon: 'radial-gradient(120% 80% at 15% -8%, rgba(255,45,149,0.20), rgba(8,6,16,0) 50%), radial-gradient(120% 80% at 85% 6%, rgba(58,160,255,0.20), rgba(8,6,16,0) 52%), radial-gradient(140% 120% at 50% 120%, rgba(122,44,255,0.18), rgba(8,6,16,0) 55%), #0a0713',
+  aurora: 'radial-gradient(90% 60% at 12% 6%, rgba(56,189,248,0.22), rgba(9,12,20,0) 50%), radial-gradient(90% 60% at 88% 0%, rgba(167,139,250,0.22), rgba(9,12,20,0) 50%), radial-gradient(120% 80% at 50% 110%, rgba(52,211,153,0.18), rgba(9,12,20,0) 55%), #0a0e17',
+  ember: 'radial-gradient(120% 85% at 50% -12%, rgba(251,146,60,0.16), rgba(14,10,8,0) 52%), radial-gradient(90% 70% at 82% 8%, rgba(244,63,94,0.10), rgba(14,10,8,0) 50%), #100b08',
+  mono: '#0b0b0c',
 };
 
 // Apply saved theme + skin before anything renders (prevents flash)
@@ -1069,6 +1073,97 @@ html[data-home="cinematic"] .bottombar{
   background:rgba(8,11,16,0.72) !important; -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px);
   border-color:rgba(255,255,255,0.07) !important;
 }
+
+/* Shared: every non-Classic style shows the "Good evening" greeting + date line */
+html[data-home]:not([data-home="classic"]) .dash-title .dt-date{
+  display:block; font-family:ui-sans-serif,system-ui,-apple-system,sans-serif; font-style:normal;
+  font-size:10.5px; font-weight:700; letter-spacing:0.22em; text-transform:uppercase;
+  margin-top:9px; color:rgba(236,238,244,0.48); -webkit-text-fill-color:rgba(236,238,244,0.48);
+}
+
+/* ═══ NEON · synthwave — magenta+cyan glow, glowing borders ═══ */
+html[data-home="neon"] .bg-wash{ display:none !important; }
+html[data-home="neon"] body{ color:#eae6ff; }
+html[data-home="neon"] .dash-title{
+  font-weight:900; font-size:27px; letter-spacing:0.5px;
+  background:linear-gradient(90deg,#ff2d95,#7a5cff 55%,#2ad4ff); -webkit-background-clip:text; background-clip:text;
+  color:transparent; -webkit-text-fill-color:transparent; text-shadow:0 0 26px rgba(255,45,149,0.25);
+}
+html[data-home="neon"] .dash-title .dt-date{ color:#c9c2ee; -webkit-text-fill-color:#c9c2ee; }
+html[data-home="neon"] .section-title{ text-transform:uppercase; letter-spacing:0.22em; font-size:10.5px !important; color:rgba(122,92,255,0.9) !important; }
+html[data-home="neon"] :is(.mood-card,.do-now-card,.day-ring-card,.gm-card,.rm-card,.dash-mini-card,.coach-card){
+  background:rgba(20,12,36,0.55) !important; border:1px solid rgba(255,45,149,0.28) !important; border-radius:16px !important;
+  box-shadow:0 0 0 1px rgba(58,160,255,0.06), 0 0 24px rgba(122,44,255,0.14), inset 0 1px 0 rgba(255,255,255,0.05) !important;
+  -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+}
+html[data-home="neon"] .coach-item{ background:rgba(255,45,149,0.06) !important; border-color:rgba(122,92,255,0.22) !important; }
+html[data-home="neon"] .coach-dot{ background:#ff2d95 !important; box-shadow:0 0 10px #ff2d95 !important; }
+html[data-home="neon"] #ringFill{ stroke:#ff2d95 !important; filter:drop-shadow(0 0 7px rgba(255,45,149,0.7)) !important; }
+html[data-home="neon"] .day-ring-phase{ color:#2ad4ff !important; }
+html[data-home="neon"] .cmd-chip{ background:rgba(122,92,255,0.12) !important; border:1px solid rgba(122,92,255,0.3) !important; color:#eae6ff !important; }
+html[data-home="neon"] .goal-ticker{ background:rgba(20,12,36,0.5) !important; border:1px solid rgba(255,45,149,0.25) !important; }
+html[data-home="neon"] :is(.topbar,.bottombar){ background:rgba(10,7,19,0.75) !important; border-color:rgba(122,92,255,0.2) !important; -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); }
+
+/* ═══ AURORA · colorful frosted glass — airy, rounded ═══ */
+html[data-home="aurora"] .bg-wash{ display:none !important; }
+html[data-home="aurora"] body{ color:#e9eef5; }
+html[data-home="aurora"] .dash-title{ font-weight:800; font-size:27px; letter-spacing:-0.01em; color:#f2f6fb; }
+html[data-home="aurora"] .section-title{ text-transform:uppercase; letter-spacing:0.16em; font-size:10.5px !important; color:rgba(233,238,245,0.55) !important; }
+html[data-home="aurora"] :is(.mood-card,.do-now-card,.day-ring-card,.gm-card,.rm-card,.dash-mini-card,.coach-card){
+  background:linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03)) !important;
+  border:1px solid rgba(255,255,255,0.16) !important; border-radius:22px !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.14), 0 16px 40px -12px rgba(0,0,0,0.5) !important;
+  -webkit-backdrop-filter:blur(18px) saturate(1.4); backdrop-filter:blur(18px) saturate(1.4);
+}
+html[data-home="aurora"] .coach-item{ background:rgba(255,255,255,0.07) !important; border-color:rgba(255,255,255,0.12) !important; border-radius:16px !important; }
+html[data-home="aurora"] .coach-dot{ background:linear-gradient(90deg,#38bdf8,#a78bfa) !important; box-shadow:0 0 10px rgba(167,139,250,0.6) !important; }
+html[data-home="aurora"] #ringFill{ stroke:#a78bfa !important; filter:drop-shadow(0 0 6px rgba(167,139,250,0.6)) !important; }
+html[data-home="aurora"] .day-ring-phase{ color:rgba(56,189,248,0.9) !important; }
+html[data-home="aurora"] .cmd-chip{ background:rgba(255,255,255,0.09) !important; border:1px solid rgba(255,255,255,0.16) !important; }
+html[data-home="aurora"] .goal-ticker{ background:rgba(255,255,255,0.06) !important; border:1px solid rgba(255,255,255,0.14) !important; border-radius:18px !important; }
+html[data-home="aurora"] :is(.topbar,.bottombar){ background:rgba(10,14,23,0.6) !important; border-color:rgba(255,255,255,0.1) !important; -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px); }
+
+/* ═══ EMBER · warm cozy — amber glow, serif greeting ═══ */
+html[data-home="ember"] .bg-wash{ display:none !important; }
+html[data-home="ember"] body{ color:#f0e7dc; }
+html[data-home="ember"] .dash-title{
+  font-family:Georgia,'Times New Roman',serif !important; font-style:italic; font-weight:500;
+  font-size:30px; letter-spacing:0.2px; color:#f6ede1; text-shadow:0 1px 22px rgba(251,146,60,0.16);
+}
+html[data-home="ember"] .dash-title .dt-date{ color:rgba(240,231,220,0.5); -webkit-text-fill-color:rgba(240,231,220,0.5); }
+html[data-home="ember"] .section-title{ text-transform:uppercase; letter-spacing:0.2em; font-size:10.5px !important; color:rgba(251,191,120,0.75) !important; }
+html[data-home="ember"] :is(.mood-card,.do-now-card,.day-ring-card,.gm-card,.rm-card,.dash-mini-card,.coach-card){
+  background:linear-gradient(180deg, rgba(255,235,215,0.055), rgba(255,235,215,0.02)) !important;
+  border:1px solid rgba(251,146,60,0.18) !important; border-radius:16px !important;
+  box-shadow:inset 0 1px 0 rgba(255,240,220,0.06), 0 12px 30px rgba(0,0,0,0.4) !important;
+}
+html[data-home="ember"] .coach-item{ background:rgba(251,146,60,0.06) !important; border-color:rgba(251,146,60,0.16) !important; }
+html[data-home="ember"] .coach-dot{ background:#fb923c !important; box-shadow:0 0 9px rgba(251,146,60,0.7) !important; }
+html[data-home="ember"] #ringFill{ stroke:#fb923c !important; filter:drop-shadow(0 0 6px rgba(251,146,60,0.6)) !important; }
+html[data-home="ember"] .day-ring-phase{ color:rgba(251,191,120,0.9) !important; }
+html[data-home="ember"] .cmd-chip{ background:rgba(251,146,60,0.10) !important; border:1px solid rgba(251,146,60,0.24) !important; color:#f0e7dc !important; }
+html[data-home="ember"] .goal-ticker{ background:rgba(255,235,215,0.04) !important; border:1px solid rgba(251,146,60,0.2) !important; }
+html[data-home="ember"] :is(.topbar,.bottombar){ background:rgba(16,11,8,0.75) !important; border-color:rgba(251,146,60,0.16) !important; -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); }
+
+/* ═══ MONO · stark monochrome — hairline, no color, minimal ═══ */
+html[data-home="mono"] body{ background:#0b0b0c !important; background-attachment:fixed !important; color:#e7e7e8; }
+html[data-home="mono"] .bg-wash{ display:none !important; }
+html[data-home="mono"] .dash-title{ font-weight:800; font-size:26px; letter-spacing:-0.02em; color:#fafafa; }
+html[data-home="mono"] .dash-title .dt-date{ color:rgba(231,231,232,0.42); -webkit-text-fill-color:rgba(231,231,232,0.42); }
+html[data-home="mono"] .section-title{ text-transform:uppercase; letter-spacing:0.24em; font-size:10px !important; font-weight:700 !important; color:rgba(231,231,232,0.38) !important; }
+html[data-home="mono"] :is(.mood-card,.do-now-card,.day-ring-card,.gm-card,.rm-card,.dash-mini-card,.coach-card){
+  background:transparent !important; border:1px solid rgba(255,255,255,0.12) !important; border-radius:12px !important; box-shadow:none !important;
+}
+html[data-home="mono"] .coach-item{ background:transparent !important; border-color:rgba(255,255,255,0.10) !important; border-radius:10px !important; }
+html[data-home="mono"] .coach-dot{ background:#fafafa !important; box-shadow:none !important; }
+html[data-home="mono"] #ringFill{ stroke:#fafafa !important; filter:none !important; }
+html[data-home="mono"] .day-ring-phase{ color:rgba(231,231,232,0.6) !important; letter-spacing:0.18em; }
+html[data-home="mono"] .cmd-chip{ background:transparent !important; border:1px solid rgba(255,255,255,0.14) !important; color:rgba(231,231,232,0.85) !important; }
+html[data-home="mono"] .goal-ticker{ background:transparent !important; border:1px solid rgba(255,255,255,0.12) !important; }
+html[data-home="mono"] :is(.topbar,.bottombar){ background:rgba(11,11,12,0.85) !important; border-color:rgba(255,255,255,0.08) !important; }
+html[data-home="mono"] .dash-grid{ counter-reset:dmm; }
+html[data-home="mono"] .dash-mini-card{ position:relative; padding-top:30px !important; }
+html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"0" counter(dmm); position:absolute; top:12px; left:14px; font-size:10px; font-weight:700; letter-spacing:0.12em; color:rgba(255,255,255,0.35); }
 `;
   function injectUiStyle() {
     if (document.getElementById('ui-style')) return;
@@ -1094,7 +1189,8 @@ html[data-home="cinematic"] .bottombar{
   function applyHomeGreeting() {
     const el = document.querySelector('.dash-title');
     if (!el) return;
-    const cine = document.documentElement.getAttribute('data-home') === 'cinematic';
+    const home = document.documentElement.getAttribute('data-home') || 'classic';
+    const cine = home !== 'classic';
     if (cine) {
       if (!el.dataset.origTitle) el.dataset.origTitle = el.textContent;
       const h = new Date().getHours();
