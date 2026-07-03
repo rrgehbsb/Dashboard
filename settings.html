@@ -15,6 +15,7 @@
       var __skin = __cfg.skin || 'none';
       document.documentElement.setAttribute('data-skin', __skin);
       document.documentElement.setAttribute('data-ui', __cfg.uiStyle || 'default');
+      document.documentElement.setAttribute('data-home', __cfg.home || 'classic');
       // Skin accent pairs (full theming comes from topbar.js once it loads)
       var __SK = {onepiece:['#F4A91F','#E63946'],bluelock:['#1FA2FF','#00E5FF'],sololeveling:['#9D6CFF','#2DD4FF'],jujutsu:['#3B82F6','#EF4444'],demonslayer:['#2DD4BF','#FB7185']}[__skin];
       if (__SK) { __accent = __SK[0]; document.documentElement.style.setProperty('--accent2', __SK[1]); }
@@ -483,6 +484,15 @@
     <div class="nav-note" style="border-top:none;padding-top:8px">🎨 Restyles every card &amp; surface across the app. Syncs to your account.</div>
   </div>
 
+  <!-- DASHBOARD STYLE (home look) -->
+  <div class="st-group">
+    <div class="st-group-label">Dashboard Style</div>
+    <div class="st-body">
+      <div class="ui-grid" id="homePicker"></div>
+    </div>
+    <div class="nav-note" style="border-top:none;padding-top:8px">🖥️ Changes your home look. <b>Cinematic</b> is a dark, minimal, hairline layout. Syncs to your account.</div>
+  </div>
+
   <!-- APPEARANCE -->
   <div class="st-group">
     <div class="st-group-label">Appearance</div>
@@ -922,6 +932,27 @@ document.getElementById('uiPicker').addEventListener('click', e => {
   if (window.dashApplyUi) window.dashApplyUi(s.uiStyle);
   else document.documentElement.setAttribute('data-ui', s.uiStyle);
 });
+
+// Dashboard Style (home look) picker
+const HOME_STYLES = [
+  ['classic','Classic','Your current look'],
+  ['cinematic','Cinematic','Dark · hairline · cyan glow'],
+];
+function buildHomePicker() {
+  const el = document.getElementById('homePicker'); if (!el) return;
+  const cur = load().home || 'classic';
+  el.innerHTML = HOME_STYLES.map(([v,n,d]) =>
+    '<button class="ui-opt' + (v===cur?' active':'') + '" data-val="' + v + '" type="button">' +
+    '<span class="ui-opt-demo"></span><span class="ui-opt-info"><span class="ui-opt-name">' + n +
+    '</span><span class="ui-opt-desc">' + d + '</span></span></button>').join('');
+}
+document.getElementById('homePicker').addEventListener('click', e => {
+  const b = e.target.closest('.ui-opt'); if (!b) return;
+  const s = load(); s.home = b.dataset.val; save(s); buildHomePicker();
+  if (window.dashApplyHome) window.dashApplyHome(s.home);
+  else document.documentElement.setAttribute('data-home', s.home);
+});
+buildHomePicker();
 
 pillBind('cardPill', 'cardStyle');
 pillBind('fontPill', 'fontSize');

@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.0.3';
+const DASHBOARD_VERSION = '2.1.0';
 
 // =============================================================
 // THEME STYLES ("skins") — single source of truth.
@@ -180,6 +180,11 @@ const UI_BG = {
   spatial: 'radial-gradient(at 50% 0%, #1a2340 0%, transparent 60%), #05060a',
 };
 const UI_BG_LIGHT = { brutalism: '#f2f0e9', neomorphism: '#e6e9ef', minimalism: '#fbfbfa' };
+// Dashboard Style (home look) backgrounds — injected in early boot so the
+// cinematic look renders in one shot, flash-free (wins over skin/ui bg).
+const HOME_BG = {
+  cinematic: 'radial-gradient(130% 90% at 50% -12%, rgba(45,212,191,0.16), rgba(8,11,16,0) 55%), radial-gradient(90% 70% at 82% 8%, rgba(56,189,248,0.10), rgba(8,11,16,0) 50%), #06090e',
+};
 
 // Apply saved theme + skin before anything renders (prevents flash)
 (function() {
@@ -218,6 +223,15 @@ const UI_BG_LIGHT = { brutalism: '#f2f0e9', neomorphism: '#e6e9ef', minimalism: 
       var _ue = document.createElement('style'); _ue.id = 'ui-early';
       _ue.textContent = 'body{background:' + _uiBg + ' !important; background-attachment:fixed !important;}';
       (document.head || document.documentElement).appendChild(_ue);
+    }
+
+    // Dashboard Style (home look) — injected LAST so its bg wins immediately
+    var _home = _s.home || 'classic';
+    document.documentElement.setAttribute('data-home', _home);
+    if (HOME_BG[_home]) {
+      var _he = document.createElement('style'); _he.id = 'home-early';
+      _he.textContent = 'body{background:' + HOME_BG[_home] + ' !important; background-attachment:fixed !important;}';
+      (document.head || document.documentElement).appendChild(_he);
     }
 
     document.documentElement.style.setProperty('--accent', _accentVal);
@@ -967,6 +981,94 @@ html[data-ui="spatial"] body{ background:radial-gradient(at 50% 0%, #1a2340 0%, 
 
 /* Light-theme fallback bg for the glassy families */
 html[data-theme="light"] :is([data-ui="glassmorphism"],[data-ui="liquidglass"],[data-ui="spatial"],[data-ui="bento"]){ --ui-bg:rgba(0,0,0,0.05); --ui-border:1px solid rgba(0,0,0,0.1); }
+
+/* ══════════════════════════════════════════════════════════════════
+   DASHBOARD STYLE · CINEMATIC — dark, hairline, numbered, cyan glow
+   (home look; applied via html[data-home="cinematic"])
+   ══════════════════════════════════════════════════════════════════ */
+html[data-home="cinematic"] body{
+  background:
+    radial-gradient(130% 90% at 50% -12%, rgba(45,212,191,0.16), rgba(8,11,16,0) 55%),
+    radial-gradient(90% 70% at 82% 8%, rgba(56,189,248,0.10), rgba(8,11,16,0) 50%),
+    #06090e !important;
+  background-attachment: fixed !important;
+  color:#e8edf2;
+}
+html[data-home="cinematic"] .bg-wash{ display:none !important; }
+
+/* Greeting — serif, cinematic, with an uppercase date line */
+html[data-home="cinematic"] .dash-title{
+  font-family: Georgia, 'Times New Roman', serif !important;
+  font-style: italic; font-weight: 500;
+  font-size: 30px; letter-spacing: 0.2px; line-height: 1.05;
+  color:#f3f6f9; text-shadow:0 1px 22px rgba(45,212,191,0.14);
+  margin-bottom: 4px;
+}
+html[data-home="cinematic"] .dash-title .dt-date{
+  display:block; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-style:normal; font-size:10.5px; font-weight:700; letter-spacing:0.22em;
+  text-transform:uppercase; color:rgba(232,237,242,0.42); margin-top:9px;
+}
+
+/* Micro uppercase section titles */
+html[data-home="cinematic"] .section-title{
+  text-transform:uppercase; font-size:10.5px !important; font-weight:700 !important;
+  letter-spacing:0.2em !important; color:rgba(232,237,242,0.4) !important;
+}
+
+/* Cards — hairline, dark, glassy */
+html[data-home="cinematic"] .mood-card,
+html[data-home="cinematic"] .do-now-card,
+html[data-home="cinematic"] .day-ring-card,
+html[data-home="cinematic"] .gm-card,
+html[data-home="cinematic"] .rm-card,
+html[data-home="cinematic"] .dash-mini-card{
+  background: linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015)) !important;
+  border:1px solid rgba(255,255,255,0.09) !important;
+  border-radius:18px !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 12px 34px rgba(0,0,0,0.36) !important;
+  -webkit-backdrop-filter: blur(9px) saturate(1.05); backdrop-filter: blur(9px) saturate(1.05);
+}
+
+/* Mini-card grid — numbered 01/02…, monochrome, hairline divider */
+html[data-home="cinematic"] .dash-grid{ counter-reset: dmc; gap:12px !important; }
+html[data-home="cinematic"] .dash-mini-card{ position:relative; padding-top:32px !important; overflow:hidden; }
+html[data-home="cinematic"] .dash-mini-card::before{
+  counter-increment: dmc; content:"0" counter(dmc);
+  position:absolute; top:13px; left:15px; font-size:10px; font-weight:700;
+  letter-spacing:0.14em; color:rgba(45,212,191,0.8); font-variant-numeric:tabular-nums;
+}
+html[data-home="cinematic"] .dash-mini-card::after{
+  content:""; position:absolute; left:15px; right:15px; top:29px; height:1px;
+  background:linear-gradient(90deg, rgba(255,255,255,0.11), rgba(255,255,255,0));
+}
+html[data-home="cinematic"] .dm-eyebrow{
+  position:absolute; top:13px; right:15px; margin:0 !important;
+  text-transform:uppercase; font-size:9.5px !important; letter-spacing:0.18em !important;
+  color:rgba(232,237,242,0.42) !important;
+}
+html[data-home="cinematic"] .dm-value{ font-family: Georgia, serif; font-weight:500; letter-spacing:0.3px; }
+
+/* Day ring — cyan glow instead of amber */
+html[data-home="cinematic"] #ringFill{ stroke:#2dd4bf !important; filter:drop-shadow(0 0 6px rgba(45,212,191,0.55)) !important; }
+html[data-home="cinematic"] .day-ring-percent{ color:#f3f6f9; }
+html[data-home="cinematic"] .day-ring-phase{ color:rgba(45,212,191,0.85) !important; letter-spacing:0.16em; }
+
+/* Ticker, command chips, do-now — hairline dark */
+html[data-home="cinematic"] .goal-ticker{
+  background:rgba(255,255,255,0.03) !important; border:1px solid rgba(255,255,255,0.08) !important; border-radius:14px !important;
+}
+html[data-home="cinematic"] .cmd-chip{
+  background:rgba(255,255,255,0.035) !important; border:1px solid rgba(255,255,255,0.08) !important; color:rgba(232,237,242,0.85) !important;
+}
+html[data-home="cinematic"] .do-now-label{ color:rgba(45,212,191,0.85) !important; letter-spacing:0.2em; }
+
+/* Chrome — quiet translucent bars */
+html[data-home="cinematic"] .topbar,
+html[data-home="cinematic"] .bottombar{
+  background:rgba(8,11,16,0.72) !important; -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px);
+  border-color:rgba(255,255,255,0.07) !important;
+}
 `;
   function injectUiStyle() {
     if (document.getElementById('ui-style')) return;
@@ -986,6 +1088,33 @@ html[data-theme="light"] :is([data-ui="glassmorphism"],[data-ui="liquidglass"],[
       if (!ue) { ue = document.createElement('style'); ue.id = 'ui-early'; document.head.appendChild(ue); }
       ue.textContent = 'body{background:' + bg + ' !important; background-attachment:fixed !important;}';
     } else if (ue) { ue.textContent = ''; }
+  };
+
+  // Cinematic greeting: turn "My Dashboard" into "Good evening" + a date line.
+  function applyHomeGreeting() {
+    const el = document.querySelector('.dash-title');
+    if (!el) return;
+    const cine = document.documentElement.getAttribute('data-home') === 'cinematic';
+    if (cine) {
+      if (!el.dataset.origTitle) el.dataset.origTitle = el.textContent;
+      const h = new Date().getHours();
+      const g = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+      const d = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }).toUpperCase();
+      el.innerHTML = g + '<span class="dt-date">' + d + '</span>';
+    } else if (el.dataset.origTitle) {
+      el.textContent = el.dataset.origTitle;
+    }
+  }
+  window.dashApplyHome = function (v) {
+    v = v || 'classic';
+    document.documentElement.setAttribute('data-home', v);
+    let he = document.getElementById('home-early');
+    const bg = HOME_BG[v];
+    if (bg) {
+      if (!he) { he = document.createElement('style'); he.id = 'home-early'; document.head.appendChild(he); }
+      he.textContent = 'body{background:' + bg + ' !important; background-attachment:fixed !important;}';
+    } else if (he) { he.textContent = ''; }
+    applyHomeGreeting();
   };
 
   function buildTabEl(tab) {
@@ -2414,6 +2543,7 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
     setupBuddy();
     setupXp();
     setupSections();
+    applyHomeGreeting();
     const btn = document.getElementById('topbarWaterAdd');
     if (btn) btn.addEventListener('click', (e) => { e.preventDefault(); addWater(); });
     render();
