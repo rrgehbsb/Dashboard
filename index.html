@@ -765,6 +765,29 @@ body{
   </div>
 </div>
 
+<style id="coach-css">
+.coach-card{ background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:14px 13px 7px; }
+.coach-headline{ font-size:14px; font-weight:700; color:rgba(255,255,255,0.92); margin:0 2px 12px; line-height:1.4; }
+.coach-headline b{ color:var(--accent); }
+.coach-item{ display:flex; gap:10px; align-items:flex-start; background:rgba(255,255,255,0.035); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:11px 12px; margin-bottom:8px; }
+.coach-dot{ width:7px; height:7px; border-radius:50%; background:var(--accent); margin-top:6px; flex-shrink:0; box-shadow:0 0 8px color-mix(in srgb, var(--accent) 70%, transparent); }
+.coach-body{ font-size:13.5px; line-height:1.46; color:rgba(255,255,255,0.66); }
+.coach-body b{ color:rgba(255,255,255,0.96); font-weight:700; }
+html[data-theme="light"] .coach-card{ background:rgba(0,0,0,0.025); border-color:rgba(0,0,0,0.08); }
+html[data-theme="light"] .coach-headline{ color:rgba(0,0,0,0.85); }
+html[data-theme="light"] .coach-item{ background:rgba(0,0,0,0.025); border-color:rgba(0,0,0,0.06); }
+html[data-theme="light"] .coach-body{ color:rgba(0,0,0,0.6); }
+html[data-theme="light"] .coach-body b{ color:rgba(0,0,0,0.9); }
+</style>
+
+<div class="section" id="coachSection">
+  <div class="section-title">Coach</div>
+  <div class="coach-card">
+    <div class="coach-headline" id="coachHeadline">Here's what I'm noticing.</div>
+    <div class="coach-list" id="coachList"></div>
+  </div>
+</div>
+
 <div class="section" style="margin-bottom:0;">
   <div class="section-title">Mood</div>
   <div class="mood-card">
@@ -2269,6 +2292,129 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
 })();
 
 // Transport is on transport.html (🚌 tab in bottom nav)
+</script>
+
+<!-- ══ COACH · rule-based insights across all your data (no AI, no cost) ══ -->
+<script>
+(function(){
+  function tds(d){ return (window.toDateStr ? toDateStr(d) : d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')); }
+  function pj(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
+  function health(){ return pj('dashboard:sync:health:v1') || {}; }
+  function habitsM(){ return pj('dashboard:sync:habits:v1') || {}; }
+  function niceDate(s){ try{ return new Date(s).toLocaleDateString(undefined,{month:'short',day:'numeric'}); }catch(e){ return s; } }
+  function goalsKey(){ return 'goals:' + (window.getActiveDateString ? getActiveDateString() : tds(new Date())); }
+  const SG = (k)=> (window.storeGet ? storeGet(k) : null);
+
+  function gen(){
+    const today = tds(new Date());
+    const out = [];
+    const push = (prio, lead, text) => out.push({ prio, lead, text });
+
+    // GOALS
+    try {
+      const goals = SG(goalsKey()) || [];
+      if (Array.isArray(goals) && goals.length) {
+        const done = goals.filter(g => g && g.done).length;
+        if (done >= goals.length) push(1, 'All goals done', 'Every goal checked off today. 🔥');
+        else push(5, (goals.length-done)+' goal'+((goals.length-done)>1?'s':'')+' left', "You've done "+done+' of '+goals.length+' today.');
+      }
+    } catch(e){}
+
+    // STREAK
+    try {
+      const st = SG('goal_streak_v1') || {};
+      if (st.count >= 2) {
+        const goals = SG(goalsKey()) || [];
+        const allDone = Array.isArray(goals) && goals.length && goals.every(g => g && g.done);
+        push(allDone ? 2 : 6, '🔥 '+st.count+'-day streak', allDone ? 'Locked in for today — keep the chain going.' : "Finish today's goals to keep it alive.");
+      }
+    } catch(e){}
+
+    // MOOD
+    try {
+      const md = SG('dashboard:mood:v1') || { entries: [] };
+      if (!(md.entries||[]).some(e => e.date === today)) push(4, 'No mood logged today', 'Two seconds — how are you feeling?');
+    } catch(e){}
+
+    // WATER
+    try {
+      const w = health()['po_water_v1'] || {};
+      const logs = w.logs || {};
+      const todayMl = logs[today] || 0;
+      let lastN = null;
+      for (let i=0;i<14;i++){ if ((logs[tds(new Date(Date.now()-i*86400000))]||0) > 0) { lastN = i; break; } }
+      if (todayMl === 0) {
+        if (lastN === null) push(4, 'No water tracked', 'Start logging water to see your hydration.');
+        else if (lastN >= 2) push(7, 'No water logged in '+lastN+' days', "Hard to know if that's a gap or just not tracked.");
+        else push(4, 'No water yet today', 'Log your first drink to stay on target.');
+      } else {
+        const wt = (w.profile && w.profile.weightKg) || 75;
+        const pct = Math.round(todayMl / (wt*35) * 100);
+        if (pct < 50) push(3, Math.round(todayMl)+' ml so far', 'About '+pct+'% of your target — keep sipping.');
+      }
+    } catch(e){}
+
+    // WEIGHT
+    try {
+      const arr = health()['dashboard:weight:v1'] || [];
+      if (Array.isArray(arr) && arr.length >= 2) {
+        const latest = arr[arr.length-1];
+        let older = arr[0];
+        for (let i=arr.length-2;i>=0;i--){ if ((new Date(latest.date)-new Date(arr[i].date))/86400000 >= 10) { older = arr[i]; break; } }
+        const diff = +(latest.kg - older.kg).toFixed(1);
+        if (Math.abs(diff) >= 0.3) push(4, 'Weight '+(diff>0?'up':'down')+' '+Math.abs(diff)+' kg', 'Since '+niceDate(older.date)+' ('+latest.kg+' kg now).');
+      }
+    } catch(e){}
+
+    // HABITS
+    try {
+      const hm = habitsM();
+      const list = hm['habits:list'] || [], log = hm['habits:log'] || {};
+      if (Array.isArray(list) && list.length) {
+        const day = log[today] || {};
+        const done = Object.keys(day).filter(k => day[k]).length;
+        if (done >= list.length) push(1, 'All habits done', 'Full house today. 💪');
+        else push(3, done+'/'+list.length+' habits done', (list.length-done)+' still open today.');
+      }
+    } catch(e){}
+
+    // GYM SPLIT
+    try {
+      const g = pj('po_coach_v1');
+      if (g && g.splitRotation && g.splitRotation.length && g.splitAnchor && g.splitAnchor.date) {
+        const rot = g.splitRotation, a = new Date(g.splitAnchor.date), t = new Date();
+        a.setHours(0,0,0,0); t.setHours(0,0,0,0);
+        const idx = ((g.splitAnchor.index + Math.round((t-a)/86400000)) % rot.length + rot.length) % rot.length;
+        const name = rot[idx];
+        if (/^rest\b/i.test(name||'')) push(2, 'Rest day', 'Recovery is part of the plan — take it.');
+        else push(4, "Today's "+name+' day', "That's what's next in your split rotation.");
+        const dates = new Set();
+        const logsO = g.logs || {};
+        Object.keys(logsO).forEach(ex => (logsO[ex]||[]).forEach(s => { if (s && s.date) { const dd=(Date.now()-new Date(s.date).getTime())/86400000; if (dd>=0 && dd<7) dates.add(s.date); } }));
+        if (dates.size > 0) push(2, dates.size+' session'+(dates.size>1?'s':'')+' this week', 'Logged in the last 7 days. Nice.');
+      }
+    } catch(e){}
+
+    return out;
+  }
+
+  function renderCoach(){
+    const list = document.getElementById('coachList'), head = document.getElementById('coachHeadline');
+    if (!list) return;
+    let items = gen().sort((a,b) => b.prio - a.prio).slice(0, 4);
+    if (!items.length) items = [{ prio:0, lead:"You're on track", text:'Nothing needs attention right now. Keep it up.' }];
+    if (head) head.innerHTML = items.some(i => i.prio >= 5) ? 'A few things <b>worth a look</b> today.' : "You're <b>on top of it</b> today.";
+    list.innerHTML = items.map(i => '<div class="coach-item"><span class="coach-dot"></span><span class="coach-body"><b>'+i.lead+'</b> — '+i.text+'</span></div>').join('');
+  }
+  window.renderCoach = renderCoach;
+
+  function boot(){ renderCoach(); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+  window.addEventListener('goals-changed', renderCoach);
+  window.addEventListener('focus', renderCoach);
+  window.addEventListener('health-synced', renderCoach);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) renderCoach(); });
+})();
 </script>
 
 </body>

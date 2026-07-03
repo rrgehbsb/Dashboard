@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.1.0';
+const DASHBOARD_VERSION = '2.2.0';
 
 // =============================================================
 // THEME STYLES ("skins") — single source of truth.
