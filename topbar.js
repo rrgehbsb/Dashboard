@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.5.0';
+const DASHBOARD_VERSION = '2.5.1';
 
 // =============================================================
 // THEME STYLES ("skins") — single source of truth.
@@ -1777,6 +1777,9 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
     // Floating disc
     const buddy = document.createElement('div');
     buddy.className = 'buddy'; buddy.id = 'buddy'; buddy.hidden = true;
+    // Respect the Settings on/off toggle for the floating buddy (default on)
+    let _buddyOn = readSettings().buddy !== 'off';
+    window.dashApplyBuddy = function (on) { _buddyOn = on !== false; buddy.hidden = !_buddyOn; };
     buddy.innerHTML =
       '<div class="buddy-bubble" id="buddyBubble">' +
         '<div class="buddy-bubble-name"><span id="buddyName">Nova</span>' +
@@ -2090,7 +2093,7 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
       setTimeout(() => bcInput.focus({ preventScroll: true }), 200);
     }
     function pickGreet() { return ["Welcome back! 😄 What's up?", "Hey, missed you! How's it going?", "There you are! Ready to win?"][Math.floor(Math.random() * 3)]; }
-    function closeChat() { panel.classList.remove('open'); buddy.hidden = false; }
+    function closeChat() { panel.classList.remove('open'); buddy.hidden = !_buddyOn; }
     panel.querySelector('#bcClose').addEventListener('click', closeChat);
     panel.querySelector('#bcSend').addEventListener('click', () => { sendUser(bcInput.value); bcInput.value = ''; });
     bcInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { sendUser(bcInput.value); bcInput.value = ''; } });
@@ -2141,7 +2144,7 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
     _buddyOnWater = () => ambient(["Nice, stay hydrated! 💧", "Glug glug — keep going! 💧", "Hydration = focus. 💧"][Math.floor(Math.random() * 3)], 'happy');
     window.dashRefreshBuddy = loadPersona;
 
-    loadPersona(); renderMeters(); updateStatus(); loadPos(); buddy.hidden = false;
+    loadPersona(); renderMeters(); updateStatus(); loadPos(); buddy.hidden = !_buddyOn;
   }
 
   // =============================================================

@@ -533,6 +533,15 @@
         </div>
       </div>
 
+      <div class="st-row">
+        <div class="st-row-icon">🐾</div>
+        <div class="st-row-label">Floating Buddy</div>
+        <div class="st-pill" id="buddyPill">
+          <button class="st-pbtn" data-val="off">Off</button>
+          <button class="st-pbtn" data-val="on">On</button>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -960,6 +969,14 @@ buildHomePicker();
 
 pillBind('cardPill', 'cardStyle');
 pillBind('fontPill', 'fontSize');
+
+// Floating buddy on/off
+pillSync('buddyPill', load().buddy === 'off' ? 'off' : 'on');
+document.getElementById('buddyPill').addEventListener('click', e => {
+  const b = e.target.closest('.st-pbtn'); if (!b) return;
+  const s = load(); s.buddy = b.dataset.val; save(s); pillSync('buddyPill', s.buddy);
+  if (window.dashApplyBuddy) window.dashApplyBuddy(s.buddy !== 'off');
+});
 
 document.getElementById('nameInput').addEventListener('input', e => {
   const s = load(); s.name = e.target.value; save(s);
