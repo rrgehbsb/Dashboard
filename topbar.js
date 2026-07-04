@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.5.4';
+const DASHBOARD_VERSION = '2.5.5';
 
 // =============================================================
 // THEME STYLES ("skins") — single source of truth.
@@ -1553,6 +1553,7 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
       const _winc = state._mlV2 ? ((state.sizes && state.sizes.bottle) || 500) : 1;
       state.logs[k] = (state.logs[k] || 0) + _winc;
       if (state._mlV2) { state.hist = state.hist || {}; (state.hist[k] = state.hist[k] || []).push(_winc); }
+      state._ts = Date.now();
       try { localStorage.setItem('po_water_v1', JSON.stringify(state)); } catch (e) {}
       pushWaterMergedToSupabase(state);
     }

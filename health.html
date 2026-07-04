@@ -2084,8 +2084,21 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catc
     s.logs = (s.logs && typeof s.logs === 'object') ? s.logs : {};
     return s;
   }
-  function loadState() { return norm(window._dbH[W_LS] ? JSON.parse(JSON.stringify(window._dbH[W_LS])) : {}); }
-  function saveState() { wState._ts = Date.now(); window._dbH[W_LS] = wState; window._dbHSchedulePush(); }
+  function loadState() {
+    // Pick the newest of the synced store and the durable localStorage copy
+    // (the home pill writes the same 'po_water_v1' key) so a reload never loses it.
+    const a = window._dbH[W_LS];
+    let b = null; try { b = JSON.parse(localStorage.getItem(W_LS)); } catch (e) {}
+    let src = a;
+    if (b && (!a || (b._ts || 0) > (a._ts || 0))) src = b;
+    return norm(src ? JSON.parse(JSON.stringify(src)) : {});
+  }
+  function saveState() {
+    wState._ts = Date.now();
+    window._dbH[W_LS] = wState;
+    try { localStorage.setItem(W_LS, JSON.stringify(wState)); } catch (e) {} // durable copy shared with the home pill
+    window._dbHSchedulePush();
+  }
   let wState = loadState();
 
   function dKey(d) { return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
