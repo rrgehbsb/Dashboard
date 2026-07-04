@@ -1847,10 +1847,14 @@ document.addEventListener('DOMContentLoaded',scRenderAll);
 
   async function doPush(){
     pushTimer=null;if(!_sb) return;
-    const data={};Object.keys(_dbS).forEach(k=>{data[k]=_dbS[k];});
+    let cloud={};
+    try{ const {data:row}=await _sb.from('app_state').select('data').eq('key',APP_KEY).maybeSingle(); if(row&&row.data&&typeof row.data==='object') cloud=row.data; }catch(e){}
+    const data=Object.assign({},cloud);
+    Object.keys(_dbS).forEach(k=>{data[k]=_dbS[k];});
+    delete data._localAt;
     const pushAt=Date.now();data._pushAt=pushAt;
     try{
-      await _sb.from('app_state').upsert({key:APP_KEY,data,updated_at:new Date().toISOString()});
+      await _sb.from('app_state').upsert({key:APP_KEY,data,updated_at:new Date().toISOString()},{onConflict:'key'});
       lastRemoteAt=pushAt;hasPendingPush=false;
     }catch{setTimeout(schedPush,5000);}
   }

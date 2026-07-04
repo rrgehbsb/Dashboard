@@ -604,9 +604,13 @@ function applyRemote(data) {
   renderAll();
 }
 
-function doPush() {
+async function doPush() {
   pushTimer = null;
-  const data = Object.assign({}, _db, {_pushAt: Date.now()});
+  // Merge with cloud first so another device's keys are never wiped.
+  let cloud={};
+  try{ const {data:row}=await client().from('app_state').select('data').eq('key',APP_KEY).maybeSingle(); if(row&&row.data&&typeof row.data==='object') cloud=row.data; }catch(e){}
+  const data = Object.assign({}, cloud, _db, {_pushAt: Date.now()});
+  delete data._localAt;
   client().from('app_state')
     .upsert({key: APP_KEY, data, updated_at: new Date().toISOString()}, {onConflict:'key'})
     .then(({error}) => {

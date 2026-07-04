@@ -1937,9 +1937,14 @@ window._dbHSchedulePush = function(){ try{ const b=Object.assign({}, window._dbH
       pushTimer=null;
       try{
         const db=window._dbH;
-        const data={};Object.keys(db).forEach(k=>{data[k]=db[k];});
+        // Merge with cloud first so another device's keys are never wiped.
+        let cloud={};
+        try{ const {data:row}=await client().from('app_state').select('data').eq('key',APP_KEY).maybeSingle(); if(row&&row.data&&typeof row.data==='object') cloud=row.data; }catch(e){}
+        const data=Object.assign({},cloud);
+        Object.keys(db).forEach(k=>{data[k]=db[k];});
+        delete data._localAt;
         const pushAt=Date.now();data._pushAt=pushAt;
-        await client().from('app_state').upsert({key:APP_KEY,data,updated_at:new Date().toISOString()});
+        await client().from('app_state').upsert({key:APP_KEY,data,updated_at:new Date().toISOString()},{onConflict:'key'});
         lastRemoteAt=pushAt;hasPendingPush=false;
       }catch(e){
         console.warn('Health sync push failed:',e);

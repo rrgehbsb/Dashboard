@@ -1946,11 +1946,16 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
   async function doPush(){
     pushTimer=null;
     try{
-      const data={};
+      // Merge with the current cloud row FIRST so a stale local copy can't erase
+      // keys another device added. (Was a blind overwrite = cross-device data loss.)
+      let cloud={};
+      try{ const {data:row}=await client().from('app_state').select('data').eq('key',APP_KEY).maybeSingle(); if(row&&row.data&&typeof row.data==='object') cloud=row.data; }catch(e){}
+      const data=Object.assign({},cloud);
       Object.keys(_db).forEach(k=>{data[k]=_db[k];});
+      delete data._localAt;
       const pushAt=Date.now();
       data._pushAt=pushAt;
-      await client().from('app_state').upsert({key:APP_KEY,data,updated_at:new Date().toISOString()});
+      await client().from('app_state').upsert({key:APP_KEY,data,updated_at:new Date().toISOString()},{onConflict:'key'});
       lastRemoteAt=pushAt;
       hasPendingPush=false;
     }catch(e){

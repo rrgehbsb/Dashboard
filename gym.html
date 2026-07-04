@@ -3874,8 +3874,12 @@ img, video, canvas, svg { max-width: 100%; }
   async function pcPushNow() {
     pcPushTimer = null;
     if(!pcSupa) return;
-    const data = {};
+    // Merge with cloud first so another device's keys are never wiped.
+    let cloud={};
+    try{ const {data:row}=await pcSupa.from('app_state').select('data').eq('key',APP_KEY).maybeSingle(); if(row&&row.data&&typeof row.data==='object') cloud=row.data; }catch(e){}
+    const data = Object.assign({}, cloud);
     Object.keys(_dbG).forEach(k => { data[k] = _dbG[k]; });
+    delete data._localAt;
     const pushAt = Date.now(); data._pushAt = pushAt;
     try {
       const { error } = await pcSupa.from('app_state').upsert({ key: APP_KEY, data, updated_at: new Date().toISOString() }, { onConflict: 'key' });
