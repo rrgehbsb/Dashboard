@@ -1831,7 +1831,7 @@ document.addEventListener('DOMContentLoaded',scRenderAll);
 
   function applyRemote(data){
     if(!data) return;
-    Object.keys(_dbS).forEach(k=>{delete _dbS[k];});
+    // Merge (overlay remote), don't wipe — protects unpushed local keys.
     Object.keys(data).forEach(k=>{if(k!=='_pushAt'&&isSynced(k))_dbS[k]=data[k];});
     try{scRenderAll();}catch{}
   }

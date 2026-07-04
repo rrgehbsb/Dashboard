@@ -1915,7 +1915,8 @@ window._dbHSchedulePush = function(){ try{ const b=Object.assign({}, window._dbH
       const remoteAt=data._pushAt||0;
       if(remoteAt<_localAt) return; // don't let a stale remote wipe newer local
       const db=window._dbH;
-      Object.keys(db).forEach(k=>{delete db[k];});
+      // Merge (overlay remote), don't wipe — protects keys logged locally
+      // just before this pull that haven't been pushed yet.
       Object.keys(data).forEach(k=>{if(k!=='_pushAt'&&k!=='_localAt'&&isSynced(k))db[k]=data[k];});
       _mirrorAt(remoteAt);
       try{render();}catch(e){}

@@ -3859,7 +3859,7 @@ img, video, canvas, svg { max-width: 100%; }
 
   function pcApplyRemote(remote) {
     if(!remote || typeof remote !== 'object') return;
-    Object.keys(_dbG).forEach(k => { delete _dbG[k]; });
+    // Merge (overlay remote), don't wipe — protects unpushed local keys.
     Object.keys(remote).forEach(k => { if(k !== '_pushAt' && PC_SYNCED_KEYS.indexOf(k) !== -1) _dbG[k] = remote[k]; });
     pcRerender();
   }
