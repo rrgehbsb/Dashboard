@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.5.3';
+const DASHBOARD_VERSION = '2.5.4';
 
 // =============================================================
 // THEME STYLES ("skins") — single source of truth.
@@ -1447,7 +1447,9 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
   function getWaterProgress() {
     let state = null;
     // On health.html, read from the shared sync store; elsewhere from localStorage
-    if (window._dbH && window._dbH['po_water_v1']) {
+    // Only trust the in-memory health store when actually ON the health page;
+    // elsewhere (home pill) localStorage is the durable source of truth.
+    if (currentPageKey() === 'health' && window._dbH && window._dbH['po_water_v1']) {
       state = window._dbH['po_water_v1'];
     } else {
       try { state = JSON.parse(localStorage.getItem('po_water_v1')); } catch (e) {}
@@ -1531,8 +1533,10 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
   }
   function addWater() {
     let state = null;
-    // On health.html, use the shared sync store so the change goes through health sync
-    if (window._dbH && typeof window._dbHSchedulePush === 'function') {
+    // On health.html ONLY, use the shared sync store so the change goes through
+    // health sync. Everywhere else (home pill) persist to localStorage so it
+    // survives reload — a stray window._dbH must not send water to memory.
+    if (currentPageKey() === 'health' && window._dbH && typeof window._dbHSchedulePush === 'function') {
       state = window._dbH['po_water_v1'] ? JSON.parse(JSON.stringify(window._dbH['po_water_v1'])) : defaultWaterState();
       state.logs = state.logs || {};
       const k = calendarDateKey();
