@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.5.6';
+const DASHBOARD_VERSION = '2.5.7';
 
 // =============================================================
 // THEME STYLES ("skins") — single source of truth.
@@ -1524,30 +1524,41 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
         .from('app_state').select('data').eq('key', _wKey).maybeSingle();
       const current = (data && data.data) || {};
       // Always stamp _pushAt so health.html's poll detects the change
-      const merged = Object.assign({}, current, { po_water_v1: localWater, _pushAt: Date.now() });
+      const _pa = Date.now();
+      const merged = Object.assign({}, current, { po_water_v1: localWater, _pushAt: _pa });
       await supa.from('app_state').upsert(
         { key: _wKey, data: merged, updated_at: new Date().toISOString() },
         { onConflict: 'key' }
       );
+      _lastWaterRemoteAt = _pa; // don't let our own push re-trigger a pull
     } catch (e) {}
   }
   // Pull the latest water from the cloud so the home pill reflects logs made
-  // on other devices (phone → PC). The pill only pushed before, never pulled.
+  // on other devices (phone → PC), live, no refresh. Uses the cloud row's
+  // push marker (_pushAt) for change detection — NOT wall-clock time — so
+  // clock differences between devices can't defeat it.
+  let _waterSb = null;
+  let _lastWaterRemoteAt = -1;
+  let _waterLocalAt = 0;
   async function pullWaterFromCloud() {
     try {
       if (!window.supabase) return;
       if (currentPageKey() === 'health') return; // health page runs its own full sync
+      const pill = document.getElementById('topbarWater');
+      if (!pill) return; // pill only exists on the home page — nothing to update elsewhere
+      if (Date.now() - _waterLocalAt < 4000) return; // let our own just-tapped water push land first
       const uid = localStorage.getItem('_dashUid');
       if (!uid) return;
-      const supa = window.supabase.createClient(TOPBAR_SUPABASE_URL, TOPBAR_SUPABASE_KEY);
-      const { data } = await supa.from('app_state').select('data').eq('key', uid + ':health').maybeSingle();
-      const cloudWater = data && data.data && data.data['po_water_v1'];
+      if (!_waterSb) _waterSb = window.supabase.createClient(TOPBAR_SUPABASE_URL, TOPBAR_SUPABASE_KEY);
+      const { data } = await _waterSb.from('app_state').select('data').eq('key', uid + ':health').maybeSingle();
+      if (!data || !data.data) return;
+      const remoteAt = data.data._pushAt || 0;
+      if (remoteAt === _lastWaterRemoteAt) return; // nothing changed in the cloud since last check
+      _lastWaterRemoteAt = remoteAt;
+      const cloudWater = data.data['po_water_v1'];
       if (!cloudWater) return;
-      let local = null; try { local = JSON.parse(localStorage.getItem('po_water_v1')); } catch (e) {}
-      if (!local || (cloudWater._ts || 0) > (local._ts || 0)) {
-        localStorage.setItem('po_water_v1', JSON.stringify(cloudWater));
-        render();
-      }
+      localStorage.setItem('po_water_v1', JSON.stringify(cloudWater));
+      render();
     } catch (e) {}
   }
 
@@ -1574,6 +1585,7 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
       state.logs[k] = (state.logs[k] || 0) + _winc;
       if (state._mlV2) { state.hist = state.hist || {}; (state.hist[k] = state.hist[k] || []).push(_winc); }
       state._ts = Date.now();
+      _waterLocalAt = Date.now();
       try { localStorage.setItem('po_water_v1', JSON.stringify(state)); } catch (e) {}
       pushWaterMergedToSupabase(state);
     }
@@ -2678,7 +2690,9 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
     window.addEventListener('focus', () => { render(); pullWaterFromCloud(); });
     window.addEventListener('health-synced', render);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) { render(); pullWaterFromCloud(); } });
-    setInterval(() => { render(); pullWaterFromCloud(); }, 30 * 1000);
+    setInterval(render, 30 * 1000);
+    // Live water sync — poll the cloud every 5s so the pill updates on its own
+    setInterval(pullWaterFromCloud, 5 * 1000);
     // Presence heartbeat — keeps your profile's updated_at fresh so friends see
     // you as "online". Cheap: one profile update every ~2 min while visible.
     setInterval(() => { if (!document.hidden) scheduleProfileSync(); }, 120 * 1000);
