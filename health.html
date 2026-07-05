@@ -1942,6 +1942,7 @@ window._dbHSchedulePush = function(){ try{ const b=Object.assign({}, window._dbH
     async function doPush(){
       pushTimer=null;
       try{
+        try{ await client().auth.getSession(); }catch(e){} // refresh token so a stale client's write doesn't silently fail
         const db=window._dbH;
         // Merge with cloud first so another device's keys are never wiped.
         let cloud={};
