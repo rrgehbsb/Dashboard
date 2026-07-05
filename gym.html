@@ -1541,6 +1541,12 @@ img, video, canvas, svg { max-width: 100%; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>(function(){var s=window.supabase;if(s&&s.createClient&&!s.__oneClient){s.__oneClient=true;var o=s.createClient.bind(s),c={};s.createClient=function(u,k,op){var q=String(u)+"|"+String(k);return c[q]||(c[q]=o(u,k,op));};}})();</script>
+<script>
+window.__gymDebug=function(m){try{var d=document.getElementById('__gymdbg');if(!d){d=document.createElement('div');d.id='__gymdbg';d.style.cssText='position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#063;color:#fff;font:12px/1.4 monospace;padding:8px;white-space:pre-wrap;max-height:55vh;overflow:auto';d.addEventListener('click',function(){d.style.display='none';});(document.body||document.documentElement).appendChild(d);}d.textContent=(new Date().toLocaleTimeString())+'  '+m+'\n'+d.textContent;}catch(_){}};
+window.addEventListener('error',function(e){var d=document.getElementById('__gymdbg');if(d)d.style.background='#c00';window.__gymDebug('ERR: '+(e.message||'?')+' @'+((e.filename||'').split('/').pop())+':'+e.lineno);},true);
+window.addEventListener('unhandledrejection',function(e){var r=e.reason;window.__gymDebug('ASYNC ERR: '+((r&&(r.message||r.msg))||JSON.stringify(r)));});
+document.addEventListener('DOMContentLoaded',function(){window.__gymDebug('gym v2.5.33 loaded — green=ok, red=error (tap to hide)');});
+</script>
 <script src="topbar.js" defer></script>
 </head>
 <body>
@@ -3876,6 +3882,7 @@ img, video, canvas, svg { max-width: 100%; }
 
   function pcSchedulePush() {
     pcHasPendingPush = true;
+    try{ window.__gymDebug&&window.__gymDebug('save triggered (ready='+pcSyncReady+')'); }catch(_){}
     if(!pcSyncReady) { return; } // defer until init finishes so we never push stale defaults
     clearTimeout(pcPushTimer);
     pcPushTimer = setTimeout(pcPushNow, 500);
@@ -3894,8 +3901,8 @@ img, video, canvas, svg { max-width: 100%; }
     const pushAt = Date.now(); data._pushAt = pushAt;
     try {
       const { error } = await pcSupa.from('app_state').upsert({ key: APP_KEY, data, updated_at: new Date().toISOString() }, { onConflict: 'key' });
-      if(!error) { pcLastRemoteAt = pushAt; _gymOwnPush = pushAt; pcHasPendingPush = false; }
-      else { setTimeout(pcSchedulePush, 5000); }
+      if(!error) { pcLastRemoteAt = pushAt; _gymOwnPush = pushAt; pcHasPendingPush = false; try{ window.__gymDebug&&window.__gymDebug('SAVED OK ✓'); }catch(_){} }
+      else { try{ window.__gymDebug&&window.__gymDebug('SAVE FAILED: '+JSON.stringify(error).slice(0,150)); }catch(_){}; setTimeout(pcSchedulePush, 5000); }
     } catch(_) { setTimeout(pcSchedulePush, 5000); }
   }
 
