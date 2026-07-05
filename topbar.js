@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.5.7';
+const DASHBOARD_VERSION = '2.5.8';
 
 // =============================================================
 // THEME STYLES ("skins") — single source of truth.
@@ -1562,6 +1562,24 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
     } catch (e) {}
   }
 
+  // Force a fresh pull + re-render (used when returning to the tab): reset the
+  // change marker so the next pull always re-applies, even if a background poll
+  // already advanced the marker without the DOM visibly updating.
+  function forceWaterSync() { try { _lastWaterRemoteAt = -1; render(); pullWaterFromCloud(); } catch (e) {} }
+
+  // Self-contained live-sync wiring so no unrelated boot error can disable it.
+  let _waterLiveOn = false;
+  function setupWaterLiveSync() {
+    if (_waterLiveOn) return;
+    _waterLiveOn = true;
+    try {
+      window.addEventListener('focus', forceWaterSync);
+      window.addEventListener('pageshow', forceWaterSync);
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) forceWaterSync(); });
+      setInterval(pullWaterFromCloud, 4000); // poll every 4s so the pill updates on its own
+    } catch (e) {}
+  }
+
   function addWater() {
     let state = null;
     // On health.html ONLY, use the shared sync store so the change goes through
@@ -2683,16 +2701,13 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
     const btn = document.getElementById('topbarWaterAdd');
     if (btn) btn.addEventListener('click', (e) => { e.preventDefault(); addWater(); });
     render();
+    setupWaterLiveSync();   // robust, self-contained live water sync (can't be blocked by other boot code)
     pullWaterFromCloud();
     lockGestures();
     startModalLock();
     window.addEventListener('storage', render);
-    window.addEventListener('focus', () => { render(); pullWaterFromCloud(); });
     window.addEventListener('health-synced', render);
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) { render(); pullWaterFromCloud(); } });
     setInterval(render, 30 * 1000);
-    // Live water sync — poll the cloud every 5s so the pill updates on its own
-    setInterval(pullWaterFromCloud, 5 * 1000);
     // Presence heartbeat — keeps your profile's updated_at fresh so friends see
     // you as "online". Cheap: one profile update every ~2 min while visible.
     setInterval(() => { if (!document.hidden) scheduleProfileSync(); }, 120 * 1000);
