@@ -1901,7 +1901,7 @@ window._dbHSchedulePush = function(){ try{ const b=Object.assign({}, window._dbH
     const APP_KEY_BASE='health'; let APP_KEY=APP_KEY_BASE;
     function isSynced(k){return k.startsWith('stack:')||k==='po_water_v1'||k.startsWith('dashboard:mealPrep:v1:')||k==='dashboard:sleep:v1'||k==='dashboard:weight:v1'||k==='dashboard:measurements:v1';}
 
-    let lastRemoteAt=0,hasPendingPush=false,pushTimer=null,_sb=null;
+    let lastRemoteAt=0,hasPendingPush=false,pushTimer=null,_sb=null,_dirtyAt=0;
     function client(){if(!_sb)_sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);return _sb;}
 
     // Durable local mirror so nothing is lost on reload before the cloud push lands
@@ -1919,6 +1919,10 @@ window._dbHSchedulePush = function(){ try{ const b=Object.assign({}, window._dbH
       // clock runs even slightly ahead (the phone→PC sync bug). initSync gates
       // its own call by remoteAt>=_localAt, and merge-on-pull won't wipe local.
       if(pushTimer) return;
+      // Never let a pull overwrite a change we just made but haven't confirmed
+      // pushed yet (fixes "add supplement, it vanishes a few seconds later").
+      // Bounded to 10s so a stuck push can't block incoming updates forever.
+      if(hasPendingPush && Date.now()-_dirtyAt < 10000) return;
       const db=window._dbH;
       // Merge (overlay remote), don't wipe — protects keys logged locally
       // just before this pull that haven't been pushed yet.
@@ -1935,6 +1939,7 @@ window._dbHSchedulePush = function(){ try{ const b=Object.assign({}, window._dbH
     function schedulePush(){
       persistLocal();
       hasPendingPush=true;
+      _dirtyAt=Date.now();
       clearTimeout(pushTimer);
       pushTimer=setTimeout(doPush,500);
     }

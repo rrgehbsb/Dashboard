@@ -2082,6 +2082,7 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
 // ── Reminders (Stage 3 — server push) ─────────────────────────────────────
 (function(){
   const RM_KEY='dashboard:reminders:v1';
+  let _rmDirtyAt=0;
   const RM_SENT_KEY='dashboard:reminders:sent:v1';
 
   const DEFAULTS=[];
@@ -2090,6 +2091,7 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
   function saveRM(arr){localStorage.setItem(RM_KEY,JSON.stringify(arr));}
 
   async function syncReminders(){
+    _rmDirtyAt=Date.now(); // mark a local change so a pull can't clobber it
     const arr=getRM()||[];
     const uid=localStorage.getItem('_dashUid')||'';
     try{
@@ -2103,6 +2105,7 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
 
   async function loadFromCloud(){
     try{
+      if(Date.now()-_rmDirtyAt < 6000) return; // just changed a reminder locally — let it push first
       const uid=localStorage.getItem('_dashUid')||'';
       const r=await fetch('/api/get-reminders?userId='+encodeURIComponent(uid));
       if(!r.ok) return;
@@ -2354,6 +2357,10 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
   loadFromCloud().then(()=>{
     if(_autoTopic) scheduleToday(_autoTopic,false).catch(()=>{});
   });
+  // Keep reminders in sync across devices without a refresh
+  setInterval(loadFromCloud,15000);
+  window.addEventListener('focus',loadFromCloud);
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) loadFromCloud(); });
 
   setInterval(checkReminders,30*1000);
   checkReminders();
