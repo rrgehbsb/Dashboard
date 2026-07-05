@@ -3858,11 +3858,24 @@ img, video, canvas, svg { max-width: 100%; }
     try { if(window._gtRenderAll) window._gtRenderAll(); } catch {}
   }
 
-  function pcApplyRemote(remote) {
+  function pcApplyRemote(remote, isLive) {
     if(!remote || typeof remote !== 'object') return;
     // Merge (overlay remote), don't wipe — protects unpushed local keys.
-    Object.keys(remote).forEach(k => { if(k !== '_pushAt' && PC_SYNCED_KEYS.indexOf(k) !== -1) _dbG[k] = remote[k]; });
+    let changed = false;
+    Object.keys(remote).forEach(k => {
+      if(k !== '_pushAt' && PC_SYNCED_KEYS.indexOf(k) !== -1) {
+        if(JSON.stringify(_dbG[k]) !== JSON.stringify(remote[k])) { _dbG[k] = remote[k]; changed = true; }
+      }
+    });
     pcRerender();
+    // A live change from another device sometimes doesn't repaint the exercise
+    // list; refresh to guarantee it shows. Loop-safe (after refresh local matches
+    // cloud, so it won't fire again) and skipped while you're editing.
+    if(isLive && changed) {
+      const editing = document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement.tagName)||'');
+      const modalOpen = !!document.querySelector('.po-modal-bg.show,.modal.show,.gt-modal.show,.show[class*="modal"],[class*="modal"][style*="flex"]');
+      if(!editing && !modalOpen) { setTimeout(() => { try{ location.reload(); }catch(e){} }, 400); }
+    }
   }
 
   function pcSchedulePush() {
@@ -3916,7 +3929,7 @@ img, video, canvas, svg { max-width: 100%; }
       const { data, error } = await pcSupa.from('app_state').select('data').eq('key', APP_KEY).maybeSingle();
       if(!error && data && data.data && Object.keys(data.data).length > 0) {
         pcLastRemoteAt = data.data._pushAt || 0;
-        pcApplyRemote(data.data);
+        pcApplyRemote(data.data, false); // initial load — render, never reload
       }
       // Always migrate any synced keys from actual localStorage not yet in _dbG
       let pcMigrated = false;
@@ -3930,6 +3943,11 @@ img, video, canvas, svg { max-width: 100%; }
     } catch(_) {}
     pcSyncReady = true;
     if(pcHasPendingPush) pcSchedulePush(); // fire any push deferred during init
+    // Re-render again once everything (GT tracker + DOM) is definitely ready —
+    // the first pcRerender during init can run before the exercise renderer is
+    // registered, leaving the list showing stale/default data on reopen.
+    setTimeout(() => { try { pcRerender(); } catch(e) {} }, 800);
+    setTimeout(() => { try { pcRerender(); } catch(e) {} }, 2000);
   })();
 
   setInterval(async () => {
@@ -3940,7 +3958,7 @@ img, video, canvas, svg { max-width: 100%; }
       if(!data || !data.data) return;
       const remoteAt = data.data._pushAt || 0;
       if(remoteAt === pcLastRemoteAt) return;
-      pcLastRemoteAt = remoteAt; pcApplyRemote(data.data);
+      pcLastRemoteAt = remoteAt; pcApplyRemote(data.data, true);
     } catch(_) {}
   }, 5000);
 
@@ -3955,7 +3973,7 @@ img, video, canvas, svg { max-width: 100%; }
       if(!data || !data.data) return;
       const remoteAt = data.data._pushAt || 0;
       if(remoteAt === pcLastRemoteAt) return;
-      pcLastRemoteAt = remoteAt; pcApplyRemote(data.data);
+      pcLastRemoteAt = remoteAt; pcApplyRemote(data.data, true);
     } catch(_) {}
   });
 })();
