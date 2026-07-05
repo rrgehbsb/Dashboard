@@ -1968,7 +1968,9 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
     if(!data) return;
     // NEVER let a stale remote wipe newer local changes made on this device
     const remoteAt=data._pushAt||0;
-    if(remoteAt < _localAt) return;
+    // Clock-free guard: skip only while a local save is mid-flight. Never compare
+    // remoteAt to _localAt across devices — clock skew blocks incoming updates.
+    if(pushTimer) return;
     // Merge (overlay remote), don't wipe — protects keys logged locally
     // just before this pull that haven't been pushed yet.
     Object.keys(data).forEach(k=>{if(k!=='_pushAt'&&k!=='_localAt')_db[k]=data[k];});

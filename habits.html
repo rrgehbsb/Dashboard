@@ -597,7 +597,9 @@ document.getElementById('hbEditDelete').addEventListener('click', () => {
 function applyRemote(data) {
   if (!data) return;
   const remoteAt = data._pushAt || 0;
-  if (remoteAt < _localAt) return; // don't let a stale remote wipe newer local
+  // Clock-free guard: skip only while a local save is mid-flight. Never compare
+  // remoteAt to _localAt across devices — clock skew blocks incoming updates.
+  if (pushTimer) return;
   // Merge (overlay remote), don't wipe — protects unpushed local keys.
   Object.keys(data).forEach(k => { if (k !== '_pushAt' && k !== '_localAt') _db[k] = data[k]; });
   _mirrorAt(remoteAt);
