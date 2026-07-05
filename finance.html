@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#0a0a0b">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Finances</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="topbar.js" defer></script>
 <style>
 :root {
@@ -2239,6 +2240,78 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     <span class="bot-tab-label">Savings</span>
   </button>
 </nav>
+
+<script>
+// ============================================================
+// FINANCE CROSS-DEVICE SYNC — routes finance keys through Supabase
+// (uid:finance). Installed FIRST so it intercepts all localStorage
+// access from the finance code below. Same pattern as gym.html.
+// ============================================================
+(function(){
+  const FIN_URL='https://mtuoqwbrujxutofhyahb.supabase.co';
+  const FIN_PKEY='sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
+  const FIN_BASE='finance'; let FIN_APP_KEY=FIN_BASE;
+  const _dbF={}; let finSb=null, finLastRemoteAt=0, finPushTimer=null, finDirtyAt=0, finReady=false, finPending=false;
+  function isFinSynced(k){ return k==='dashboard:budget:v1'||k==='dashboard:savings:v1'||k==='subs'||k==='wishlist'||k==='incoming_orders'||k==='nw_currency'||k==='financeTicker'||(typeof k==='string'&&k.indexOf('nw:')===0); }
+  const _oGet=localStorage.getItem.bind(localStorage);
+  const _oSet=localStorage.setItem.bind(localStorage);
+  const _oRem=localStorage.removeItem.bind(localStorage);
+  localStorage.getItem=function(k){ if(isFinSynced(k)) return _dbF.hasOwnProperty(k)?_dbF[k]:_oGet(k); return _oGet(k); };
+  localStorage.setItem=function(k,v){ if(isFinSynced(k)){ _dbF[k]=v; _oSet(k,v); finSchedulePush(); } else _oSet(k,v); };
+  localStorage.removeItem=function(k){ if(isFinSynced(k)){ delete _dbF[k]; _oRem(k); finSchedulePush(); } else _oRem(k); };
+  // Seed _dbF from any finance keys already in real localStorage
+  try{ const n=localStorage.length; for(let i=0;i<n;i++){ const k=localStorage.key(i); if(isFinSynced(k)){ const v=_oGet(k); if(v!=null) _dbF[k]=v; } } }catch(e){}
+
+  function finSchedulePush(){ finPending=true; finDirtyAt=Date.now(); if(!finReady) return; clearTimeout(finPushTimer); finPushTimer=setTimeout(finDoPush,500); }
+  async function finDoPush(){
+    finPushTimer=null; if(!finSb) return;
+    try{ await finSb.auth.getSession(); }catch(e){}
+    let cloud={};
+    try{ const {data:row}=await finSb.from('app_state').select('data').eq('key',FIN_APP_KEY).maybeSingle(); if(row&&row.data&&typeof row.data==='object') cloud=row.data; }catch(e){}
+    const data=Object.assign({},cloud); Object.keys(_dbF).forEach(k=>{data[k]=_dbF[k];});
+    const pushAt=Date.now(); data._pushAt=pushAt;
+    try{ const {error}=await finSb.from('app_state').upsert({key:FIN_APP_KEY,data,updated_at:new Date().toISOString()},{onConflict:'key'});
+      if(!error){ finLastRemoteAt=pushAt; finPending=false; } else setTimeout(finSchedulePush,5000);
+    }catch(_){ setTimeout(finSchedulePush,5000); }
+  }
+  function finApplyRemote(remote){
+    if(!remote||typeof remote!=='object') return;
+    if(finPending && Date.now()-finDirtyAt<10000) return; // don't clobber a just-made local change
+    let changed=false;
+    Object.keys(remote).forEach(k=>{ if(k!=='_pushAt'&&isFinSynced(k)){ if(_dbF[k]!==remote[k]){ _dbF[k]=remote[k]; _oSet(k,remote[k]); changed=true; } } });
+    // Refresh so the (closured) finance screens reflect the synced data. Loop-safe:
+    // after a refresh local matches cloud, so it won't fire again. Skipped while
+    // the user is mid-edit so it can't interrupt typing.
+    if(changed){
+      const editing=document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement.tagName)||'');
+      const modalOpen=!!document.querySelector('.modal.show,.modal-bg.show,.show[class*="modal"]');
+      if(!editing && !modalOpen){ try{ location.reload(); }catch(e){} }
+    }
+  }
+  (async function finInit(){
+    if(!window.supabase) return;
+    finSb=window.supabase.createClient(FIN_URL,FIN_PKEY);
+    try{ const {data:{session}}=await finSb.auth.getSession(); if(!session){ return; } FIN_APP_KEY=session.user.id+':'+FIN_BASE; }
+    catch(e){ return; }
+    try{ const {data:row}=await finSb.from('app_state').select('data').eq('key',FIN_APP_KEY).maybeSingle();
+      if(row&&row.data&&Object.keys(row.data).length>0){ finLastRemoteAt=row.data._pushAt||0; finApplyRemote(row.data); }
+    }catch(e){}
+    finReady=true; if(finPending) finSchedulePush();
+  })();
+
+  async function finPull(){
+    if(!finSb||finPushTimer) return;
+    try{ await finSb.auth.getSession(); }catch(e){}
+    try{ const {data:row}=await finSb.from('app_state').select('data').eq('key',FIN_APP_KEY).maybeSingle();
+      if(!row||!row.data) return; const remoteAt=row.data._pushAt||0; if(remoteAt===finLastRemoteAt) return;
+      finLastRemoteAt=remoteAt; finApplyRemote(row.data);
+    }catch(e){}
+  }
+  setInterval(finPull,5000);
+  window.addEventListener('focus',finPull);
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) finPull(); });
+})();
+</script>
 
 <script>
 // ============================================================
