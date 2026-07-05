@@ -3858,26 +3858,19 @@ img, video, canvas, svg { max-width: 100%; }
     try { if(window._gtRenderAll) window._gtRenderAll(); } catch {}
   }
 
-  function pcApplyRemote(remote, isLive) {
+  function pcApplyRemote(remote) {
     if(!remote || typeof remote !== 'object') return;
     // Merge (overlay remote), don't wipe — protects unpushed local keys.
-    let changed = false;
-    Object.keys(remote).forEach(k => {
-      if(k !== '_pushAt' && PC_SYNCED_KEYS.indexOf(k) !== -1) {
-        if(JSON.stringify(_dbG[k]) !== JSON.stringify(remote[k])) { _dbG[k] = remote[k]; changed = true; }
-      }
-    });
+    Object.keys(remote).forEach(k => { if(k !== '_pushAt' && PC_SYNCED_KEYS.indexOf(k) !== -1) _dbG[k] = remote[k]; });
     pcRerender();
-    // A live change from another device sometimes doesn't repaint the exercise
-    // list; refresh to guarantee it shows. Loop-safe (after refresh local matches
-    // cloud, so it won't fire again) and skipped while you're editing.
-    if(isLive && changed) {
-      const editing = document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement.tagName)||'');
-      // only block for a genuinely visible modal
-      let modalOpen = false;
-      document.querySelectorAll('.po-modal-bg,.modal,.gt-modal,.modal-bg').forEach(el=>{ if(el.classList.contains('show')||getComputedStyle(el).display!=='none') modalOpen=true; });
-      if(!editing && !modalOpen) { setTimeout(() => { try{ location.reload(); }catch(e){} }, 400); }
-    }
+  }
+  // A genuine change arrived from another device — refresh so the (sometimes
+  // stubborn) exercise list definitely shows it. Only skipped while typing.
+  // Loop-safe: after the reload local matches cloud, so it won't fire again.
+  function pcLiveRefresh() {
+    const editing = document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement.tagName)||'');
+    if(editing) return;
+    setTimeout(() => { try{ location.reload(); }catch(e){} }, 300);
   }
 
   function pcSchedulePush() {
@@ -3931,7 +3924,7 @@ img, video, canvas, svg { max-width: 100%; }
       const { data, error } = await pcSupa.from('app_state').select('data').eq('key', APP_KEY).maybeSingle();
       if(!error && data && data.data && Object.keys(data.data).length > 0) {
         pcLastRemoteAt = data.data._pushAt || 0;
-        pcApplyRemote(data.data, false); // initial load — render, never reload
+        pcApplyRemote(data.data); // initial load — render, never reload
       }
       // Always migrate any synced keys from actual localStorage not yet in _dbG
       let pcMigrated = false;
@@ -3960,7 +3953,7 @@ img, video, canvas, svg { max-width: 100%; }
       if(!data || !data.data) return;
       const remoteAt = data.data._pushAt || 0;
       if(remoteAt === pcLastRemoteAt) return;
-      pcLastRemoteAt = remoteAt; pcApplyRemote(data.data, true);
+      pcLastRemoteAt = remoteAt; pcApplyRemote(data.data); pcLiveRefresh();
     } catch(_) {}
   }, 5000);
 
@@ -3975,7 +3968,7 @@ img, video, canvas, svg { max-width: 100%; }
       if(!data || !data.data) return;
       const remoteAt = data.data._pushAt || 0;
       if(remoteAt === pcLastRemoteAt) return;
-      pcLastRemoteAt = remoteAt; pcApplyRemote(data.data, true);
+      pcLastRemoteAt = remoteAt; pcApplyRemote(data.data); pcLiveRefresh();
     } catch(_) {}
   });
 })();
