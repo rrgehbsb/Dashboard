@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.5.17';
+const DASHBOARD_VERSION = '2.5.18';
 
 // =============================================================
 // THEME STYLES ("skins") — single source of truth.
@@ -190,59 +190,63 @@ const HOME_BG = {
   mono: '#0b0b0c',
 };
 
-// Apply saved theme + skin before anything renders (prevents flash)
-(function() {
+// Apply saved theme + skin. Reusable so a settings change synced from another
+// device can be re-applied live (not just on the settings page / on reload).
+window.applyDashSettings = function(_s) {
   try {
-    var _s = JSON.parse(localStorage.getItem('dashboard:settings:v1') || '{}');
+    _s = _s || {};
+    var root = document.documentElement;
     var _dark = _s.theme !== 'light';
-    document.documentElement.setAttribute('data-theme', _dark ? 'dark' : 'light');
+    root.setAttribute('data-theme', _dark ? 'dark' : 'light');
     var _acMap = {purple:{d:'#a78bfa',l:'#7c3aed'},blue:{d:'#60a5fa',l:'#2563eb'},green:{d:'#34d399',l:'#059669'},orange:{d:'#fb923c',l:'#ea580c'},pink:{d:'#f472b6',l:'#db2777'},red:{d:'#f87171',l:'#dc2626'},yellow:{d:'#fbbf24',l:'#d97706'},teal:{d:'#2dd4bf',l:'#0d9488'}};
     var _ac = _acMap[_s.accent || 'purple'] || _acMap.purple;
     var _accentVal = _dark ? _ac.d : _ac.l;
 
     var _skin = _s.skin || 'none';
-    document.documentElement.setAttribute('data-skin', _skin);
-    document.documentElement.setAttribute('data-ui', _s.uiStyle || 'default');
+    root.setAttribute('data-skin', _skin);
+    root.setAttribute('data-ui', _s.uiStyle || 'default');
+    // Clear previously injected dynamic tags so re-apply is clean
+    ['skin-font','skin-early','ui-early','home-early'].forEach(function(id){ var e=document.getElementById(id); if(e) e.remove(); });
     var _def = SKIN_DEFS[_skin];
     if (_def) {
       _accentVal = _def.accent;
-      document.documentElement.style.setProperty('--accent2', _def.accent2);
-      document.documentElement.style.setProperty('--skin-font', _def.font.family);
-      // Themed display font
+      root.style.setProperty('--accent2', _def.accent2);
+      root.style.setProperty('--skin-font', _def.font.family);
       var _fl = document.createElement('link');
       _fl.rel = 'stylesheet'; _fl.href = _def.font.href; _fl.id = 'skin-font';
-      (document.head || document.documentElement).appendChild(_fl);
-      // Themed background: motif pattern over signature gradient
+      (document.head || root).appendChild(_fl);
       var _grad = _dark ? _def.bgDark : _def.bgLight;
       var _se = document.createElement('style');
       _se.id = 'skin-early';
       _se.textContent = 'body{background:' + _def.pattern + ' , ' + _grad + ' !important; background-attachment:fixed, fixed !important;}';
-      (document.head || document.documentElement).appendChild(_se);
+      (document.head || root).appendChild(_se);
     }
 
-    // Surface-style background — injected AFTER the skin bg so it wins immediately
     var _uiStyle = _s.uiStyle || 'default';
     var _uiBg = _dark ? UI_BG[_uiStyle] : (UI_BG_LIGHT[_uiStyle] || UI_BG[_uiStyle]);
     if (_uiBg) {
       var _ue = document.createElement('style'); _ue.id = 'ui-early';
       _ue.textContent = 'body{background:' + _uiBg + ' !important; background-attachment:fixed !important;}';
-      (document.head || document.documentElement).appendChild(_ue);
+      (document.head || root).appendChild(_ue);
     }
 
-    // Dashboard Style (home look) — injected LAST so its bg wins immediately
     var _home = _s.home || 'classic';
-    document.documentElement.setAttribute('data-home', _home);
+    root.setAttribute('data-home', _home);
     if (HOME_BG[_home]) {
       var _he = document.createElement('style'); _he.id = 'home-early';
       _he.textContent = 'body{background:' + HOME_BG[_home] + ' !important; background-attachment:fixed !important;}';
-      (document.head || document.documentElement).appendChild(_he);
+      (document.head || root).appendChild(_he);
     }
 
-    document.documentElement.style.setProperty('--accent', _accentVal);
-    document.documentElement.style.setProperty('--card-radius', {sharp:'6px',rounded:'14px',pill:'24px'}[_s.cardStyle||'rounded']||'14px');
-    document.documentElement.style.setProperty('--base-font', {small:'13px',medium:'15px',large:'17px'}[_s.fontSize||'medium']||'15px');
+    root.style.setProperty('--accent', _accentVal);
+    root.style.setProperty('--card-radius', {sharp:'6px',rounded:'14px',pill:'24px'}[_s.cardStyle||'rounded']||'14px');
+    root.style.setProperty('--base-font', {small:'13px',medium:'15px',large:'17px'}[_s.fontSize||'medium']||'15px');
+    // Live-update nav emojis + character banner for the (possibly new) skin
+    if (typeof window.dashApplySkin === 'function') { try { window.dashApplySkin(_skin); } catch(e){} }
   } catch(e) {}
-})();
+};
+// Apply immediately from local storage before anything renders (prevents flash)
+window.applyDashSettings(JSON.parse(localStorage.getItem('dashboard:settings:v1') || '{}'));
 
 (function () {
   'use strict';
@@ -1546,6 +1550,31 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
   // Let the health page mark a just-logged local change so the pull below doesn't
   // clobber it before it's pushed.
   window.dashWaterTouched = function () { _waterLocalAt = Date.now(); };
+
+  // Pull settings (theme, skin/"characters", accent, styles) from the cloud so a
+  // change made on one device shows on all pages of the others — not just Settings.
+  let _settingsSb = null;
+  let _lastSettingsStr = null;
+  async function pullSettingsFromCloud() {
+    try {
+      if (!window.supabase) return;
+      if (currentPageKey() === 'settings') return; // settings page manages its own save/load
+      const uid = localStorage.getItem('_dashUid');
+      if (!uid) return;
+      if (!_settingsSb) _settingsSb = window.supabase.createClient(TOPBAR_SUPABASE_URL, TOPBAR_SUPABASE_KEY);
+      try { await _settingsSb.auth.getSession(); } catch (e) {}
+      const { data, error } = await _settingsSb.from('app_state').select('data').eq('key', uid + ':settings').maybeSingle();
+      if (error) { _settingsSb = null; return; }
+      const cloud = data && data.data;
+      if (!cloud || typeof cloud !== 'object') return;
+      const cloudStr = JSON.stringify(cloud);
+      if (cloudStr === (localStorage.getItem('dashboard:settings:v1') || '')) { _lastSettingsStr = cloudStr; return; }
+      if (cloudStr === _lastSettingsStr) return; // already applied this cloud version
+      _lastSettingsStr = cloudStr;
+      localStorage.setItem('dashboard:settings:v1', cloudStr);
+      if (typeof window.applyDashSettings === 'function') window.applyDashSettings(cloud);
+    } catch (e) {}
+  }
   async function pullWaterFromCloud() {
     try {
       if (!window.supabase) return;
@@ -1584,7 +1613,7 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
   // Force a fresh pull + re-render (used when returning to the tab): reset the
   // change marker so the next pull always re-applies, even if a background poll
   // already advanced the marker without the DOM visibly updating.
-  function forceWaterSync() { try { _lastWaterRemoteAt = -1; render(); pullWaterFromCloud(); } catch (e) {} }
+  function forceWaterSync() { try { _lastWaterRemoteAt = -1; render(); pullWaterFromCloud(); pullSettingsFromCloud(); } catch (e) {} }
 
   // Self-contained live-sync wiring so no unrelated boot error can disable it.
   let _waterLiveOn = false;
@@ -1596,6 +1625,8 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
       window.addEventListener('pageshow', forceWaterSync);
       document.addEventListener('visibilitychange', () => { if (!document.hidden) forceWaterSync(); });
       setInterval(pullWaterFromCloud, 4000); // poll every 4s so the pill updates on its own
+      setInterval(pullSettingsFromCloud, 12000); // pull theme/skin changes from other devices
+      pullSettingsFromCloud();
     } catch (e) {}
   }
 
