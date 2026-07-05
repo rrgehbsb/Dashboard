@@ -3874,6 +3874,7 @@ img, video, canvas, svg { max-width: 100%; }
   async function pcPushNow() {
     pcPushTimer = null;
     if(!pcSupa) return;
+    try{ await pcSupa.auth.getSession(); }catch(e){} // refresh token so a stale client's write doesn't silently fail
     // Merge with cloud first so another device's keys are never wiped.
     let cloud={};
     try{ const {data:row}=await pcSupa.from('app_state').select('data').eq('key',APP_KEY).maybeSingle(); if(row&&row.data&&typeof row.data==='object') cloud=row.data; }catch(e){}
@@ -3933,6 +3934,7 @@ img, video, canvas, svg { max-width: 100%; }
   setInterval(async () => {
     if(!pcSupa || pcPushTimer) return;
     try {
+      try{ await pcSupa.auth.getSession(); }catch(e){} // refresh token so a stale client doesn't silently return nothing
       const { data } = await pcSupa.from('app_state').select('data').eq('key', APP_KEY).maybeSingle();
       if(!data || !data.data) return;
       const remoteAt = data.data._pushAt || 0;
@@ -3947,6 +3949,7 @@ img, video, canvas, svg { max-width: 100%; }
     if(document.hidden) { pcFlushPushOnUnload(); return; }
     if(!pcSupa) return;
     try {
+      try{ await pcSupa.auth.getSession(); }catch(e){} // refresh token so a stale client doesn't silently return nothing
       const { data } = await pcSupa.from('app_state').select('data').eq('key', APP_KEY).maybeSingle();
       if(!data || !data.data) return;
       const remoteAt = data.data._pushAt || 0;
