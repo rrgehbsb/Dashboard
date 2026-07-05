@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.5.10';
+const DASHBOARD_VERSION = '2.5.11';
 
 // =============================================================
 // THEME STYLES ("skins") — single source of truth.
@@ -1517,8 +1517,11 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
     if (!window.supabase || !TOPBAR_SUPABASE_URL || !TOPBAR_SUPABASE_KEY) return;
     if (TOPBAR_SUPABASE_URL.indexOf('PASTE-') === 0) return;
     try {
-      const supa = window.supabase.createClient(TOPBAR_SUPABASE_URL, TOPBAR_SUPABASE_KEY);
-      const _wUid = localStorage.getItem('_dashUid');
+      if (!_waterSb) _waterSb = window.supabase.createClient(TOPBAR_SUPABASE_URL, TOPBAR_SUPABASE_KEY);
+      const supa = _waterSb; // reuse one client to avoid extra auth instances
+      let _wUid = null;
+      try { const { data: { session } } = await supa.auth.getSession(); _wUid = session && session.user && session.user.id; } catch (e) {}
+      if (!_wUid) _wUid = localStorage.getItem('_dashUid');
       const _wKey = _wUid ? _wUid + ':health' : 'health';
       const { data } = await supa
         .from('app_state').select('data').eq('key', _wKey).maybeSingle();
@@ -1547,10 +1550,17 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
       const pill = document.getElementById('topbarWater');
       if (!pill) return; // pill only exists on the home page — nothing to update elsewhere
       if (Date.now() - _waterLocalAt < 4000) return; // let our own just-tapped water push land first
-      const uid = localStorage.getItem('_dashUid');
-      if (!uid) return;
       if (!_waterSb) _waterSb = window.supabase.createClient(TOPBAR_SUPABASE_URL, TOPBAR_SUPABASE_KEY);
-      const { data } = await _waterSb.from('app_state').select('data').eq('key', uid + ':health').maybeSingle();
+      // Ensure a fresh, valid session before querying. With multiple auth clients
+      // a cached client's token can go stale and make the query silently return
+      // nothing (the app fails while a fresh console read works). getSession()
+      // reloads/refreshes the token; on error we drop the client so it rebuilds.
+      let uid = null;
+      try { const { data: { session } } = await _waterSb.auth.getSession(); uid = session && session.user && session.user.id; } catch (e) {}
+      if (!uid) uid = localStorage.getItem('_dashUid');
+      if (!uid) return;
+      const { data, error } = await _waterSb.from('app_state').select('data').eq('key', uid + ':health').maybeSingle();
+      if (error) { _waterSb = null; return; }
       if (!data || !data.data) return;
       const remoteAt = data.data._pushAt || 0;
       if (remoteAt === _lastWaterRemoteAt) return; // nothing changed in the cloud since last check
