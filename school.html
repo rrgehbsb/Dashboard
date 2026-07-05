@@ -1847,6 +1847,7 @@ document.addEventListener('DOMContentLoaded',scRenderAll);
 
   async function doPush(){
     pushTimer=null;if(!_sb) return;
+    try{ await _sb.auth.getSession(); }catch(e){} // refresh token so a stale client's write doesn't silently fail
     let cloud={};
     try{ const {data:row}=await _sb.from('app_state').select('data').eq('key',APP_KEY).maybeSingle(); if(row&&row.data&&typeof row.data==='object') cloud=row.data; }catch(e){}
     const data=Object.assign({},cloud);
@@ -1901,6 +1902,7 @@ document.addEventListener('DOMContentLoaded',scRenderAll);
   document.addEventListener('visibilitychange',async()=>{
     if(document.visibilityState==='hidden'){flush();return;}
     try{
+      try{ await _sb.auth.getSession(); }catch(e){} // refresh token so a stale client doesn't silently return nothing
       const{data:row}=await _sb.from('app_state').select('data').eq('key',APP_KEY).maybeSingle();
       if(!row||!row.data) return;
       const remoteAt=row.data._pushAt||0;
@@ -1915,6 +1917,7 @@ document.addEventListener('DOMContentLoaded',scRenderAll);
   setInterval(async()=>{
     if(!_sb||pushTimer) return;
     try{
+      try{ await _sb.auth.getSession(); }catch(e){} // refresh token so a stale client doesn't silently return nothing
       const{data:row}=await _sb.from('app_state').select('data').eq('key',APP_KEY).maybeSingle();
       if(!row||!row.data) return;
       const remoteAt=row.data._pushAt||0;

@@ -608,6 +608,7 @@ function applyRemote(data) {
 
 async function doPush() {
   pushTimer = null;
+  try{ await client().auth.getSession(); }catch(e){} // refresh token so a stale client's write doesn't silently fail
   // Merge with cloud first so another device's keys are never wiped.
   let cloud={};
   try{ const {data:row}=await client().from('app_state').select('data').eq('key',APP_KEY).maybeSingle(); if(row&&row.data&&typeof row.data==='object') cloud=row.data; }catch(e){}
@@ -676,6 +677,7 @@ document.addEventListener('visibilitychange', async () => {
   if (document.visibilityState === 'hidden') { flushWithKeepalive(); return; }
   // pull on focus
   try {
+    try{ await client().auth.getSession(); }catch(e){} // refresh token so a stale client doesn't silently return nothing
     const {data: row} = await client().from('app_state').select('data').eq('key', APP_KEY).maybeSingle();
     if (!row || !row.data) return;
     const remoteAt = row.data._pushAt || 0;
@@ -688,6 +690,7 @@ document.addEventListener('visibilitychange', async () => {
 setInterval(async () => {
   if (!_sb || pushTimer) return;
   try {
+    try{ await client().auth.getSession(); }catch(e){} // refresh token so a stale client doesn't silently return nothing
     const {data: row} = await client().from('app_state').select('data').eq('key', APP_KEY).maybeSingle();
     if (!row || !row.data) return;
     const remoteAt = row.data._pushAt || 0;
