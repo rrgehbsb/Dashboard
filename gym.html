@@ -3877,14 +3877,14 @@ img, video, canvas, svg { max-width: 100%; }
 
   function pcSchedulePush() {
     pcHasPendingPush = true;
-    if(!pcSyncReady) return; // defer until init finishes so we never push stale defaults
+    if(!pcSyncReady) { try{ if(!window.__pd){window.__pd=1;alert('GYM: save waiting — sync not ready yet');} }catch(_){} return; } // defer until init finishes so we never push stale defaults
     clearTimeout(pcPushTimer);
     pcPushTimer = setTimeout(pcPushNow, 500);
   }
 
   async function pcPushNow() {
     pcPushTimer = null;
-    if(!pcSupa) return;
+    if(!pcSupa) { try{alert('GYM: no connection');}catch(_){} return; }
     try{ await pcSupa.auth.getSession(); }catch(e){} // refresh token so a stale client's write doesn't silently fail
     // Merge with cloud first so another device's keys are never wiped.
     let cloud={};
@@ -3895,8 +3895,8 @@ img, video, canvas, svg { max-width: 100%; }
     const pushAt = Date.now(); data._pushAt = pushAt;
     try {
       const { error } = await pcSupa.from('app_state').upsert({ key: APP_KEY, data, updated_at: new Date().toISOString() }, { onConflict: 'key' });
-      if(!error) { pcLastRemoteAt = pushAt; _gymOwnPush = pushAt; pcHasPendingPush = false; }
-      else setTimeout(pcSchedulePush, 5000);
+      if(!error) { pcLastRemoteAt = pushAt; _gymOwnPush = pushAt; pcHasPendingPush = false; try{ if(!window.__pok){window.__pok=1;alert('GYM: saved to cloud ✓\nkey: '+APP_KEY);} }catch(_){} }
+      else { try{alert('GYM SAVE FAILED:\n'+JSON.stringify(error).slice(0,200));}catch(_){}; setTimeout(pcSchedulePush, 5000); }
     } catch(_) { setTimeout(pcSchedulePush, 5000); }
   }
 
