@@ -1541,6 +1541,7 @@ img, video, canvas, svg { max-width: 100%; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>(function(){var s=window.supabase;if(s&&s.createClient&&!s.__oneClient){s.__oneClient=true;var o=s.createClient.bind(s),c={};s.createClient=function(u,k,op){var q=String(u)+"|"+String(k);return c[q]||(c[q]=o(u,k,op));};}})();</script>
+<script>window.addEventListener('error',function(e){try{if(window.__ge)return;window.__ge=1;var f=(e.filename||'').split('/').pop();alert('GYM LOAD ERROR:\n'+(e.message||e.error||'?')+'\nat '+f+' line '+e.lineno);}catch(_){}}, true);</script>
 <script src="topbar.js" defer></script>
 </head>
 <body>
