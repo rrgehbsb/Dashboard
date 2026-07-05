@@ -3847,6 +3847,7 @@ img, video, canvas, svg { max-width: 100%; }
   };
 
   let pcSupa = null, pcPushTimer = null, pcLastRemoteAt = 0, pcHasPendingPush = false, pcSyncReady = false;
+  let _gymOwnPush = 0; // _pushAt of our own last push, so the watcher below ignores it
 
   function pcRerender() {
     try { state = loadState(); } catch {}
@@ -3893,7 +3894,7 @@ img, video, canvas, svg { max-width: 100%; }
     const pushAt = Date.now(); data._pushAt = pushAt;
     try {
       const { error } = await pcSupa.from('app_state').upsert({ key: APP_KEY, data, updated_at: new Date().toISOString() }, { onConflict: 'key' });
-      if(!error) { pcLastRemoteAt = pushAt; pcHasPendingPush = false; }
+      if(!error) { pcLastRemoteAt = pushAt; _gymOwnPush = pushAt; pcHasPendingPush = false; }
       else setTimeout(pcSchedulePush, 5000);
     } catch(_) { setTimeout(pcSchedulePush, 5000); }
   }
@@ -3955,6 +3956,31 @@ img, video, canvas, svg { max-width: 100%; }
       if(remoteAt === pcLastRemoteAt) return;
       pcLastRemoteAt = remoteAt; pcApplyRemote(data.data); pcLiveRefresh();
     } catch(_) {}
+  }, 5000);
+
+  // ── Independent live watcher ────────────────────────────────────────────
+  // The normal re-render can be stubborn, so this stands alone: it just watches
+  // the cloud row's _pushAt and reloads the page the moment ANOTHER device
+  // changes gym data (workouts, exercises, weight). Not gated by pushTimer, so
+  // it can't get stuck. Ignores our own pushes and pauses while you're typing.
+  let _watchSeen = null;
+  setInterval(async () => {
+    try {
+      if(!window.supabase) return;
+      if(!pcSupa) pcSupa = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      let uid = null;
+      try { const { data:{ session } } = await pcSupa.auth.getSession(); uid = session && session.user && session.user.id; } catch(e) {}
+      if(!uid) return;
+      const { data } = await pcSupa.from('app_state').select('data').eq('key', uid + ':po-coach').maybeSingle();
+      const pa = data && data.data && data.data._pushAt;
+      if(!pa) return;
+      if(_watchSeen === null) { _watchSeen = pa; return; }        // first look — just record
+      if(pa !== _watchSeen && pa !== _gymOwnPush) {               // a change from another device
+        _watchSeen = pa;
+        const editing = document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement.tagName)||'');
+        if(!editing) { try { location.reload(); } catch(e) {} }
+      } else { _watchSeen = pa; }
+    } catch(e) {}
   }, 5000);
 
   window.addEventListener('pagehide', pcFlushPushOnUnload);
