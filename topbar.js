@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.5.5';
+const DASHBOARD_VERSION = '2.5.6';
 
 // =============================================================
 // THEME STYLES ("skins") — single source of truth.
@@ -1531,6 +1531,26 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
       );
     } catch (e) {}
   }
+  // Pull the latest water from the cloud so the home pill reflects logs made
+  // on other devices (phone → PC). The pill only pushed before, never pulled.
+  async function pullWaterFromCloud() {
+    try {
+      if (!window.supabase) return;
+      if (currentPageKey() === 'health') return; // health page runs its own full sync
+      const uid = localStorage.getItem('_dashUid');
+      if (!uid) return;
+      const supa = window.supabase.createClient(TOPBAR_SUPABASE_URL, TOPBAR_SUPABASE_KEY);
+      const { data } = await supa.from('app_state').select('data').eq('key', uid + ':health').maybeSingle();
+      const cloudWater = data && data.data && data.data['po_water_v1'];
+      if (!cloudWater) return;
+      let local = null; try { local = JSON.parse(localStorage.getItem('po_water_v1')); } catch (e) {}
+      if (!local || (cloudWater._ts || 0) > (local._ts || 0)) {
+        localStorage.setItem('po_water_v1', JSON.stringify(cloudWater));
+        render();
+      }
+    } catch (e) {}
+  }
+
   function addWater() {
     let state = null;
     // On health.html ONLY, use the shared sync store so the change goes through
@@ -2651,13 +2671,14 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
     const btn = document.getElementById('topbarWaterAdd');
     if (btn) btn.addEventListener('click', (e) => { e.preventDefault(); addWater(); });
     render();
+    pullWaterFromCloud();
     lockGestures();
     startModalLock();
     window.addEventListener('storage', render);
-    window.addEventListener('focus', render);
+    window.addEventListener('focus', () => { render(); pullWaterFromCloud(); });
     window.addEventListener('health-synced', render);
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) render(); });
-    setInterval(render, 30 * 1000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) { render(); pullWaterFromCloud(); } });
+    setInterval(() => { render(); pullWaterFromCloud(); }, 30 * 1000);
     // Presence heartbeat — keeps your profile's updated_at fresh so friends see
     // you as "online". Cheap: one profile update every ~2 min while visible.
     setInterval(() => { if (!document.hidden) scheduleProfileSync(); }, 120 * 1000);
