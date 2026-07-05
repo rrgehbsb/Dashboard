@@ -2105,6 +2105,7 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catc
     wState._ts = Date.now();
     window._dbH[W_LS] = wState;
     try { localStorage.setItem(W_LS, JSON.stringify(wState)); } catch (e) {} // durable copy shared with the home pill
+    if (typeof window.dashWaterTouched === 'function') window.dashWaterTouched(); // pause the topbar water pull briefly so it doesn't clobber this
     window._dbHSchedulePush();
   }
   let wState = loadState();

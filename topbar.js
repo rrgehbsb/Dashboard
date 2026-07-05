@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.5.13';
+const DASHBOARD_VERSION = '2.5.14';
 
 // =============================================================
 // THEME STYLES ("skins") — single source of truth.
@@ -1543,13 +1543,16 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
   let _waterSb = null;
   let _lastWaterRemoteAt = -1;
   let _waterLocalAt = 0;
+  // Let the health page mark a just-logged local change so the pull below doesn't
+  // clobber it before it's pushed.
+  window.dashWaterTouched = function () { _waterLocalAt = Date.now(); };
   async function pullWaterFromCloud() {
     try {
       if (!window.supabase) return;
-      if (currentPageKey() === 'health') return; // health page runs its own full sync
+      const onHealth = currentPageKey() === 'health';
       const pill = document.getElementById('topbarWater');
-      if (!pill) return; // pill only exists on the home page — nothing to update elsewhere
-      if (Date.now() - _waterLocalAt < 4000) return; // let our own just-tapped water push land first
+      if (!pill && !onHealth) return; // only run where water is shown (home pill or health page)
+      if (Date.now() - _waterLocalAt < 4000) return; // let our own just-logged water push land first
       if (!_waterSb) _waterSb = window.supabase.createClient(TOPBAR_SUPABASE_URL, TOPBAR_SUPABASE_KEY);
       // Ensure a fresh, valid session before querying. With multiple auth clients
       // a cached client's token can go stale and make the query silently return
@@ -1568,7 +1571,13 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
       const cloudWater = data.data['po_water_v1'];
       if (!cloudWater) return;
       localStorage.setItem('po_water_v1', JSON.stringify(cloudWater));
-      render();
+      if (onHealth && window._dbH) {
+        // Drive the health page's water tracker with this proven mechanism.
+        window._dbH['po_water_v1'] = cloudWater;
+        try { if (typeof window.wRenderAll === 'function') window.wRenderAll(); } catch (e) {}
+      } else {
+        render();
+      }
     } catch (e) {}
   }
 
