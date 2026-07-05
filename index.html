@@ -1946,6 +1946,7 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
   async function doPush(){
     pushTimer=null;
     try{
+      try{ await client().auth.getSession(); }catch(e){} // refresh token so a stale client's write doesn't silently fail
       // Merge with the current cloud row FIRST so a stale local copy can't erase
       // keys another device added. (Was a blind overwrite = cross-device data loss.)
       let cloud={};
@@ -2036,6 +2037,7 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
   document.addEventListener('visibilitychange',async()=>{
     if(document.visibilityState==='hidden'){flushWithKeepalive();return;}
     try{
+      try{ await client().auth.getSession(); }catch(e){} // refresh token so a stale client doesn't silently return nothing
       const{data:row}=await client().from('app_state').select('data').eq('key',APP_KEY).maybeSingle();
       if(!row||!row.data) return;
       const remoteAt=row.data._pushAt||0;
@@ -2052,6 +2054,7 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
   setInterval(async()=>{
     if(!_sb||pushTimer) return;
     try{
+      try{ await client().auth.getSession(); }catch(e){} // refresh token so a stale client doesn't silently return nothing
       const{data:row}=await client().from('app_state').select('data').eq('key',APP_KEY).maybeSingle();
       if(!row||!row.data) return;
       const remoteAt=row.data._pushAt||0;
