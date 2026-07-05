@@ -2085,12 +2085,12 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catc
     return s;
   }
   function loadState() {
-    // Pick the newest of the synced store and the durable localStorage copy
-    // (the home pill writes the same 'po_water_v1' key) so a reload never loses it.
-    const a = window._dbH[W_LS];
-    let b = null; try { b = JSON.parse(localStorage.getItem(W_LS)); } catch (e) {}
-    let src = a;
-    if (b && (!a || (b._ts || 0) > (a._ts || 0))) src = b;
+    // The synced store (_dbH) is authoritative on the health page — it's what the
+    // 5s cloud poll updates, so prefer it for live cross-device updates. Fall back
+    // to the durable localStorage copy (shared with the home pill) only when _dbH
+    // has nothing yet (e.g. water was logged from the home pill before this loads).
+    let src = window._dbH[W_LS];
+    if (!src) { try { src = JSON.parse(localStorage.getItem(W_LS)); } catch (e) {} }
     return norm(src ? JSON.parse(JSON.stringify(src)) : {});
   }
   function saveState() {
