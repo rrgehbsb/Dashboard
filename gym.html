@@ -1541,12 +1541,6 @@ img, video, canvas, svg { max-width: 100%; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>(function(){var s=window.supabase;if(s&&s.createClient&&!s.__oneClient){s.__oneClient=true;var o=s.createClient.bind(s),c={};s.createClient=function(u,k,op){var q=String(u)+"|"+String(k);return c[q]||(c[q]=o(u,k,op));};}})();</script>
-<script>
-window.__gymDebug=function(m){try{var d=document.getElementById('__gymdbg');if(!d){d=document.createElement('div');d.id='__gymdbg';d.style.cssText='position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#c00;color:#fff;font:12px/1.4 monospace;padding:8px;white-space:pre-wrap;max-height:55vh;overflow:auto';d.addEventListener('click',function(){d.style.display='none';});(document.body||document.documentElement).appendChild(d);}d.textContent=(new Date().toLocaleTimeString())+'  '+m+'\n'+d.textContent;}catch(_){}};
-window.addEventListener('error',function(e){window.__gymDebug('ERR: '+(e.message||'?')+' @'+((e.filename||'').split('/').pop())+':'+e.lineno);},true);
-window.addEventListener('unhandledrejection',function(e){var r=e.reason;window.__gymDebug('ASYNC ERR: '+((r&&(r.message||r.msg))||JSON.stringify(r)));});
-document.addEventListener('DOMContentLoaded',function(){window.__gymDebug('debug banner ON (v2.5.31) — tap to hide');});
-</script>
 <script src="topbar.js" defer></script>
 </head>
 <body>
@@ -2129,8 +2123,8 @@ document.addEventListener('DOMContentLoaded',function(){window.__gymDebug('debug
     s.days  = (Array.isArray(s.days)  && s.days.length)  ? s.days  : CONFIG.days.slice();
     s.exercises = Array.isArray(s.exercises) ? s.exercises : buildDefaultExercises();
     s.logs = (s.logs && typeof s.logs === 'object') ? s.logs : {};
-    s.filterGym = s.filterGym || s.gyms[0].id;
-    s.filterDay = s.filterDay || s.days[0].id;
+    s.filterGym = s.filterGym || (s.gyms[0] ? s.gyms[0].id : null);
+    s.filterDay = s.filterDay || (s.days[0] ? s.days[0].id : null);
     // Split rotation lives in state so the user can edit it via the pill modal.
     // Stored as a plain array of names (e.g. ["Push", "Pull", "Legs", "Rest"]).
     if (!Array.isArray(s.splitRotation) || !s.splitRotation.length) {
@@ -3882,7 +3876,6 @@ document.addEventListener('DOMContentLoaded',function(){window.__gymDebug('debug
 
   function pcSchedulePush() {
     pcHasPendingPush = true;
-    try{ window.__gymDebug&&window.__gymDebug('save triggered (syncReady='+pcSyncReady+')'); }catch(_){}
     if(!pcSyncReady) { return; } // defer until init finishes so we never push stale defaults
     clearTimeout(pcPushTimer);
     pcPushTimer = setTimeout(pcPushNow, 500);
@@ -3890,7 +3883,7 @@ document.addEventListener('DOMContentLoaded',function(){window.__gymDebug('debug
 
   async function pcPushNow() {
     pcPushTimer = null;
-    if(!pcSupa) { try{ window.__gymDebug&&window.__gymDebug('push: NO CLIENT'); }catch(_){} return; }
+    if(!pcSupa) { return; }
     try{ await pcSupa.auth.getSession(); }catch(e){} // refresh token so a stale client's write doesn't silently fail
     // Merge with cloud first so another device's keys are never wiped.
     let cloud={};
@@ -3901,8 +3894,8 @@ document.addEventListener('DOMContentLoaded',function(){window.__gymDebug('debug
     const pushAt = Date.now(); data._pushAt = pushAt;
     try {
       const { error } = await pcSupa.from('app_state').upsert({ key: APP_KEY, data, updated_at: new Date().toISOString() }, { onConflict: 'key' });
-      if(!error) { pcLastRemoteAt = pushAt; _gymOwnPush = pushAt; pcHasPendingPush = false; try{ window.__gymDebug&&window.__gymDebug('SAVED to cloud OK  key='+APP_KEY); }catch(_){} }
-      else { try{ window.__gymDebug&&window.__gymDebug('SAVE FAILED: '+JSON.stringify(error).slice(0,180)); }catch(_){}; setTimeout(pcSchedulePush, 5000); }
+      if(!error) { pcLastRemoteAt = pushAt; _gymOwnPush = pushAt; pcHasPendingPush = false; }
+      else { setTimeout(pcSchedulePush, 5000); }
     } catch(_) { setTimeout(pcSchedulePush, 5000); }
   }
 
