@@ -652,6 +652,37 @@
     </div>
   </div>
 
+  <!-- PAGES & KIDS MODE -->
+  <style>
+    .pm-toggle{width:46px;height:27px;border-radius:14px;background:rgba(255,255,255,0.16);position:relative;flex-shrink:0;transition:background .18s;cursor:pointer;}
+    .pm-toggle::after{content:'';position:absolute;top:3px;left:3px;width:21px;height:21px;border-radius:50%;background:#fff;transition:transform .18s;}
+    .pm-toggle.on{background:var(--accent);}
+    .pm-toggle.on::after{transform:translateX(19px);}
+    .pm-toggle.locked{opacity:0.4;cursor:default;}
+    .pm-row{display:flex;align-items:center;gap:12px;padding:11px 0;}
+    .pm-row + .pm-row{border-top:1px solid rgba(255,255,255,0.06);}
+    .pm-emoji{font-size:22px;width:28px;text-align:center;}
+    .pm-name{flex:1;font-size:15px;font-weight:600;}
+    .pm-name small{display:block;font-size:11.5px;font-weight:500;color:var(--s-text2,rgba(255,255,255,0.4));margin-top:1px;}
+  </style>
+  <div class="st-group">
+    <div class="st-group-label">Pages &amp; Kids Mode</div>
+    <div class="st-body">
+      <div class="st-row" onclick="location.href='onboarding.html'" style="cursor:pointer">
+        <div class="st-row-icon">✨</div>
+        <div class="st-row-label">Run setup tour</div>
+        <span style="color:var(--accent);font-size:18px;font-weight:700">→</span>
+      </div>
+      <div class="st-row" id="kidModeRow" style="cursor:pointer">
+        <div class="st-row-icon">🧸</div>
+        <div class="st-row-label">Simplify (Kids Mode)</div>
+        <div class="pm-toggle" id="kidModeToggle"></div>
+      </div>
+      <div id="pagesModeBody" style="padding:2px 14px 6px"></div>
+    </div>
+    <div class="nav-note" style="border-top:none;padding-top:8px">👁️ Turn sections on or off — hidden pages leave the nav and can't be opened. Kids Mode also hides Finance, Projects &amp; Trends.</div>
+  </div>
+
   <!-- DATA -->
   <div class="st-group">
     <div class="st-group-label">Data</div>
@@ -1200,6 +1231,77 @@ document.getElementById('exportRow').addEventListener('click', exportData);
 
 // Pull cloud settings on load
 document.addEventListener('DOMContentLoaded', loadFromCloud);
+</script>
+
+<script>
+// ── Pages & Kids Mode ─────────────────────────────────────────
+(function(){
+  const PM_PAGES = [
+    { key:'health',    emoji:'💊', name:'Health',    desc:'Water, sleep, supplements, weight', pinned:true },
+    { key:'fitness',   emoji:'💪', name:'Fitness',   desc:'Workouts & progress' },
+    { key:'school',    emoji:'📚', name:'School',    desc:'Timetable, grades, assignments' },
+    { key:'habits',    emoji:'🔥', name:'Habits',    desc:'Daily habit streaks' },
+    { key:'transport', emoji:'🚌', name:'Transport', desc:'Bus times & commute' },
+    { key:'friends',   emoji:'👥', name:'Friends',   desc:'Social & leaderboard' },
+    { key:'projects',  emoji:'🗂️', name:'Projects',  desc:'Tasks & project tracker' },
+    { key:'finance',   emoji:'📊', name:'Finance',   desc:'Money, budget, net worth' },
+    { key:'trends',    emoji:'📈', name:'Trends',    desc:'Analytics & summaries' },
+  ];
+  const KID_HIDDEN = ['finance','projects','trends'];
+  function isOn(s, key){ return !(s.pages && s.pages[key] === false); }
+  function applyLive(s){
+    try{ if(window.applyDashSettings) window.applyDashSettings(s); }catch(e){}
+    try{ if(window.dashRebuildNav) window.dashRebuildNav(); }catch(e){}
+    try{ const fb=document.getElementById('topbarFinance'); if(fb && s.pages && s.pages.finance===false) fb.remove(); }catch(e){}
+  }
+  function render(){
+    const s = load();
+    const kid = s.mode === 'kid';
+    const kt = document.getElementById('kidModeToggle');
+    if(kt) kt.classList.toggle('on', kid);
+    const body = document.getElementById('pagesModeBody');
+    if(!body) return;
+    body.innerHTML = PM_PAGES.map(p=>{
+      const kidHidden = kid && KID_HIDDEN.indexOf(p.key)!==-1;
+      const on = p.pinned ? true : (kidHidden ? false : isOn(s,p.key));
+      const locked = p.pinned || kidHidden;
+      const sub = p.pinned ? 'Always on' : (kidHidden ? 'Hidden in Kids Mode' : p.desc);
+      return '<div class="pm-row" data-key="'+p.key+'">'
+        + '<span class="pm-emoji">'+p.emoji+'</span>'
+        + '<span class="pm-name">'+p.name+'<small>'+sub+'</small></span>'
+        + '<span class="pm-toggle '+(on?'on':'')+' '+(locked?'locked':'')+'"></span>'
+        + '</div>';
+    }).join('');
+    body.querySelectorAll('.pm-row').forEach(row=>{
+      const key = row.dataset.key;
+      const p = PM_PAGES.find(x=>x.key===key);
+      const kidHidden = kid && KID_HIDDEN.indexOf(key)!==-1;
+      if(p.pinned || kidHidden) return; // locked — no toggle
+      row.querySelector('.pm-toggle').addEventListener('click', ()=>{
+        const st = load();
+        st.pages = st.pages || {};
+        st.pages[key] = !isOn(st, key); // flip visibility
+        save(st);
+        applyLive(st);
+        render();
+      });
+    });
+  }
+  const kt = document.getElementById('kidModeToggle');
+  if(kt){
+    kt.addEventListener('click', ()=>{
+      const s = load();
+      s.mode = (s.mode === 'kid') ? 'adult' : 'kid';
+      s.pages = s.pages || {};
+      // Kids Mode force-hides the grown-up pages; turning it off restores them.
+      KID_HIDDEN.forEach(k=>{ s.pages[k] = (s.mode !== 'kid'); });
+      save(s);
+      applyLive(s);
+      render();
+    });
+  }
+  render();
+})();
 </script>
 </body>
 </html>

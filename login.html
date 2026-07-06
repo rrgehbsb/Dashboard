@@ -18,9 +18,15 @@
       justify-content: center;
       padding: 24px 16px;
     }
+    body::before {
+      content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background: radial-gradient(70% 55% at 50% -10%, rgba(167,139,250,0.18), transparent 60%);
+    }
     .wrap {
       width: 100%;
       max-width: 380px;
+      position: relative;
+      z-index: 1;
     }
     .logo {
       text-align: center;
@@ -293,6 +299,24 @@ async function afterLogin(userId, isNewUser = false) {
     await migrateIfNeeded(userId);
   }
   await cleanupOldKeys();
+  if (isNewUser) {
+    // Brand-new account → run the setup wizard (pick pages / kids mode).
+    setLoading(true, 'Setting things up…');
+    window.location.href = 'onboarding.html';
+    return;
+  }
+  // Returning sign-in: if the account was never set up (e.g. a confirmed-email
+  // signup that skipped the isNewUser path), run the wizard once. Existing
+  // users — whose settings are already populated — go straight in.
+  try {
+    const { data } = await sb.from('app_state').select('data').eq('key', userId + ':settings').maybeSingle();
+    const st = data && data.data;
+    if (!st || (typeof st === 'object' && Object.keys(st).length === 0)) {
+      setLoading(true, 'Setting things up…');
+      window.location.href = 'onboarding.html';
+      return;
+    }
+  } catch (e) {}
   setLoading(true, 'Loading dashboard…');
   window.location.href = 'index.html';
 }

@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Set up — Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>(function(){var s=window.supabase;if(s&&s.createClient&&!s.__oneClient){s.__oneClient=true;var o=s.createClient.bind(s),c={};s.createClient=function(u,k,op){var q=String(u)+"|"+String(k);return c[q]||(c[q]=o(u,k,op));};}})();</script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --ac: #a78bfa;
+      --bg: #07070c;
+      --ink: #f4f5fb;
+      --ink-dim: rgba(244,245,251,0.5);
+      --ink-faint: rgba(244,245,251,0.32);
+      --card: rgba(255,255,255,0.045);
+      --line: rgba(255,255,255,0.09);
+      --mono: ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    }
+    :root.lite {
+      --bg: #eef0f6; --ink: #14151c; --ink-dim: rgba(20,21,28,0.55);
+      --ink-faint: rgba(20,21,28,0.4); --card: rgba(255,255,255,0.7); --line: rgba(0,0,0,0.09);
+    }
+    html, body { height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+      background: var(--bg); color: var(--ink); overflow: hidden;
+      transition: background .5s ease, color .3s ease;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Animated background ── */
+    .bg { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+    .orb { position: absolute; border-radius: 50%; filter: blur(60px); opacity: 0.55;
+      mix-blend-mode: screen; animation: float 18s ease-in-out infinite; }
+    :root.lite .orb { mix-blend-mode: multiply; opacity: 0.4; }
+    .orb.a { width: 46vmax; height: 46vmax; left: -12vmax; top: -14vmax;
+      background: radial-gradient(circle, var(--ac), transparent 65%); }
+    .orb.b { width: 40vmax; height: 40vmax; right: -12vmax; top: 20vmax;
+      background: radial-gradient(circle, #3ba6ff, transparent 65%); animation-delay: -6s; }
+    .orb.c { width: 38vmax; height: 38vmax; left: 20vmax; bottom: -18vmax;
+      background: radial-gradient(circle, #ff5da2, transparent 65%); animation-delay: -11s; }
+    @keyframes float {
+      0%,100% { transform: translate(0,0) scale(1); }
+      33% { transform: translate(6vmax,4vmax) scale(1.12); }
+      66% { transform: translate(-5vmax,3vmax) scale(0.94); }
+    }
+    .grid { position: absolute; inset: -2px; opacity: 0.35;
+      background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+      background-size: 46px 46px; mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 30%, transparent 78%);
+      -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 30%, transparent 78%);
+      animation: gridpan 24s linear infinite; }
+    @keyframes gridpan { to { background-position: 46px 46px; } }
+
+    /* ── Layout ── */
+    .stage { position: relative; z-index: 1; min-height: 100dvh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; padding: 22px 16px calc(22px + env(safe-area-inset-bottom)); }
+    .shell { width: 100%; max-width: 520px; }
+
+    /* ── Progress rail ── */
+    .rail { display: flex; align-items: center; gap: 6px; justify-content: center; margin-bottom: 20px; opacity: 0; height: 0; overflow: hidden; transition: opacity .4s; }
+    .rail.show { opacity: 1; height: auto; }
+    .rail-node { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+    .rail-dot { width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--line);
+      display: grid; place-items: center; font-size: 11px; font-weight: 800; color: var(--ink-faint);
+      font-family: var(--mono); transition: all .3s; background: var(--card); }
+    .rail-node.done .rail-dot { border-color: var(--ac); color: var(--ac); }
+    .rail-node.active .rail-dot { border-color: var(--ac); color: #fff; background: var(--ac);
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--ac) 22%, transparent); }
+    .rail-line { width: 26px; height: 2px; border-radius: 2px; background: var(--line); transition: background .3s; }
+    .rail-node.done + .rail-line { background: var(--ac); }
+    @media (max-width: 420px){ .rail-line { width: 16px; } }
+
+    /* ── Deck / card ── */
+    .deck { position: relative; }
+    .slide { display: none; }
+    .slide.on { display: block; animation: slidein .5s cubic-bezier(.22,1,.36,1); }
+    @keyframes slidein { from { opacity: 0; transform: translateY(16px) scale(.985); } to { opacity: 1; transform: none; } }
+
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 26px;
+      padding: 30px 24px 26px; backdrop-filter: blur(26px); -webkit-backdrop-filter: blur(26px);
+      box-shadow: 0 30px 80px -30px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06);
+      position: relative; overflow: hidden; }
+    .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--ac), transparent); opacity: .7; }
+
+    .eyebrow { font-family: var(--mono); font-size: 10.5px; letter-spacing: .22em; text-transform: uppercase;
+      color: var(--ac); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .eyebrow::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--ac), transparent); opacity: .5; }
+    h1 { font-size: 27px; font-weight: 850; letter-spacing: -0.02em; line-height: 1.12; }
+    h1 .hl { color: var(--ac); }
+    .lede { font-size: 14.5px; color: var(--ink-dim); line-height: 1.55; margin-top: 10px; }
+
+    .reveal > * { opacity: 0; animation: rise .55s cubic-bezier(.22,1,.36,1) forwards; }
+    .reveal > *:nth-child(1){ animation-delay: .05s; }
+    .reveal > *:nth-child(2){ animation-delay: .13s; }
+    .reveal > *:nth-child(3){ animation-delay: .21s; }
+    .reveal > *:nth-child(4){ animation-delay: .29s; }
+    .reveal > *:nth-child(5){ animation-delay: .37s; }
+    .reveal > *:nth-child(6){ animation-delay: .45s; }
+    @keyframes rise { to { opacity: 1; transform: none; } }
+    [style*="rise"], .reveal > * { transform: translateY(10px); }
+
+    /* chips */
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+    .chip { font-size: 12.5px; font-weight: 600; padding: 7px 12px; border-radius: 20px;
+      background: color-mix(in srgb, var(--ac) 12%, transparent); border: 1px solid color-mix(in srgb, var(--ac) 30%, transparent);
+      color: var(--ink); display: inline-flex; align-items: center; gap: 6px; }
+
+    /* fields */
+    .field { margin-top: 20px; }
+    .field label { display: block; font-size: 11px; font-weight: 700; letter-spacing: .05em;
+      text-transform: uppercase; color: var(--ink-faint); margin-bottom: 8px; }
+    .field input { width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--line);
+      border-radius: 13px; padding: 13px 15px; font-size: 16px; color: var(--ink); font-family: inherit; outline: none;
+      transition: border-color .15s, box-shadow .15s; -webkit-appearance: none; }
+    :root.lite .field input { background: rgba(255,255,255,0.6); }
+    .field input:focus { border-color: var(--ac); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ac) 16%, transparent); }
+
+    /* big option cards (intro) */
+    .opts { display: grid; gap: 13px; margin-top: 22px; }
+    .opt { display: flex; align-items: center; gap: 15px; text-align: left; cursor: pointer;
+      background: rgba(255,255,255,0.035); border: 1.5px solid var(--line); border-radius: 18px;
+      padding: 17px 17px; color: var(--ink); font-family: inherit;
+      transition: transform .12s, border-color .18s, background .18s; -webkit-tap-highlight-color: transparent; }
+    :root.lite .opt { background: rgba(255,255,255,0.55); }
+    .opt:hover { border-color: color-mix(in srgb, var(--ac) 55%, transparent); transform: translateY(-2px); }
+    .opt:active { transform: scale(.99); }
+    .opt-ic { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; font-size: 25px;
+      background: color-mix(in srgb, var(--ac) 15%, transparent); border: 1px solid color-mix(in srgb, var(--ac) 26%, transparent); flex-shrink: 0; }
+    .opt-tt { font-size: 16.5px; font-weight: 750; }
+    .opt-ds { font-size: 12.5px; color: var(--ink-dim); margin-top: 3px; line-height: 1.4; }
+    .opt-go { margin-left: auto; color: var(--ac); font-size: 22px; }
+
+    /* page picker */
+    .pgs { display: grid; gap: 9px; margin-top: 16px; max-height: 46dvh; overflow-y: auto; padding-right: 3px;
+      -webkit-overflow-scrolling: touch; }
+    .pgs::-webkit-scrollbar { width: 5px; } .pgs::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+    .pg { display: flex; align-items: center; gap: 13px; background: rgba(255,255,255,0.035);
+      border: 1px solid var(--line); border-radius: 15px; padding: 12px 14px; cursor: pointer;
+      transition: border-color .15s, background .15s, opacity .2s; -webkit-tap-highlight-color: transparent; }
+    :root.lite .pg { background: rgba(255,255,255,0.5); }
+    .pg.locked { cursor: default; opacity: .6; }
+    .pg.off { opacity: .5; }
+    .pg-ic { font-size: 23px; width: 30px; text-align: center; }
+    .pg-b { flex: 1; min-width: 0; }
+    .pg-n { font-size: 15px; font-weight: 650; }
+    .pg-n .tag { font-size: 10px; font-weight: 700; font-family: var(--mono); letter-spacing: .04em;
+      color: var(--ink-faint); margin-left: 6px; text-transform: uppercase; }
+    .pg-d { font-size: 12px; color: var(--ink-dim); margin-top: 1px; }
+    .sw { width: 46px; height: 27px; border-radius: 14px; background: rgba(255,255,255,0.16);
+      position: relative; flex-shrink: 0; transition: background .2s; }
+    .sw::after { content: ''; position: absolute; top: 3px; left: 3px; width: 21px; height: 21px; border-radius: 50%;
+      background: #fff; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+    .pg.on .sw, .sw.on { background: var(--ac); }
+    .pg.on .sw::after, .sw.on::after { transform: translateX(19px); }
+
+    /* simplify banner */
+    .simp { display: flex; align-items: center; gap: 13px; margin-top: 4px; margin-bottom: 4px;
+      background: color-mix(in srgb, var(--ac) 10%, transparent); border: 1px solid color-mix(in srgb, var(--ac) 26%, transparent);
+      border-radius: 16px; padding: 13px 15px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .simp-b { flex: 1; }
+    .simp-n { font-size: 14.5px; font-weight: 750; }
+    .simp-d { font-size: 12px; color: var(--ink-dim); margin-top: 2px; line-height: 1.4; }
+
+    /* design */
+    .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+    .seg button { padding: 15px; border-radius: 15px; border: 1.5px solid var(--line); background: rgba(255,255,255,0.035);
+      color: var(--ink); font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+      transition: all .16s; -webkit-tap-highlight-color: transparent; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .seg button.sel { border-color: var(--ac); background: color-mix(in srgb, var(--ac) 14%, transparent); }
+    .swatches { display: flex; flex-wrap: wrap; gap: 11px; margin-top: 14px; }
+    .swatch { width: 42px; height: 42px; border-radius: 50%; cursor: pointer; position: relative;
+      transition: transform .14s; border: 2px solid transparent; }
+    .swatch:hover { transform: scale(1.1); }
+    .swatch.sel { border-color: var(--ink); box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px currentColor; }
+    .swatch.sel::after { content: '✓'; position: absolute; inset: 0; display: grid; place-items: center; color: #fff;
+      font-size: 16px; font-weight: 900; text-shadow: 0 1px 3px rgba(0,0,0,.5); }
+    .preview { margin-top: 20px; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: rgba(0,0,0,0.18); }
+    :root.lite .preview { background: rgba(0,0,0,0.04); }
+    .pv-bar { height: 42px; display: flex; align-items: center; gap: 8px; padding: 0 13px;
+      border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--ac) 8%, transparent); }
+    .pv-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ac); box-shadow: 0 0 8px var(--ac); }
+    .pv-t { font-size: 12px; font-weight: 800; letter-spacing: .04em; }
+    .pv-body { padding: 14px; display: grid; gap: 9px; }
+    .pv-row { height: 34px; border-radius: 9px; background: rgba(255,255,255,0.05); position: relative; overflow: hidden; }
+    :root.lite .pv-row { background: rgba(0,0,0,0.05); }
+    .pv-row::before { content: ''; position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+      width: 18px; height: 18px; border-radius: 6px; background: var(--ac); opacity: .85; }
+    .pv-fill { height: 100%; border-radius: 9px; background: linear-gradient(90deg, var(--ac), transparent);
+      opacity: .4; animation: grow 1.4s ease infinite alternate; }
+    @keyframes grow { from { width: 35%; } to { width: 85%; } }
+
+    /* finish */
+    .done-ic { width: 78px; height: 78px; margin: 4px auto 4px; border-radius: 50%; display: grid; place-items: center;
+      font-size: 38px; background: color-mix(in srgb, var(--ac) 16%, transparent);
+      border: 1.5px solid color-mix(in srgb, var(--ac) 34%, transparent);
+      animation: pop .6s cubic-bezier(.2,1.5,.4,1), glow 2.2s ease-in-out infinite; }
+    @keyframes pop { from { transform: scale(0); } }
+    @keyframes glow { 0%,100%{ box-shadow: 0 0 0 0 color-mix(in srgb, var(--ac) 40%, transparent);} 50%{ box-shadow: 0 0 0 14px transparent;} }
+    .sum { margin-top: 18px; display: grid; gap: 8px; }
+    .sum-row { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--ink-dim);
+      background: rgba(255,255,255,0.03); border: 1px solid var(--line); border-radius: 12px; padding: 11px 13px; }
+    .sum-row b { color: var(--ink); font-weight: 700; }
+    .sum-row .k { color: var(--ac); }
+
+    /* buttons */
+    .row { display: flex; gap: 10px; margin-top: 22px; align-items: center; }
+    .btn { flex: 1; padding: 15px; border: none; border-radius: 15px; background: var(--ac); color: #fff;
+      font-size: 15px; font-weight: 800; font-family: inherit; cursor: pointer; letter-spacing: .01em;
+      box-shadow: 0 12px 30px -10px var(--ac); transition: transform .1s, box-shadow .2s, opacity .15s; -webkit-tap-highlight-color: transparent; }
+    .btn:active { transform: scale(.98); }
+    .btn:disabled { opacity: .5; }
+    .btn.ghost { background: transparent; color: var(--ink-dim); box-shadow: none; border: 1px solid var(--line); flex: 0 0 auto; padding: 15px 18px; }
+    .skip { display: block; width: 100%; text-align: center; margin-top: 12px; background: none; border: none;
+      color: var(--ink-faint); font-size: 13px; font-family: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+
+    .loading { text-align: center; color: var(--ink-dim); font-size: 14px; padding: 40px; }
+    .spin { display: inline-block; width: 18px; height: 18px; border: 2px solid var(--line); border-top-color: var(--ac);
+      border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: 8px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce){ *{ animation-duration: .001s !important; } }
+  </style>
+</head>
+<body>
+  <div class="bg"><div class="grid"></div><div class="orb a"></div><div class="orb b"></div><div class="orb c"></div></div>
+
+  <div class="stage">
+    <div class="shell">
+      <div id="boot" class="loading"><span class="spin"></span> Loading…</div>
+
+      <div id="app" style="display:none">
+        <!-- progress rail -->
+        <div class="rail" id="rail">
+          <div class="rail-node" data-step="welcome" onclick="jump('welcome')"><span class="rail-dot">1</span></div>
+          <div class="rail-line"></div>
+          <div class="rail-node" data-step="pages" onclick="jump('pages')"><span class="rail-dot">2</span></div>
+          <div class="rail-line"></div>
+          <div class="rail-node" data-step="design" onclick="jump('design')"><span class="rail-dot">3</span></div>
+          <div class="rail-line"></div>
+          <div class="rail-node" data-step="finish" onclick="jump('finish')"><span class="rail-dot">✓</span></div>
+        </div>
+
+        <div class="deck">
+          <!-- INTRO -->
+          <div class="slide on" id="s-intro">
+            <div class="card reveal">
+              <div class="eyebrow">Welcome aboard</div>
+              <h1>Your <span class="hl">dashboard</span>,<br>your way.</h1>
+              <div class="lede">This is your personal command center — health, fitness, school, habits and more, all in one place that syncs across your devices.</div>
+              <div class="opts">
+                <button class="opt" onclick="startTour()">
+                  <span class="opt-ic">✨</span>
+                  <span><div class="opt-tt">Take the guided tour</div><div class="opt-ds">I'll walk you through it in a few quick steps.</div></span>
+                  <span class="opt-go">→</span>
+                </button>
+                <button class="opt" onclick="doItMyself()">
+                  <span class="opt-ic">⚡</span>
+                  <span><div class="opt-tt">I'll set it up myself</div><div class="opt-ds">Skip the tour — jump straight to the dashboard.</div></span>
+                  <span class="opt-go">→</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- WELCOME (step 1) -->
+          <div class="slide" id="s-welcome">
+            <div class="card">
+              <div class="eyebrow">Step 01 / 03 · Hello</div>
+              <h1>First — what should we <span class="hl">call you?</span></h1>
+              <div class="lede">We'll use it to say hi on your home screen. Totally optional.</div>
+              <div class="field">
+                <label>Your name</label>
+                <input type="text" id="nameIn" placeholder="e.g. Alex" maxlength="24" autocomplete="off">
+              </div>
+              <div class="chips">
+                <span class="chip">🔒 Private to your account</span>
+                <span class="chip">☁️ Synced everywhere</span>
+              </div>
+              <div class="row">
+                <button class="btn ghost" onclick="jump('intro')">←</button>
+                <button class="btn" onclick="jump('pages')">Continue →</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- PAGES (step 2) -->
+          <div class="slide" id="s-pages">
+            <div class="card">
+              <div class="eyebrow">Step 02 / 03 · Sections</div>
+              <h1>Pick your <span class="hl">pages</span>.</h1>
+              <div class="lede">Turn on what you'll use. You can change any of this later in Settings.</div>
+
+              <div class="simp" id="simpRow" onclick="toggleSimplify()">
+                <span style="font-size:23px">🧸</span>
+                <div class="simp-b">
+                  <div class="simp-n">Simplify it</div>
+                  <div class="simp-d">Great for younger users — hides Finance, Projects &amp; Trends and makes the tabs bigger.</div>
+                </div>
+                <span class="sw" id="simpSw"></span>
+              </div>
+
+              <div class="pgs" id="pgs"></div>
+              <div class="row">
+                <button class="btn ghost" onclick="jump('welcome')">←</button>
+                <button class="btn" onclick="jump('design')">Continue →</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- DESIGN (step 3) -->
+          <div class="slide" id="s-design">
+            <div class="card">
+              <div class="eyebrow">Step 03 / 03 · Style</div>
+              <h1>Make it <span class="hl">yours</span>.</h1>
+              <div class="lede">Pick a look. Watch it change live below — you can fine-tune skins &amp; more in Settings.</div>
+
+              <div class="field" style="margin-top:16px"><label>Theme</label>
+                <div class="seg">
+                  <button id="thDark" class="sel" onclick="setTheme('dark')">🌙 Dark</button>
+                  <button id="thLite" onclick="setTheme('light')">☀️ Light</button>
+                </div>
+              </div>
+              <div class="field"><label>Accent colour</label>
+                <div class="swatches" id="swatches"></div>
+              </div>
+
+              <div class="preview">
+                <div class="pv-bar"><span class="pv-dot"></span><span class="pv-t" id="pvHi">Hi there 👋</span></div>
+                <div class="pv-body">
+                  <div class="pv-row"><div class="pv-fill"></div></div>
+                  <div class="pv-row"></div>
+                </div>
+              </div>
+
+              <div class="row">
+                <button class="btn ghost" onclick="jump('pages')">←</button>
+                <button class="btn" onclick="jump('finish')">Continue →</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- FINISH -->
+          <div class="slide" id="s-finish">
+            <div class="card">
+              <div class="done-ic">🚀</div>
+              <h1 style="text-align:center">You're all <span class="hl">set!</span></h1>
+              <div class="lede" style="text-align:center" id="finLede">Everything's saved and synced to your account.</div>
+              <div class="sum" id="sum"></div>
+              <div class="row">
+                <button class="btn ghost" onclick="jump('design')">←</button>
+                <button class="btn" id="enterBtn" onclick="finish()">Enter my dashboard →</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+const SB_URL = 'https://mtuoqwbrujxutofhyahb.supabase.co';
+const SB_KEY = 'sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
+const sb = supabase.createClient(SB_URL, SB_KEY);
+
+// Base pages are always present (can't be turned off): Home, Health, Settings.
+// Everything below is optional. GROWNUP ones are what "Simplify" hides.
+const PAGES = [
+  { key:'health',    ic:'💊', n:'Health',    d:'Water, sleep, supplements, weight', base:true },
+  { key:'fitness',   ic:'💪', n:'Fitness',   d:'Workouts, progress & photos' },
+  { key:'school',    ic:'📚', n:'School',    d:'Timetable, grades, assignments' },
+  { key:'habits',    ic:'🔥', n:'Habits',    d:'Daily streaks & routines' },
+  { key:'transport', ic:'🚌', n:'Transport', d:'Bus times & your commute' },
+  { key:'friends',   ic:'👥', n:'Friends',   d:'Social feed & leaderboard' },
+  { key:'projects',  ic:'🗂️', n:'Projects',  d:'Tasks & project tracker', grownup:true },
+  { key:'finance',   ic:'📊', n:'Finance',   d:'Money, budget, net worth', grownup:true },
+  { key:'trends',    ic:'📈', n:'Trends',    d:'Analytics & summaries', grownup:true },
+];
+const ACCENTS = [
+  ['purple','#a78bfa'],['blue','#60a5fa'],['green','#34d399'],['orange','#fb923c'],
+  ['pink','#f472b6'],['red','#f87171'],['yellow','#fbbf24'],['teal','#2dd4bf']
+];
+const ORDER = ['intro','welcome','pages','design','finish'];
+const TOUR = ['welcome','pages','design','finish'];
+
+let uid = null, current = {};
+let step = 'intro', maxReached = 0;
+const state = { name:'', simplify:false, theme:'dark', accent:'purple', pages:{} };
+
+/* ── navigation ── */
+function show(id){
+  step = id;
+  document.querySelectorAll('.slide').forEach(s => s.classList.remove('on'));
+  const el = document.getElementById('s-'+id); if (el) el.classList.add('on');
+  const inTour = TOUR.indexOf(id) !== -1;
+  document.getElementById('rail').classList.toggle('show', inTour);
+  if (inTour) maxReached = Math.max(maxReached, TOUR.indexOf(id));
+  updateRail();
+  window.scrollTo(0,0);
+}
+function updateRail(){
+  const i = TOUR.indexOf(step);
+  document.querySelectorAll('.rail-node').forEach(node => {
+    const si = TOUR.indexOf(node.dataset.step);
+    node.classList.toggle('active', si === i);
+    node.classList.toggle('done', si < i || (si <= maxReached && si !== i));
+  });
+}
+function jump(id){
+  // rail nodes only allow going to reached steps
+  if (TOUR.indexOf(id) !== -1 && TOUR.indexOf(id) > maxReached + 1) return;
+  if (id === 'pages') state.name = (document.getElementById('nameIn').value||'').trim();
+  if (id === 'finish') buildSummary();
+  show(id);
+}
+function startTour(){ show('welcome'); if (state.name) document.getElementById('nameIn').value = state.name; }
+
+/* ── simplify + pages ── */
+function toggleSimplify(){
+  state.simplify = !state.simplify;
+  renderPages();
+}
+function renderPages(){
+  document.getElementById('simpSw').classList.toggle('on', state.simplify);
+  document.getElementById('simpRow').classList.toggle('on', state.simplify);
+
+  const el = document.getElementById('pgs');
+  el.innerHTML = PAGES.map(p => {
+    const hiddenBySimp = state.simplify && p.grownup;
+    const on = p.base ? true : (hiddenBySimp ? false : state.pages[p.key] !== false);
+    const locked = p.base || hiddenBySimp;
+    const tag = p.base ? '<span class="tag">· always on</span>' : (hiddenBySimp ? '<span class="tag">· hidden</span>' : '');
+    return '<div class="pg '+(on?'on':'off')+' '+(locked?'locked':'')+'" data-k="'+p.key+'">'
+      + '<span class="pg-ic">'+p.ic+'</span>'
+      + '<div class="pg-b"><div class="pg-n">'+p.n+tag+'</div><div class="pg-d">'+p.d+'</div></div>'
+      + '<span class="sw'+(on?' on':'')+'"></span></div>';
+  }).join('');
+  el.querySelectorAll('.pg').forEach(row => {
+    const p = PAGES.find(x => x.key === row.dataset.k);
+    if (p.base || (state.simplify && p.grownup)) return;
+    row.addEventListener('click', () => {
+      state.pages[p.key] = !(state.pages[p.key] !== false);
+      renderPages();
+    });
+  });
+}
+/* ── design ── */
+function setTheme(t){
+  state.theme = t;
+  document.documentElement.classList.toggle('lite', t === 'light');
+  document.getElementById('thDark').classList.toggle('sel', t === 'dark');
+  document.getElementById('thLite').classList.toggle('sel', t === 'light');
+}
+function setAccent(key, hex){
+  state.accent = key;
+  document.documentElement.style.setProperty('--ac', hex);
+  document.querySelectorAll('.swatch').forEach(s => s.classList.toggle('sel', s.dataset.k === key));
+}
+function renderSwatches(){
+  const el = document.getElementById('swatches');
+  el.innerHTML = ACCENTS.map(([k,c]) =>
+    '<div class="swatch" data-k="'+k+'" style="background:'+c+';color:'+c+'" onclick="setAccent(\''+k+'\',\''+c+'\')"></div>'
+  ).join('');
+  const cur = ACCENTS.find(a => a[0] === state.accent) || ACCENTS[0];
+  setAccent(cur[0], cur[1]);
+}
+
+/* ── finish ── */
+function buildSummary(){
+  state.name = (document.getElementById('nameIn').value||'').trim();
+  const shown = PAGES.filter(p => p.base || (!(state.simplify && p.grownup) && state.pages[p.key] !== false)).length + 2; // +home +settings
+  const acName = (ACCENTS.find(a=>a[0]===state.accent)||['purple'])[0];
+  document.getElementById('finLede').textContent = state.name
+    ? ('Nice to meet you, ' + state.name + ' — you\'re ready to go.')
+    : 'Everything\'s saved and synced to your account.';
+  document.getElementById('sum').innerHTML =
+      '<div class="sum-row">📄 <span><b>'+shown+'</b> sections enabled'+(state.simplify?' · <span class="k">simplified</span>':'')+'</span></div>'
+    + '<div class="sum-row">🎨 <span><b>'+state.theme[0].toUpperCase()+state.theme.slice(1)+'</b> theme · <span class="k">'+acName+'</span> accent</span></div>'
+    + '<div class="sum-row">☁️ <span>Synced to <b>all your devices</b></span></div>';
+}
+function buildSettings(){
+  state.name = (document.getElementById('nameIn').value||'').trim();
+  const pages = { health: true };
+  PAGES.forEach(p => {
+    if (p.base) return;
+    if (state.simplify && p.grownup) { pages[p.key] = false; return; }
+    pages[p.key] = state.pages[p.key] !== false;
+  });
+  const merged = Object.assign({}, current, {
+    mode: state.simplify ? 'kid' : 'adult',
+    pages: pages,
+    theme: state.theme,
+    accent: state.accent,
+    setupDone: true,
+    _pushAt: Date.now()
+  });
+  if (state.name) merged.name = state.name; else delete merged.name;
+  return merged;
+}
+async function persist(merged){
+  try {
+    localStorage.setItem('dashboard:settings:v1', JSON.stringify(merged));
+    await sb.from('app_state').upsert(
+      { key: uid + ':settings', data: merged, updated_at: new Date().toISOString() },
+      { onConflict: 'key' }
+    );
+  } catch (e) { console.warn('Setup save failed:', e); }
+}
+async function finish(){
+  const b = document.getElementById('enterBtn'); b.disabled = true; b.textContent = 'Saving…';
+  await persist(buildSettings());
+  window.location.href = 'index.html';
+}
+// "I'll set it up myself" — keep whatever exists, just mark done + sensible defaults.
+async function doItMyself(){
+  const pages = Object.assign({}, current.pages || {});
+  const merged = Object.assign({}, current, {
+    setupDone: true,
+    mode: current.mode || 'adult',
+    pages: pages,
+    _pushAt: Date.now()
+  });
+  await persist(merged);
+  window.location.href = 'index.html';
+}
+
+/* ── boot ── */
+(async () => {
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) { window.location.replace('login.html'); return; }
+    uid = session.user.id;
+    localStorage.setItem('_dashUid', uid);
+    // Prefill from existing settings (so re-running from Settings shows real config)
+    try {
+      const { data } = await sb.from('app_state').select('data').eq('key', uid + ':settings').maybeSingle();
+      if (data && data.data && typeof data.data === 'object') current = data.data;
+    } catch (e) {}
+  } catch (e) { window.location.replace('login.html'); return; }
+
+  state.name = current.name || '';
+  state.simplify = current.mode === 'kid';
+  state.theme = current.theme === 'light' ? 'light' : 'dark';
+  state.accent = current.accent || 'purple';
+  PAGES.forEach(p => { if (!p.base) state.pages[p.key] = !(current.pages && current.pages[p.key] === false); });
+
+  setTheme(state.theme);
+  renderSwatches();
+  renderPages();
+  if (state.name) document.getElementById('nameIn').value = state.name;
+
+  document.getElementById('boot').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  show('intro');
+})();
+</script>
+</body>
+</html>

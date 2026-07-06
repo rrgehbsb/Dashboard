@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.5.38';
+const DASHBOARD_VERSION = '2.5.43';
 
 // Auto-update: when a new service worker takes control (new deploy), reload once
 // so the installed app always runs the latest code instead of a stale cached
@@ -245,6 +245,9 @@ window.applyDashSettings = function(_s) {
       _ue.textContent = 'body{background:' + _uiBg + ' !important; background-attachment:fixed !important;}';
       (document.head || root).appendChild(_ue);
     }
+
+    // Kids mode — a simpler, clearer layout with some pages hidden.
+    root.setAttribute('data-mode', _s.mode === 'kid' ? 'kid' : 'adult');
 
     var _home = _s.home || 'classic';
     root.setAttribute('data-home', _home);
@@ -766,6 +769,16 @@ html[data-skin]:not([data-skin="none"]) #saveBtn {
   function readSettings() {
     try { return JSON.parse(localStorage.getItem('dashboard:settings:v1')) || {}; } catch (e) { return {}; }
   }
+  // Pages the user can turn on/off (onboarding + kids mode). 'main' and
+  // 'settings' can never be hidden. Stored SYNCED in dashboard:settings:v1
+  // as `pages: { finance:false, ... }` — absent/true = visible.
+  const HIDEABLE_PAGES = ['health','fitness','school','habits','transport','projects','friends','finance','trends'];
+  function pageVisible(key) {
+    if (key === 'main' || key === 'settings') return true;
+    const s = readSettings();
+    if (s.pages && s.pages[key] === false) return false;
+    return true;
+  }
   // Bottom-bar layout is DEVICE-ONLY (localStorage 'dashboard:nav:v1') — never synced,
   // since the ideal bar differs per screen. Falls back to legacy synced fields once.
   function readNavCfg() {
@@ -778,11 +791,15 @@ html[data-skin]:not([data-skin="none"]) #saveBtn {
   // Resolve which tabs are visible vs. tucked into "More", per the custom config.
   function resolveNav() {
     const n = readNavCfg();
-    if (!n.navCustom) return { visible: ALL_TABS.slice(), leftover: [] };
-    let pinned = Array.isArray(n.navPinned) ? n.navPinned.map((k) => TAB_BY_KEY[k]).filter(Boolean) : [];
-    if (!pinned.length) pinned = ALL_TABS.slice(0, 4);
+    // Drop any pages hidden by onboarding / kids mode first.
+    const allowed = ALL_TABS.filter((t) => pageVisible(t.key));
+    if (!n.navCustom) return { visible: allowed.slice(), leftover: [] };
+    let pinned = Array.isArray(n.navPinned)
+      ? n.navPinned.map((k) => TAB_BY_KEY[k]).filter(Boolean).filter((t) => pageVisible(t.key))
+      : [];
+    if (!pinned.length) pinned = allowed.slice(0, 4);
     const pinnedKeys = pinned.map((t) => t.key);
-    const leftover = ALL_TABS.filter((t) => pinnedKeys.indexOf(t.key) === -1);
+    const leftover = allowed.filter((t) => pinnedKeys.indexOf(t.key) === -1);
     return { visible: pinned, leftover };
   }
 
@@ -809,6 +826,11 @@ html[data-theme="light"] .nav-more-grip{background:rgba(0,0,0,0.18);}
 .nav-more-item-icon{font-size:23px;width:28px;text-align:center;}
 .nav-more-item-label{font-size:15px;font-weight:600;}
 html[data-theme="light"] .nav-more-item:active{background:rgba(0,0,0,0.05);}
+/* Kids mode — bigger, clearer bottom tabs */
+html[data-mode="kid"] .bottombar-tab{font-size:11px;font-weight:700;gap:4px;}
+html[data-mode="kid"] .bottombar-tab-icon{font-size:26px;}
+html[data-mode="kid"] .nav-more-item-icon{font-size:26px;}
+html[data-mode="kid"] .nav-more-item-label{font-size:16px;}
 `;
 
   const xpCss = `
@@ -1214,7 +1236,9 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
     if (cine) {
       if (!el.dataset.origTitle) el.dataset.origTitle = el.textContent;
       const h = new Date().getHours();
-      const g = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+      let g = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+      let nm = ''; try { nm = (readSettings().name || '').trim(); } catch (e) {}
+      if (nm) g += ', ' + nm;
       const d = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }).toUpperCase();
       el.innerHTML = g + '<span class="dt-date">' + d + '</span>';
     } else if (el.dataset.origTitle) {
@@ -1320,6 +1344,28 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
     return 'main';
   }
 
+  // Block direct access (by URL) to a page the user has hidden via onboarding
+  // or kids mode. Runs only on the real top-level page (never the embedded
+  // finance widget), and sends them home so a kid can't reach finance.html etc.
+  function guardPageAccess() {
+    try {
+      if (isEmbedded()) return false;
+      const p = (window.location.pathname || '').toLowerCase();
+      let key = null;
+      if (p.endsWith('finance.html')) key = 'finance';
+      else if (p.endsWith('projects.html')) key = 'projects';
+      else if (p.endsWith('trends.html') || p.endsWith('summary.html')) key = 'trends';
+      else if (p.endsWith('transport.html')) key = 'transport';
+      else if (p.endsWith('friends.html')) key = 'friends';
+      else if (p.endsWith('school.html')) key = 'school';
+      else if (p.endsWith('habits.html')) key = 'habits';
+      else if (p.endsWith('gym.html')) key = 'fitness';
+      else if (p.endsWith('health.html')) key = 'health';
+      if (key && !pageVisible(key)) { window.location.replace('index.html'); return true; }
+    } catch (e) {}
+    return false;
+  }
+
   function injectStyleAndHTML() {
     if (isEmbedded() || isFinancePage()) return;
     const style = document.createElement('style');
@@ -1331,6 +1377,11 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
       const topWrap = document.createElement('div');
       topWrap.innerHTML = (isHomePage() ? topbarHtml : minimalTopbarHtml).trim();
       document.body.insertBefore(topWrap.firstChild, document.body.firstChild);
+    }
+    // Hide the top-bar finance shortcut if finance is turned off (kids mode).
+    if (!pageVisible('finance')) {
+      const fb = document.getElementById('topbarFinance');
+      if (fb) fb.remove();
     }
     // Bottom tabs on all non-finance, non-iframe pages
     if (!document.getElementById('bottombar')) {
@@ -1589,6 +1640,14 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
       _lastSettingsStr = cloudStr;
       localStorage.setItem('dashboard:settings:v1', cloudStr);
       if (typeof window.applyDashSettings === 'function') window.applyDashSettings(cloud);
+      // Page visibility may have changed (kids mode toggled elsewhere) — rebuild
+      // the nav live, and boot the current page out if it just got hidden.
+      try { if (typeof window.dashRebuildNav === 'function') window.dashRebuildNav(); } catch (e) {}
+      try {
+        const fb = document.getElementById('topbarFinance');
+        if (fb && !pageVisible('finance')) fb.remove();
+      } catch (e) {}
+      try { guardPageAccess(); } catch (e) {}
     } catch (e) {}
   }
   async function pullWaterFromCloud() {
@@ -2780,9 +2839,12 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
     document.addEventListener('visibilitychange', () => { if (!document.hidden) scheduleProfileSync(); });
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', boot, { once: true });
-  } else {
-    boot();
+  // Enforce page visibility before we render anything (may redirect home).
+  if (!guardPageAccess()) {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', boot, { once: true });
+    } else {
+      boot();
+    }
   }
 })();
