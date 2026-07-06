@@ -1,6 +1,6 @@
 // Dashboard Service Worker
 // Bump CACHE_VERSION on each deploy to force cache refresh
-const CACHE_VERSION = 'v2.5.34';
+const CACHE_VERSION = 'v2.5.35';
 const CACHE_NAME = `dashboard-${CACHE_VERSION}`;
 
 // Files to pre-cache on install

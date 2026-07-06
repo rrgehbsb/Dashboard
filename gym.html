@@ -1545,7 +1545,7 @@ img, video, canvas, svg { max-width: 100%; }
 window.__gymDebug=function(m){try{var d=document.getElementById('__gymdbg');if(!d){d=document.createElement('div');d.id='__gymdbg';d.style.cssText='position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#063;color:#fff;font:12px/1.4 monospace;padding:8px;white-space:pre-wrap;max-height:55vh;overflow:auto';d.addEventListener('click',function(){d.style.display='none';});(document.body||document.documentElement).appendChild(d);}d.textContent=(new Date().toLocaleTimeString())+'  '+m+'\n'+d.textContent;}catch(_){}};
 window.addEventListener('error',function(e){var d=document.getElementById('__gymdbg');if(d)d.style.background='#c00';window.__gymDebug('ERR: '+(e.message||'?')+' @'+((e.filename||'').split('/').pop())+':'+e.lineno);},true);
 window.addEventListener('unhandledrejection',function(e){var r=e.reason;window.__gymDebug('ASYNC ERR: '+((r&&(r.message||r.msg))||JSON.stringify(r)));});
-document.addEventListener('DOMContentLoaded',function(){window.__gymDebug('gym v2.5.33 loaded — green=ok, red=error (tap to hide)');});
+document.addEventListener('DOMContentLoaded',function(){window.__gymDebug('gym v2.5.35 loaded — green=ok, red=error (tap to hide)');});
 </script>
 <script src="topbar.js" defer></script>
 </head>
@@ -3835,23 +3835,28 @@ document.addEventListener('DOMContentLoaded',function(){window.__gymDebug('gym v
   ];
 
   const _dbG = {};
-  const _pcOrigGet = localStorage.getItem.bind(localStorage);
-  const _pcOrigSet = localStorage.setItem.bind(localStorage);
-  const _pcOrigRemove = localStorage.removeItem.bind(localStorage);
+  // Override on Storage.PROTOTYPE — iOS Safari silently ignores overriding the
+  // localStorage instance's methods, which broke the whole gym sync on iPhone.
+  // Guard with `this === localStorage` so sessionStorage is untouched.
+  const _stProto = Object.getPrototypeOf(localStorage) || window.Storage.prototype;
+  const _protoGet = _stProto.getItem, _protoSet = _stProto.setItem, _protoRemove = _stProto.removeItem;
+  const _pcOrigGet = _protoGet.bind(localStorage);      // bound originals for direct use (migration/flush)
+  const _pcOrigSet = _protoSet.bind(localStorage);
+  const _pcOrigRemove = _protoRemove.bind(localStorage);
 
-  localStorage.getItem = function(k) {
-    if(PC_SYNCED_KEYS.indexOf(k) !== -1) return _dbG.hasOwnProperty(k) ? JSON.stringify(_dbG[k]) : null;
-    return _pcOrigGet(k);
+  _stProto.getItem = function(k) {
+    if(this === window.localStorage && PC_SYNCED_KEYS.indexOf(k) !== -1) return _dbG.hasOwnProperty(k) ? JSON.stringify(_dbG[k]) : null;
+    return _protoGet.call(this, k);
   };
-  localStorage.setItem = function(k, v) {
-    if(PC_SYNCED_KEYS.indexOf(k) !== -1) { try{window.__gymDebug&&window.__gymDebug('intercept '+k);}catch(_){} try{_dbG[k]=JSON.parse(v);}catch{_dbG[k]=v;} pcSchedulePush(); }
-    else _pcOrigSet(k, v);
+  _stProto.setItem = function(k, v) {
+    if(this === window.localStorage && PC_SYNCED_KEYS.indexOf(k) !== -1) { try{window.__gymDebug&&window.__gymDebug('intercept '+k);}catch(_){} try{_dbG[k]=JSON.parse(v);}catch{_dbG[k]=v;} pcSchedulePush(); }
+    else _protoSet.call(this, k, v);
   };
-  localStorage.removeItem = function(k) {
-    if(PC_SYNCED_KEYS.indexOf(k) !== -1) { delete _dbG[k]; pcSchedulePush(); }
-    else _pcOrigRemove(k);
+  _stProto.removeItem = function(k) {
+    if(this === window.localStorage && PC_SYNCED_KEYS.indexOf(k) !== -1) { delete _dbG[k]; pcSchedulePush(); }
+    else _protoRemove.call(this, k);
   };
-  try{ window.__gymDebug&&window.__gymDebug('interceptor installed ✓'); }catch(_){}
+  try{ window.__gymDebug&&window.__gymDebug('interceptor installed (proto) ✓'); }catch(_){}
 
   let pcSupa = null, pcPushTimer = null, pcLastRemoteAt = 0, pcHasPendingPush = false, pcSyncReady = false;
   let _gymOwnPush = 0; // _pushAt of our own last push, so the watcher below ignores it
