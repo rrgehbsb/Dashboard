@@ -220,11 +220,22 @@
     .spin { display: inline-block; width: 18px; height: 18px; border: 2px solid var(--line); border-top-color: var(--ac);
       border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: 8px; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    /* Preview mode (from Settings) */
+    .pv-badge { position: fixed; top: calc(12px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 30;
+      font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; font-weight: 700;
+      color: var(--ac); background: color-mix(in srgb, var(--ac) 14%, transparent);
+      border: 1px solid color-mix(in srgb, var(--ac) 34%, transparent); padding: 6px 13px; border-radius: 20px; white-space: nowrap; }
+    .pv-exit { position: fixed; top: calc(10px + env(safe-area-inset-top)); right: 12px; z-index: 30;
+      background: var(--card); border: 1px solid var(--line); color: var(--ink); font-family: inherit; font-size: 13px; font-weight: 600;
+      padding: 8px 12px; border-radius: 12px; cursor: pointer; -webkit-tap-highlight-color: transparent; backdrop-filter: blur(10px); }
     @media (prefers-reduced-motion: reduce){ *{ animation-duration: .001s !important; } }
   </style>
 </head>
 <body>
   <div class="bg"><div class="grid"></div><div class="orb a"></div><div class="orb b"></div><div class="orb c"></div></div>
+
+  <button id="pvExit" class="pv-exit" onclick="location.href='settings.html'" style="display:none">✕ Close preview</button>
+  <div id="pvBadge" class="pv-badge" style="display:none">👁 Preview · nothing is saved</div>
 
   <div class="stage">
     <div class="shell">
@@ -364,6 +375,9 @@
 const SB_URL = 'https://mtuoqwbrujxutofhyahb.supabase.co';
 const SB_KEY = 'sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
 const sb = supabase.createClient(SB_URL, SB_KEY);
+// Preview mode (launched from Settings): identical tour, but nothing is saved.
+const PREVIEW = new URLSearchParams(location.search).get('preview') === '1';
+const DONE_URL = PREVIEW ? 'settings.html' : 'index.html';
 
 // Base pages are always present (can't be turned off): Home, Health, Settings.
 // Everything below is optional. GROWNUP ones are what "Simplify" hides.
@@ -472,13 +486,16 @@ function buildSummary(){
   state.name = (document.getElementById('nameIn').value||'').trim();
   const shown = PAGES.filter(p => p.base || (!(state.simplify && p.grownup) && state.pages[p.key] !== false)).length + 2; // +home +settings
   const acName = (ACCENTS.find(a=>a[0]===state.accent)||['purple'])[0];
-  document.getElementById('finLede').textContent = state.name
-    ? ('Nice to meet you, ' + state.name + ' — you\'re ready to go.')
-    : 'Everything\'s saved and synced to your account.';
+  document.getElementById('finLede').textContent = PREVIEW
+    ? 'That\'s the whole tour — this was just a preview, nothing was changed.'
+    : (state.name ? ('Nice to meet you, ' + state.name + ' — you\'re ready to go.')
+                  : 'Everything\'s saved and synced to your account.');
   document.getElementById('sum').innerHTML =
       '<div class="sum-row">📄 <span><b>'+shown+'</b> sections enabled'+(state.simplify?' · <span class="k">simplified</span>':'')+'</span></div>'
     + '<div class="sum-row">🎨 <span><b>'+state.theme[0].toUpperCase()+state.theme.slice(1)+'</b> theme · <span class="k">'+acName+'</span> accent</span></div>'
-    + '<div class="sum-row">☁️ <span>Synced to <b>all your devices</b></span></div>';
+    + (PREVIEW
+        ? '<div class="sum-row">👁 <span><b>Preview</b> — no changes were saved</span></div>'
+        : '<div class="sum-row">☁️ <span>Synced to <b>all your devices</b></span></div>');
 }
 function buildSettings(){
   state.name = (document.getElementById('nameIn').value||'').trim();
@@ -509,12 +526,15 @@ async function persist(merged){
   } catch (e) { console.warn('Setup save failed:', e); }
 }
 async function finish(){
-  const b = document.getElementById('enterBtn'); b.disabled = true; b.textContent = 'Saving…';
+  const b = document.getElementById('enterBtn');
+  if (PREVIEW) { window.location.href = DONE_URL; return; }   // preview: don't save
+  b.disabled = true; b.textContent = 'Saving…';
   await persist(buildSettings());
-  window.location.href = 'index.html';
+  window.location.href = DONE_URL;
 }
 // "I'll set it up myself" — keep whatever exists, just mark done + sensible defaults.
 async function doItMyself(){
+  if (PREVIEW) { window.location.href = DONE_URL; return; }   // preview: don't save
   const pages = Object.assign({}, current.pages || {});
   const merged = Object.assign({}, current, {
     setupDone: true,
@@ -523,7 +543,7 @@ async function doItMyself(){
     _pushAt: Date.now()
   });
   await persist(merged);
-  window.location.href = 'index.html';
+  window.location.href = DONE_URL;
 }
 
 /* ── boot ── */
@@ -550,6 +570,12 @@ async function doItMyself(){
   renderSwatches();
   renderPages();
   if (state.name) document.getElementById('nameIn').value = state.name;
+
+  if (PREVIEW) {
+    document.getElementById('pvBadge').style.display = 'block';
+    document.getElementById('pvExit').style.display = 'block';
+    const eb = document.getElementById('enterBtn'); if (eb) eb.textContent = 'Done — close preview';
+  }
 
   document.getElementById('boot').style.display = 'none';
   document.getElementById('app').style.display = 'block';
