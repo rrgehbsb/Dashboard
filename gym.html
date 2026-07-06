@@ -1541,12 +1541,6 @@ img, video, canvas, svg { max-width: 100%; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>(function(){var s=window.supabase;if(s&&s.createClient&&!s.__oneClient){s.__oneClient=true;var o=s.createClient.bind(s),c={};s.createClient=function(u,k,op){var q=String(u)+"|"+String(k);return c[q]||(c[q]=o(u,k,op));};}})();</script>
-<script>
-window.__gymDebug=function(m){try{var d=document.getElementById('__gymdbg');if(!d){d=document.createElement('div');d.id='__gymdbg';d.style.cssText='position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#063;color:#fff;font:12px/1.4 monospace;padding:8px;white-space:pre-wrap;max-height:55vh;overflow:auto';d.addEventListener('click',function(){d.style.display='none';});(document.body||document.documentElement).appendChild(d);}d.textContent=(new Date().toLocaleTimeString())+'  '+m+'\n'+d.textContent;}catch(_){}};
-window.addEventListener('error',function(e){var d=document.getElementById('__gymdbg');if(d)d.style.background='#c00';window.__gymDebug('ERR: '+(e.message||'?')+' @'+((e.filename||'').split('/').pop())+':'+e.lineno);},true);
-window.addEventListener('unhandledrejection',function(e){var r=e.reason;window.__gymDebug('ASYNC ERR: '+((r&&(r.message||r.msg))||JSON.stringify(r)));});
-document.addEventListener('DOMContentLoaded',function(){window.__gymDebug('gym v2.5.35 loaded — green=ok, red=error (tap to hide)');});
-</script>
 <script src="topbar.js" defer></script>
 </head>
 <body>
@@ -3849,14 +3843,13 @@ document.addEventListener('DOMContentLoaded',function(){window.__gymDebug('gym v
     return _protoGet.call(this, k);
   };
   _stProto.setItem = function(k, v) {
-    if(this === window.localStorage && PC_SYNCED_KEYS.indexOf(k) !== -1) { try{window.__gymDebug&&window.__gymDebug('intercept '+k);}catch(_){} try{_dbG[k]=JSON.parse(v);}catch{_dbG[k]=v;} pcSchedulePush(); }
+    if(this === window.localStorage && PC_SYNCED_KEYS.indexOf(k) !== -1) { try{_dbG[k]=JSON.parse(v);}catch{_dbG[k]=v;} pcSchedulePush(); }
     else _protoSet.call(this, k, v);
   };
   _stProto.removeItem = function(k) {
     if(this === window.localStorage && PC_SYNCED_KEYS.indexOf(k) !== -1) { delete _dbG[k]; pcSchedulePush(); }
     else _protoRemove.call(this, k);
   };
-  try{ window.__gymDebug&&window.__gymDebug('interceptor installed (proto) ✓'); }catch(_){}
 
   let pcSupa = null, pcPushTimer = null, pcLastRemoteAt = 0, pcHasPendingPush = false, pcSyncReady = false;
   let _gymOwnPush = 0; // _pushAt of our own last push, so the watcher below ignores it
@@ -3888,7 +3881,6 @@ document.addEventListener('DOMContentLoaded',function(){window.__gymDebug('gym v
 
   function pcSchedulePush() {
     pcHasPendingPush = true;
-    try{ window.__gymDebug&&window.__gymDebug('save triggered (ready='+pcSyncReady+')'); }catch(_){}
     if(!pcSyncReady) { return; } // defer until init finishes so we never push stale defaults
     clearTimeout(pcPushTimer);
     pcPushTimer = setTimeout(pcPushNow, 500);
@@ -3907,8 +3899,8 @@ document.addEventListener('DOMContentLoaded',function(){window.__gymDebug('gym v
     const pushAt = Date.now(); data._pushAt = pushAt;
     try {
       const { error } = await pcSupa.from('app_state').upsert({ key: APP_KEY, data, updated_at: new Date().toISOString() }, { onConflict: 'key' });
-      if(!error) { pcLastRemoteAt = pushAt; _gymOwnPush = pushAt; pcHasPendingPush = false; try{ window.__gymDebug&&window.__gymDebug('SAVED OK ✓'); }catch(_){} }
-      else { try{ window.__gymDebug&&window.__gymDebug('SAVE FAILED: '+JSON.stringify(error).slice(0,150)); }catch(_){}; setTimeout(pcSchedulePush, 5000); }
+      if(!error) { pcLastRemoteAt = pushAt; _gymOwnPush = pushAt; pcHasPendingPush = false; }
+      else { setTimeout(pcSchedulePush, 5000); }
     } catch(_) { setTimeout(pcSchedulePush, 5000); }
   }
 
@@ -3926,13 +3918,11 @@ document.addEventListener('DOMContentLoaded',function(){window.__gymDebug('gym v
   }
 
   (async function pcInitCloudSync() {
-    try{ window.__gymDebug&&window.__gymDebug('pcInit start (supabase='+!!window.supabase+')'); }catch(_){}
     if(!window.supabase) return;
     pcSupa = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     // Auth guard
     const { data: { session: _sess }, error: _authErr } = await pcSupa.auth.getSession();
-    try{ window.__gymDebug&&window.__gymDebug('pcInit session='+!!_sess+(_authErr?(' authErr='+JSON.stringify(_authErr).slice(0,80)):'')); }catch(_){}
-    if (!_sess) { try{window.__gymDebug&&window.__gymDebug('NO SESSION — sync aborts (would go to login)');}catch(_){} window.location.href = 'login.html'; return; }
+    if (!_sess) { window.location.href = 'login.html'; return; }
     const _uid = _sess.user.id;
     localStorage.setItem('_dashUid', _uid);
     APP_KEY = _uid + ':' + APP_KEY_BASE;
@@ -3953,7 +3943,6 @@ document.addEventListener('DOMContentLoaded',function(){window.__gymDebug('gym v
       if(pcMigrated) pcRerender();
     } catch(_) {}
     pcSyncReady = true;
-    try{ window.__gymDebug&&window.__gymDebug('SYNC READY ✓ key='+APP_KEY); }catch(_){}
     if(pcHasPendingPush) pcSchedulePush(); // fire any push deferred during init
     // Re-render again once everything (GT tracker + DOM) is definitely ready —
     // the first pcRerender during init can run before the exercise renderer is
