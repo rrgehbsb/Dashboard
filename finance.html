@@ -2254,12 +2254,16 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   const FIN_BASE='finance'; let FIN_APP_KEY=FIN_BASE;
   const _dbF={}; let finSb=null, finLastRemoteAt=0, finPushTimer=null, finDirtyAt=0, finReady=false, finPending=false;
   function isFinSynced(k){ return k==='dashboard:budget:v1'||k==='dashboard:savings:v1'||k==='subs'||k==='wishlist'||k==='incoming_orders'||k==='nw_currency'||k==='financeTicker'||(typeof k==='string'&&k.indexOf('nw:')===0); }
-  const _oGet=localStorage.getItem.bind(localStorage);
-  const _oSet=localStorage.setItem.bind(localStorage);
-  const _oRem=localStorage.removeItem.bind(localStorage);
-  localStorage.getItem=function(k){ if(isFinSynced(k)) return _dbF.hasOwnProperty(k)?_dbF[k]:_oGet(k); return _oGet(k); };
-  localStorage.setItem=function(k,v){ if(isFinSynced(k)){ _dbF[k]=v; _oSet(k,v); finSchedulePush(); } else _oSet(k,v); };
-  localStorage.removeItem=function(k){ if(isFinSynced(k)){ delete _dbF[k]; _oRem(k); finSchedulePush(); } else _oRem(k); };
+  // Override Storage.PROTOTYPE (not the instance) — iOS Safari silently ignores
+  // instance-method overrides, which would break finance sync on iPhone.
+  const _stProto=Object.getPrototypeOf(localStorage)||window.Storage.prototype;
+  const _protoGet=_stProto.getItem,_protoSet=_stProto.setItem,_protoRemove=_stProto.removeItem;
+  const _oGet=_protoGet.bind(localStorage);
+  const _oSet=_protoSet.bind(localStorage);
+  const _oRem=_protoRemove.bind(localStorage);
+  _stProto.getItem=function(k){ if(this===window.localStorage&&isFinSynced(k)) return _dbF.hasOwnProperty(k)?_dbF[k]:_protoGet.call(this,k); return _protoGet.call(this,k); };
+  _stProto.setItem=function(k,v){ if(this===window.localStorage&&isFinSynced(k)){ _dbF[k]=v; _protoSet.call(this,k,v); finSchedulePush(); } else _protoSet.call(this,k,v); };
+  _stProto.removeItem=function(k){ if(this===window.localStorage&&isFinSynced(k)){ delete _dbF[k]; _protoRemove.call(this,k); finSchedulePush(); } else _protoRemove.call(this,k); };
   // Seed _dbF from any finance keys already in real localStorage
   try{ const n=localStorage.length; for(let i=0;i<n;i++){ const k=localStorage.key(i); if(isFinSynced(k)){ const v=_oGet(k); if(v!=null) _dbF[k]=v; } } }catch(e){}
 
