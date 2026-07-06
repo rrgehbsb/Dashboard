@@ -7,7 +7,23 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.5.37';
+const DASHBOARD_VERSION = '2.5.38';
+
+// Auto-update: when a new service worker takes control (new deploy), reload once
+// so the installed app always runs the latest code instead of a stale cached
+// version. Guarded so it can't loop.
+(function(){
+  try{
+    if('serviceWorker' in navigator){
+      var _swReloaded=false;
+      navigator.serviceWorker.addEventListener('controllerchange', function(){
+        if(_swReloaded) return; _swReloaded=true; window.location.reload();
+      });
+      // Actively check for a newer service worker on each load
+      navigator.serviceWorker.getRegistration().then(function(r){ if(r) r.update(); }).catch(function(){});
+    }
+  }catch(e){}
+})();
 
 // =============================================================
 // THEME STYLES ("skins") — single source of truth.
