@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.5.50';
+const DASHBOARD_VERSION = '2.5.51';
 
 // Auto-update: when a new service worker takes control (new deploy), reload once
 // so the installed app always runs the latest code instead of a stale cached
@@ -791,6 +791,7 @@ html[data-skin]:not([data-skin="none"]) #saveBtn {
     { key:'fitness',   href:'gym.html',       icon:'💪',  label:'Fitness' },
     { key:'school',    href:'school.html',    icon:'📚',  label:'School' },
     { key:'habits',    href:'habits.html',    icon:'🔥',  label:'Habits' },
+    { key:'coach',     href:'coach.html',     icon:'🧠',  label:'Coach' },
     { key:'transport', href:'transport.html', icon:'🚌',  label:'Transport' },
     { key:'projects',  href:'projects.html',  icon:'🗂️', label:'Projects' },
     { key:'friends',   href:'friends.html',   icon:'👥',  label:'Friends' },
@@ -804,7 +805,7 @@ html[data-skin]:not([data-skin="none"]) #saveBtn {
   // Pages the user can turn on/off (onboarding + kids mode). 'main' and
   // 'settings' can never be hidden. Stored SYNCED in dashboard:settings:v1
   // as `pages: { finance:false, ... }` — absent/true = visible.
-  const HIDEABLE_PAGES = ['health','fitness','school','habits','transport','projects','friends','finance','trends'];
+  const HIDEABLE_PAGES = ['health','fitness','school','habits','coach','transport','projects','friends','finance','trends'];
   function pageVisible(key) {
     if (key === 'main' || key === 'settings') return true;
     const s = readSettings();
@@ -1372,6 +1373,7 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
     if (p.endsWith('transport.html')) return 'transport';
     if (p.endsWith('projects.html')) return 'projects';
     if (p.endsWith('friends.html')) return 'friends';
+    if (p.endsWith('coach.html')) return 'coach';
     if (p.endsWith('settings.html')) return 'settings';
     return 'main';
   }
@@ -1391,6 +1393,7 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
       else if (p.endsWith('friends.html')) key = 'friends';
       else if (p.endsWith('school.html')) key = 'school';
       else if (p.endsWith('habits.html')) key = 'habits';
+      else if (p.endsWith('coach.html')) key = 'coach';
       else if (p.endsWith('gym.html')) key = 'fitness';
       else if (p.endsWith('health.html')) key = 'health';
       if (key && !pageVisible(key)) { window.location.replace('index.html'); return true; }

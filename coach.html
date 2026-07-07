@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dashboard">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon.svg">
+<title>Coach — Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>(function(){var s=window.supabase;if(s&&s.createClient&&!s.__oneClient){s.__oneClient=true;var o=s.createClient.bind(s),c={};s.createClient=function(u,k,op){var q=String(u)+"|"+String(k);return c[q]||(c[q]=o(u,k,op));};}})();</script>
+<script src="topbar.js" defer></script>
+<style>
+:root{
+  --bg:#050506; --bg-card:rgba(255,255,255,0.045); --border:rgba(255,255,255,0.09);
+  --text-1:#fafafa; --text-2:rgba(255,255,255,0.62); --text-3:rgba(255,255,255,0.4);
+  --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Roboto,sans-serif;
+  background:var(--bg);color:var(--text-2);font-size:15px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+main{max-width:720px;margin:0 auto;padding:14px 16px calc(150px + env(safe-area-inset-bottom));}
+.co-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:6px 0 4px;}
+.co-title{font-size:24px;font-weight:800;letter-spacing:-0.4px;color:var(--text-1);}
+.co-sub{font-size:12px;color:var(--text-3);margin-bottom:14px;line-height:1.45;}
+.co-new{background:rgba(255,255,255,0.05);border:1px solid var(--border);color:var(--text-2);
+  border-radius:10px;padding:8px 12px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;}
+.co-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
+.co-chip{background:color-mix(in srgb,var(--accent,#a78bfa) 10%,transparent);
+  border:1px solid color-mix(in srgb,var(--accent,#a78bfa) 28%,transparent);
+  color:var(--text-1);border-radius:18px;padding:8px 13px;font-family:inherit;font-size:12.5px;font-weight:600;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .1s;}
+.co-chip:active{transform:scale(.97);}
+.co-chat{display:grid;gap:10px;}
+.co-bub{padding:11px 14px;border-radius:15px;font-size:14px;line-height:1.55;white-space:pre-wrap;word-break:break-word;}
+.co-bub.me{background:color-mix(in srgb,var(--accent,#a78bfa) 20%,transparent);
+  border:1px solid color-mix(in srgb,var(--accent,#a78bfa) 32%,transparent);
+  color:var(--text-1);justify-self:end;max-width:86%;}
+.co-bub.ai{background:var(--bg-card);border:1px solid var(--border);color:var(--text-2);justify-self:start;max-width:92%;}
+.co-bub.ai.thinking{color:var(--text-3);font-style:italic;}
+.co-inputbar{
+  position:fixed;left:0;right:0;bottom:calc(64px + env(safe-area-inset-bottom));z-index:45;
+  padding:10px 16px;background:linear-gradient(to top,rgba(5,5,6,0.97) 70%,transparent);
+}
+.co-inputbar-inner{max-width:720px;margin:0 auto;display:flex;gap:8px;}
+.co-input{flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);
+  border-radius:14px;color:var(--text-1);font-family:inherit;font-size:16px;padding:13px 15px;outline:none;}
+.co-input:focus{border-color:var(--accent,#a78bfa);}
+.co-send{width:50px;border:none;border-radius:14px;background:var(--accent,#a78bfa);color:#fff;
+  font-size:18px;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.co-send:disabled{opacity:.5;}
+.co-status{font-size:11px;color:var(--text-3);text-align:center;margin-top:6px;}
+</style>
+</head>
+<body>
+<main>
+  <div class="co-head">
+    <div class="co-title">🧠 Your Coach</div>
+    <button class="co-new" id="coNew">New chat</button>
+  </div>
+  <div class="co-sub" id="coSub">Sees your workouts, weight trend, meals, water, sleep & habits — and coaches across all of it.</div>
+
+  <div class="co-chips" id="coChips">
+    <button class="co-chip" data-q="Review my week — what's going well and what should I fix first?">📋 Review my week</button>
+    <button class="co-chip" data-q="Am I on track for my goal? Look at my weight trend and eating.">🎯 Am I on track?</button>
+    <button class="co-chip" data-q="Look at my recent workouts — where am I stalling and what should I change?">💪 Check my training</button>
+    <button class="co-chip" data-q="What should I eat today to hit my targets, based on what I've already logged?">🍗 What do I eat today?</button>
+  </div>
+
+  <div class="co-chat" id="coChat"></div>
+</main>
+
+<div class="co-inputbar">
+  <div class="co-inputbar-inner">
+    <input type="text" class="co-input" id="coIn" placeholder="Ask your coach anything…" autocomplete="off">
+    <button class="co-send" id="coSend" aria-label="Send">➤</button>
+  </div>
+  <div class="co-status" id="coStatus"></div>
+</div>
+
+<script>
+(function(){
+'use strict';
+const SB_URL='https://mtuoqwbrujxutofhyahb.supabase.co';
+const SB_KEY='sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
+const $=id=>document.getElementById(id);
+const CHAT_KEY='dashboard:coach:chat:v1';
+let sb=null,uid=null,rows=null;
+
+function client(){if(!sb)sb=window.supabase.createClient(SB_URL,SB_KEY);return sb;}
+
+// ── chat persistence (local; the account guard wipes it on account switch) ──
+function loadChat(){try{const a=JSON.parse(localStorage.getItem(CHAT_KEY));return Array.isArray(a)?a:[];}catch(e){return[];}}
+function saveChat(h){try{localStorage.setItem(CHAT_KEY,JSON.stringify(h.slice(-30)));}catch(e){}}
+let history=loadChat();
+
+function bubble(role,text,thinking){
+  const d=document.createElement('div');
+  d.className='co-bub '+(role==='user'?'me':'ai')+(thinking?' thinking':'');
+  d.textContent=text;
+  $('coChat').appendChild(d);
+  d.scrollIntoView({block:'end'});
+  return d;
+}
+function renderHistory(){
+  $('coChat').innerHTML='';
+  if(!history.length){
+    bubble('assistant','Hey! I\'m your personal coach — I can see your whole dashboard: training, weight trend, food, water, sleep and habits. Ask me anything, or tap a suggestion above. 💪');
+    return;
+  }
+  history.forEach(m=>bubble(m.role,m.text));
+}
+
+// ── context: fetch everything once per send, prune blobs, summarize ──
+function prune(v,depth){
+  depth=depth||0;
+  if(depth>6)return undefined;
+  if(typeof v==='string')return v.length>400?v.slice(0,120)+'…[trimmed]':v;
+  if(typeof v==='number'||typeof v==='boolean'||v===null)return v;
+  if(Array.isArray(v)){
+    const a=v.length>30?v.slice(-30):v;
+    return a.map(x=>prune(x,depth+1)).filter(x=>x!==undefined);
+  }
+  if(typeof v==='object'){
+    const o={};
+    Object.keys(v).forEach(k=>{
+      if(k==='_pushAt'||k==='_localAt')return;
+      if(/photo|dataUrl|image/i.test(k))return;          // never ship images/base64
+      const p=prune(v[k],depth+1);
+      if(p!==undefined)o[k]=p;
+    });
+    return o;
+  }
+  return undefined;
+}
+async function fetchRows(){
+  try{await client().auth.getSession();}catch(e){}
+  const{data}=await client().from('app_state').select('key,data').like('key',uid+':%');
+  const map={};
+  (data||[]).forEach(r=>{map[r.key.slice(uid.length+1)]=r.data||{};});
+  return map;
+}
+function dk(offset){const d=new Date();d.setDate(d.getDate()-offset);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function buildContext(m){
+  const health=m['health']||{},gym=m['po-coach']||{},habits=m['habits']||{},dash=m['dashboard']||{},settings=m['settings']||{};
+  const ctx={today:dk(0)};
+  try{ctx.user={name:settings.name||null,mode:settings.mode||'adult'};}catch(e){}
+  // body weight (canonical store lives in the health row since v2.5.39)
+  try{
+    const w=(health['po_coach_weights']||gym['po_coach_weights']||[]).slice(-21);
+    ctx.bodyWeightLog=w;
+  }catch(e){}
+  // nutrition
+  try{
+    ctx.nutrition={
+      coachProfile:health['dashboard:mealPrep:v1:coach']||null,
+      targets:health['dashboard:mealPrep:v1:settings']||null,
+      mealPlan:(health['dashboard:mealPrep:v1:template']||[]).map(x=>({name:x.name,foods:x.foods,kcal:x.kcal,protein:x.protein,carbs:x.carbs,fat:x.fat})),
+      last14dLogs:{}
+    };
+    const daily=health['dashboard:mealPrep:v1:daily']||{};
+    for(let i=0;i<14;i++){const k=dk(i);if(daily[k])ctx.nutrition.last14dLogs[k]=prune(daily[k],3);}
+  }catch(e){}
+  // water
+  try{
+    const w=health['po_water_v1']||{};
+    const logs={};for(let i=0;i<7;i++){const k=dk(i);if(w.logs&&w.logs[k]!=null)logs[k]=w.logs[k];}
+    ctx.water={profile:w.profile||null,mlLast7Days:logs};
+  }catch(e){}
+  // sleep
+  try{ctx.sleepLast14=((health['dashboard:sleep:v1']||{}).entries||[]).slice(-14);}catch(e){}
+  // gym
+  try{
+    ctx.gym={
+      plan:(gym['dashboard:gym:v1:template']||[]).map(d=>({day:d.name,exercises:(d.exercises||[]).map(e=>({name:e.name,sets:e.sets,reps:e.repMin+'-'+e.repMax,target:e.target,toFailureSets:e.failSets||0}))})),
+      last14dWorkouts:{}
+    };
+    const logs=gym['dashboard:gym:v1:logs']||{};
+    for(let i=0;i<14;i++){const k=dk(i);if(logs[k])ctx.gym.last14dWorkouts[k]=prune(logs[k],3);}
+  }catch(e){}
+  // habits + main dashboard (mood/goals) — generic pruned copies
+  try{ctx.habits=prune(habits,1);}catch(e){}
+  try{ctx.dashboardHome=prune(dash,1);}catch(e){}
+  // keep the whole thing bounded
+  let s=JSON.stringify(ctx);
+  if(s.length>26000){try{delete ctx.dashboardHome;}catch(e){}}
+  s=JSON.stringify(ctx);
+  if(s.length>26000){try{delete ctx.habits;}catch(e){}}
+  return ctx;
+}
+
+async function ask(q){
+  if(!q)return;
+  $('coIn').value='';
+  bubble('user',q);
+  history.push({role:'user',text:q});saveChat(history);
+  $('coSend').disabled=true;
+  $('coStatus').textContent='Reading your data…';
+  const t=bubble('assistant','Thinking…',true);
+  try{
+    rows=await fetchRows();
+    const ctx=buildContext(rows);
+    $('coStatus').textContent='Coaching…';
+    const r=await fetch('/api/coach',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({question:q,context:ctx,history:history.slice(0,-1).slice(-8)})
+    });
+    const j=await r.json();
+    if(j.ok){
+      t.classList.remove('thinking');t.textContent=j.text;
+      history.push({role:'assistant',text:j.text});saveChat(history);
+    }else if(j.error==='no-key'){
+      t.textContent='⚙️ The AI coach isn\'t switched on yet — add ANTHROPIC_API_KEY in Vercel (Project → Settings → Environment Variables) and redeploy.';
+    }else{
+      t.textContent='Couldn\'t answer ('+(j.error||'error')+'). Try again in a moment.';
+    }
+  }catch(e){
+    t.textContent='No connection to the coach — check your internet and try again.';
+  }
+  $('coStatus').textContent='';
+  $('coSend').disabled=false;
+  t.scrollIntoView({block:'end'});
+}
+
+$('coSend').addEventListener('click',()=>ask(($('coIn').value||'').trim()));
+$('coIn').addEventListener('keydown',e=>{if(e.key==='Enter')ask(($('coIn').value||'').trim());});
+document.querySelectorAll('.co-chip').forEach(c=>c.addEventListener('click',()=>ask(c.dataset.q)));
+$('coNew').addEventListener('click',()=>{history=[];saveChat(history);renderHistory();});
+
+// ── boot (auth guard) ──
+(async()=>{
+  function waitSupa(){return new Promise(res=>{(function w(){window.supabase?res():setTimeout(w,50);})();});}
+  await waitSupa();
+  try{
+    const{data:{session}}=await client().auth.getSession();
+    if(!session){window.location.href='login.html';return;}
+    uid=session.user.id;
+    localStorage.setItem('_dashUid',uid);
+  }catch(e){window.location.href='login.html';return;}
+  renderHistory();
+})();
+})();
+</script>
+<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}</script>
+</body>
+</html>
