@@ -284,7 +284,29 @@ async function cleanupOldKeys() {
   } catch(e) {}
 }
 
+// localStorage is per-BROWSER, not per-account. If a different account was
+// used on this device before, its cached data (habits, XP, water, weights,
+// meals, mood, reminders, usernames…) would leak into — and then get pushed
+// up into — the new account. So: whenever the logged-in user differs from the
+// last data owner, wipe ALL local app data first. Keeps only the Supabase
+// auth session of the person logging in.
+function wipeLocalForNewOwner(userId) {
+  try {
+    const prevOwner = localStorage.getItem('_dashDataOwner');
+    if (prevOwner === userId) return;
+    const keep = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.indexOf('sb-') === 0) keep.push([k, localStorage.getItem(k)]);
+    }
+    localStorage.clear();
+    keep.forEach(([k, v]) => { try { localStorage.setItem(k, v); } catch (e) {} });
+  } catch (e) {}
+  try { localStorage.setItem('_dashDataOwner', userId); } catch (e) {}
+}
+
 async function afterLogin(userId, isNewUser = false) {
+  wipeLocalForNewOwner(userId);
   localStorage.setItem('_dashUid', userId);
   setLoading(true, 'Setting up…');
   if (isNewUser) {
@@ -359,6 +381,7 @@ document.addEventListener('keydown', e => {
   try {
     const { data: { session } } = await sb.auth.getSession();
     if (session) {
+      wipeLocalForNewOwner(session.user.id);
       localStorage.setItem('_dashUid', session.user.id);
       window.location.href = 'index.html';
     }

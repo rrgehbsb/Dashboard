@@ -1176,12 +1176,17 @@ document.getElementById('resetDataRow').addEventListener('click', async () => {
   const status = document.getElementById('saveStatus');
   status.textContent = 'Clearing data…'; status.style.opacity = '1'; status.style.color = '#f87171';
   try {
-    // Clear Supabase
-    // Keep _migrated so migration never re-runs and re-copies old data
-    const DATA_KEYS = ['dashboard','health','po-coach','school','habits','projects','settings'];
-    for (const k of DATA_KEYS) {
-      await sb.from('app_state').delete().eq('key', uid + ':' + k);
-    }
+    // Clear Supabase — EVERY row of this account (dashboard/health/po-coach/
+    // school/habits/projects/finance/settings/_migrated/…), not a fixed list,
+    // so nothing contaminated can survive.
+    await sb.from('app_state').delete().like('key', uid + ':%');
+    // Purge this account's reminders too (server-side list)
+    try {
+      await fetch('/api/sync-reminders', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reminders: [], userId: uid, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone })
+      });
+    } catch (e) {}
     // Clear ALL localStorage (wipes cached page data so it can't push back to Supabase)
     localStorage.clear();
     status.textContent = '✓ All data cleared — signing out…';

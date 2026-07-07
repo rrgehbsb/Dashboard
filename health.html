@@ -1417,6 +1417,9 @@ details[open] .mp-details-summary::before { content: '▾ '; }
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
     </div>
+    <div id="waterSetupNotice" style="display:none;margin-bottom:12px;padding:11px 13px;border-radius:12px;background:color-mix(in srgb,var(--accent) 10%,transparent);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);font-size:12.5px;line-height:1.5;color:var(--text-secondary)">
+      👋 <b style="color:var(--text-primary)">Set up your water first!</b> Tap the ⚙️ above and enter <b>your weight, age &amp; training hours</b> so I can compute <b>your</b> daily target — and set your <b>cup / bottle / big bottle sizes</b> so each tap logs the right amount.
+    </div>
     <div class="water-row">
       <span class="water-num" id="waterNum">0</span>
       <span class="water-target" id="waterTarget">/ 9</span>
@@ -2690,6 +2693,13 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catc
     const calc = computeTarget();
     const target = Math.max(1, Math.round(calc.total)); // ml
     const done = todayMl();
+    // Fresh account: nudge them to enter THEIR stats + drink sizes first.
+    // Anyone with existing logs counts as set up (don't nag long-time users).
+    const noticeEl = w$('waterSetupNotice');
+    if (noticeEl) {
+      const isSetUp = wState._setup || Object.keys(wState.logs || {}).length > 0;
+      noticeEl.style.display = isSetUp ? 'none' : 'block';
+    }
     w$('waterUnitLabel').textContent = 'WATER TODAY';
     w$('waterNum').textContent = fmtMl(done);
     w$('waterTarget').textContent = '/ ' + fmtMl(target);
@@ -2783,8 +2793,8 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catc
       });
     });
   }
-  wBindSeg('wSetWeightUnit', 'u', v=>{ wState.weightUnit=v;        saveState(); renderWater(); });
-  wBindSeg('wSetSex',        's', v=>{ wState.profile.sex=v;       saveState(); renderWater(); });
+  wBindSeg('wSetWeightUnit', 'u', v=>{ wState.weightUnit=v;        wState._setup=true; saveState(); renderWater(); });
+  wBindSeg('wSetSex',        's', v=>{ wState.profile.sex=v;       wState._setup=true; saveState(); renderWater(); });
 
   ['wSetWeight','wSetAge','wSetActivity','wSetCaffeine','wSetCupMl','wSetBottleMl','wSetBigMl'].forEach(id => {
     const el = w$(id); if (!el) return;
@@ -2798,6 +2808,7 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catc
       else if (id==='wSetCupMl')    wState.sizes.cup=v||250;
       else if (id==='wSetBottleMl') { wState.sizes.bottle=v||500; wState.bottleMl=v||500; }
       else if (id==='wSetBigMl')    wState.sizes.big=v||1000;
+      wState._setup=true; // stats entered — hide the "set up your water" notice
       saveState(); renderWater();
     });
   });
