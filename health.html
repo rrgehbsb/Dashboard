@@ -2396,6 +2396,28 @@ window._dbHSchedulePush = function(){ try{ const b=Object.assign({}, window._dbH
     let lastRemoteAt=0,hasPendingPush=false,pushTimer=null,_sb=null,_dirtyAt=0;
     function client(){if(!_sb)_sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);return _sb;}
 
+    // ── ENTRY-LEVEL merge for the body-weight log + progress photos ──
+    // These live in ONE key holding a whole array, so plain key-level merge
+    // means the last device to push replaces the entire history — a device
+    // with an older copy silently deletes entries another device just added
+    // (the "weight doesn't sync between devices" bug). Union per entry
+    // instead: weights by dateKey (2nd arg wins a same-day conflict),
+    // photos by id. Applied on BOTH push and pull.
+    function mergeWeightArrays(a,b){
+      if(!Array.isArray(a)&&!Array.isArray(b))return undefined;
+      const m={};
+      (Array.isArray(a)?a:[]).forEach(e=>{if(e&&e.dateKey)m[e.dateKey]=e;});
+      (Array.isArray(b)?b:[]).forEach(e=>{if(e&&e.dateKey)m[e.dateKey]=e;});
+      return Object.keys(m).sort().map(k=>m[k]);
+    }
+    function mergePhotoArrays(a,b){
+      if(!Array.isArray(a)&&!Array.isArray(b))return undefined;
+      const m={};
+      (Array.isArray(a)?a:[]).forEach(p=>{if(p&&p.id)m[p.id]=p;});
+      (Array.isArray(b)?b:[]).forEach(p=>{if(p&&p.id)m[p.id]=p;});
+      return Object.values(m).sort((x,y)=>String(y.id).localeCompare(String(x.id)));
+    }
+
     // Durable local mirror so nothing is lost on reload before the cloud push lands
     const SYNC_LS='dashboard:sync:health:v1'; let _localAt=0;
     function persistLocal(){ try{ const db=window._dbH; const b={}; Object.keys(db).forEach(k=>{b[k]=db[k];}); _localAt=Date.now(); b._localAt=_localAt; localStorage.setItem(SYNC_LS,JSON.stringify(b)); }catch(e){} }
@@ -2418,7 +2440,12 @@ window._dbHSchedulePush = function(){ try{ const b=Object.assign({}, window._dbH
       const db=window._dbH;
       // Merge (overlay remote), don't wipe — protects keys logged locally
       // just before this pull that haven't been pushed yet.
-      Object.keys(data).forEach(k=>{if(k!=='_pushAt'&&k!=='_localAt'&&isSynced(k))db[k]=data[k];});
+      Object.keys(data).forEach(k=>{
+        if(k==='_pushAt'||k==='_localAt'||!isSynced(k))return;
+        if(k==='po_coach_weights'){db[k]=mergeWeightArrays(db[k],data[k])||[];return;}
+        if(k==='po_coach_photos'){db[k]=mergePhotoArrays(db[k],data[k])||[];return;}
+        db[k]=data[k];
+      });
       _mirrorAt(remoteAt);
       try{render();}catch(e){}
       try{if(typeof window.wRenderAll==='function')window.wRenderAll();}catch(e){}
@@ -2447,10 +2474,18 @@ window._dbHSchedulePush = function(){ try{ const b=Object.assign({}, window._dbH
         try{ const {data:row}=await client().from('app_state').select('data').eq('key',APP_KEY).maybeSingle(); if(row&&row.data&&typeof row.data==='object') cloud=row.data; }catch(e){}
         const data=Object.assign({},cloud);
         Object.keys(db).forEach(k=>{data[k]=db[k];});
+        // Weights/photos: union with the cloud copy so a device holding an
+        // older array can never erase entries another device added.
+        const _mw=mergeWeightArrays(cloud['po_coach_weights'],db['po_coach_weights']);
+        if(_mw!==undefined){data['po_coach_weights']=_mw;db['po_coach_weights']=_mw;}
+        const _mp=mergePhotoArrays(cloud['po_coach_photos'],db['po_coach_photos']);
+        if(_mp!==undefined){data['po_coach_photos']=_mp;db['po_coach_photos']=_mp;}
         delete data._localAt;
         const pushAt=Date.now();data._pushAt=pushAt;
         await client().from('app_state').upsert({key:APP_KEY,data,updated_at:new Date().toISOString()},{onConflict:'key'});
         lastRemoteAt=pushAt;hasPendingPush=false;
+        // If the union pulled in entries from another device, show them now
+        try{if(typeof window.wtRenderAll==='function')window.wtRenderAll();}catch(e){}
       }catch(e){
         console.warn('Health sync push failed:',e);
         setTimeout(schedulePush,5000);
