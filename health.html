@@ -1675,6 +1675,7 @@ details[open] .mp-details-summary::before { content: '▾ '; }
     <div class="mp-section-head">
       <div class="section-title" style="margin-top:0;margin-bottom:0">Daily Meal Prep</div>
       <div style="display:flex;gap:8px">
+        <button class="mp-btn" id="mpCoachBtn" style="color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,transparent)">🎯 Coach</button>
         <button class="mp-btn" id="mpTargetBtn">Targets</button>
         <button class="mp-btn" id="mpManageBtn">Edit meals</button>
       </div>
@@ -2967,6 +2968,96 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catc
   </div>
 </div>
 
+<!-- FUEL COACH — stats → TDEE/macros → example meal day -->
+<style>
+.fc-seg{display:grid;gap:7px;}
+.fc-seg.cols2{grid-template-columns:1fr 1fr;}
+.fc-opt{display:flex;align-items:center;gap:10px;text-align:left;background:rgba(255,255,255,0.04);
+  border:1.5px solid var(--border-strong);border-radius:12px;padding:10px 12px;cursor:pointer;color:var(--text-primary);
+  font-family:inherit;transition:border-color .15s,background .15s;-webkit-tap-highlight-color:transparent;}
+.fc-opt.sel{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 13%,transparent);}
+.fc-opt-t{font-size:13.5px;font-weight:700;}
+.fc-opt-d{font-size:11px;color:var(--text-tertiary);margin-top:1px;line-height:1.3;}
+.fc-why{margin-top:14px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;padding:12px 14px;display:grid;gap:7px;}
+.fc-why-row{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;color:var(--text-secondary);}
+.fc-why-row b{color:var(--text-primary);font-variant-numeric:tabular-nums;}
+.fc-big{display:flex;align-items:baseline;gap:8px;margin:6px 0 2px;}
+.fc-big-num{font-size:40px;font-weight:800;letter-spacing:-1px;color:var(--text-primary);font-variant-numeric:tabular-nums;}
+.fc-big-unit{font-size:13px;color:var(--text-tertiary);font-weight:600;}
+.fc-macros{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px;}
+.fc-macro{background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:11px;padding:9px 6px;text-align:center;}
+.fc-macro-n{font-size:17px;font-weight:800;color:var(--text-primary);font-variant-numeric:tabular-nums;}
+.fc-macro-l{font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-tertiary);margin-top:2px;}
+.fc-plan{margin-top:14px;display:grid;gap:8px;}
+.fc-meal{background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;padding:11px 13px;}
+.fc-meal-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
+.fc-meal-name{font-size:13.5px;font-weight:700;color:var(--text-primary);}
+.fc-meal-slot{font-size:9.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);}
+.fc-meal-foods{font-size:12px;color:var(--text-secondary);margin-top:3px;line-height:1.45;}
+.fc-meal-mac{font-size:11px;color:var(--text-tertiary);margin-top:4px;font-variant-numeric:tabular-nums;}
+.fc-total{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;padding:10px 13px;border:1px dashed var(--border-strong);border-radius:12px;color:var(--text-secondary);font-variant-numeric:tabular-nums;}
+.fc-note{font-size:11px;color:var(--text-tertiary);margin-top:10px;line-height:1.5;}
+.fc-actions{display:grid;gap:8px;margin-top:14px;}
+</style>
+<div class="mp-modal-bg" id="fcModal">
+  <div class="mp-modal" style="max-height:86vh;overflow-y:auto;-webkit-overflow-scrolling:touch">
+
+    <!-- STEP 1 — stats + goal -->
+    <div id="fcStep1">
+      <h3>🎯 Fuel Coach</h3>
+      <div style="font-size:12px;color:var(--text-tertiary);margin:-8px 0 14px;line-height:1.45">Tell me about you and your goal — I'll work out your calories, macros and an example day of meals.</div>
+      <div class="mp-field-row">
+        <div class="mp-field"><label>Sex</label>
+          <div class="fc-seg cols2" id="fcSex">
+            <button type="button" class="fc-opt sel" data-v="m"><span class="fc-opt-t">♂ Male</span></button>
+            <button type="button" class="fc-opt" data-v="f"><span class="fc-opt-t">♀ Female</span></button>
+          </div>
+        </div>
+        <div class="mp-field"><label>Age</label><input type="number" id="fcAge" min="10" max="90" placeholder="18"></div>
+      </div>
+      <div class="mp-field-row">
+        <div class="mp-field"><label>Height (cm)</label><input type="number" id="fcHeight" min="120" max="230" placeholder="175"></div>
+        <div class="mp-field"><label>Weight (kg)</label><input type="number" id="fcWeight" min="30" max="250" step="0.1" placeholder="70"></div>
+      </div>
+      <div class="mp-field"><label>Training / activity</label>
+        <div class="fc-seg" id="fcAct"></div>
+      </div>
+      <div class="mp-field"><label>Goal</label>
+        <div class="fc-seg cols2" id="fcGoal"></div>
+      </div>
+      <div class="mp-modal-btns">
+        <button class="mp-btn-cancel" id="fcCancel">Cancel</button>
+        <button class="mp-btn-primary" id="fcCalc">Calculate →</button>
+      </div>
+    </div>
+
+    <!-- STEP 2 — results + example day -->
+    <div id="fcStep2" style="display:none">
+      <h3 id="fcResTitle">Your plan</h3>
+      <div class="fc-big"><span class="fc-big-num" id="fcKcal">—</span><span class="fc-big-unit">kcal / day</span></div>
+      <div class="fc-macros">
+        <div class="fc-macro"><div class="fc-macro-n" id="fcP">—</div><div class="fc-macro-l">Protein</div></div>
+        <div class="fc-macro"><div class="fc-macro-n" id="fcC">—</div><div class="fc-macro-l">Carbs</div></div>
+        <div class="fc-macro"><div class="fc-macro-n" id="fcF">—</div><div class="fc-macro-l">Fat</div></div>
+      </div>
+      <div class="fc-why" id="fcWhy"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px">
+        <div style="font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--text-tertiary)">Example day</div>
+        <button class="mp-btn" id="fcReroll" style="height:30px;padding:0 10px;font-size:12px">🔀 Shuffle meals</button>
+      </div>
+      <div class="fc-plan" id="fcPlan"></div>
+      <div class="fc-total" id="fcTotal"></div>
+      <div class="fc-note">These are estimates. Weigh yourself a few mornings a week — if the scale isn't moving toward your goal after ~2 weeks, adjust by ±150 kcal.</div>
+      <div class="fc-actions">
+        <button class="mp-btn-primary" id="fcApplyTargets">✓ Use these targets</button>
+        <button class="mp-btn-primary" id="fcApplyPlan" style="background:transparent;border:1.5px solid var(--accent);color:var(--accent)">✓ Targets + set this as my meal plan</button>
+        <button class="mp-btn-cancel" id="fcBack">← Edit my stats</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 <script>
 (function(){
 'use strict';
@@ -3271,6 +3362,223 @@ document.getElementById('mpEditMealModal').addEventListener('click',e=>{if(e.tar
 
 window.mpRenderAll = renderAll;
 renderAll();
+})();
+</script>
+
+<script>
+// ===== FUEL COACH =====
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const COACH_KEY='dashboard:mealPrep:v1:coach';   // synced (mealPrep prefix)
+const SET_KEY='dashboard:mealPrep:v1:settings';
+const TPL_KEY='dashboard:mealPrep:v1:template';
+function db(){return window._dbH||(window._dbH={});}
+function push(){if(window._dbHSchedulePush)window._dbHSchedulePush();}
+
+const ACT=[
+  {k:'sed', label:'Sedentary',   desc:'Desk life, little or no training', x:1.2},
+  {k:'light',label:'Light',      desc:'1–3 workouts a week',              x:1.375},
+  {k:'mod', label:'Moderate',    desc:'3–5 workouts a week',              x:1.55},
+  {k:'high',label:'Very active', desc:'6–7 workouts a week',              x:1.725},
+  {k:'ath', label:'Athlete',     desc:'Hard daily training / physical job', x:1.9},
+];
+const GOALS=[
+  {k:'cut',  label:'🔻 Cut',      adj:-400, desc:'Lose fat · ~0.4 kg/wk down'},
+  {k:'maint',label:'⚖️ Maintain', adj:0,    desc:'Stay at this weight'},
+  {k:'lean', label:'📈 Lean bulk',adj:250,  desc:'Muscle, minimal fat · ~0.25 kg/wk'},
+  {k:'bulk', label:'🚀 Bulk',     adj:500,  desc:'Max growth · ~0.5 kg/wk'},
+];
+
+// —— food library (per 100g unless `unit`) ——
+const F={
+  chicken:{n:'chicken breast',k:165,p:31,c:0,f:3.6},
+  beef:{n:'lean beef',k:137,p:21,c:0,f:5},
+  salmon:{n:'salmon',k:208,p:20,c:0,f:13},
+  tuna:{n:'tuna (canned)',k:116,p:26,c:0,f:1},
+  egg:{n:'eggs',k:78,p:6.3,c:0.6,f:5.3,unit:'egg'},
+  yogurt:{n:'Greek yogurt',k:59,p:10,c:3.6,f:0.4},
+  cottage:{n:'cottage cheese',k:98,p:11,c:3,f:4.3},
+  whey:{n:'whey',k:120,p:24,c:3,f:1.5,unit:'scoop'},
+  rice:{n:'rice (cooked)',k:130,p:2.7,c:28,f:0.3},
+  pasta:{n:'pasta (cooked)',k:158,p:5.8,c:31,f:0.9},
+  potato:{n:'potatoes',k:87,p:2,c:20,f:0.1},
+  oats:{n:'oats',k:389,p:17,c:66,f:7},
+  bread:{n:'bread',k:80,p:3,c:15,f:1,unit:'slice'},
+  banana:{n:'banana',k:105,p:1.3,c:27,f:0.4,unit:'banana'},
+  pb:{n:'peanut butter',k:588,p:25,c:20,f:50},
+  almonds:{n:'almonds',k:579,p:21,c:22,f:50},
+  oil:{n:'olive oil',k:884,p:0,c:0,f:100},
+  avocado:{n:'avocado',k:160,p:2,c:9,f:15},
+  veg:{n:'veggies',k:35,p:2,c:7,f:0.3},
+  honey:{n:'honey',k:304,p:0,c:82,f:0},
+};
+// meal blueprints: prot scales to hit protein, carb scales to fill kcal, extras fixed
+const BP={
+  breakfast:[
+    {name:'Oats & whey bowl',prot:'whey',carb:'oats',extras:[['banana',1]]},
+    {name:'Eggs & toast',prot:'egg',carb:'bread',extras:[['veg',100]]},
+    {name:'Greek yogurt bowl',prot:'yogurt',carb:'oats',extras:[['honey',15]]},
+  ],
+  lunch:[
+    {name:'Chicken & rice',prot:'chicken',carb:'rice',extras:[['veg',150],['oil',7]]},
+    {name:'Beef & potatoes',prot:'beef',carb:'potato',extras:[['veg',150]]},
+    {name:'Tuna pasta',prot:'tuna',carb:'pasta',extras:[['oil',7],['veg',100]]},
+  ],
+  dinner:[
+    {name:'Salmon & rice',prot:'salmon',carb:'rice',extras:[['veg',150]]},
+    {name:'Chicken & pasta',prot:'chicken',carb:'pasta',extras:[['oil',7],['veg',150]]},
+    {name:'Beef rice bowl',prot:'beef',carb:'rice',extras:[['veg',100],['avocado',50]]},
+  ],
+  snack:[
+    {name:'Whey shake & PB',prot:'whey',carb:'banana',extras:[['pb',15]]},
+    {name:'Yogurt & almonds',prot:'yogurt',carb:'banana',extras:[['almonds',15]]},
+    {name:'Cottage cheese toast',prot:'cottage',carb:'bread',extras:[['pb',10]]},
+  ],
+};
+
+function mOf(fid,amt){const f=F[fid];const m=(f.unit!==undefined)?amt:amt/100;return{k:f.k*m,p:f.p*m,c:f.c*m,f:f.f*m};}
+function fmtAmt(fid,amt){
+  const f=F[fid];
+  if(f.unit==='egg')return amt+' eggs';
+  if(f.unit==='scoop')return amt+(amt===1?' scoop ':' scoops ')+f.n;
+  if(f.unit==='slice')return amt+(amt===1?' slice ':' slices ')+f.n;
+  if(f.unit==='banana')return amt===1?'1 banana':amt+' bananas';
+  return Math.round(amt)+'g '+f.n;
+}
+function clampProt(fid,amt){
+  const f=F[fid];
+  if(f.unit==='egg')return Math.min(6,Math.max(2,Math.round(amt)));
+  if(f.unit==='scoop')return Math.min(2,Math.max(1,Math.round(amt*2)/2));
+  if(fid==='yogurt'||fid==='cottage')return Math.min(450,Math.max(150,Math.round(amt/25)*25));
+  return Math.min(400,Math.max(80,Math.round(amt/10)*10));
+}
+function clampCarb(fid,amt){
+  const f=F[fid];
+  if(f.unit==='banana')return Math.min(3,Math.max(1,Math.round(amt)));
+  if(f.unit==='slice')return Math.min(5,Math.max(1,Math.round(amt)));
+  if(fid==='oats')return Math.min(150,Math.max(30,Math.round(amt/10)*10));
+  return Math.min(550,Math.max(50,Math.round(amt/10)*10));
+}
+function buildMeal(slot,bp,kcalT,protT){
+  let ex={k:0,p:0,c:0,f:0};const parts=[];
+  bp.extras.forEach(([fid,amt])=>{const m=mOf(fid,amt);ex.k+=m.k;ex.p+=m.p;ex.c+=m.c;ex.f+=m.f;parts.push([fid,amt]);});
+  const pf=F[bp.prot];
+  const perP=(pf.unit!==undefined)?pf.p:pf.p/100;
+  const pAmt=clampProt(bp.prot,Math.max(0,(protT-ex.p))/perP);
+  const pm=mOf(bp.prot,pAmt);
+  const cf=F[bp.carb];
+  const perK=(cf.unit!==undefined)?cf.k:cf.k/100;
+  const remK=kcalT-ex.k-pm.k;
+  const cAmt=clampCarb(bp.carb,Math.max(0,remK)/perK);
+  const cm=mOf(bp.carb,cAmt);
+  const tot={k:Math.round(ex.k+pm.k+cm.k),p:Math.round(ex.p+pm.p+cm.p),c:Math.round(ex.c+pm.c+cm.c),f:Math.round(ex.f+pm.f+cm.f)};
+  const foods=[fmtAmt(bp.prot,pAmt),fmtAmt(bp.carb,cAmt)].concat(parts.map(([fid,amt])=>fmtAmt(fid,amt))).join(', ');
+  return{slot,name:bp.name,foods,tot};
+}
+function genDay(kcal,prot){
+  const slots=kcal>=3400?[['breakfast',.22],['lunch',.28],['dinner',.28],['snack',.11],['snack',.11]]
+    :kcal>=2300?[['breakfast',.25],['lunch',.30],['dinner',.30],['snack',.15]]
+    :[['breakfast',.28],['lunch',.36],['dinner',.36]];
+  const usedNames={};
+  return slots.map(([slot,fr])=>{
+    const opts=BP[slot].filter(b=>!usedNames[b.name]);
+    const bp=(opts.length?opts:BP[slot])[Math.floor(Math.random()*(opts.length||BP[slot].length))];
+    usedNames[bp.name]=1;
+    return buildMeal(slot,bp,kcal*fr,prot*fr);
+  });
+}
+
+// —— engine ——
+let st={sex:'m',act:'mod',goal:'lean'};
+let calc=null,day=null;
+const r5=n=>Math.round(n/5)*5, r50=n=>Math.round(n/50)*50;
+function compute(){
+  const bmr=Math.round(10*st.weight+6.25*st.height-5*st.age+(st.sex==='f'?-161:5));
+  const act=ACT.find(a=>a.k===st.act)||ACT[2];
+  const tdee=Math.round(bmr*act.x);
+  const goal=GOALS.find(g=>g.k===st.goal)||GOALS[1];
+  let kcal=tdee+goal.adj; if(kcal<bmr)kcal=bmr; // never eat below BMR
+  const prot=Math.round(st.weight*2.0), fat=Math.round(st.weight*0.9);
+  const carb=Math.max(0,Math.round((kcal-prot*4-fat*9)/4));
+  calc={bmr,tdee,act,goal,kcal,prot,fat,carb};
+}
+function seg(el,items,cur,onPick){
+  el.innerHTML=items.map(it=>`<button type="button" class="fc-opt${it.k===cur?' sel':''}" data-v="${it.k}"><span><span class="fc-opt-t">${it.label}</span>${it.desc?`<div class="fc-opt-d">${it.desc}</div>`:''}</span></button>`).join('');
+  el.querySelectorAll('.fc-opt').forEach(b=>b.addEventListener('click',()=>{onPick(b.dataset.v);el.querySelectorAll('.fc-opt').forEach(x=>x.classList.toggle('sel',x.dataset.v===b.dataset.v));}));
+}
+function renderResults(){
+  $('fcResTitle').textContent=calc.goal.label.replace(/^\S+\s/,'')+' plan';
+  $('fcKcal').textContent=calc.kcal.toLocaleString();
+  $('fcP').textContent=calc.prot+'g';$('fcC').textContent=calc.carb+'g';$('fcF').textContent=calc.fat+'g';
+  $('fcWhy').innerHTML=
+    `<div class="fc-why-row"><span>Base burn (BMR)</span><b>${calc.bmr.toLocaleString()} kcal</b></div>`
+   +`<div class="fc-why-row"><span>× ${calc.act.label.toLowerCase()} activity (${calc.act.x})</span><b>${calc.tdee.toLocaleString()} kcal/day burned</b></div>`
+   +`<div class="fc-why-row"><span>${calc.goal.label} ${calc.goal.adj>0?'+':''}${calc.goal.adj||'±0'} kcal</span><b>${calc.kcal.toLocaleString()} kcal target</b></div>`
+   +`<div class="fc-why-row"><span>Protein 2 g/kg · Fat 0.9 g/kg · Carbs = the rest</span><b>${calc.prot}P / ${calc.carb}C / ${calc.fat}F</b></div>`;
+  renderDay();
+}
+function renderDay(){
+  day=genDay(calc.kcal,calc.prot);
+  const slotName=s=>s==='snack'?'Snack':s[0].toUpperCase()+s.slice(1);
+  $('fcPlan').innerHTML=day.map(m=>`<div class="fc-meal">
+    <div class="fc-meal-h"><span class="fc-meal-name">${m.name}</span><span class="fc-meal-slot">${slotName(m.slot)}</span></div>
+    <div class="fc-meal-foods">${m.foods}</div>
+    <div class="fc-meal-mac">${m.tot.k} kcal · ${m.tot.p}P / ${m.tot.c}C / ${m.tot.f}F</div>
+  </div>`).join('');
+  const t=day.reduce((a,m)=>({k:a.k+m.tot.k,p:a.p+m.tot.p,c:a.c+m.tot.c,f:a.f+m.tot.f}),{k:0,p:0,c:0,f:0});
+  $('fcTotal').innerHTML=`<span>Day total: <b style="color:var(--text-primary)">${t.k.toLocaleString()} kcal · ${t.p}P/${t.c}C/${t.f}F</b></span><span>target ${calc.kcal.toLocaleString()}</span>`;
+}
+function targetsObj(){
+  return{kcal:{min:r50(calc.kcal-100),max:r50(calc.kcal+100)},
+    protein:{min:r5(st.weight*1.8),max:r5(st.weight*2.2)},
+    carbs:{min:r5(calc.carb*0.9),max:r5(calc.carb*1.1)},
+    fat:{min:r5(st.weight*0.8),max:r5(st.weight*1.0)}};
+}
+function applyTargets(){db()[SET_KEY]=targetsObj();push();if(window.mpRenderAll)window.mpRenderAll();}
+function applyPlan(){
+  const slotName=s=>s==='snack'?'Snack':s[0].toUpperCase()+s.slice(1);
+  db()[TPL_KEY]=day.map((m,i)=>({id:'mp_fc_'+Date.now()+'_'+i,name:slotName(m.slot)+' — '+m.name,foods:m.foods,kcal:m.tot.k,protein:m.tot.p,carbs:m.tot.c,fat:m.tot.f,notes:'Fuel Coach'}));
+  applyTargets();
+}
+
+// —— wiring ——
+function openCoach(){
+  const c=db()[COACH_KEY]||{};
+  st={sex:c.sex||'m',act:c.act||'mod',goal:c.goal||'lean'};
+  if(c.age)$('fcAge').value=c.age;
+  if(c.height)$('fcHeight').value=c.height;
+  // weight: prefer the weight tracker's latest entry
+  let w=c.weight;
+  try{const arr=db()['po_coach_weights'];if(Array.isArray(arr)&&arr.length)w=arr[arr.length-1].weight;}catch(e){}
+  if(w)$('fcWeight').value=w;
+  $('fcSex').querySelectorAll('.fc-opt').forEach(b=>b.classList.toggle('sel',b.dataset.v===st.sex));
+  seg($('fcAct'),ACT,st.act,v=>st.act=v);
+  seg($('fcGoal'),GOALS,st.goal,v=>st.goal=v);
+  $('fcStep1').style.display='';$('fcStep2').style.display='none';
+  $('fcModal').classList.add('show');
+}
+$('mpCoachBtn').addEventListener('click',openCoach);
+$('fcSex').querySelectorAll('.fc-opt').forEach(b=>b.addEventListener('click',()=>{st.sex=b.dataset.v;$('fcSex').querySelectorAll('.fc-opt').forEach(x=>x.classList.toggle('sel',x===b));}));
+$('fcCalc').addEventListener('click',()=>{
+  st.age=parseInt($('fcAge').value)||0;
+  st.height=parseInt($('fcHeight').value)||0;
+  st.weight=parseFloat($('fcWeight').value)||0;
+  if(!st.age||!st.height||!st.weight){alert('Fill in age, height and weight first.');return;}
+  db()[COACH_KEY]={sex:st.sex,age:st.age,height:st.height,weight:st.weight,act:st.act,goal:st.goal};push();
+  compute();renderResults();
+  $('fcStep1').style.display='none';$('fcStep2').style.display='';
+  $('fcModal').querySelector('.mp-modal').scrollTop=0;
+});
+$('fcReroll').addEventListener('click',renderDay);
+$('fcBack').addEventListener('click',()=>{$('fcStep2').style.display='none';$('fcStep1').style.display='';});
+$('fcCancel').addEventListener('click',()=>$('fcModal').classList.remove('show'));
+$('fcModal').addEventListener('click',e=>{if(e.target.id==='fcModal')$('fcModal').classList.remove('show');});
+$('fcApplyTargets').addEventListener('click',()=>{applyTargets();$('fcModal').classList.remove('show');});
+$('fcApplyPlan').addEventListener('click',()=>{
+  if(!confirm('Replace your current meal list with this plan? Your logged history stays.'))return;
+  applyPlan();$('fcModal').classList.remove('show');
+});
 })();
 </script>
 
