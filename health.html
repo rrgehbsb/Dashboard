@@ -2998,6 +2998,16 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catc
 .fc-total{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;padding:10px 13px;border:1px dashed var(--border-strong);border-radius:12px;color:var(--text-secondary);font-variant-numeric:tabular-nums;}
 .fc-note{font-size:11px;color:var(--text-tertiary);margin-top:10px;line-height:1.5;}
 .fc-actions{display:grid;gap:8px;margin-top:14px;}
+.fc-chat{margin-top:8px;display:grid;gap:8px;max-height:260px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.fc-bub{padding:9px 12px;border-radius:13px;font-size:13px;line-height:1.5;white-space:pre-wrap;word-break:break-word;}
+.fc-bub.me{background:color-mix(in srgb,var(--accent) 18%,transparent);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);color:var(--text-primary);justify-self:end;max-width:85%;}
+.fc-bub.ai{background:rgba(255,255,255,0.04);border:1px solid var(--border);color:var(--text-secondary);justify-self:start;max-width:92%;}
+.fc-bub.ai b{color:var(--text-primary);}
+.fc-chat-row{display:flex;gap:8px;margin-top:10px;}
+.fc-chat-row input{flex:1;background:rgba(255,255,255,0.05);border:1px solid var(--border-strong);border-radius:12px;color:var(--text-primary);font-family:inherit;font-size:16px;padding:11px 13px;outline:none;}
+.fc-chat-row input:focus{border-color:var(--accent);}
+.fc-chat-send{width:46px;border:none;border-radius:12px;background:var(--accent);color:#fff;font-size:17px;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.fc-chat-send:disabled{opacity:.5;}
 </style>
 <div class="mp-modal-bg" id="fcModal">
   <div class="mp-modal" style="max-height:86vh;overflow-y:auto;-webkit-overflow-scrolling:touch">
@@ -3049,6 +3059,16 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catc
       <div class="fc-plan" id="fcPlan"></div>
       <div class="fc-total" id="fcTotal"></div>
       <div class="fc-note">These are estimates. Weigh yourself a few mornings a week — if the scale isn't moving toward your goal after ~2 weeks, adjust by ±150 kcal.</div>
+
+      <div style="font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--text-tertiary);margin-top:18px">💬 Ask your AI coach</div>
+      <div class="fc-chat" id="fcChat">
+        <div class="fc-bub ai">Hey! I can see your stats, targets and real progress data. Ask me anything — "what should I eat before training?", "why am I not gaining?", "make my plan more budget-friendly"…</div>
+      </div>
+      <div class="fc-chat-row">
+        <input type="text" id="fcChatIn" placeholder="Ask about your nutrition…" autocomplete="off">
+        <button class="fc-chat-send" id="fcChatSend" aria-label="Send">➤</button>
+      </div>
+
       <div class="fc-actions">
         <button class="mp-btn-primary" id="fcApplyTargets">✓ Use these targets</button>
         <button class="mp-btn-primary" id="fcApplyPlan" style="background:transparent;border:1.5px solid var(--accent);color:var(--accent)">✓ Targets + set this as my meal plan</button>
@@ -3511,7 +3531,7 @@ function genDay(kcal,prot){
 
 // —— engine ——
 let st={sex:'m',act:'mod',goal:'lean'};
-let calc=null,day=null;
+let calc=null,day=null,lastCheckin=null;
 const r5=n=>Math.round(n/5)*5, r50=n=>Math.round(n/50)*50;
 function compute(){
   const bmr=Math.round(10*st.weight+6.25*st.height-5*st.age+(st.sex==='f'?-161:5));
@@ -3584,6 +3604,7 @@ function renderCheckin(){
   const kcals=[];for(let i=0;i<=13;i++){const k=dayKcalOf(days,tpl,dkOff(i));if(k!==null&&k>800)kcals.push(k);} // skip barely-logged days
   const avg=a=>a.reduce((s,x)=>s+x,0)/a.length;
   if(recentW.length<3||prevW.length<3||kcals.length<8){
+    lastCheckin='not enough logged data yet ('+recentW.length+'/3 weigh-ins this week, '+prevW.length+'/3 last week, '+kcals.length+'/8 logged meal days)';
     el.innerHTML=`<div class="fc-why"><div class="fc-why-row"><span>🧠 Self-training check-in</span><b>needs more data</b></div>
       <div style="font-size:11.5px;color:var(--text-tertiary);line-height:1.55">Formulas are estimates — the real coach is <b>your own data</b>. Log your <b>weight ~4×/week</b> (Fitness→Health weight card) and tick your <b>meals most days</b>. After ~2 weeks I'll measure your REAL daily burn from what actually happened and auto-correct your calories.<br>
       Progress: weigh-ins ${recentW.length}/3 this week · ${prevW.length}/3 last week · meals logged ${kcals.length}/8 days.</div></div>`;
@@ -3595,6 +3616,7 @@ function renderCheckin(){
   const RATE={cut:-0.4,maint:0,lean:0.3,bulk:0.5}[st.goal||'lean']||0;
   const smart=r50(tdeeReal+RATE*1100);
   const diff=smart-calc.kcal;
+  lastCheckin={avgIntakeKcal:intake,weightTrendKgPerWeek:+rate.toFixed(2),measuredRealTDEE:tdeeReal,dataDrivenTargetKcal:smart,formulaVsMeasuredGap:diff};
   el.innerHTML=`<div class="fc-why" style="border-color:color-mix(in srgb,var(--accent) 45%,transparent)">
     <div class="fc-why-row"><span>🧠 Self-training check-in — your last 14 days</span><b></b></div>
     <div class="fc-why-row"><span>You actually ate (avg of ${kcals.length} logged days)</span><b>${intake.toLocaleString()} kcal/day</b></div>
@@ -3657,6 +3679,60 @@ $('fcApplyPlan').addEventListener('click',()=>{
   if(!confirm('Replace your current meal list with this plan? Your logged history stays.'))return;
   applyPlan();$('fcModal').classList.remove('show');
 });
+
+// —— AI COACH CHAT (hybrid: algorithm computes the numbers, AI coaches around them) ——
+const chatHistory=[];
+function chatBubble(role,text){
+  const d=document.createElement('div');
+  d.className='fc-bub '+(role==='user'?'me':'ai');
+  d.textContent=text;
+  $('fcChat').appendChild(d);
+  $('fcChat').scrollTop=$('fcChat').scrollHeight;
+  return d;
+}
+function aiContext(){
+  const goal=GOALS.find(g=>g.k===st.goal)||{};
+  return{
+    stats:{sex:st.sex,age:st.age,heightCm:st.height,weightKg:st.weight,
+      activity:(ACT.find(a=>a.k===st.act)||{}).label,goal:goal.label},
+    formulaEstimates:calc?{bmr:calc.bmr,tdee:calc.tdee,targetKcal:calc.kcal,proteinG:calc.prot,carbsG:calc.carb,fatG:calc.fat}:null,
+    selfTrainingCheckin:lastCheckin,
+    currentAppliedTargets:db()[SET_KEY]||null,
+    currentMealPlan:(db()[TPL_KEY]||[]).map(m=>({name:m.name,foods:m.foods,kcal:m.kcal,protein:m.protein})),
+    generatedExampleDay:day?day.map(m=>({meal:m.name,foods:m.foods,kcal:m.tot.k,protein:m.tot.p})):null,
+    recentWeighInsKg:(db()['po_coach_weights']||[]).slice(-14),
+  };
+}
+async function askCoach(){
+  const inp=$('fcChatIn'),q=(inp.value||'').trim();
+  if(!q)return;
+  inp.value='';
+  chatBubble('user',q);
+  chatHistory.push({role:'user',text:q});
+  $('fcChatSend').disabled=true;
+  const thinking=chatBubble('assistant','Thinking…');
+  try{
+    const r=await fetch('/api/coach',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({question:q,context:aiContext(),history:chatHistory.slice(0,-1)})
+    });
+    const j=await r.json();
+    if(j.ok){
+      thinking.textContent=j.text;
+      chatHistory.push({role:'assistant',text:j.text});
+    }else if(j.error==='no-key'){
+      thinking.textContent='⚙️ The AI coach isn\'t switched on yet — the site owner needs to add an ANTHROPIC_API_KEY in Vercel (Project → Settings → Environment Variables), then redeploy. The numbers above still work without it.';
+    }else{
+      thinking.textContent='Hmm, the coach couldn\'t answer ('+(j.error||'error')+'). Try again in a moment.';
+    }
+  }catch(e){
+    thinking.textContent='No connection to the coach right now — check your internet and try again.';
+  }
+  $('fcChatSend').disabled=false;
+  $('fcChat').scrollTop=$('fcChat').scrollHeight;
+}
+$('fcChatSend').addEventListener('click',askCoach);
+$('fcChatIn').addEventListener('keydown',e=>{if(e.key==='Enter')askCoach();});
 })();
 </script>
 
