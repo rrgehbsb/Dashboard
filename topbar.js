@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.5.45';
+const DASHBOARD_VERSION = '2.5.46';
 
 // Auto-update: when a new service worker takes control (new deploy), reload once
 // so the installed app always runs the latest code instead of a stale cached
@@ -283,6 +283,14 @@ window.applyDashSettings(JSON.parse(localStorage.getItem('dashboard:settings:v1'
 
   // -------- CSS --------
   const css = `
+/* iOS Safari zooms into any text field whose font is < 16px, and because the
+   app disables pinch-zoom the page then gets STUCK zoomed in. Forcing text
+   fields to >=16px on phones stops the auto-zoom (and the stuck state) at the
+   source. Non-text inputs (checkbox/radio/range/color/file) are excluded. */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="button"]):not([type="submit"]),
+  textarea, select { font-size: 16px !important; }
+}
 .topbar {
   position: sticky; top: 0; z-index: 40;
   display: flex; justify-content: flex-end; align-items: center;
