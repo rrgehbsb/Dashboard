@@ -3041,6 +3041,7 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catc
         <div class="fc-macro"><div class="fc-macro-n" id="fcF">—</div><div class="fc-macro-l">Fat</div></div>
       </div>
       <div class="fc-why" id="fcWhy"></div>
+      <div id="fcCheckin" style="margin-top:12px"></div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px">
         <div style="font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--text-tertiary)">Example day</div>
         <button class="mp-btn" id="fcReroll" style="height:30px;padding:0 10px;font-size:12px">🔀 Shuffle meals</button>
@@ -3412,6 +3413,14 @@ const F={
   avocado:{n:'avocado',k:160,p:2,c:9,f:15},
   veg:{n:'veggies',k:35,p:2,c:7,f:0.3},
   honey:{n:'honey',k:304,p:0,c:82,f:0},
+  thigh:{n:'chicken thighs',k:209,p:26,c:0,f:11},
+  gbeef:{n:'ground beef',k:250,p:26,c:0,f:17},
+  fish:{n:'white fish',k:105,p:23,c:0,f:1},
+  sweetpot:{n:'sweet potato',k:86,p:1.6,c:20,f:0.1},
+  pita:{n:'pita',k:275,p:9,c:55,f:1.2,unit:'pita'},
+  hummus:{n:'hummus',k:166,p:8,c:14,f:10},
+  cornflakes:{n:'cornflakes',k:357,p:7,c:84,f:0.4},
+  milk:{n:'milk 3%',k:60,p:3.3,c:4.8,f:3},
 };
 // meal blueprints: prot scales to hit protein, carb scales to fill kcal, extras fixed
 const BP={
@@ -3419,21 +3428,28 @@ const BP={
     {name:'Oats & whey bowl',prot:'whey',carb:'oats',extras:[['banana',1]]},
     {name:'Eggs & toast',prot:'egg',carb:'bread',extras:[['veg',100]]},
     {name:'Greek yogurt bowl',prot:'yogurt',carb:'oats',extras:[['honey',15]]},
+    {name:'Shakshuka & pita',prot:'egg',carb:'pita',extras:[['veg',150],['oil',7]]},
+    {name:'Cornflakes, milk & whey',prot:'whey',carb:'cornflakes',extras:[['milk',250]]},
   ],
   lunch:[
     {name:'Chicken & rice',prot:'chicken',carb:'rice',extras:[['veg',150],['oil',7]]},
     {name:'Beef & potatoes',prot:'beef',carb:'potato',extras:[['veg',150]]},
     {name:'Tuna pasta',prot:'tuna',carb:'pasta',extras:[['oil',7],['veg',100]]},
+    {name:'Ground beef & rice',prot:'gbeef',carb:'rice',extras:[['veg',150]]},
+    {name:'Chicken thighs & sweet potato',prot:'thigh',carb:'sweetpot',extras:[['veg',150]]},
   ],
   dinner:[
     {name:'Salmon & rice',prot:'salmon',carb:'rice',extras:[['veg',150]]},
     {name:'Chicken & pasta',prot:'chicken',carb:'pasta',extras:[['oil',7],['veg',150]]},
     {name:'Beef rice bowl',prot:'beef',carb:'rice',extras:[['veg',100],['avocado',50]]},
+    {name:'Fish & potatoes',prot:'fish',carb:'potato',extras:[['veg',150],['oil',10]]},
+    {name:'Tuna, pita & hummus',prot:'tuna',carb:'pita',extras:[['hummus',50],['veg',100]]},
   ],
   snack:[
     {name:'Whey shake & PB',prot:'whey',carb:'banana',extras:[['pb',15]]},
     {name:'Yogurt & almonds',prot:'yogurt',carb:'banana',extras:[['almonds',15]]},
     {name:'Cottage cheese toast',prot:'cottage',carb:'bread',extras:[['pb',10]]},
+    {name:'Eggs, pita & hummus',prot:'egg',carb:'pita',extras:[['hummus',40]]},
   ],
 };
 
@@ -3444,6 +3460,8 @@ function fmtAmt(fid,amt){
   if(f.unit==='scoop')return amt+(amt===1?' scoop ':' scoops ')+f.n;
   if(f.unit==='slice')return amt+(amt===1?' slice ':' slices ')+f.n;
   if(f.unit==='banana')return amt===1?'1 banana':amt+' bananas';
+  if(f.unit==='pita')return amt===1?'1 pita':amt+' pitas';
+  if(fid==='milk')return Math.round(amt)+'ml '+f.n;
   return Math.round(amt)+'g '+f.n;
 }
 function clampProt(fid,amt){
@@ -3457,7 +3475,9 @@ function clampCarb(fid,amt){
   const f=F[fid];
   if(f.unit==='banana')return Math.min(3,Math.max(1,Math.round(amt)));
   if(f.unit==='slice')return Math.min(5,Math.max(1,Math.round(amt)));
+  if(f.unit==='pita')return Math.min(3,Math.max(0.5,Math.round(amt*2)/2));
   if(fid==='oats')return Math.min(150,Math.max(30,Math.round(amt/10)*10));
+  if(fid==='cornflakes')return Math.min(130,Math.max(30,Math.round(amt/10)*10));
   return Math.min(550,Math.max(50,Math.round(amt/10)*10));
 }
 function buildMeal(slot,bp,kcalT,protT){
@@ -3516,6 +3536,7 @@ function renderResults(){
    +`<div class="fc-why-row"><span>× ${calc.act.label.toLowerCase()} activity (${calc.act.x})</span><b>${calc.tdee.toLocaleString()} kcal/day burned</b></div>`
    +`<div class="fc-why-row"><span>${calc.goal.label} ${calc.goal.adj>0?'+':''}${calc.goal.adj||'±0'} kcal</span><b>${calc.kcal.toLocaleString()} kcal target</b></div>`
    +`<div class="fc-why-row"><span>Protein 2 g/kg · Fat 0.9 g/kg · Carbs = the rest</span><b>${calc.prot}P / ${calc.carb}C / ${calc.fat}F</b></div>`;
+  renderCheckin();
   renderDay();
 }
 function renderDay(){
@@ -3529,13 +3550,70 @@ function renderDay(){
   const t=day.reduce((a,m)=>({k:a.k+m.tot.k,p:a.p+m.tot.p,c:a.c+m.tot.c,f:a.f+m.tot.f}),{k:0,p:0,c:0,f:0});
   $('fcTotal').innerHTML=`<span>Day total: <b style="color:var(--text-primary)">${t.k.toLocaleString()} kcal · ${t.p}P/${t.c}C/${t.f}F</b></span><span>target ${calc.kcal.toLocaleString()}</span>`;
 }
-function targetsObj(){
-  return{kcal:{min:r50(calc.kcal-100),max:r50(calc.kcal+100)},
+function targetsObj(kc){
+  kc=kc||calc.kcal;
+  const carbMid=Math.max(0,Math.round((kc-calc.prot*4-calc.fat*9)/4));
+  return{kcal:{min:r50(kc-100),max:r50(kc+100)},
     protein:{min:r5(st.weight*1.8),max:r5(st.weight*2.2)},
-    carbs:{min:r5(calc.carb*0.9),max:r5(calc.carb*1.1)},
+    carbs:{min:r5(carbMid*0.9),max:r5(carbMid*1.1)},
     fat:{min:r5(st.weight*0.8),max:r5(st.weight*1.0)}};
 }
-function applyTargets(){db()[SET_KEY]=targetsObj();push();if(window.mpRenderAll)window.mpRenderAll();}
+function applyTargets(kc){db()[SET_KEY]=targetsObj(kc);push();if(window.mpRenderAll)window.mpRenderAll();}
+
+// —— SELF-TRAINING CHECK-IN ————————————————————————————————
+// The formulas above estimate a population average (±300–500 kcal error).
+// This closes the loop with YOUR data: real weigh-ins + real logged meals
+// over the last 14 days → your ACTUAL burn via energy balance
+// (1 kg of body mass ≈ 7,700 kcal), then a data-driven target.
+function dkOff(n){const d=new Date();d.setDate(d.getDate()-n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function dayKcalOf(days,tpl,dk){
+  const log=days[dk];if(!log)return null;
+  let k=0,any=false;
+  tpl.forEach(m=>{const l=log[m.id]||{};if(!l.eaten)return;any=true;
+    k+=(l.kcal!==undefined&&l.kcal!==''&&parseInt(l.kcal)>=0)?parseInt(l.kcal):(parseInt(m.kcal)||0);});
+  (log._extras||[]).forEach(e=>{k+=e.kcal||0;any=true;});
+  return any?k:null;
+}
+function renderCheckin(){
+  const el=$('fcCheckin');if(el===null)return;
+  const W=db()['po_coach_weights']||[];
+  const days=db()['dashboard:mealPrep:v1:daily']||{};
+  const tpl=db()[TPL_KEY]||[];
+  const wIn=(a,b)=>{const arr=[];for(let i=a;i<=b;i++){const dk=dkOff(i);const e=W.find(x=>x&&x.dateKey===dk);if(e&&e.weight)arr.push(e.weight);}return arr;};
+  const recentW=wIn(0,6),prevW=wIn(7,13);
+  const kcals=[];for(let i=0;i<=13;i++){const k=dayKcalOf(days,tpl,dkOff(i));if(k!==null&&k>800)kcals.push(k);} // skip barely-logged days
+  const avg=a=>a.reduce((s,x)=>s+x,0)/a.length;
+  if(recentW.length<3||prevW.length<3||kcals.length<8){
+    el.innerHTML=`<div class="fc-why"><div class="fc-why-row"><span>🧠 Self-training check-in</span><b>needs more data</b></div>
+      <div style="font-size:11.5px;color:var(--text-tertiary);line-height:1.55">Formulas are estimates — the real coach is <b>your own data</b>. Log your <b>weight ~4×/week</b> (Fitness→Health weight card) and tick your <b>meals most days</b>. After ~2 weeks I'll measure your REAL daily burn from what actually happened and auto-correct your calories.<br>
+      Progress: weigh-ins ${recentW.length}/3 this week · ${prevW.length}/3 last week · meals logged ${kcals.length}/8 days.</div></div>`;
+    return;
+  }
+  const a1=avg(prevW),a2=avg(recentW),rate=a2-a1;                 // kg/week (week-avg vs week-avg kills water noise)
+  const intake=Math.round(avg(kcals));
+  const tdeeReal=Math.round(intake-rate*1100);                    // 7700 kcal per kg ÷ 7 days
+  const RATE={cut:-0.4,maint:0,lean:0.3,bulk:0.5}[st.goal||'lean']||0;
+  const smart=r50(tdeeReal+RATE*1100);
+  const diff=smart-calc.kcal;
+  el.innerHTML=`<div class="fc-why" style="border-color:color-mix(in srgb,var(--accent) 45%,transparent)">
+    <div class="fc-why-row"><span>🧠 Self-training check-in — your last 14 days</span><b></b></div>
+    <div class="fc-why-row"><span>You actually ate (avg of ${kcals.length} logged days)</span><b>${intake.toLocaleString()} kcal/day</b></div>
+    <div class="fc-why-row"><span>Weight trend (weekly averages)</span><b>${a1.toFixed(1)} → ${a2.toFixed(1)} kg · ${rate>=0?'+':''}${rate.toFixed(2)} kg/wk</b></div>
+    <div class="fc-why-row"><span>Your REAL burn = intake − trend×1100</span><b>${tdeeReal.toLocaleString()} kcal/day</b></div>
+    <div class="fc-why-row"><span>Goal pace ${RATE>=0?'+':''}${RATE} kg/wk → smart target</span><b>${smart.toLocaleString()} kcal/day</b></div>
+    <div style="font-size:11.5px;color:var(--text-tertiary);line-height:1.5">${Math.abs(diff)>=150
+      ?`⚠️ The formula guessed ${calc.kcal.toLocaleString()} but YOUR body says ${smart.toLocaleString()} (${diff>0?'+':''}${diff} kcal). This gap is exactly why generic plans stall — trust the measured number.`
+      :'✓ The formula and your real data agree — your targets are solid.'}</div>
+    ${Math.abs(diff)>=100?`<button class="mp-btn-primary" id="fcApplySmart" style="margin-top:4px">⚡ Switch to my measured target (${smart.toLocaleString()} kcal)</button>`:''}
+  </div>`;
+  const b=$('fcApplySmart');
+  if(b)b.addEventListener('click',()=>{
+    calc.kcal=smart;
+    calc.carb=Math.max(0,Math.round((smart-calc.prot*4-calc.fat*9)/4));
+    applyTargets(smart);
+    renderResults();
+  });
+}
 function applyPlan(){
   const slotName=s=>s==='snack'?'Snack':s[0].toUpperCase()+s.slice(1);
   db()[TPL_KEY]=day.map((m,i)=>({id:'mp_fc_'+Date.now()+'_'+i,name:slotName(m.slot)+' — '+m.name,foods:m.foods,kcal:m.tot.k,protein:m.tot.p,carbs:m.tot.c,fat:m.tot.f,notes:'Fuel Coach'}));
