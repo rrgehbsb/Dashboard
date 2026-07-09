@@ -178,7 +178,8 @@ module.exports = async function handler(req, res) {
         if (!transient) break; // a real error (bad request etc.) — stop trying
       }
       if (!r.ok || !(j && j.choices && j.choices.length)) {
-        return res.status(200).json({ ok: false, error: lastErr || 'no response' });
+        const meta = (j && j.error && j.error.metadata) ? j.error.metadata : null;
+        return res.status(200).json({ ok: false, error: lastErr || 'no response', detail: meta ? String(meta.raw || JSON.stringify(meta)).slice(0, 400) : undefined });
       }
       const conv = fromOpenAI(j.choices[0]);
       const text = conv.content.filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
