@@ -165,16 +165,22 @@ module.exports = async function handler(req, res) {
         });
         return { r, j: await r.json() };
       }
-      let { r, j } = await callOR(MODEL);
-      // If the chosen model is unavailable / needs credit the user doesn't have
-      // (and they didn't pin one), fall back to another free model.
-      const errStr = JSON.stringify((j && j.error) || '');
-      if (!r.ok && !process.env.COACH_MODEL && MODEL !== OR_FREE_FALLBACK &&
-          (r.status === 402 || r.status === 404 || /credit|insufficient|quota|payment|require|no endpoints|not found|not a valid/i.test(errStr))) {
-        ({ r, j } = await callOR(OR_FREE_FALLBACK));
+      // Free OpenRouter endpoints are often rate-limited / overloaded, so if the
+      // user hasn't pinned a model, try a few good free ones until one answers.
+      const FREE = [OR_FREE, OR_FREE_FALLBACK, 'openai/gpt-oss-120b:free', 'qwen/qwen3-coder:free'];
+      const tryList = process.env.COACH_MODEL ? [MODEL] : FREE;
+      let r, j, lastErr = '';
+      for (const m of tryList) {
+        ({ r, j } = await callOR(m));
+        if (r.ok && j && j.choices && j.choices.length) break;
+        lastErr = (j && j.error && (j.error.message || JSON.stringify(j.error))) || ('http-' + r.status);
+        const transient = /provider returned error|no endpoints|not found|rate|capacity|overload|timeout|unavailable|502|503|429|500|402|require|credit/i.test(lastErr + ' ' + r.status);
+        if (!transient) break; // a real error (bad request etc.) — stop trying
       }
-      if (!r.ok) return res.status(200).json({ ok: false, error: (j && j.error && (j.error.message || j.error)) || ('api-' + r.status) });
-      const conv = fromOpenAI((j.choices || [])[0]);
+      if (!r.ok || !(j && j.choices && j.choices.length)) {
+        return res.status(200).json({ ok: false, error: lastErr || 'no response' });
+      }
+      const conv = fromOpenAI(j.choices[0]);
       const text = conv.content.filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
       return res.status(200).json({ ok: true, content: conv.content, stop_reason: conv.stop_reason, text });
     }
