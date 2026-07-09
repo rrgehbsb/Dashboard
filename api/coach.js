@@ -1,9 +1,14 @@
-// AI Coach — proxies chat to Anthropic (key stays server-side) and gives the
-// model TOOLS so it can propose changes to the user's dashboard. The browser
-// executes the tools (after the user confirms) and sends results back, so the
-// server never touches the user's data. Model is configurable via COACH_MODEL.
+// AI Coach — proxies chat to an LLM (key stays server-side) and gives the model
+// TOOLS so it can propose changes to the user's dashboard. The browser executes
+// tools (after the user confirms) and sends results back.
 //
-// Vercel env vars:  ANTHROPIC_API_KEY (required),  COACH_MODEL (optional).
+// Works with EITHER provider, auto-detected from the key prefix:
+//   • Anthropic  (key starts "sk-ant-")  → api.anthropic.com
+//   • OpenRouter (key starts "sk-or-")   → openrouter.ai  (has free models)
+// The browser always talks to us in Anthropic block format; we translate.
+//
+// Vercel env vars:  ANTHROPIC_API_KEY  or  OPENROUTER_API_KEY  (either works),
+//                   COACH_MODEL (optional).
 
 const TOOLS = [
   {
@@ -57,7 +62,7 @@ const TOOLS = [
   },
   {
     name: 'set_water_setup',
-    description: "Set the user's water-tracker profile and/or drink sizes. Only include fields you want to change. Their daily water target is computed from these.",
+    description: "Set the user's water-tracker profile and/or drink sizes. Only include fields you want to change.",
     input_schema: { type: 'object', properties: {
       weight_kg: { type: 'number' }, age: { type: 'number' },
       sex: { type: 'string', enum: ['m','f'] },
@@ -67,32 +72,69 @@ const TOOLS = [
   },
 ];
 
+const PERSONA = [
+  'You are "Coach" — the user\'s personal AI coach inside their life dashboard. You cover training, nutrition, body-weight, hydration, sleep and habits together, like one great human coach.',
+  'Style: direct, practical, encouraging, no fluff. Under ~180 words unless asked for a full plan. Short bullets. Metric units + kcal.',
+  'You are grounded in the user\'s REAL data (JSON below). Always use their actual numbers, exercises, trends — never generic assumptions. Connect domains (bad sleep + stalled lifts, under-eating + no weight gain).',
+  'Targets in the data were computed by the app (Mifflin-St Jeor + an energy-balance self-training check-in). Do NOT recompute from scratch — coach around them; trust the measured burn over the formula.',
+  'YOU CAN CHANGE THE DASHBOARD via tools (set targets, replace/add meals, edit/add gym exercises, water setup). When the user asks you to change something, or clearly agrees to a change you proposed, CALL THE TOOL — do not just describe it. Briefly confirm what you did in words too. The app shows the user an Apply/Skip confirmation for every tool call, so it is safe to propose concrete changes.',
+  'Never invent data you were not given. If unsure, ask one short question. Medical topics (eating disorders, meds, injuries) → briefly advise a professional.',
+  'Reply in the user\'s language.',
+].join('\n');
+
+// ── format translation for OpenRouter (OpenAI-compatible) ──
+function toOpenAI(msgs) {
+  const out = [];
+  for (const m of msgs) {
+    if (typeof m.content === 'string') { out.push({ role: m.role, content: m.content }); continue; }
+    if (!Array.isArray(m.content)) continue;
+    if (m.role === 'assistant') {
+      const text = m.content.filter(b => b.type === 'text').map(b => b.text).join('\n');
+      const calls = m.content.filter(b => b.type === 'tool_use')
+        .map(b => ({ id: b.id, type: 'function', function: { name: b.name, arguments: JSON.stringify(b.input || {}) } }));
+      const a = { role: 'assistant', content: text || null };
+      if (calls.length) a.tool_calls = calls;
+      out.push(a);
+    } else { // user turn — may hold tool_result blocks and/or text
+      const texts = [];
+      for (const b of m.content) {
+        if (b.type === 'tool_result') out.push({ role: 'tool', tool_call_id: b.tool_use_id, content: typeof b.content === 'string' ? b.content : JSON.stringify(b.content) });
+        else if (b.type === 'text') texts.push(b.text);
+      }
+      if (texts.length) out.push({ role: 'user', content: texts.join('\n') });
+    }
+  }
+  return out;
+}
+function fromOpenAI(choice) {
+  const msg = (choice && choice.message) || {};
+  const content = [];
+  if (msg.content) content.push({ type: 'text', text: msg.content });
+  (msg.tool_calls || []).forEach(tc => {
+    let input = {}; try { input = JSON.parse(tc.function.arguments || '{}'); } catch (e) {}
+    content.push({ type: 'tool_use', id: tc.id, name: tc.function.name, input });
+  });
+  const stop_reason = (choice && choice.finish_reason === 'tool_calls') ? 'tool_use' : 'end_turn';
+  return { content, stop_reason };
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'POST only' });
 
-  // Trim stray whitespace/newlines that often sneak in when pasting the key
-  // into a dashboard env-var field — a common cause of "invalid x-api-key".
-  const KEY = (process.env.ANTHROPIC_API_KEY || '').trim();
+  const KEY = (process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_API_KEY || '').trim();
   if (!KEY) return res.status(200).json({ ok: false, error: 'no-key' });
-  const MODEL = process.env.COACH_MODEL || 'claude-haiku-4-5-20251001';
+  const isOR = KEY.indexOf('sk-or-') === 0;
+  const MODEL = process.env.COACH_MODEL || (isOR ? 'anthropic/claude-3.5-haiku' : 'claude-haiku-4-5-20251001');
 
   const { context, question, history, messages, tools } = req.body || {};
+  const contextText = 'USER DATA:\n' + JSON.stringify(context || {});
 
-  const persona = [
-    'You are "Coach" — the user\'s personal AI coach inside their life dashboard. You cover training, nutrition, body-weight, hydration, sleep and habits together, like one great human coach.',
-    'Style: direct, practical, encouraging, no fluff. Under ~180 words unless asked for a full plan. Short bullets. Metric units + kcal.',
-    'You are grounded in the user\'s REAL data (JSON below). Always use their actual numbers, exercises, trends — never generic assumptions. Connect domains (bad sleep + stalled lifts, under-eating + no weight gain).',
-    'Targets in the data were computed by the app (Mifflin-St Jeor + an energy-balance self-training check-in). Do NOT recompute from scratch — coach around them; trust the measured burn over the formula.',
-    'YOU CAN CHANGE THE DASHBOARD via tools (set targets, replace/add meals, edit/add gym exercises). When the user asks you to change something, or clearly agrees to a change you proposed, CALL THE TOOL — do not just describe it. Briefly confirm what you did in words too. For big changes (replacing the whole plan) say one sentence first, then call the tool. The app shows the user an Apply/Skip confirmation for every tool call, so it is safe to propose concrete changes.',
-    'Never invent data you were not given. If unsure, ask one short question. Medical topics (eating disorders, meds, injuries) → briefly advise a professional.',
-    'Reply in the user\'s language.',
-  ].join('\n');
-
-  // Build the messages array. Preferred: caller passes a full Anthropic
-  // `messages` array (supports tool_use/tool_result). Fallback: question+history.
+  // Build the neutral message list (Anthropic block format). Preferred: caller
+  // passes a full `messages` array (supports tool_use/tool_result). Fallback:
+  // question + history of {role,text}.
   let msgs;
   if (Array.isArray(messages) && messages.length) {
     msgs = messages;
@@ -104,34 +146,51 @@ module.exports = async function handler(req, res) {
     if (question) msgs.push({ role: 'user', content: String(question).slice(0, 4000) });
   }
   if (!msgs.length) return res.status(400).json({ ok: false, error: 'no messages' });
-
-  const body = {
-    model: MODEL,
-    max_tokens: 1200,
-    // Cache the big data context so the multi-step tool loop is cheap.
-    system: [
-      { type: 'text', text: persona },
-      { type: 'text', text: 'USER DATA:\n' + JSON.stringify(context || {}), cache_control: { type: 'ephemeral' } },
-    ],
-    messages: msgs,
-  };
-  if (tools !== false) body.tools = TOOLS;
+  const withTools = tools !== false;
 
   try {
+    if (isOR) {
+      const oaBody = {
+        model: MODEL,
+        max_tokens: 1200,
+        messages: [{ role: 'system', content: PERSONA + '\n\n' + contextText }, ...toOpenAI(msgs)],
+      };
+      if (withTools) oaBody.tools = TOOLS.map(t => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.input_schema } }));
+      const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + KEY,
+          'HTTP-Referer': 'https://dashboard.app',
+          'X-Title': 'Dashboard Coach',
+        },
+        body: JSON.stringify(oaBody),
+      });
+      const j = await r.json();
+      if (!r.ok) return res.status(200).json({ ok: false, error: (j && j.error && (j.error.message || j.error)) || ('api-' + r.status) });
+      const conv = fromOpenAI((j.choices || [])[0]);
+      const text = conv.content.filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+      return res.status(200).json({ ok: true, content: conv.content, stop_reason: conv.stop_reason, text });
+    }
+
+    // Anthropic
+    const body = {
+      model: MODEL,
+      max_tokens: 1200,
+      system: [
+        { type: 'text', text: PERSONA },
+        { type: 'text', text: contextText, cache_control: { type: 'ephemeral' } },
+      ],
+      messages: msgs,
+    };
+    if (withTools) body.tools = TOOLS;
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': KEY,
-        'anthropic-version': '2023-06-01',
-      },
+      headers: { 'Content-Type': 'application/json', 'x-api-key': KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify(body),
     });
     const j = await r.json();
-    if (!r.ok) {
-      return res.status(200).json({ ok: false, error: (j && j.error && j.error.message) || ('api-' + r.status) });
-    }
-    // Return the raw content blocks (text + tool_use) so the client can act.
+    if (!r.ok) return res.status(200).json({ ok: false, error: (j && j.error && j.error.message) || ('api-' + r.status) });
     const text = (j.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
     return res.status(200).json({ ok: true, content: j.content || [], stop_reason: j.stop_reason, text });
   } catch (e) {
