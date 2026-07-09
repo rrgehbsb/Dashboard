@@ -219,6 +219,7 @@ function describe(name,a){
   if(name==='add_meal')return `Add meal: ${a.name} — ${a.foods} (${a.kcal} kcal, ${a.protein}P)`;
   if(name==='set_gym_exercise'){const f=[];if(a.sets!=null)f.push(a.sets+' sets');if(a.rep_min!=null||a.rep_max!=null)f.push((a.rep_min||'?')+'-'+(a.rep_max||'?')+' reps');if(a.target!=null)f.push('target '+a.target);if(a.fail_sets!=null)f.push(a.fail_sets+' to failure');return `Update ${a.exercise_name} (${a.day_name}) → ${f.join(', ')||'no change'}`;}
   if(name==='add_gym_exercise')return `Add ${a.name} to ${a.day_name} → ${a.sets}×${a.rep_min}-${a.rep_max}${a.target?' @ '+a.target:''}`;
+  if(name==='set_water_setup'){const f=[];if(a.weight_kg!=null)f.push(a.weight_kg+'kg');if(a.age!=null)f.push('age '+a.age);if(a.sex!=null)f.push(a.sex==='f'?'female':'male');if(a.activity_hours_per_week!=null)f.push(a.activity_hours_per_week+'h/wk');if(a.cup_ml!=null)f.push('cup '+a.cup_ml+'ml');if(a.bottle_ml!=null)f.push('bottle '+a.bottle_ml+'ml');if(a.big_bottle_ml!=null)f.push('big '+a.big_bottle_ml+'ml');return 'Set water setup → '+(f.join(', ')||'no change');}
   return name;
 }
 // Actually apply an approved tool call. Returns a result string for the model.
@@ -244,6 +245,10 @@ async function applyAction(name,a){
     let msg='day not found';
     await patchRow('po-coach',row=>{const tpl=Array.isArray(row[GYM_TPL])?row[GYM_TPL]:[];const d=findDay(tpl,a.day_name);if(!d)return;d.exercises=d.exercises||[];d.exercises.push({id:rid('ex'),name:a.name,sets:a.sets||3,repMin:a.rep_min||8,repMax:a.rep_max||12,target:a.target||'',step:null,failSets:a.fail_sets||0,bw:!!a.bodyweight,unilateral:!!a.unilateral,notes:''});row[GYM_TPL]=tpl;msg='Done — '+a.name+' added to '+d.name+'.';});
     return msg;
+  }
+  if(name==='set_water_setup'){
+    await patchRow('health',row=>{const w=(row['po_water_v1']&&typeof row['po_water_v1']==='object')?row['po_water_v1']:{};w.profile=w.profile||{};w.sizes=w.sizes||{cup:250,bottle:500,big:1000};if(a.weight_kg!=null)w.profile.weightKg=a.weight_kg;if(a.age!=null)w.profile.age=a.age;if(a.sex!=null)w.profile.sex=a.sex;if(a.activity_hours_per_week!=null)w.profile.activityHrsPerWeek=a.activity_hours_per_week;if(a.cup_ml!=null)w.sizes.cup=a.cup_ml;if(a.bottle_ml!=null){w.sizes.bottle=a.bottle_ml;w.bottleMl=a.bottle_ml;}if(a.big_bottle_ml!=null)w.sizes.big=a.big_bottle_ml;w._setup=true;row['po_water_v1']=w;});
+    return 'Done — water setup updated.';
   }
   return 'Unknown action.';
 }

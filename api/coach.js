@@ -55,6 +55,16 @@ const TOOLS = [
       bodyweight: { type: 'boolean' }, unilateral: { type: 'boolean' },
     }, required: ['day_name','name','sets','rep_min','rep_max'] },
   },
+  {
+    name: 'set_water_setup',
+    description: "Set the user's water-tracker profile and/or drink sizes. Only include fields you want to change. Their daily water target is computed from these.",
+    input_schema: { type: 'object', properties: {
+      weight_kg: { type: 'number' }, age: { type: 'number' },
+      sex: { type: 'string', enum: ['m','f'] },
+      activity_hours_per_week: { type: 'number' },
+      cup_ml: { type: 'number' }, bottle_ml: { type: 'number' }, big_bottle_ml: { type: 'number' },
+    } },
+  },
 ];
 
 module.exports = async function handler(req, res) {

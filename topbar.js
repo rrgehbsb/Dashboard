@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.5.55';
+const DASHBOARD_VERSION = '2.5.56';
 
 // Auto-update: when a new service worker takes control (new deploy), reload once
 // so the installed app always runs the latest code instead of a stale cached
@@ -315,6 +315,25 @@ window.applyDashSettings(JSON.parse(localStorage.getItem('dashboard:settings:v1'
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="button"]):not([type="submit"]),
   textarea, select { font-size: 16px !important; }
 }
+/* Floating AI Coach button — one-tap access from every page */
+.coach-fab {
+  position: fixed; right: 16px; z-index: 46;
+  bottom: calc(76px + env(safe-area-inset-bottom));
+  width: 56px; height: 56px; border-radius: 50%; border: none; cursor: pointer;
+  background: var(--accent, #a78bfa); color: #fff; font-size: 26px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 8px 24px -6px var(--accent, #a78bfa), 0 2px 8px rgba(0,0,0,0.3);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s, box-shadow 0.2s;
+  animation: coachFabIn 0.4s cubic-bezier(0.2,1.4,0.4,1);
+}
+.coach-fab:active { transform: scale(0.9); }
+.coach-fab::after {
+  content: ''; position: absolute; inset: -4px; border-radius: 50%;
+  border: 2px solid var(--accent, #a78bfa); opacity: 0; animation: coachPulse 2.6s ease-out infinite;
+}
+@keyframes coachPulse { 0% { transform: scale(1); opacity: 0.55; } 70%,100% { transform: scale(1.5); opacity: 0; } }
+@keyframes coachFabIn { from { transform: scale(0) rotate(-30deg); } }
 .topbar {
   position: sticky; top: 0; z-index: 40;
   display: flex; justify-content: flex-end; align-items: center;
@@ -1426,6 +1445,16 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
       }
       document.body.appendChild(makeBottombar());
       document.body.classList.add('has-bottombar');
+    }
+    // Floating AI Coach button — everywhere except the coach page itself,
+    // and only if the Coach page is enabled (kids-mode / onboarding aware).
+    if (!document.getElementById('coachFab') && currentPageKey() !== 'coach' && pageVisible('coach')) {
+      const fab = document.createElement('button');
+      fab.id = 'coachFab'; fab.className = 'coach-fab'; fab.type = 'button';
+      fab.setAttribute('aria-label', 'Ask your AI Coach');
+      fab.textContent = '🧠';
+      fab.addEventListener('click', () => { window.location.href = 'coach.html'; });
+      document.body.appendChild(fab);
     }
 
     // ---- Active skin: swap nav emojis + inject rotating character banner ----
