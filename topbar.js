@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.5.61';
+const DASHBOARD_VERSION = '2.5.62';
 
 // Auto-update: when a new service worker takes control (new deploy), reload once
 // so the installed app always runs the latest code instead of a stale cached
@@ -1691,6 +1691,13 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
       const cloudStr = JSON.stringify(cloud);
       if (cloudStr === (localStorage.getItem('dashboard:settings:v1') || '')) { _lastSettingsStr = cloudStr; return; }
       if (cloudStr === _lastSettingsStr) return; // already applied this cloud version
+      // Don't let a STALE cloud read overwrite a change we just made locally (the
+      // "pick a layout → it snaps back to default" race). If our local settings
+      // are newer than the cloud copy, keep local and wait for our push to land.
+      try {
+        const _local = JSON.parse(localStorage.getItem('dashboard:settings:v1') || '{}');
+        if (_local && _local._pushAt && (!cloud._pushAt || _local._pushAt > cloud._pushAt)) return;
+      } catch (e) {}
       _lastSettingsStr = cloudStr;
       localStorage.setItem('dashboard:settings:v1', cloudStr);
       if (typeof window.applyDashSettings === 'function') window.applyDashSettings(cloud);

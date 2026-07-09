@@ -851,11 +851,15 @@ html[data-theme="light"] .hs-modal{ background:#fff; }
   document.getElementById('homeStructBtn').addEventListener('click', open);
   document.getElementById('hsCancel').addEventListener('click', close);
   document.getElementById('homeStructModal').addEventListener('click', function(e){ if(e.target.id==='homeStructModal') close(); });
+  function applyLive(v){
+    document.documentElement.setAttribute('data-home-structure', v);
+    if(v==='classic'){ location.reload(); return; } // reload to cleanly un-wrap the cards
+    buildStruct(); // wrap the sections once; CSS handles grid vs bento vs compact
+  }
   document.getElementById('hsUse').addEventListener('click', function(){
     saveStructure(picked);
     close();
-    // reload so the collector re-runs cleanly for the new structure
-    setTimeout(function(){ location.reload(); }, 120);
+    applyLive(picked);
   });
 
   // apply on load
