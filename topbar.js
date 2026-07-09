@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.5.56';
+const DASHBOARD_VERSION = '2.5.57';
 
 // Auto-update: when a new service worker takes control (new deploy), reload once
 // so the installed app always runs the latest code instead of a stale cached
@@ -25,29 +25,12 @@ const DASHBOARD_VERSION = '2.5.56';
   }catch(e){}
 })();
 
-// Account guard: localStorage is per-BROWSER, not per-account. If the data
-// cached on this device belongs to a DIFFERENT account than the one logged in
-// (e.g. a sibling logs into their own account on a shared phone), wipe all
-// local app data once so nothing leaks between accounts — the user's own data
-// re-syncs down from their cloud. Keeps only the Supabase auth session.
-(function(){
-  try{
-    var uid = localStorage.getItem('_dashUid');
-    if(!uid) return;                                   // not logged in yet — login.html handles it
-    var owner = localStorage.getItem('_dashDataOwner');
-    if(owner === uid) return;                          // data belongs to this account — all good
-    var keep = [];
-    for(var i=0;i<localStorage.length;i++){
-      var k = localStorage.key(i);
-      if(k && k.indexOf('sb-')===0) keep.push([k, localStorage.getItem(k)]);
-    }
-    localStorage.clear();
-    keep.forEach(function(p){ try{ localStorage.setItem(p[0], p[1]); }catch(e){} });
-    localStorage.setItem('_dashUid', uid);
-    localStorage.setItem('_dashDataOwner', uid);       // set BEFORE reload so this can't loop
-    window.location.reload();
-  }catch(e){}
-})();
+// Account guard lives INLINE in each page's <head> (marker /*__acctGuard3*/),
+// keyed off the real logged-in session, and only wipes on a CONFIRMED different
+// account — never when the owner is simply unknown. The old localStorage-based
+// guard that used to live here was removed: it wiped whenever `_dashDataOwner`
+// was unset (which it was for anyone who never re-logged-in through login.html,
+// e.g. the installed app), so it reset those users' data on every deploy.
 
 // =============================================================
 // THEME STYLES ("skins") — single source of truth.
