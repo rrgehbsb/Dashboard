@@ -67,7 +67,7 @@ main{max-width:720px;margin:0 auto;padding:14px 16px calc(150px + env(safe-area-
     <div class="co-title">🧠 Your Coach</div>
     <button class="co-new" id="coNew">New chat</button>
   </div>
-  <div class="co-sub" id="coSub">Sees your workouts, weight trend, meals, water, sleep & habits — and coaches across all of it.</div>
+  <div class="co-sub" id="coSub">Sees your workouts, weight, meals, water, sleep & habits — coaches across all of it, and can <b>change your plan</b> when you ask (you approve every change).</div>
 
   <div class="co-chips" id="coChips">
     <button class="co-chip" data-q="Review my week — what's going well and what should I fix first?">📋 Review my week</button>
@@ -114,7 +114,7 @@ function bubble(role,text,thinking){
 function renderHistory(){
   $('coChat').innerHTML='';
   if(!history.length){
-    bubble('assistant','Hey! I\'m your personal coach — I can see your whole dashboard: training, weight trend, food, water, sleep and habits. Ask me anything, or tap a suggestion above. 💪');
+    bubble('assistant','Hey! I\'m your personal coach — I can see your whole dashboard (training, weight, food, water, sleep, habits) and I can actually change it for you: "make my lunch higher protein", "add 2 failure sets to my bench", "rebuild my meal plan for a lean bulk". I\'ll always ask you to Apply before saving. What do you want to work on? 💪');
     return;
   }
   history.forEach(m=>bubble(m.role,m.text));
@@ -198,43 +198,135 @@ function buildContext(m){
   return ctx;
 }
 
+// ── writing to the dashboard: patch a cloud row (merge-safe) ──
+async function patchRow(base, mutate){
+  const key=uid+':'+base;
+  const {data}=await client().from('app_state').select('data').eq('key',key).maybeSingle();
+  const row=(data&&data.data&&typeof data.data==='object')?data.data:{};
+  mutate(row);
+  row._pushAt=Date.now();
+  await client().from('app_state').upsert({key:key,data:row,updated_at:new Date().toISOString()},{onConflict:'key'});
+}
+const MEAL_TPL='dashboard:mealPrep:v1:template', MEAL_SET='dashboard:mealPrep:v1:settings', GYM_TPL='dashboard:gym:v1:template';
+const rid=p=>p+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,5);
+function findDay(tpl,name){name=(name||'').toLowerCase();return tpl.find(d=>(d.name||'').toLowerCase()===name)||tpl.find(d=>(d.name||'').toLowerCase().includes(name)||name.includes((d.name||'').toLowerCase()));}
+function findEx(day,name){name=(name||'').toLowerCase();const ex=day.exercises||[];return ex.find(e=>(e.name||'').toLowerCase()===name)||ex.find(e=>(e.name||'').toLowerCase().includes(name)||name.includes((e.name||'').toLowerCase()));}
+
+// Human-readable summary of a proposed change (shown before Apply).
+function describe(name,a){
+  if(name==='set_nutrition_targets')return `Set targets → ${a.kcal_min}-${a.kcal_max} kcal · ${a.protein_min}-${a.protein_max}P · ${a.carbs_min}-${a.carbs_max}C · ${a.fat_min}-${a.fat_max}F`;
+  if(name==='replace_meal_plan')return `Replace meal plan with ${(a.meals||[]).length} meals:\n`+(a.meals||[]).map(m=>`• ${m.name} — ${m.foods} (${m.kcal} kcal, ${m.protein}P)`).join('\n');
+  if(name==='add_meal')return `Add meal: ${a.name} — ${a.foods} (${a.kcal} kcal, ${a.protein}P)`;
+  if(name==='set_gym_exercise'){const f=[];if(a.sets!=null)f.push(a.sets+' sets');if(a.rep_min!=null||a.rep_max!=null)f.push((a.rep_min||'?')+'-'+(a.rep_max||'?')+' reps');if(a.target!=null)f.push('target '+a.target);if(a.fail_sets!=null)f.push(a.fail_sets+' to failure');return `Update ${a.exercise_name} (${a.day_name}) → ${f.join(', ')||'no change'}`;}
+  if(name==='add_gym_exercise')return `Add ${a.name} to ${a.day_name} → ${a.sets}×${a.rep_min}-${a.rep_max}${a.target?' @ '+a.target:''}`;
+  return name;
+}
+// Actually apply an approved tool call. Returns a result string for the model.
+async function applyAction(name,a){
+  if(name==='set_nutrition_targets'){
+    await patchRow('health',row=>{row[MEAL_SET]={kcal:{min:a.kcal_min,max:a.kcal_max},protein:{min:a.protein_min,max:a.protein_max},carbs:{min:a.carbs_min,max:a.carbs_max},fat:{min:a.fat_min,max:a.fat_max}};});
+    return 'Done — targets updated.';
+  }
+  if(name==='replace_meal_plan'){
+    await patchRow('health',row=>{row[MEAL_TPL]=(a.meals||[]).map(m=>({id:rid('mp'),name:m.name,foods:m.foods||'',kcal:Math.round(m.kcal)||0,protein:Math.round(m.protein)||0,carbs:Math.round(m.carbs)||0,fat:Math.round(m.fat)||0,notes:'AI Coach'}));});
+    return 'Done — meal plan replaced ('+(a.meals||[]).length+' meals).';
+  }
+  if(name==='add_meal'){
+    await patchRow('health',row=>{const t=Array.isArray(row[MEAL_TPL])?row[MEAL_TPL]:[];t.push({id:rid('mp'),name:a.name,foods:a.foods||'',kcal:Math.round(a.kcal)||0,protein:Math.round(a.protein)||0,carbs:Math.round(a.carbs)||0,fat:Math.round(a.fat)||0,notes:'AI Coach'});row[MEAL_TPL]=t;});
+    return 'Done — meal added.';
+  }
+  if(name==='set_gym_exercise'){
+    let msg='exercise not found';
+    await patchRow('po-coach',row=>{const tpl=Array.isArray(row[GYM_TPL])?row[GYM_TPL]:[];const d=findDay(tpl,a.day_name);if(!d)return;const e=findEx(d,a.exercise_name);if(!e)return;if(a.sets!=null)e.sets=a.sets;if(a.rep_min!=null)e.repMin=a.rep_min;if(a.rep_max!=null)e.repMax=a.rep_max;if(a.target!=null)e.target=a.target;if(a.fail_sets!=null)e.failSets=a.fail_sets;row[GYM_TPL]=tpl;msg='Done — '+e.name+' updated.';});
+    return msg;
+  }
+  if(name==='add_gym_exercise'){
+    let msg='day not found';
+    await patchRow('po-coach',row=>{const tpl=Array.isArray(row[GYM_TPL])?row[GYM_TPL]:[];const d=findDay(tpl,a.day_name);if(!d)return;d.exercises=d.exercises||[];d.exercises.push({id:rid('ex'),name:a.name,sets:a.sets||3,repMin:a.rep_min||8,repMax:a.rep_max||12,target:a.target||'',step:null,failSets:a.fail_sets||0,bw:!!a.bodyweight,unilateral:!!a.unilateral,notes:''});row[GYM_TPL]=tpl;msg='Done — '+a.name+' added to '+d.name+'.';});
+    return msg;
+  }
+  return 'Unknown action.';
+}
+// Inline Apply/Skip card; resolves true/false.
+function confirmCard(name,a){
+  return new Promise(resolve=>{
+    const card=document.createElement('div');
+    card.className='co-bub ai';
+    card.style.borderColor='color-mix(in srgb,var(--accent,#a78bfa) 45%,transparent)';
+    card.innerHTML='<div style="font-weight:700;color:var(--text-1);margin-bottom:6px">🔧 Proposed change</div>'
+      +'<div style="white-space:pre-wrap;margin-bottom:10px">'+describe(name,a).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))+'</div>'
+      +'<div style="display:flex;gap:8px"><button class="co-send" style="width:auto;padding:8px 16px;font-size:14px" data-ok>✓ Apply</button>'
+      +'<button class="co-new" data-no>✗ Skip</button></div>';
+    $('coChat').appendChild(card);card.scrollIntoView({block:'end'});
+    card.querySelector('[data-ok]').addEventListener('click',()=>{card.querySelectorAll('button').forEach(b=>b.disabled=true);card.querySelector('[data-ok]').textContent='✓ Applied';resolve(true);});
+    card.querySelector('[data-no]').addEventListener('click',()=>{card.querySelectorAll('button').forEach(b=>b.disabled=true);card.querySelector('[data-no]').textContent='Skipped';resolve(false);});
+  });
+}
+
+let apiMsgs=[]; // Anthropic-format running conversation (text + tool_use/tool_result)
+async function callCoach(ctx){
+  const r=await fetch('/api/coach',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({context:ctx,messages:apiMsgs})});
+  return r.json();
+}
 async function ask(q){
   if(!q)return;
   $('coIn').value='';
   bubble('user',q);
   history.push({role:'user',text:q});saveChat(history);
+  apiMsgs.push({role:'user',content:q});
   $('coSend').disabled=true;
   $('coStatus').textContent='Reading your data…';
   const t=bubble('assistant','Thinking…',true);
   try{
     rows=await fetchRows();
     const ctx=buildContext(rows);
-    $('coStatus').textContent='Coaching…';
-    const r=await fetch('/api/coach',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({question:q,context:ctx,history:history.slice(0,-1).slice(-8)})
-    });
-    const j=await r.json();
-    if(j.ok){
-      t.classList.remove('thinking');t.textContent=j.text;
-      history.push({role:'assistant',text:j.text});saveChat(history);
-    }else if(j.error==='no-key'){
-      t.textContent='⚙️ The AI coach isn\'t switched on yet — add ANTHROPIC_API_KEY in Vercel (Project → Settings → Environment Variables) and redeploy.';
-    }else{
-      t.textContent='Couldn\'t answer ('+(j.error||'error')+'). Try again in a moment.';
+    let first=true,guard=0,changed=false;
+    while(guard++<6){
+      $('coStatus').textContent=first?'Coaching…':'Working…';
+      const j=await callCoach(ctx);
+      if(!j.ok){
+        const msg=j.error==='no-key'
+          ?'⚙️ The AI coach isn\'t switched on yet — add ANTHROPIC_API_KEY in Vercel (Settings → Environment Variables) and redeploy.'
+          :'Couldn\'t answer ('+(j.error||'error')+'). Try again in a moment.';
+        if(first){t.classList.remove('thinking');t.textContent=msg;}else bubble('assistant',msg);
+        break;
+      }
+      // record assistant turn (raw content blocks) for the running api conversation
+      apiMsgs.push({role:'assistant',content:j.content});
+      const txt=(j.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n').trim();
+      if(txt){ if(first){t.classList.remove('thinking');t.textContent=txt;} else bubble('assistant',txt); history.push({role:'assistant',text:txt});saveChat(history); }
+      else if(first){ t.remove(); }
+      first=false;
+      const toolUses=(j.content||[]).filter(b=>b.type==='tool_use');
+      if(!toolUses.length) break;               // no actions → done
+      // confirm + execute each tool, collect results
+      const results=[];
+      for(const tu of toolUses){
+        const ok=await confirmCard(tu.name,tu.input);
+        let result;
+        if(ok){ try{ result=await applyAction(tu.name,tu.input); changed=true; }catch(e){ result='Failed: '+e.message; } }
+        else result='User skipped this change.';
+        results.push({type:'tool_result',tool_use_id:tu.id,content:result});
+      }
+      apiMsgs.push({role:'user',content:results});
+      // loop → model comments on the results / continues
     }
+    if(changed){ if(rows)rows=null; bubble('assistant','✅ Changes saved — open the relevant page to see them (they sync to your other devices too).'); }
+    // trim running conversation so it can't grow unbounded
+    if(apiMsgs.length>24)apiMsgs=apiMsgs.slice(-24);
   }catch(e){
     t.textContent='No connection to the coach — check your internet and try again.';
   }
   $('coStatus').textContent='';
   $('coSend').disabled=false;
-  t.scrollIntoView({block:'end'});
+  $('coChat').lastElementChild&&$('coChat').lastElementChild.scrollIntoView({block:'end'});
 }
 
 $('coSend').addEventListener('click',()=>ask(($('coIn').value||'').trim()));
 $('coIn').addEventListener('keydown',e=>{if(e.key==='Enter')ask(($('coIn').value||'').trim());});
 document.querySelectorAll('.co-chip').forEach(c=>c.addEventListener('click',()=>ask(c.dataset.q)));
-$('coNew').addEventListener('click',()=>{history=[];saveChat(history);renderHistory();});
+$('coNew').addEventListener('click',()=>{history=[];apiMsgs=[];saveChat(history);renderHistory();});
 
 // ── boot (auth guard) ──
 (async()=>{
