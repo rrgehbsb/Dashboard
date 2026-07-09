@@ -692,6 +692,181 @@ body{
 </div>
 
 <h1 class="dash-title">My Dashboard</h1>
+<button type="button" id="homeStructBtn" aria-label="Choose dashboard structure">🧩 Structure</button>
+
+<style id="home-structure-css">
+/* ===== Home structure (layout arrangement) ===== */
+#homeStructBtn{
+  position:fixed; right:14px; bottom:calc(140px + env(safe-area-inset-bottom)); z-index:44;
+  background:var(--bg-card,rgba(255,255,255,0.06)); border:1px solid var(--border,rgba(255,255,255,0.14));
+  color:var(--text-secondary,#cfcfcf); font-family:inherit; font-size:12px; font-weight:700;
+  padding:9px 13px; border-radius:20px; cursor:pointer; -webkit-tap-highlight-color:transparent;
+  backdrop-filter:blur(10px); box-shadow:0 6px 18px -8px rgba(0,0,0,0.6); }
+#homeStructBtn:active{ transform:scale(0.96); }
+
+/* the collected wrapper — cards get uniform spacing via gap */
+#homeStruct > *{ margin-top:0 !important; margin-bottom:0 !important; }
+#homeStruct{ display:flex; flex-direction:column; gap:14px; }
+
+/* COMPACT — dense single column */
+html[data-home-structure="compact"] #homeStruct{ gap:9px; }
+html[data-home-structure="compact"] #homeStruct :is(.do-now-card,.day-ring-card,.gem-card,.stack-card,.dash-mini-card){ padding-top:10px !important; padding-bottom:10px !important; }
+
+/* GRID — 2 columns on a computer, 1 column on phone */
+@media (min-width:820px){
+  html[data-home-structure="grid"] #homeStruct{
+    display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start; }
+  /* let the day ring + coach span full width so they breathe */
+  html[data-home-structure="grid"] #homeStruct > .day-ring-card{ grid-column:1 / -1; }
+}
+
+/* BENTO — 3 columns on a computer, 1 column on phone */
+@media (min-width:900px){
+  html[data-home-structure="bento"] #homeStruct{
+    display:grid; grid-template-columns:repeat(3,1fr); gap:13px; align-items:start; }
+  html[data-home-structure="bento"] #homeStruct > .day-ring-card{ grid-column:span 2; }
+}
+@media (min-width:820px){
+  html[data-home-structure="grid"] #homeStruct, html[data-home-structure="bento"] #homeStruct{ max-width:1120px; }
+}
+
+/* ── picker modal ── */
+.hs-bg{ position:fixed; inset:0; z-index:1200; background:rgba(0,0,0,0.62); backdrop-filter:blur(6px);
+  display:flex; align-items:center; justify-content:center; padding:18px; opacity:0; pointer-events:none; transition:opacity .2s; }
+.hs-bg.show{ opacity:1; pointer-events:auto; }
+.hs-modal{ width:100%; max-width:600px; max-height:88vh; overflow-y:auto; background:#14151a;
+  border:1px solid rgba(255,255,255,0.1); border-radius:22px; padding:22px 20px; }
+html[data-theme="light"] .hs-modal{ background:#fff; }
+.hs-h{ font-size:19px; font-weight:800; color:var(--text-primary,#fff); }
+.hs-sub{ font-size:12.5px; color:var(--text-tertiary,rgba(255,255,255,0.45)); margin:4px 0 16px; line-height:1.45; }
+.hs-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+@media (max-width:460px){ .hs-grid{ grid-template-columns:1fr; } }
+.hs-opt{ text-align:left; background:rgba(255,255,255,0.03); border:1.5px solid rgba(255,255,255,0.1);
+  border-radius:16px; padding:12px; cursor:pointer; font-family:inherit; color:var(--text-primary,#fff);
+  transition:border-color .15s, transform .1s; -webkit-tap-highlight-color:transparent; }
+.hs-opt:active{ transform:scale(.99); }
+.hs-opt.sel{ border-color:var(--accent,#a78bfa); box-shadow:0 0 0 1px var(--accent,#a78bfa); }
+.hs-name{ font-size:14.5px; font-weight:750; margin-top:9px; }
+.hs-desc{ font-size:11.5px; color:var(--text-tertiary,rgba(255,255,255,0.45)); margin-top:2px; line-height:1.35; }
+/* mini mockup preview drawn in CSS */
+.hs-prev{ height:96px; border-radius:11px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07);
+  padding:9px; display:flex; flex-direction:column; gap:5px; overflow:hidden; }
+.hs-prev.row{ flex-direction:row; }
+.hs-prev.g2{ display:grid; grid-template-columns:1fr 1fr; }
+.hs-prev.g3{ display:grid; grid-template-columns:1fr 1fr 1fr; }
+.hs-blk{ background:color-mix(in srgb,var(--accent,#a78bfa) 34%,transparent); border-radius:5px; }
+.hs-blk.tall{ grid-row:span 2; }
+.hs-blk.wide{ grid-column:span 2; }
+.hs-prev .hs-blk{ min-height:11px; flex:1; }
+.hs-actions{ display:flex; gap:10px; margin-top:18px; }
+.hs-use{ flex:1; padding:13px; border:none; border-radius:13px; background:var(--accent,#a78bfa); color:#fff;
+  font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; }
+.hs-cancel{ padding:13px 18px; border:1px solid var(--border,rgba(255,255,255,0.14)); border-radius:13px;
+  background:transparent; color:var(--text-secondary,#bbb); font-family:inherit; font-size:14px; cursor:pointer; }
+</style>
+
+<div class="hs-bg" id="homeStructModal">
+  <div class="hs-modal">
+    <div class="hs-h">🧩 Choose your dashboard structure</div>
+    <div class="hs-sub">Same info, arranged differently. Tap one to preview how it's built, then apply. On a phone every option stays a clean single column.</div>
+    <div class="hs-grid" id="hsGrid"></div>
+    <div class="hs-actions">
+      <button class="hs-cancel" id="hsCancel">Cancel</button>
+      <button class="hs-use" id="hsUse">Use this layout</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var LS='dashboard:settings:v1', SB_URL='https://mtuoqwbrujxutofhyahb.supabase.co', SB_KEY='sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
+  var OPTS=[
+    {k:'classic', name:'Classic', desc:'One clean column, roomy cards. Simple and familiar.',
+      prev:'<div class="hs-prev"><div class="hs-blk"></div><div class="hs-blk"></div><div class="hs-blk"></div></div>'},
+    {k:'compact', name:'Compact', desc:'Denser single column — more fits on screen at once.',
+      prev:'<div class="hs-prev" style="gap:3px"><div class="hs-blk"></div><div class="hs-blk"></div><div class="hs-blk"></div><div class="hs-blk"></div><div class="hs-blk"></div></div>'},
+    {k:'grid', name:'Grid', desc:'Two columns on computer, one on phone. Modern dashboard feel.',
+      prev:'<div class="hs-prev g2" style="gap:5px"><div class="hs-blk wide"></div><div class="hs-blk"></div><div class="hs-blk"></div><div class="hs-blk"></div><div class="hs-blk"></div></div>'},
+    {k:'bento', name:'Bento', desc:'Three-column tiled grid on computer, one on phone. Most info-dense.',
+      prev:'<div class="hs-prev g3" style="gap:4px"><div class="hs-blk wide"></div><div class="hs-blk"></div><div class="hs-blk"></div><div class="hs-blk"></div><div class="hs-blk"></div><div class="hs-blk"></div><div class="hs-blk"></div></div>'},
+  ];
+  function readSettings(){ try{ return JSON.parse(localStorage.getItem(LS))||{}; }catch(e){ return {}; } }
+  function current(){ return readSettings().homeStructure || 'classic'; }
+
+  // Collect the home's card sections into one wrapper so CSS can arrange them.
+  // Only runs for non-classic structures; classic leaves the DOM untouched.
+  function buildStruct(){
+    if(document.getElementById('homeStruct')) return;
+    var body=document.body;
+    var wrap=document.createElement('div'); wrap.id='homeStruct';
+    var skip=/bg-wash|install-card|modal|topbar|bottombar|coach-fab|nav-more|buddy|skin-|xp-|homeStruct|home-structure/i;
+    var keepAbove=['dash-title','ticker-row','cmd-bar'];
+    var kids=Array.prototype.slice.call(body.children), anchor=null;
+    kids.forEach(function(el){
+      var tag=el.tagName;
+      if(tag==='SCRIPT'||tag==='STYLE'||tag==='LINK'||tag==='HEADER'||tag==='NAV') return;
+      if(el.id==='homeStructBtn'||el.id==='homeStructModal'||el.id==='homeStruct') return;
+      if(keepAbove.some(function(c){ return el.classList&&el.classList.contains(c); })){ anchor=el; return; }
+      var cls=((el.className&&el.className.toString)?el.className.toString():'')+' '+(el.id||'');
+      if(skip.test(cls)) return;
+      var pos='static'; try{ pos=getComputedStyle(el).position; }catch(e){}
+      if(pos==='fixed'||pos==='absolute') return;
+      wrap.appendChild(el); // move (keeps event listeners)
+    });
+    if(!wrap.children.length) return;
+    if(anchor&&anchor.nextSibling) body.insertBefore(wrap, anchor.nextSibling);
+    else body.appendChild(wrap);
+  }
+
+  function saveStructure(v){
+    var s=readSettings(); s.homeStructure=v; s._pushAt=Date.now();
+    try{ localStorage.setItem(LS, JSON.stringify(s)); }catch(e){}
+    try{ if(window.applyDashSettings) window.applyDashSettings(s); }catch(e){}
+    try{
+      var uid=localStorage.getItem('_dashUid');
+      if(uid && window.supabase){
+        var sb=window.supabase.createClient(SB_URL, SB_KEY);
+        sb.auth.getSession().then(function(){
+          sb.from('app_state').upsert({key:uid+':settings', data:s, updated_at:new Date().toISOString()}, {onConflict:'key'});
+        }).catch(function(){});
+      }
+    }catch(e){}
+  }
+
+  // ── picker UI ──
+  var picked=current();
+  function renderGrid(){
+    var g=document.getElementById('hsGrid');
+    g.innerHTML=OPTS.map(function(o){
+      return '<button type="button" class="hs-opt'+(o.k===picked?' sel':'')+'" data-k="'+o.k+'">'
+        + o.prev + '<div class="hs-name">'+o.name+'</div><div class="hs-desc">'+o.desc+'</div></button>';
+    }).join('');
+    g.querySelectorAll('.hs-opt').forEach(function(b){
+      b.addEventListener('click', function(){ picked=b.dataset.k; renderGrid(); });
+    });
+  }
+  function open(){ picked=current(); renderGrid(); document.getElementById('homeStructModal').classList.add('show'); }
+  function close(){ document.getElementById('homeStructModal').classList.remove('show'); }
+
+  document.getElementById('homeStructBtn').addEventListener('click', open);
+  document.getElementById('hsCancel').addEventListener('click', close);
+  document.getElementById('homeStructModal').addEventListener('click', function(e){ if(e.target.id==='homeStructModal') close(); });
+  document.getElementById('hsUse').addEventListener('click', function(){
+    saveStructure(picked);
+    close();
+    // reload so the collector re-runs cleanly for the new structure
+    setTimeout(function(){ location.reload(); }, 120);
+  });
+
+  // apply on load
+  function boot(){
+    document.documentElement.setAttribute('data-home-structure', current());
+    if(current()!=='classic') buildStruct();
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
 
 <div class="ticker-row">
   <div class="goal-ticker" id="goalTicker" aria-live="polite" aria-atomic="true">

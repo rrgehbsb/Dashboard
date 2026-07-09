@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.5.60';
+const DASHBOARD_VERSION = '2.5.61';
 
 // Auto-update: when a new service worker takes control (new deploy), reload once
 // so the installed app always runs the latest code instead of a stale cached
@@ -255,6 +255,10 @@ window.applyDashSettings = function(_s) {
 
     // Kids mode — a simpler, clearer layout with some pages hidden.
     root.setAttribute('data-mode', _s.mode === 'kid' ? 'kid' : 'adult');
+
+    // Home page STRUCTURE (how the cards are arranged — not colors). Only the
+    // home page ships CSS for these values; the attribute is harmless elsewhere.
+    root.setAttribute('data-home-structure', _s.homeStructure || 'classic');
 
     var _home = _s.home || 'classic';
     root.setAttribute('data-home', _home);
