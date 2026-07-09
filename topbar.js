@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.5.53';
+const DASHBOARD_VERSION = '2.5.54';
 
 // Auto-update: when a new service worker takes control (new deploy), reload once
 // so the installed app always runs the latest code instead of a stale cached
@@ -1661,10 +1661,13 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
     try {
       if (!window.supabase) return;
       if (currentPageKey() === 'settings') return; // settings page manages its own save/load
-      const uid = localStorage.getItem('_dashUid');
-      if (!uid) return;
       if (!_settingsSb) _settingsSb = window.supabase.createClient(TOPBAR_SUPABASE_URL, TOPBAR_SUPABASE_KEY);
-      try { await _settingsSb.auth.getSession(); } catch (e) {}
+      // Always key off the LIVE session uid, never the mutable _dashUid (which can
+      // go stale and pull another account's settings on a shared device).
+      let uid = null;
+      try { const { data: { session } } = await _settingsSb.auth.getSession(); uid = session && session.user && session.user.id; } catch (e) {}
+      if (!uid) uid = localStorage.getItem('_dashUid');
+      if (!uid) return;
       const { data, error } = await _settingsSb.from('app_state').select('data').eq('key', uid + ':settings').maybeSingle();
       if (error) { _settingsSb = null; return; }
       const cloud = data && data.data;
