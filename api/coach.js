@@ -128,9 +128,12 @@ module.exports = async function handler(req, res) {
   if (!KEY) return res.status(200).json({ ok: false, error: 'no-key' });
   const isOR = KEY.indexOf('sk-or-') === 0;
   // OpenRouter default = a capable FREE model with tool support (no credit needed).
+  // Default OpenRouter model: cheap+smart Gemini 2.5 Flash (needs a little credit).
+  // If it fails (e.g. no credit), we fall back to free models automatically.
+  const OR_DEFAULT = 'google/gemini-2.5-flash';
   const OR_FREE = 'meta-llama/llama-3.3-70b-instruct:free';
   const OR_FREE_FALLBACK = 'qwen/qwen3-next-80b-a3b-instruct:free';
-  const MODEL = process.env.COACH_MODEL || (isOR ? OR_FREE : 'claude-haiku-4-5-20251001');
+  const MODEL = process.env.COACH_MODEL || (isOR ? OR_DEFAULT : 'claude-haiku-4-5-20251001');
 
   const { context, question, history, messages, tools } = req.body || {};
   const contextText = 'USER DATA:\n' + JSON.stringify(context || {});
@@ -167,7 +170,7 @@ module.exports = async function handler(req, res) {
       }
       // Free OpenRouter endpoints are heavily rate-limited. Try the default free
       // model, then ONE alternate — don't hammer (that only makes limits worse).
-      const tryList = process.env.COACH_MODEL ? [MODEL] : [OR_FREE, OR_FREE_FALLBACK];
+      const tryList = process.env.COACH_MODEL ? [MODEL] : [OR_DEFAULT, OR_FREE, OR_FREE_FALLBACK];
       let r, j, lastErr = '', lastDetail = '';
       for (const m of tryList) {
         ({ r, j } = await callOR(m));
@@ -175,7 +178,7 @@ module.exports = async function handler(req, res) {
         lastErr = (j && j.error && (j.error.message || JSON.stringify(j.error))) || ('http-' + r.status);
         const meta = (j && j.error && j.error.metadata) ? j.error.metadata : null;
         lastDetail = meta ? String(meta.raw || JSON.stringify(meta)) : '';
-        const retryable = /provider returned error|no endpoints|not found|overload|timeout|unavailable|502|503|500/i.test(lastErr + ' ' + lastDetail + ' ' + r.status);
+        const retryable = /provider returned error|no endpoints|not found|overload|timeout|unavailable|payment|credit|insufficient|quota|402|429|502|503|500/i.test(lastErr + ' ' + lastDetail + ' ' + r.status);
         if (!retryable) break;
       }
       if (!r.ok || !(j && j.choices && j.choices.length)) {
