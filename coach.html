@@ -292,8 +292,8 @@ async function ask(q){
       const j=await callCoach(ctx);
       if(!j.ok){
         const msg=j.error==='no-key'
-          ?'⚙️ The AI coach isn\'t switched on yet — add ANTHROPIC_API_KEY in Vercel (Settings → Environment Variables) and redeploy.'
-          :'Couldn\'t answer ('+(j.error||'error')+'). Try again in a moment.';
+          ?'⚙️ The AI coach isn\'t switched on yet — add your API key in Vercel (Settings → Environment Variables) and redeploy.'
+          :(j.message||('Couldn\'t answer ('+(j.error||'error')+'). Try again in a moment.'));
         if(first){t.classList.remove('thinking');t.textContent=msg;}else bubble('assistant',msg);
         break;
       }

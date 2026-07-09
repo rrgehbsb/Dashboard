@@ -3770,7 +3770,7 @@ async function askCoach(){
     }else if(j.error==='no-key'){
       thinking.textContent='⚙️ The AI coach isn\'t switched on yet — the site owner needs to add an ANTHROPIC_API_KEY in Vercel (Project → Settings → Environment Variables), then redeploy. The numbers above still work without it.';
     }else{
-      thinking.textContent='Hmm, the coach couldn\'t answer ('+(j.error||'error')+'). Try again in a moment.';
+      thinking.textContent=j.message||('Hmm, the coach couldn\'t answer ('+(j.error||'error')+'). Try again in a moment.');
     }
   }catch(e){
     thinking.textContent='No connection to the coach right now — check your internet and try again.';
