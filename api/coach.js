@@ -127,7 +127,10 @@ module.exports = async function handler(req, res) {
   const KEY = (process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_API_KEY || '').trim();
   if (!KEY) return res.status(200).json({ ok: false, error: 'no-key' });
   const isOR = KEY.indexOf('sk-or-') === 0;
-  const MODEL = process.env.COACH_MODEL || (isOR ? 'anthropic/claude-3.5-haiku' : 'claude-haiku-4-5-20251001');
+  // OpenRouter default = a capable FREE model with tool support (no credit needed).
+  const OR_FREE = 'meta-llama/llama-3.3-70b-instruct:free';
+  const OR_FREE_FALLBACK = 'qwen/qwen3-next-80b-a3b-instruct:free';
+  const MODEL = process.env.COACH_MODEL || (isOR ? OR_FREE : 'claude-haiku-4-5-20251001');
 
   const { context, question, history, messages, tools } = req.body || {};
   const contextText = 'USER DATA:\n' + JSON.stringify(context || {});
@@ -163,11 +166,12 @@ module.exports = async function handler(req, res) {
         return { r, j: await r.json() };
       }
       let { r, j } = await callOR(MODEL);
-      // If the chosen model needs credits the user doesn't have (and they didn't
-      // pin one), fall back to a free model so it still works.
+      // If the chosen model is unavailable / needs credit the user doesn't have
+      // (and they didn't pin one), fall back to another free model.
       const errStr = JSON.stringify((j && j.error) || '');
-      if (!r.ok && !process.env.COACH_MODEL && (r.status === 402 || /credit|insufficient|quota|payment|require/i.test(errStr))) {
-        ({ r, j } = await callOR('google/gemini-2.0-flash-exp:free'));
+      if (!r.ok && !process.env.COACH_MODEL && MODEL !== OR_FREE_FALLBACK &&
+          (r.status === 402 || r.status === 404 || /credit|insufficient|quota|payment|require|no endpoints|not found|not a valid/i.test(errStr))) {
+        ({ r, j } = await callOR(OR_FREE_FALLBACK));
       }
       if (!r.ok) return res.status(200).json({ ok: false, error: (j && j.error && (j.error.message || j.error)) || ('api-' + r.status) });
       const conv = fromOpenAI((j.choices || [])[0]);
