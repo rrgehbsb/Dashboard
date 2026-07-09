@@ -165,21 +165,25 @@ module.exports = async function handler(req, res) {
         });
         return { r, j: await r.json() };
       }
-      // Free OpenRouter endpoints are often rate-limited / overloaded, so if the
-      // user hasn't pinned a model, try a few good free ones until one answers.
-      const FREE = [OR_FREE, OR_FREE_FALLBACK, 'openai/gpt-oss-120b:free', 'qwen/qwen3-coder:free'];
-      const tryList = process.env.COACH_MODEL ? [MODEL] : FREE;
-      let r, j, lastErr = '';
+      // Free OpenRouter endpoints are heavily rate-limited. Try the default free
+      // model, then ONE alternate — don't hammer (that only makes limits worse).
+      const tryList = process.env.COACH_MODEL ? [MODEL] : [OR_FREE, OR_FREE_FALLBACK];
+      let r, j, lastErr = '', lastDetail = '';
       for (const m of tryList) {
         ({ r, j } = await callOR(m));
         if (r.ok && j && j.choices && j.choices.length) break;
         lastErr = (j && j.error && (j.error.message || JSON.stringify(j.error))) || ('http-' + r.status);
-        const transient = /provider returned error|no endpoints|not found|rate|capacity|overload|timeout|unavailable|502|503|429|500|402|require|credit/i.test(lastErr + ' ' + r.status);
-        if (!transient) break; // a real error (bad request etc.) — stop trying
+        const meta = (j && j.error && j.error.metadata) ? j.error.metadata : null;
+        lastDetail = meta ? String(meta.raw || JSON.stringify(meta)) : '';
+        const retryable = /provider returned error|no endpoints|not found|overload|timeout|unavailable|502|503|500/i.test(lastErr + ' ' + lastDetail + ' ' + r.status);
+        if (!retryable) break;
       }
       if (!r.ok || !(j && j.choices && j.choices.length)) {
-        const meta = (j && j.error && j.error.metadata) ? j.error.metadata : null;
-        return res.status(200).json({ ok: false, error: lastErr || 'no response', detail: meta ? String(meta.raw || JSON.stringify(meta)).slice(0, 400) : undefined });
+        const rateLimited = /rate.?limit|429|quota|temporarily/i.test(lastErr + ' ' + lastDetail);
+        const message = rateLimited
+          ? "🕐 The free AI model is rate-limited right now (OpenRouter caps the free tier). Wait ~30s and retry — or for instant, reliable answers add ~$5 credit at openrouter.ai and set COACH_MODEL to a cheap model like `anthropic/claude-3.5-haiku`."
+          : "The AI provider returned an error: " + (lastDetail || lastErr).slice(0, 200);
+        return res.status(200).json({ ok: false, error: rateLimited ? 'rate-limited' : lastErr, message });
       }
       const conv = fromOpenAI(j.choices[0]);
       const text = conv.content.filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
