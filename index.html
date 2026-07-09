@@ -13,6 +13,7 @@
 <title>My Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>(function(){var s=window.supabase;if(s&&s.createClient&&!s.__oneClient){s.__oneClient=true;var o=s.createClient.bind(s),c={};s.createClient=function(u,k,op){var q=String(u)+"|"+String(k);return c[q]||(c[q]=o(u,k,op));};}})();</script>
+<script>/*__acctGuard*/(function(){try{var real=null;for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(/^sb-.*-auth-token$/.test(k)){try{var raw=JSON.parse(localStorage.getItem(k));var jwt=raw&&(raw.access_token||(raw.currentSession&&raw.currentSession.access_token));if(jwt){var p=JSON.parse(atob(jwt.split(".")[1].replace(/-/g,"+").replace(/_/g,"/")));if(p&&p.sub)real=p.sub;}}catch(e){}}}if(!real)return;var owner=localStorage.getItem("_dashDataOwner");if(owner===real){localStorage.setItem("_dashUid",real);return;}var keep=[];for(var j=0;j<localStorage.length;j++){var kk=localStorage.key(j);if(kk&&kk.indexOf("sb-")===0)keep.push([kk,localStorage.getItem(kk)]);}localStorage.clear();keep.forEach(function(pr){try{localStorage.setItem(pr[0],pr[1]);}catch(e){}});localStorage.setItem("_dashUid",real);localStorage.setItem("_dashDataOwner",real);}catch(e){}})();</script>
 <script src="topbar.js" defer></script>
 <style> 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}

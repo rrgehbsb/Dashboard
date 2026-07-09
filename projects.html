@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="/manifest.json">
 <title>Projects — Dashboard</title>
+<script>/*__acctGuard*/(function(){try{var real=null;for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(/^sb-.*-auth-token$/.test(k)){try{var raw=JSON.parse(localStorage.getItem(k));var jwt=raw&&(raw.access_token||(raw.currentSession&&raw.currentSession.access_token));if(jwt){var p=JSON.parse(atob(jwt.split(".")[1].replace(/-/g,"+").replace(/_/g,"/")));if(p&&p.sub)real=p.sub;}}catch(e){}}}if(!real)return;var owner=localStorage.getItem("_dashDataOwner");if(owner===real){localStorage.setItem("_dashUid",real);return;}var keep=[];for(var j=0;j<localStorage.length;j++){var kk=localStorage.key(j);if(kk&&kk.indexOf("sb-")===0)keep.push([kk,localStorage.getItem(kk)]);}localStorage.clear();keep.forEach(function(pr){try{localStorage.setItem(pr[0],pr[1]);}catch(e){}});localStorage.setItem("_dashUid",real);localStorage.setItem("_dashDataOwner",real);}catch(e){}})();</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="topbar.js" defer></script>
 <style>
