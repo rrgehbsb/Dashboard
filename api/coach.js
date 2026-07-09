@@ -124,7 +124,12 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'POST only' });
 
-  const KEY = (process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_API_KEY || '').trim();
+  // Pick the real key out of whatever env vars are set (people end up with a
+  // stray ANTHROPIC_API_KEY too). Prefer an OpenRouter key, then Anthropic,
+  // then whatever's there. Trims stray whitespace/newlines.
+  const cands = [process.env.OPENROUTER_API_KEY, process.env.ANTHROPIC_API_KEY, process.env.COACH_API_KEY]
+    .map(k => (k || '').trim()).filter(Boolean);
+  const KEY = cands.find(k => k.indexOf('sk-or-') === 0) || cands.find(k => k.indexOf('sk-ant-') === 0) || cands[0] || '';
   if (!KEY) return res.status(200).json({ ok: false, error: 'no-key' });
   const isOR = KEY.indexOf('sk-or-') === 0;
   // OpenRouter default = a capable FREE model with tool support (no credit needed).
