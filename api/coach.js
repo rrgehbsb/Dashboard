@@ -73,7 +73,9 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'POST only' });
 
-  const KEY = process.env.ANTHROPIC_API_KEY;
+  // Trim stray whitespace/newlines that often sneak in when pasting the key
+  // into a dashboard env-var field — a common cause of "invalid x-api-key".
+  const KEY = (process.env.ANTHROPIC_API_KEY || '').trim();
   if (!KEY) return res.status(200).json({ ok: false, error: 'no-key' });
   const MODEL = process.env.COACH_MODEL || 'claude-haiku-4-5-20251001';
 
