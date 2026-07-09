@@ -150,23 +150,25 @@ module.exports = async function handler(req, res) {
 
   try {
     if (isOR) {
-      const oaBody = {
-        model: MODEL,
-        max_tokens: 1200,
-        messages: [{ role: 'system', content: PERSONA + '\n\n' + contextText }, ...toOpenAI(msgs)],
-      };
-      if (withTools) oaBody.tools = TOOLS.map(t => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.input_schema } }));
-      const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + KEY,
-          'HTTP-Referer': 'https://dashboard.app',
-          'X-Title': 'Dashboard Coach',
-        },
-        body: JSON.stringify(oaBody),
-      });
-      const j = await r.json();
+      const oaMessages = [{ role: 'system', content: PERSONA + '\n\n' + contextText }, ...toOpenAI(msgs)];
+      const oaTools = withTools ? TOOLS.map(t => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.input_schema } })) : undefined;
+      async function callOR(model) {
+        const body = { model, max_tokens: 1200, messages: oaMessages };
+        if (oaTools) body.tools = oaTools;
+        const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + KEY, 'HTTP-Referer': 'https://dashboard.app', 'X-Title': 'Dashboard Coach' },
+          body: JSON.stringify(body),
+        });
+        return { r, j: await r.json() };
+      }
+      let { r, j } = await callOR(MODEL);
+      // If the chosen model needs credits the user doesn't have (and they didn't
+      // pin one), fall back to a free model so it still works.
+      const errStr = JSON.stringify((j && j.error) || '');
+      if (!r.ok && !process.env.COACH_MODEL && (r.status === 402 || /credit|insufficient|quota|payment|require/i.test(errStr))) {
+        ({ r, j } = await callOR('google/gemini-2.0-flash-exp:free'));
+      }
       if (!r.ok) return res.status(200).json({ ok: false, error: (j && j.error && (j.error.message || j.error)) || ('api-' + r.status) });
       const conv = fromOpenAI((j.choices || [])[0]);
       const text = conv.content.filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
