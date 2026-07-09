@@ -715,17 +715,22 @@ html[data-home-structure="compact"] #homeStruct :is(.do-now-card,.day-ring-card,
 /* GRID — 2 columns on a computer, 1 column on phone */
 @media (min-width:820px){
   html[data-home-structure="grid"] #homeStruct{
-    display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start; }
-  /* let the day ring + coach span full width so they breathe */
-  html[data-home-structure="grid"] #homeStruct > .day-ring-card{ grid-column:1 / -1; }
+    display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start; grid-auto-flow:row dense; }
+  /* wide sections span the full width so their own contents don't get squished */
+  html[data-home-structure="grid"] #homeStruct > :is(.day-ring-card,.dash-grid,.do-now-card){ grid-column:1 / -1; }
 }
 
 /* BENTO — 3 columns on a computer, 1 column on phone */
 @media (min-width:900px){
   html[data-home-structure="bento"] #homeStruct{
-    display:grid; grid-template-columns:repeat(3,1fr); gap:13px; align-items:start; }
+    display:grid; grid-template-columns:repeat(3,1fr); gap:13px; align-items:start; grid-auto-flow:row dense; }
   html[data-home-structure="bento"] #homeStruct > .day-ring-card{ grid-column:span 2; }
+  /* the mini-cards row + do-now span all 3 columns so they lay out properly */
+  html[data-home-structure="bento"] #homeStruct > :is(.dash-grid,.do-now-card){ grid-column:1 / -1; }
 }
+/* keep the mini-cards comfortable at these widths */
+html[data-home-structure="grid"] #homeStruct > .dash-grid,
+html[data-home-structure="bento"] #homeStruct > .dash-grid{ grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); }
 @media (min-width:820px){
   html[data-home-structure="grid"] #homeStruct, html[data-home-structure="bento"] #homeStruct{ max-width:1120px; }
 }
