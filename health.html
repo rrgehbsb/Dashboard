@@ -1990,15 +1990,13 @@ window._dbHSchedulePush = function(){ try{ const b=Object.assign({}, window._dbH
   let todayKey = `stack:taken:${getActiveDate()}`;
 
   function getItems() {
-    const storedVersion = storeGet('stack:version');
     const stored = storeGet('stack:items');
-    if (!stored || !Array.isArray(stored) || !stored.length || storedVersion !== TEMPLATE_VERSION) {
-      const fresh = JSON.parse(JSON.stringify(STACK_DEFAULTS));
-      storeSet('stack:items', fresh);
-      storeSet('stack:version', TEMPLATE_VERSION);
-      return fresh;
-    }
-    return stored;
+    // NEVER auto-reseed or wipe. The old code reset the list to defaults whenever
+    // it was empty OR when a synced `stack:version` from another device/deploy
+    // didn't match — which destroyed the user's added supplements AND pushed the
+    // empty array back out to the cloud ("supplements keep disappearing / won't
+    // sync"). An empty list is a perfectly valid choice; defaults are empty anyway.
+    return Array.isArray(stored) ? stored : [];
   }
   function setItems(items) { storeSet('stack:items', items); }
   function getTaken() { return storeGet(todayKey) || {}; }
