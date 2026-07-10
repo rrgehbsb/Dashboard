@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.5.64';
+const DASHBOARD_VERSION = '2.5.65';
 
 // Auto-update: when a new service worker takes control (new deploy), reload once
 // so the installed app always runs the latest code instead of a stale cached
@@ -2874,6 +2874,66 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
     }catch(e){}
   }
 
+  // Per-page "jump to section" navigator. Reuses the SAME .section-title
+  // elements the reorder system uses, in live DOM order — so moving a section
+  // moves it here too. On phone it's a right-edge tab that opens a slide-out
+  // list (no permanent side space). Auto-adapts to whatever the page contains.
+  function setupSectionNav(){
+    try{
+      if(isEmbedded() || isSettingsPage() || isFinancePage()) return;
+      function esc(s){ return String(s==null?'':s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}); }
+      function collect(){
+        var out=[], seen=new Set();
+        document.querySelectorAll('.section-title, [data-nav]').forEach(function(el){
+          if(seen.has(el)) return; seen.add(el);
+          var lbl=(el.getAttribute && el.getAttribute('data-nav')) || el.textContent || '';
+          lbl=lbl.replace(/[↑↓▾▸⋮⋯×]/g,' ').replace(/\s+/g,' ').trim().replace(/[:·]+$/,'').trim().slice(0,26);
+          if(lbl) out.push({el:el, label:lbl});
+        });
+        return out;
+      }
+      if(collect().length < 2) return;
+      if(!document.getElementById('secnav-style')){
+        var st=document.createElement('style'); st.id='secnav-style';
+        st.textContent =
+          '.secnav-tab{position:fixed;right:0;top:50%;transform:translateY(-50%);z-index:48;width:22px;height:66px;border:none;border-radius:12px 0 0 12px;background:color-mix(in srgb,var(--accent,#a78bfa) 90%,#000);color:#fff;font-size:13px;cursor:pointer;box-shadow:-3px 0 12px -4px rgba(0,0,0,.5);-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:center;opacity:.82;}'
+          + '.secnav-tab:active{transform:translateY(-50%) scale(.92);}'
+          + '.secnav-bd{position:fixed;inset:0;z-index:59;background:rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .22s;}'
+          + '.secnav-bd.show{opacity:1;pointer-events:auto;}'
+          + '.secnav-panel{position:fixed;top:0;right:0;bottom:0;width:240px;max-width:82vw;z-index:60;background:#101118;border-left:1px solid rgba(255,255,255,.1);box-shadow:-14px 0 34px -14px rgba(0,0,0,.7);transform:translateX(100%);transition:transform .26s cubic-bezier(.32,.72,0,1);overflow-y:auto;padding:14px 12px calc(20px + env(safe-area-inset-bottom));}'
+          + 'html[data-theme="light"] .secnav-panel{background:#fff;}'
+          + '.secnav-h{font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--text-tertiary,rgba(255,255,255,.4));padding:4px 6px 10px;display:flex;justify-content:space-between;align-items:center;}'
+          + '.secnav-x{background:none;border:none;color:inherit;font-size:20px;cursor:pointer;line-height:1;padding:0 4px;}'
+          + '.secnav-item{display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:transparent;border:none;color:var(--text-primary,#fafafa);font-family:inherit;font-size:14px;font-weight:600;padding:11px 10px;border-radius:10px;cursor:pointer;-webkit-tap-highlight-color:transparent;}'
+          + '.secnav-item:active{background:color-mix(in srgb,var(--accent,#a78bfa) 16%,transparent);}'
+          + '.secnav-dot{width:6px;height:6px;border-radius:50%;background:var(--accent,#a78bfa);flex-shrink:0;opacity:.7;}';
+        document.head.appendChild(st);
+      }
+      if(document.getElementById('secnavTab')) return;
+      var tab=document.createElement('button'); tab.className='secnav-tab'; tab.id='secnavTab';
+      tab.setAttribute('aria-label','Jump to a section on this page'); tab.textContent='☰';
+      var bd=document.createElement('div'); bd.className='secnav-bd'; bd.id='secnavBd';
+      var panel=document.createElement('div'); panel.className='secnav-panel'; panel.id='secnavPanel';
+      document.body.appendChild(tab); document.body.appendChild(bd); document.body.appendChild(panel);
+      function close(){ bd.classList.remove('show'); panel.classList.remove('show'); }
+      function open(){
+        var items=collect();
+        panel.innerHTML='<div class="secnav-h">On this page<button class="secnav-x" id="secnavX" aria-label="Close">×</button></div>'
+          + items.map(function(it,i){ return '<button class="secnav-item" data-i="'+i+'"><span class="secnav-dot"></span>'+esc(it.label)+'</button>'; }).join('');
+        panel.querySelector('#secnavX').addEventListener('click', close);
+        panel.querySelectorAll('.secnav-item').forEach(function(b){
+          b.addEventListener('click', function(){
+            var it=items[+b.dataset.i]; close();
+            if(it && it.el){ var y=it.el.getBoundingClientRect().top + window.scrollY - 66; window.scrollTo({top:Math.max(0,y), behavior:'smooth'}); }
+          });
+        });
+        bd.classList.add('show'); panel.classList.add('show');
+      }
+      tab.addEventListener('click', open);
+      bd.addEventListener('click', close);
+    }catch(e){}
+  }
+
   function boot() {
     injectStyleAndHTML();
     injectUiStyle();
@@ -2882,6 +2942,7 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
     setupBuddy();
     setupXp();
     setupSections();
+    setupSectionNav();
     applyHomeGreeting();
     const btn = document.getElementById('topbarWaterAdd');
     if (btn) btn.addEventListener('click', (e) => { e.preventDefault(); addWater(); });
