@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.5.63';
+const DASHBOARD_VERSION = '2.5.64';
 
 // Auto-update: when a new service worker takes control (new deploy), reload once
 // so the installed app always runs the latest code instead of a stale cached
@@ -797,7 +797,6 @@ html[data-skin]:not([data-skin="none"]) #saveBtn {
     { key:'fitness',   href:'gym.html',       icon:'💪',  label:'Fitness' },
     { key:'school',    href:'school.html',    icon:'📚',  label:'School' },
     { key:'habits',    href:'habits.html',    icon:'🔥',  label:'Habits' },
-    { key:'coach',     href:'coach.html',     icon:'🧠',  label:'Coach' },
     { key:'transport', href:'transport.html', icon:'🚌',  label:'Transport' },
     { key:'projects',  href:'projects.html',  icon:'🗂️', label:'Projects' },
     { key:'friends',   href:'friends.html',   icon:'👥',  label:'Friends' },
@@ -1886,8 +1885,8 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
   // =============================================================
   let _buddyOnWater = null;
   const buddyCss = `
-.buddy{position:fixed;z-index:45;width:60px;height:60px;cursor:grab;touch-action:none;
-  right:16px;bottom:calc(96px + env(safe-area-inset-bottom));
+.buddy{position:fixed;z-index:47;width:60px;height:60px;cursor:grab;touch-action:none;
+  right:16px;bottom:calc(144px + env(safe-area-inset-bottom));
   -webkit-tap-highlight-color:transparent;user-select:none;}
 .buddy[hidden]{display:none;}
 .buddy.dragging{cursor:grabbing;}
