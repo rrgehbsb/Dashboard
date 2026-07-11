@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.5.69';
+const DASHBOARD_VERSION = '2.5.70';
 
 // Auto-update: when a new service worker takes control (new deploy), reload once
 // so the installed app always runs the latest code instead of a stale cached
@@ -302,9 +302,12 @@ window.applyDashSettings(JSON.parse(localStorage.getItem('dashboard:settings:v1'
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="button"]):not([type="submit"]),
   textarea, select { font-size: 16px !important; }
 }
-/* Floating AI Coach button — one-tap access from every page */
+/* Floating AI Coach button — one-tap access from every page.
+   z-index must beat the home page's own .tabbar (fixed, z-index:50, with a
+   backdrop-filter and a near-opaque gradient). At 48 it was painted over and
+   blurred away on home only — every other page uses the injected nav. */
 .coach-fab {
-  position: fixed; right: 15px; z-index: 48;
+  position: fixed; right: 15px; z-index: 52;
   bottom: calc(76px + env(safe-area-inset-bottom));
   width: 56px; height: 56px; border-radius: 50%; border: none; cursor: pointer;
   background: var(--accent, #a78bfa); color: #fff; font-size: 26px; line-height: 1;
@@ -1895,7 +1898,7 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
   // =============================================================
   let _buddyOnWater = null;
   const buddyCss = `
-.buddy{position:fixed;z-index:47;width:60px;height:60px;cursor:grab;touch-action:none;
+.buddy{position:fixed;z-index:51;width:60px;height:60px;cursor:grab;touch-action:none;
   right:13px;bottom:calc(142px + env(safe-area-inset-bottom));
   -webkit-tap-highlight-color:transparent;user-select:none;}
 .buddy[hidden]{display:none;}
