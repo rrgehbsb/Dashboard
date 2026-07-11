@@ -719,6 +719,12 @@
         <span class="st-ver" id="verLabel">—</span>
       </div>
 
+      <div class="st-row" id="forceUpdateRow" style="cursor:pointer">
+        <div class="st-row-icon">🔄</div>
+        <div class="st-row-label">Force Update<div style="font-size:11px;color:var(--s-text2,rgba(255,255,255,0.4));font-weight:500;margin-top:1px">Stuck on an old version? Clears the cache and reloads. Your data is safe.</div></div>
+        <span style="color:var(--accent);font-size:18px;font-weight:700">→</span>
+      </div>
+
       <div class="st-row danger" id="resetRow">
         <div class="st-row-icon">🗑️</div>
         <div class="st-row-label danger-label">Reset All Settings</div>
@@ -1333,6 +1339,32 @@ async function initAiAccess() {
     body.innerHTML = '<div style="padding:8px 0;font-size:13px;color:#f87171">Couldn\'t load accounts.</div>';
   }
 }
+
+// Nuclear cache clear. An installed iOS app resumes instead of reloading, so it
+// can cling to an old service worker + cached files indefinitely. This tears both
+// out and reloads from the network. Touches no app data — only the cache.
+document.addEventListener('DOMContentLoaded', () => {
+  const row = document.getElementById('forceUpdateRow');
+  if (!row) return;
+  row.addEventListener('click', async () => {
+    const label = row.querySelector('.st-row-label');
+    if (label) label.textContent = 'Updating…';
+    try {
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((r) => r.unregister()));
+      }
+    } catch (e) {}
+    try {
+      if (window.caches) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+    } catch (e) {}
+    // Cache-busting query param so iOS can't serve the page from memory either.
+    window.location.replace('index.html?fresh=' + Date.now());
+  });
+});
 
 document.addEventListener('DOMContentLoaded', loadFromCloud);
 document.addEventListener('DOMContentLoaded', initAiAccess);
