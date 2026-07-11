@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.5.71';
+const DASHBOARD_VERSION = '2.5.72';
 
 // Auto-update: when a new service worker takes control (new deploy), reload once
 // so the installed app always runs the latest code instead of a stale cached
@@ -1721,6 +1721,14 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
       try {
         const fb = document.getElementById('topbarFinance');
         if (fb && !pageVisible('finance')) fb.remove();
+      } catch (e) {}
+      // The AI button is gated on the Coach page being enabled, and that flag may
+      // have just arrived from the cloud — so add or drop it now instead of making
+      // the user reload to see the change take effect.
+      try {
+        const cf = document.getElementById('coachFab');
+        if (cf && !pageVisible('coach')) cf.remove();
+        else ensureCoachFab();
       } catch (e) {}
       try { guardPageAccess(); } catch (e) {}
     } catch (e) {}
