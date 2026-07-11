@@ -140,7 +140,48 @@ module.exports = async function handler(req, res) {
   const OR_FREE_FALLBACK = 'qwen/qwen3-next-80b-a3b-instruct:free';
   const MODEL = process.env.COACH_MODEL || (isOR ? OR_DEFAULT : 'claude-haiku-4-5-20251001');
 
-  const { context, question, history, messages, tools } = req.body || {};
+  const { context, question, history, messages, tools, token } = req.body || {};
+
+  // ── ACCESS CONTROL ───────────────────────────────────────────────────────
+  // The LLM key is the OWNER's and costs real money, so only the admin and
+  // accounts the admin has explicitly allowed may call it. We verify the
+  // caller's Supabase access token server-side (can't be spoofed), then check
+  // the admin-managed allowlist stored in app_state under key "ai:allowlist".
+  const SB_URL = 'https://mtuoqwbrujxutofhyahb.supabase.co';
+  const SB_ANON = 'sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
+  const ADMIN_EMAIL = 'tomayala55@gmail.com';
+
+  let caller = null;
+  if (token) {
+    try {
+      const ur = await fetch(SB_URL + '/auth/v1/user', {
+        headers: { apikey: SB_ANON, Authorization: 'Bearer ' + token },
+      });
+      if (ur.ok) caller = await ur.json();
+    } catch (e) {}
+  }
+  if (!caller || !caller.id) {
+    return res.status(200).json({ ok: false, error: 'auth',
+      message: 'Please sign out and sign back in — your session expired.' });
+  }
+  const isAdmin = String(caller.email || '').toLowerCase() === ADMIN_EMAIL;
+  if (!isAdmin) {
+    let allowed = false;
+    try {
+      const alr = await fetch(SB_URL + '/rest/v1/app_state?key=eq.ai%3Aallowlist&select=data', {
+        headers: { apikey: SB_ANON, Authorization: 'Bearer ' + SB_ANON },
+      });
+      const rows = await alr.json();
+      const list = (rows && rows[0] && rows[0].data && rows[0].data.allowed) || {};
+      allowed = !!list[caller.id];
+    } catch (e) {}
+    if (!allowed) {
+      return res.status(200).json({ ok: false, error: 'not-allowed',
+        message: '🔒 The AI coach isn\'t enabled for your account. Ask the owner to switch it on for you.' });
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   const contextText = 'USER DATA:\n' + JSON.stringify(context || {});
 
   // Build the neutral message list (Anthropic block format). Preferred: caller

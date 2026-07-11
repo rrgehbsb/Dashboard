@@ -269,9 +269,14 @@ function confirmCard(name,a){
 }
 
 let apiMsgs=[]; // Anthropic-format running conversation (text + tool_use/tool_result)
+// The server verifies this token to decide whether this account is allowed to
+// spend the owner's AI credit — so it must be the real session token, not a uid.
+async function authToken(){
+  try{const{data}=await client().auth.getSession();return (data&&data.session&&data.session.access_token)||'';}catch(e){return '';}
+}
 async function callCoach(ctx){
   const r=await fetch('/api/coach',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({context:ctx,messages:apiMsgs})});
+    body:JSON.stringify({context:ctx,messages:apiMsgs,token:await authToken()})});
   return r.json();
 }
 async function ask(q){

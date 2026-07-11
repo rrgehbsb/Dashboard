@@ -3757,9 +3757,12 @@ async function askCoach(){
   $('fcChatSend').disabled=true;
   const thinking=chatBubble('assistant','Thinking…');
   try{
+    // Server checks this token against the owner's AI allowlist before spending credit.
+    let _tok='';
+    try{const c=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);const{data}=await c.auth.getSession();_tok=(data&&data.session&&data.session.access_token)||'';}catch(e){}
     const r=await fetch('/api/coach',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({question:q,context:aiContext(),history:chatHistory.slice(0,-1)})
+      body:JSON.stringify({question:q,context:aiContext(),history:chatHistory.slice(0,-1),token:_tok})
     });
     const j=await r.json();
     if(j.ok){

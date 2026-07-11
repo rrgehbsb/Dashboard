@@ -697,6 +697,17 @@
     <div class="nav-note" style="border-top:none;padding-top:8px">💾 Downloads a backup of everything — your settings, logs, goals, gym, habits &amp; more.</div>
   </div>
 
+  <!-- AI ACCESS — admin only. Stays hidden for every account except the owner. -->
+  <div class="st-group" id="aiAccessGroup" style="display:none">
+    <div class="st-group-label">AI Access
+      <span style="margin-left:6px;font-size:9.5px;letter-spacing:.06em;background:var(--accent);color:#fff;padding:2px 6px;border-radius:5px;vertical-align:middle">ADMIN</span>
+    </div>
+    <div class="st-body">
+      <div id="aiAccessBody" style="padding:2px 14px 6px">Loading accounts…</div>
+    </div>
+    <div class="nav-note" style="border-top:none;padding-top:8px">🔒 Only accounts switched on here can use the AI coach. Everyone else is blocked on the server, so nobody can spend your credit. You're always on.</div>
+  </div>
+
   <!-- ABOUT -->
   <div class="st-group">
     <div class="st-group-label">About</div>
@@ -1236,7 +1247,80 @@ async function exportData() {
 document.getElementById('exportRow').addEventListener('click', exportData);
 
 // Pull cloud settings on load
+// ── AI Access (admin only) ──────────────────────────────────────────────────
+// The AI runs on the owner's paid key, so access is opt-in per account. The
+// allowlist lives in app_state under "ai:allowlist" and is ENFORCED SERVER-SIDE
+// in /api/coach (it verifies the caller's real Supabase token). Hiding this
+// panel is just UI — the block is what actually protects the credit.
+const ADMIN_EMAIL = 'tomayala55@gmail.com';
+const AI_ALLOW_KEY = 'ai:allowlist';
+let _aiAllow = {};
+
+function aiEsc(s) {
+  return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+async function initAiAccess() {
+  const sb = getSB(); if (!sb) return;
+  let session = null;
+  try { session = (await sb.auth.getSession()).data.session; } catch (e) { return; }
+  if (!session) return;
+  if (String(session.user.email || '').toLowerCase() !== ADMIN_EMAIL) return;
+
+  const group = document.getElementById('aiAccessGroup');
+  const body = document.getElementById('aiAccessBody');
+  if (!group || !body) return;
+  group.style.display = '';
+
+  try {
+    const allowRes = await sb.from('app_state').select('data').eq('key', AI_ALLOW_KEY).maybeSingle();
+    _aiAllow = (allowRes.data && allowRes.data.data && allowRes.data.data.allowed) || {};
+
+    // Every account that has ever saved settings = every account that exists.
+    const rowsRes = await sb.from('app_state').select('key').like('key', '%:settings');
+    const uids = [...new Set((rowsRes.data || []).map((r) => String(r.key).split(':')[0]).filter(Boolean))];
+    if (!uids.length) { body.innerHTML = '<div style="padding:8px 0;font-size:13px;color:var(--s-text2)">No accounts found yet.</div>'; return; }
+
+    const profs = {};
+    try { (await sb.from('profiles').select('id,username,display_name').in('id', uids)).data.forEach((p) => { profs[p.id] = p; }); } catch (e) {}
+
+    body.innerHTML = uids.map((u) => {
+      const me = u === session.user.id;
+      const on = me || !!_aiAllow[u];
+      const p = profs[u] || {};
+      const label = p.display_name || p.username || 'Account';
+      const sub = me ? 'You — admin, always on' : (p.username ? '@' + p.username : u.slice(0, 8) + '…');
+      return '<div class="pm-row">'
+        + '<div class="pm-emoji">' + (me ? '👑' : '👤') + '</div>'
+        + '<div class="pm-name">' + aiEsc(label) + '<small>' + aiEsc(sub) + '</small></div>'
+        + '<div class="pm-toggle' + (on ? ' on' : '') + (me ? ' locked' : '') + '" data-aiuid="' + u + '"' + (me ? ' data-locked="1"' : '') + '></div>'
+        + '</div>';
+    }).join('');
+
+    body.querySelectorAll('[data-aiuid]').forEach((t) => {
+      t.addEventListener('click', async () => {
+        if (t.dataset.locked) return;
+        const u = t.dataset.aiuid;
+        const on = !t.classList.contains('on');
+        t.classList.toggle('on', on);
+        if (on) _aiAllow[u] = true; else delete _aiAllow[u];
+        try {
+          await sb.from('app_state').upsert(
+            { key: AI_ALLOW_KEY, data: { allowed: _aiAllow }, updated_at: new Date().toISOString() },
+            { onConflict: 'key' }
+          );
+        } catch (e) {
+          t.classList.toggle('on', !on); // revert the switch if the save failed
+        }
+      });
+    });
+  } catch (e) {
+    body.innerHTML = '<div style="padding:8px 0;font-size:13px;color:#f87171">Couldn\'t load accounts.</div>';
+  }
+}
+
 document.addEventListener('DOMContentLoaded', loadFromCloud);
+document.addEventListener('DOMContentLoaded', initAiAccess);
 </script>
 
 <script>
