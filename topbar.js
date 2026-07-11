@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.5.73';
+const DASHBOARD_VERSION = '2.5.74';
 
 // Auto-update: when a new service worker takes control (new deploy), reload once
 // so the installed app always runs the latest code instead of a stale cached
@@ -1409,6 +1409,51 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
       if (key && !pageVisible(key)) { window.location.replace('index.html'); return true; }
     } catch (e) {}
     return false;
+  }
+
+  // Add ?diag=1 to any page to see, from the device itself, exactly what
+  // happened to the AI button. Reports on screen so it can be screenshotted.
+  function coachDiag() {
+    try {
+      if (!/[?&]diag=1/.test(window.location.search)) return;
+      setTimeout(function () {
+        const fab = document.getElementById('coachFab');
+        const L = [];
+        L.push('version: ' + DASHBOARD_VERSION);
+        L.push('path: ' + window.location.pathname);
+        L.push('pageKey: ' + currentPageKey());
+        L.push('embedded: ' + isEmbedded());
+        L.push('FAB EXISTS: ' + (!!fab));
+        if (fab) {
+          const cs = getComputedStyle(fab);
+          const r = fab.getBoundingClientRect();
+          L.push('  parent: ' + (fab.parentElement ? fab.parentElement.tagName + '#' + (fab.parentElement.id || '-') : 'none'));
+          L.push('  display/vis/op: ' + cs.display + '/' + cs.visibility + '/' + cs.opacity);
+          L.push('  z/pos: ' + cs.zIndex + '/' + cs.position);
+          L.push('  rect: x' + Math.round(r.x) + ' y' + Math.round(r.y) + ' w' + Math.round(r.width) + ' h' + Math.round(r.height));
+          L.push('  screen: ' + window.innerWidth + 'x' + window.innerHeight);
+          const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+          L.push('  on top: ' + (el ? el.tagName + '#' + (el.id || '-') + '.' + (el.className || '-') : 'nothing'));
+        }
+        let st = {};
+        try { st = JSON.parse(localStorage.getItem('dashboard:settings:v1') || '{}'); } catch (e) {}
+        L.push('pages: ' + JSON.stringify(st.pages || null));
+        L.push('homeStructure: ' + (st.homeStructure || '-') + ' | attr: ' + (document.documentElement.getAttribute('data-home-structure') || '-'));
+        L.push('buddy_pos: ' + (localStorage.getItem('buddy_pos') || '-'));
+        L.push('homeStruct wrapper: ' + !!document.getElementById('homeStruct'));
+        const box = document.createElement('div');
+        box.style.cssText = 'position:fixed;left:8px;right:8px;top:8px;z-index:99999;background:#000;color:#0f0;'
+          + 'font:11px/1.45 ui-monospace,Menlo,monospace;padding:10px 12px;border:2px solid #0f0;border-radius:10px;'
+          + 'white-space:pre-wrap;word-break:break-word;max-height:80vh;overflow:auto;';
+        box.textContent = L.join('\n');
+        const x = document.createElement('button');
+        x.textContent = 'close';
+        x.style.cssText = 'margin-top:8px;background:#0f0;color:#000;border:none;border-radius:6px;padding:5px 10px;font-weight:700;';
+        x.onclick = function () { box.remove(); };
+        box.appendChild(x);
+        document.body.appendChild(box);
+      }, 1600);
+    } catch (e) {}
   }
 
   // The AI coach button. Idempotent + re-assertable, because on the home page
@@ -2966,6 +3011,7 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
     // Re-assert the AI button after the page (esp. the home layout collector) settles.
     window.addEventListener('load', ensureCoachFab);
     setTimeout(ensureCoachFab, 900);
+    coachDiag();
     const btn = document.getElementById('topbarWaterAdd');
     if (btn) btn.addEventListener('click', (e) => { e.preventDefault(); addWater(); });
     render();
