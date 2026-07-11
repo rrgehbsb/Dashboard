@@ -1276,13 +1276,28 @@ async function initAiAccess() {
     const allowRes = await sb.from('app_state').select('data').eq('key', AI_ALLOW_KEY).maybeSingle();
     _aiAllow = (allowRes.data && allowRes.data.data && allowRes.data.data.allowed) || {};
 
-    // Every account that has ever saved settings = every account that exists.
-    const rowsRes = await sb.from('app_state').select('key').like('key', '%:settings');
-    const uids = [...new Set((rowsRes.data || []).map((r) => String(r.key).split(':')[0]).filter(Boolean))];
-    if (!uids.length) { body.innerHTML = '<div style="padding:8px 0;font-size:13px;color:var(--s-text2)">No accounts found yet.</div>'; return; }
+    // Discover every account: anyone with ANY saved row, plus anyone with a
+    // profile. New sign-ups therefore appear here on their own (switched OFF)
+    // — this list is rebuilt from scratch each time Settings opens.
+    const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const found = new Set();
+    try {
+      (await sb.from('app_state').select('key')).data.forEach((r) => {
+        const u = String(r.key).split(':')[0];
+        if (UUID.test(u)) found.add(u);
+      });
+    } catch (e) {}
 
     const profs = {};
-    try { (await sb.from('profiles').select('id,username,display_name').in('id', uids)).data.forEach((p) => { profs[p.id] = p; }); } catch (e) {}
+    try {
+      (await sb.from('profiles').select('id,username,display_name')).data.forEach((p) => {
+        profs[p.id] = p; found.add(p.id);
+      });
+    } catch (e) {}
+
+    found.add(session.user.id); // you're always in the list
+    const uids = [...found];
+    if (!uids.length) { body.innerHTML = '<div style="padding:8px 0;font-size:13px;color:var(--s-text2)">No accounts found yet.</div>'; return; }
 
     body.innerHTML = uids.map((u) => {
       const me = u === session.user.id;
