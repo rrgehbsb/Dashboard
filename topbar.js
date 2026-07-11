@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.5.72';
+const DASHBOARD_VERSION = '2.5.73';
 
 // Auto-update: when a new service worker takes control (new deploy), reload once
 // so the installed app always runs the latest code instead of a stale cached
@@ -813,7 +813,10 @@ html[data-skin]:not([data-skin="none"]) #saveBtn {
   // Pages the user can turn on/off (onboarding + kids mode). 'main' and
   // 'settings' can never be hidden. Stored SYNCED in dashboard:settings:v1
   // as `pages: { finance:false, ... }` — absent/true = visible.
-  const HIDEABLE_PAGES = ['health','fitness','school','habits','coach','transport','projects','friends','finance','trends'];
+  // 'coach' is NOT hideable: it has no nav tab, it's reached only via the floating
+  // button, and who may actually USE the AI is enforced server-side by the admin
+  // allowlist. Making it hideable only ever produced an invisible-button mystery.
+  const HIDEABLE_PAGES = ['health','fitness','school','habits','transport','projects','friends','finance','trends'];
   function pageVisible(key) {
     if (key === 'main' || key === 'settings') return true;
     const s = readSettings();
@@ -1401,7 +1404,6 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
       else if (p.endsWith('friends.html')) key = 'friends';
       else if (p.endsWith('school.html')) key = 'school';
       else if (p.endsWith('habits.html')) key = 'habits';
-      else if (p.endsWith('coach.html')) key = 'coach';
       else if (p.endsWith('gym.html')) key = 'fitness';
       else if (p.endsWith('health.html')) key = 'health';
       if (key && !pageVisible(key)) { window.location.replace('index.html'); return true; }
@@ -1415,7 +1417,7 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
     try {
       if (isEmbedded() || isFinancePage()) return;
       if (document.getElementById('coachFab')) return;
-      if (currentPageKey() === 'coach' || !pageVisible('coach')) return;
+      if (currentPageKey() === 'coach') return;
       if (!document.body) return;
       const fab = document.createElement('button');
       fab.id = 'coachFab'; fab.className = 'coach-fab'; fab.type = 'button';
@@ -1722,14 +1724,7 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
         const fb = document.getElementById('topbarFinance');
         if (fb && !pageVisible('finance')) fb.remove();
       } catch (e) {}
-      // The AI button is gated on the Coach page being enabled, and that flag may
-      // have just arrived from the cloud — so add or drop it now instead of making
-      // the user reload to see the change take effect.
-      try {
-        const cf = document.getElementById('coachFab');
-        if (cf && !pageVisible('coach')) cf.remove();
-        else ensureCoachFab();
-      } catch (e) {}
+      try { ensureCoachFab(); } catch (e) {}
       try { guardPageAccess(); } catch (e) {}
     } catch (e) {}
   }
