@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.5.70';
+const DASHBOARD_VERSION = '2.5.71';
 
 // Auto-update: when a new service worker takes control (new deploy), reload once
 // so the installed app always runs the latest code instead of a stale cached
@@ -1704,11 +1704,13 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
       if (cloudStr === (localStorage.getItem('dashboard:settings:v1') || '')) { _lastSettingsStr = cloudStr; return; }
       if (cloudStr === _lastSettingsStr) return; // already applied this cloud version
       // Don't let a STALE cloud read overwrite a change we just made locally (the
-      // "pick a layout → it snaps back to default" race). If our local settings
-      // are newer than the cloud copy, keep local and wait for our push to land.
+      // "pick a layout → it snaps back to default" race). This is a SHORT grace
+      // window only: older rows have no _pushAt at all, and comparing against a
+      // missing one made local settings outrank the cloud forever, so a device
+      // could never receive settings changed anywhere else.
       try {
         const _local = JSON.parse(localStorage.getItem('dashboard:settings:v1') || '{}');
-        if (_local && _local._pushAt && (!cloud._pushAt || _local._pushAt > cloud._pushAt)) return;
+        if (_local && _local._pushAt && (Date.now() - _local._pushAt) < 15000) return;
       } catch (e) {}
       _lastSettingsStr = cloudStr;
       localStorage.setItem('dashboard:settings:v1', cloudStr);
