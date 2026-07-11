@@ -7,21 +7,39 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.5.74';
+const DASHBOARD_VERSION = '2.5.75';
 
 // Auto-update: when a new service worker takes control (new deploy), reload once
 // so the installed app always runs the latest code instead of a stale cached
 // version. Guarded so it can't loop.
 (function(){
   try{
-    if('serviceWorker' in navigator){
-      var _swReloaded=false;
-      navigator.serviceWorker.addEventListener('controllerchange', function(){
-        if(_swReloaded) return; _swReloaded=true; window.location.reload();
-      });
-      // Actively check for a newer service worker on each load
-      navigator.serviceWorker.getRegistration().then(function(r){ if(r) r.update(); }).catch(function(){});
+    if(!('serviceWorker' in navigator)) return;
+    var _swReloaded=false;
+    navigator.serviceWorker.addEventListener('controllerchange', function(){
+      if(_swReloaded) return; _swReloaded=true; window.location.reload();
+    });
+
+    // Check for a newer service worker. An installed iOS home-screen app RESUMES
+    // from the background instead of navigating, so a load-time check alone never
+    // fires and the app serves stale code forever — hence also checking whenever
+    // the app comes back to the foreground. Throttled so resuming stays cheap.
+    var _lastCheck=0;
+    function checkForUpdate(){
+      var now=Date.now();
+      if(now-_lastCheck < 30000) return;
+      _lastCheck=now;
+      navigator.serviceWorker.getRegistration().then(function(r){
+        if(!r) return;
+        r.update();
+        // If a new worker is already sitting there waiting, activate it now.
+        if(r.waiting) r.waiting.postMessage({type:'SKIP_WAITING'});
+      }).catch(function(){});
     }
+    checkForUpdate();
+    document.addEventListener('visibilitychange', function(){ if(!document.hidden) checkForUpdate(); });
+    window.addEventListener('focus', checkForUpdate);
+    window.addEventListener('pageshow', function(e){ if(e.persisted) checkForUpdate(); });
   }catch(e){}
 })();
 

@@ -1,6 +1,6 @@
 // Dashboard Service Worker
 // Bump CACHE_VERSION on each deploy to force cache refresh
-const CACHE_VERSION = 'v2.5.74';
+const CACHE_VERSION = 'v2.5.75';
 const CACHE_NAME = `dashboard-${CACHE_VERSION}`;
 
 // Files to pre-cache on install
@@ -11,6 +11,12 @@ const PRECACHE = [
   '/manifest.json',
   '/icon.svg',
 ];
+
+// The page asks a waiting worker to take over immediately (installed iOS apps
+// resume rather than reload, so a worker can otherwise sit waiting indefinitely).
+self.addEventListener('message', e => {
+  if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
+});
 
 // ── Install ───────────────────────────────────────────────────
 self.addEventListener('install', e => {
