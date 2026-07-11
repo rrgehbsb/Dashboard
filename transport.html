@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Dashboard">
 <link rel="manifest" href="/manifest.json">
-<link rel="apple-touch-icon" href="/icon.svg">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <title>Transport — Dashboard</title>
 <script>/*__acctGuard4*/(function(){try{var real=null;for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(!/^sb-.*-auth-token$/.test(k))continue;try{var v=localStorage.getItem(k);if(v&&v.slice(0,7)==="base64-"){try{v=decodeURIComponent(escape(atob(v.slice(7))));}catch(e){try{v=atob(v.slice(7));}catch(e2){}}}var raw=JSON.parse(v);if(raw){if(raw.user&&raw.user.id)real=raw.user.id;else{var jwt=raw.access_token||(raw.currentSession&&raw.currentSession.access_token);if(jwt){var pp=JSON.parse(atob(jwt.split(".")[1].replace(/-/g,"+").replace(/_/g,"/")));if(pp&&pp.sub)real=pp.sub;}}}}catch(e){}if(real)break;}if(!real)return;localStorage.setItem("_dashUid",real);localStorage.setItem("_dashDataOwner",real);}catch(e){}})();</script>
 <style>
@@ -147,6 +147,7 @@ body{
 .al-btns{display:flex;flex-wrap:wrap;gap:8px;}
 .al-st{margin-top:10px;font-size:11px;color:var(--text-tertiary);min-height:16px;}
 </style>
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
 </head>
 <body>
 

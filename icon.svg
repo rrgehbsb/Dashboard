@@ -1,10 +1,24 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="110" fill="#050506"/>
-  <rect x="80" y="80" width="152" height="152" rx="24" fill="rgba(255,255,255,0.10)"/>
-  <rect x="280" y="80" width="152" height="152" rx="24" fill="rgba(255,255,255,0.10)"/>
-  <rect x="80" y="280" width="152" height="152" rx="24" fill="rgba(255,255,255,0.10)"/>
-  <rect x="280" y="280" width="152" height="152" rx="24" fill="#1D9E75"/>
-  <circle cx="356" cy="356" r="38" fill="rgba(255,255,255,0.15)"/>
-  <rect x="338" y="348" width="36" height="8" rx="4" fill="#FAFAFA"/>
-  <rect x="348" y="336" width="8" height="36" rx="4" fill="#FAFAFA"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="gem" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F472B6"/>
+      <stop offset="0.55" stop-color="#C084FC"/>
+      <stop offset="1" stop-color="#8B5CF6"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.46" r="0.5">
+      <stop offset="0" stop-color="#C084FC" stop-opacity="0.40"/>
+      <stop offset="1" stop-color="#C084FC" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="512" height="512" fill="#0A0A0F"/>
+  <circle cx="256" cy="240" r="215" fill="url(#glow)"/>
+
+  <!-- Gem: ties to the dashboard's gem progression. Kept inside the middle 80%
+       so a maskable/rounded crop never clips it. -->
+  <path d="M256 92 L398 174 L398 338 L256 420 L114 338 L114 174 Z" fill="url(#gem)"/>
+  <!-- One lit top plane and one shaded left plane — enough to read as a cut
+       stone at 60px, without detail that turns to mush. -->
+  <path d="M256 92 L398 174 L256 215 L114 174 Z" fill="#FFFFFF" fill-opacity="0.24"/>
+  <path d="M114 174 L256 215 L256 420 L114 338 Z" fill="#000000" fill-opacity="0.15"/>
 </svg>

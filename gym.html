@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Dashboard">
 <link rel="manifest" href="/manifest.json">
-<link rel="apple-touch-icon" href="/icon.svg">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <title>Progressive Overload Coach</title>
 
 <!-- =============================================================
@@ -1564,6 +1564,7 @@ img, video, canvas, svg { max-width: 100%; }
 <script>(function(){var s=window.supabase;if(s&&s.createClient&&!s.__oneClient){s.__oneClient=true;var o=s.createClient.bind(s),c={};s.createClient=function(u,k,op){var q=String(u)+"|"+String(k);return c[q]||(c[q]=o(u,k,op));};}})();</script>
 <script>/*__acctGuard4*/(function(){try{var real=null;for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(!/^sb-.*-auth-token$/.test(k))continue;try{var v=localStorage.getItem(k);if(v&&v.slice(0,7)==="base64-"){try{v=decodeURIComponent(escape(atob(v.slice(7))));}catch(e){try{v=atob(v.slice(7));}catch(e2){}}}var raw=JSON.parse(v);if(raw){if(raw.user&&raw.user.id)real=raw.user.id;else{var jwt=raw.access_token||(raw.currentSession&&raw.currentSession.access_token);if(jwt){var pp=JSON.parse(atob(jwt.split(".")[1].replace(/-/g,"+").replace(/_/g,"/")));if(pp&&pp.sub)real=pp.sub;}}}}catch(e){}if(real)break;}if(!real)return;localStorage.setItem("_dashUid",real);localStorage.setItem("_dashDataOwner",real);}catch(e){}})();</script>
 <script src="topbar.js" defer></script>
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
 </head>
 <body>
 
