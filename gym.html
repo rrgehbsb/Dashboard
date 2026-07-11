@@ -1466,6 +1466,51 @@ img, video, canvas, svg { max-width: 100%; }
   border: 1px solid var(--border); border-radius: 8px;
   color: var(--text-1); font-size: 14px; padding: 7px 10px; outline: none;
 }
+.gt-session-note {
+  font-size: 11.5px; color: var(--accent, #a78bfa); font-weight: 600;
+  margin: 4px 0 8px;
+}
+.gt-session-note:empty { display: none; }
+
+/* ── Workout history ── */
+.gt-hist-modal { max-height: 86vh; }
+.gt-hist-sum {
+  font-size: 12px; color: var(--text-3); margin-bottom: 14px;
+  padding-bottom: 12px; border-bottom: 1px solid var(--border);
+}
+.gt-hist-list { display: flex; flex-direction: column; gap: 14px; }
+.gt-hist-empty { font-size: 13px; color: var(--text-3); padding: 18px 0; text-align: center; }
+.gt-hist-day {
+  background: rgba(255,255,255,0.035); border: 1px solid var(--border);
+  border-radius: 14px; padding: 12px 13px;
+}
+.gt-hist-head {
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;
+}
+.gt-hist-date { font-size: 13.5px; font-weight: 700; color: var(--text-1); }
+.gt-hist-name {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--accent, #a78bfa);
+  background: color-mix(in srgb, var(--accent, #a78bfa) 14%, transparent);
+  border-radius: 6px; padding: 2px 7px;
+}
+.gt-hist-vol { margin-left: auto; font-size: 11px; color: var(--text-3); }
+.gt-hist-ex { padding: 7px 0; }
+.gt-hist-ex + .gt-hist-ex { border-top: 1px solid rgba(255,255,255,0.05); }
+.gt-hist-exname { font-size: 13px; font-weight: 600; color: var(--text-2); margin-bottom: 5px; }
+.gt-hist-sets { display: flex; flex-wrap: wrap; gap: 5px; }
+.gt-hist-set {
+  font-family: var(--font-mono, ui-monospace, Menlo, monospace);
+  font-size: 11.5px; color: var(--text-1);
+  background: rgba(255,255,255,0.06); border: 1px solid var(--border);
+  border-radius: 7px; padding: 3px 8px;
+}
+.gt-hist-set.fail {
+  color: #fca5a5; border-color: rgba(248,113,113,0.4);
+  background: rgba(248,113,113,0.12);
+}
+.gt-hist-notes { font-size: 11.5px; color: var(--text-3); font-style: italic; margin-top: 5px; }
+
 .gt-modal-bg {
   position: fixed; inset: 0; background: rgba(0,0,0,0.7);
   z-index: 200; display: flex; align-items: flex-end; justify-content: center;
@@ -1580,7 +1625,9 @@ img, video, canvas, svg { max-width: 100%; }
     <div class="gt-section-head">
       <span class="gt-title">Workout Tracker</span>
       <div class="gt-section-actions">
-        <button class="gt-icon-btn" id="gtResetTodayBtn" title="Clear today's set logs">↺ Reset today</button>
+        <button class="gt-icon-btn" id="gtHistoryBtn" title="Every workout you've logged">🕘 History</button>
+        <button class="gt-icon-btn" id="gtNewSessionBtn" title="Start a fresh session for this day (keeps the old one in History)">✚ New session</button>
+        <button class="gt-icon-btn" id="gtResetTodayBtn" title="Clear the sets logged in this session">↺ Clear</button>
         <button class="gt-icon-btn" id="gtManageDaysBtn">⊞ Days</button>
         <button class="gt-icon-btn" id="gtAddExBtn">+ Exercise</button>
       </div>
@@ -1591,6 +1638,7 @@ img, video, canvas, svg { max-width: 100%; }
         <span class="gt-today-date" id="gtTodayDate">—</span>
         <span class="gt-today-day" id="gtTodayDay">—</span>
       </div>
+      <div class="gt-session-note" id="gtSessionNote"></div>
       <div class="gt-progress-bar"><div class="gt-progress-fill" id="gtProgressFill"></div></div>
       <div class="gt-progress-stats" id="gtProgressStats">—</div>
     </div>
@@ -1857,6 +1905,18 @@ img, video, canvas, svg { max-width: 100%; }
     <div class="gt-manage-btns">
       <button class="gt-btn-danger" id="gtResetAllBtn">Reset all data</button>
       <button class="gt-btn-cancel" id="gtDaysClose" style="margin-left:auto">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Workout History -->
+<div class="gt-modal-bg" id="gtHistModal">
+  <div class="gt-modal gt-hist-modal">
+    <h3>Workout History</h3>
+    <div class="gt-hist-sum" id="gtHistSum"></div>
+    <div class="gt-hist-list" id="gtHistList"></div>
+    <div class="gt-manage-btns">
+      <button class="gt-btn-cancel" id="gtHistClose" style="margin-left:auto">Close</button>
     </div>
   </div>
 </div>
@@ -3091,10 +3151,38 @@ img, video, canvas, svg { max-width: 100%; }
     try { if(window._gtRenderAll) window._gtRenderAll(); } catch {}
   }
 
+  // Workout logs are one big object keyed by date: { '2026-07-11': { exId: {...} } }.
+  // Replacing it wholesale means whichever device pushes last erases every session
+  // the other device recorded. Union it by date, then by exercise, so a session can
+  // never be lost — `win` decides who takes a genuine same-exercise conflict.
+  const GYM_LOG_KEY = 'dashboard:gym:v1:logs';
+  function mergeLogs(base, incoming, win) {
+    if(!base || typeof base !== 'object') return incoming || {};
+    if(!incoming || typeof incoming !== 'object') return base;
+    const out = {};
+    Object.keys(base).concat(Object.keys(incoming)).forEach(dk => {
+      if(out[dk]) return;
+      const a = base[dk] || {}, b = incoming[dk] || {};
+      const day = {};
+      Object.keys(a).concat(Object.keys(b)).forEach(exId => {
+        if(day[exId]) return;
+        const ea = a[exId], eb = b[exId];
+        if(ea && eb) day[exId] = (win === 'incoming') ? eb : ea;
+        else day[exId] = ea || eb;
+      });
+      out[dk] = day;
+    });
+    return out;
+  }
+
   function pcApplyRemote(remote) {
     if(!remote || typeof remote !== 'object') return;
     // Merge (overlay remote), don't wipe — protects unpushed local keys.
-    Object.keys(remote).forEach(k => { if(k !== '_pushAt' && PC_SYNCED_KEYS.indexOf(k) !== -1) _dbG[k] = remote[k]; });
+    Object.keys(remote).forEach(k => {
+      if(k === '_pushAt' || PC_SYNCED_KEYS.indexOf(k) === -1) return;
+      if(k === GYM_LOG_KEY && _dbG[k]) _dbG[k] = mergeLogs(_dbG[k], remote[k], 'incoming');
+      else _dbG[k] = remote[k];
+    });
     pcRerender();
   }
   // A genuine change arrived from another device — refresh so the (sometimes
@@ -3121,7 +3209,12 @@ img, video, canvas, svg { max-width: 100%; }
     let cloud={};
     try{ const {data:row}=await pcSupa.from('app_state').select('data').eq('key',APP_KEY).maybeSingle(); if(row&&row.data&&typeof row.data==='object') cloud=row.data; }catch(e){}
     const data = Object.assign({}, cloud);
-    Object.keys(_dbG).forEach(k => { data[k] = _dbG[k]; });
+    Object.keys(_dbG).forEach(k => {
+      // Union the logs with whatever the cloud has, so pushing our sessions never
+      // deletes sessions another device recorded. Ours wins a same-exercise clash.
+      if(k === GYM_LOG_KEY && cloud[k]) data[k] = mergeLogs(cloud[k], _dbG[k], 'incoming');
+      else data[k] = _dbG[k];
+    });
     delete data._localAt;
     const pushAt = Date.now(); data._pushAt = pushAt;
     try {
@@ -3132,7 +3225,8 @@ img, video, canvas, svg { max-width: 100%; }
   }
 
   function pcFlushPushOnUnload() {
-    if(!pcSupa || (!pcHasPendingPush && !pcPushTimer)) return;
+    if(!pcSupa || !pcSyncReady) return; // never write the row from a half-loaded page
+    if(!pcHasPendingPush && !pcPushTimer) return;
     const data = {}; Object.keys(_dbG).forEach(k => { data[k] = _dbG[k]; }); data._pushAt = Date.now();
     try {
       fetch(SUPABASE_URL + '/rest/v1/app_state?on_conflict=key', {
@@ -3153,11 +3247,21 @@ img, video, canvas, svg { max-width: 100%; }
     const _uid = _sess.user.id;
     localStorage.setItem('_dashUid', _uid);
     APP_KEY = _uid + ':' + APP_KEY_BASE;
+
+    // Pushes stay DISABLED until we have actually heard back from the cloud.
+    // On a fresh page load _dbG is empty and rendering seeds blank defaults into
+    // it; if the pull failed (flaky network, mid-deploy reload) and we pushed
+    // anyway, that empty state would overwrite the real plan and every logged
+    // session in the cloud. That is what wiped people's workouts after updates.
+    let pulled = false;
     try {
       const { data, error } = await pcSupa.from('app_state').select('data').eq('key', APP_KEY).maybeSingle();
-      if(!error && data && data.data && Object.keys(data.data).length > 0) {
-        pcLastRemoteAt = data.data._pushAt || 0;
-        pcApplyRemote(data.data); // initial load — render, never reload
+      if(!error) {
+        pulled = true; // reached the cloud — a missing row here means a genuinely new account
+        if(data && data.data && Object.keys(data.data).length > 0) {
+          pcLastRemoteAt = data.data._pushAt || 0;
+          pcApplyRemote(data.data); // initial load — render, never reload
+        }
       }
       // Always migrate any synced keys from actual localStorage not yet in _dbG
       let pcMigrated = false;
@@ -3169,6 +3273,14 @@ img, video, canvas, svg { max-width: 100%; }
       }
       if(pcMigrated) pcRerender();
     } catch(_) {}
+
+    if(!pulled) {
+      // Read-only until a pull succeeds. Keep retrying quietly; edits made in the
+      // meantime stay queued locally and go up once we know what the cloud holds.
+      setTimeout(pcInitCloudSync, 4000);
+      return;
+    }
+
     pcSyncReady = true;
     if(pcHasPendingPush) pcSchedulePush(); // fire any push deferred during init
     // Re-render again once everything (GT tracker + DOM) is definitely ready —
@@ -3247,10 +3359,53 @@ function uid(){return 'ex_'+Date.now()+'_'+Math.random().toString(36).slice(2,5)
 function todayKey(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function fmtDate(d){return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()]+', '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]+' '+d.getDate();}
 
-function getTpl(){const t=gtG(GT_TPL);if(!t||!Array.isArray(t)||!t.length){gtS(GT_TPL,GT_DEFAULT);return GT_DEFAULT;}return t;}
+// NEVER write a default back on read. Before the cloud pull lands, the store is
+// empty — the old code answered that by SAVING an empty plan, which then got
+// pushed and wiped the real one. Just report empty and let the pull fill it in.
+function getTpl(){const t=gtG(GT_TPL);return (Array.isArray(t)&&t.length)?t:[];}
 function saveTpl(t){gtS(GT_TPL,t);}
 function getLogs(){return gtG(GT_LOG)||{};}
 function saveLogs(l){gtS(GT_LOG,l);}
+
+// ── The week's session ──────────────────────────────────────────────────────
+// A workout you logged stays on screen for the whole week instead of blanking at
+// midnight. Sessions are still STORED under the real date they were done (that's
+// the history), but the day you're looking at shows this week's session for it.
+// The week runs Sunday → Saturday, so it rolls over on Saturday night.
+function dkOf(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function weekStartKey(){const x=new Date();x.setHours(0,0,0,0);x.setDate(x.getDate()-x.getDay());return dkOf(x);}
+function isSetKey(k){return /^set\d+/.test(k);}
+function dayHasLog(dayLogs,day){
+  if(!dayLogs||!day)return false;
+  return (day.exercises||[]).some(e=>{
+    const el=dayLogs[e.id];
+    return el && Object.keys(el).some(k=>isSetKey(k)&&String(el[k]||'').trim());
+  });
+}
+// Which date this plan-day's live session belongs to. Today if you trained today
+// (or explicitly started a new one), otherwise the day earlier THIS WEEK that you
+// trained it — and a fresh date once the week turns over.
+function sessionKey(day){
+  const tk=todayKey();
+  if(!day)return tk;
+  const allL=getLogs(),ws=weekStartKey();
+  const t=allL[tk];
+  if(t && ((t.__new&&t.__new[day.id]) || dayHasLog(t,day))) return tk;
+  const prior=Object.keys(allL).filter(d=>d>=ws&&d<tk&&dayHasLog(allL[d],day)).sort();
+  return prior.length?prior[prior.length-1]:tk;
+}
+function dayOfEx(exId){return getTpl().find(d=>(d.exercises||[]).some(e=>e.id===exId))||null;}
+function exSessionKey(exId){return sessionKey(dayOfEx(exId));}
+// Log the same day twice in one week (e.g. Push on Mon and again on Thu) without
+// destroying Monday's session — it just moves into history.
+function startNewSession(day){
+  if(!day)return;
+  const l=getLogs(),tk=todayKey();
+  if(!l[tk])l[tk]={};
+  if(!l[tk].__new)l[tk].__new={};
+  l[tk].__new[day.id]=1;
+  saveLogs(l);renderAll();
+}
 // Most recent PRIOR day's entry for an exercise — so the tracker shows your last
 // session's numbers (as a gray hint) instead of looking blank/"deleted" each day.
 function gtLastEl(allL,exId,beforeDk){
@@ -3361,7 +3516,7 @@ function prepHTML(ex,allL,dk){
 // Prefill today's EMPTY sets with the suggested weight×reps (remembers what it filled)
 function applyPrefill(day,exId,fillStr){
   const ex=(day.exercises||[]).find(e=>e.id===exId); if(!ex) return;
-  const cur=(getLogs()[todayKey()]||{})[exId]||{};
+  const cur=(getLogs()[exSessionKey(exId)]||{})[exId]||{};
   const slots=[];
   for(let i=0;i<ex.sets;i++){
     if(!((cur['set'+i]||'').trim())){ saveSetVal(exId,i,fillStr); slots.push({i:i}); }
@@ -3538,7 +3693,15 @@ function renderWorkout(t,a){
     return;
   }
   document.getElementById('gtTodayDay').textContent=day.name;
-  const allL=getLogs(),dk=todayKey(),dayL=allL[dk]||{},exs=day.exercises||[];
+  const allL=getLogs(),dk=sessionKey(day),dayL=allL[dk]||{},exs=day.exercises||[];
+  // Say so plainly when you're looking at a session logged earlier this week,
+  // rather than silently showing numbers that look like they're from today.
+  const note=document.getElementById('gtSessionNote');
+  if(note){
+    note.textContent = (dk!==todayKey())
+      ? '📌 Showing your ' + fmtDate(new Date(dk+'T00:00:00')) + ' session — it stays until the week resets (Sat night).'
+      : '';
+  }
   let done=0,started=0;
   exs.forEach(ex=>{const p=exDone(ex,dayL[ex.id]);if(p.c)done++;if(p.s)started++;});
   const pct=exs.length?Math.round(done/exs.length*100):0;
@@ -3676,7 +3839,7 @@ function renderCards(day,dayL,allL,dk){
 }
 
 function updateProgress(day){
-  const allL=getLogs(),dk=todayKey(),dayL=allL[dk]||{},exs=day.exercises||[];
+  const allL=getLogs(),dk=sessionKey(day),dayL=allL[dk]||{},exs=day.exercises||[];
   let done=0,started=0;
   exs.forEach(ex=>{const p=exDone(ex,dayL[ex.id]);if(p.c)done++;if(p.s)started++;});
   const pct=exs.length?Math.round(done/exs.length*100):0;
@@ -3688,7 +3851,7 @@ let _coachTimer=null;
 function scheduleCoach(day){
   clearTimeout(_coachTimer);
   _coachTimer=setTimeout(()=>{
-    const allL=getLogs(),dk=todayKey(),dayL=allL[dk]||{};
+    const allL=getLogs(),dk=sessionKey(day),dayL=allL[dk]||{};
     renderCoachNotes(day,dayL,allL,dk);
   },600);
 }
@@ -3702,20 +3865,30 @@ function moveEx(exId,dayId,dir){
   saveTpl(t);renderAll();
 }
 
+// Stamp the exercise + day name onto the entry as it's logged, so History still
+// reads properly after the exercise is renamed, moved, or deleted from the plan.
+function stampMeta(entry,exId){
+  const day=dayOfEx(exId);if(!day)return;
+  const ex=(day.exercises||[]).find(e=>e.id===exId);
+  if(ex&&ex.name)entry.nm=ex.name;
+  if(day.name)entry.dn=day.name;
+}
 function saveSetVal(exId,idx,val,side){
-  const l=getLogs(),dk=todayKey();
+  const l=getLogs(),dk=exSessionKey(exId);
   if(!l[dk])l[dk]={};if(!l[dk][exId])l[dk][exId]={};
-  l[dk][exId]['set'+idx+(side==='R'?'R':'')]=val;saveLogs(l);
+  l[dk][exId]['set'+idx+(side==='R'?'R':'')]=val;
+  stampMeta(l[dk][exId],exId);
+  saveLogs(l);
   if(val&&String(val).trim()&&window.dashAddXpDaily) window.dashAddXpDaily(12,'Logged a workout 💪','workout');
 }
 function saveNotes(exId,val){
-  const l=getLogs(),dk=todayKey();
+  const l=getLogs(),dk=exSessionKey(exId);
   if(!l[dk])l[dk]={};if(!l[dk][exId])l[dk][exId]={};
   l[dk][exId].notes=val;saveLogs(l);
 }
 // Reps-to-failure (AMRAP) flag per set — stored as set{i}F on today's log entry.
 function saveSetFail(exId,idx,on){
-  const l=getLogs(),dk=todayKey();
+  const l=getLogs(),dk=exSessionKey(exId);
   if(!l[dk])l[dk]={};if(!l[dk][exId])l[dk][exId]={};
   if(on)l[dk][exId]['set'+idx+'F']=true; else delete l[dk][exId]['set'+idx+'F'];
   saveLogs(l);
@@ -3802,10 +3975,98 @@ document.getElementById('gtAddFailSets').addEventListener('input',e=>{document.g
 document.getElementById('gtAddCancel').addEventListener('click',()=>document.getElementById('gtAddModal').classList.remove('show'));
 document.getElementById('gtAddModal').addEventListener('click',e=>{if(e.target.id==='gtAddModal')document.getElementById('gtAddModal').classList.remove('show');});
 
+// Clears ONLY this day's sets in the live session — never a whole date, which
+// could also hold a different workout, and never anything from a past week.
 document.getElementById('gtResetTodayBtn').addEventListener('click',()=>{
-  if(!confirm('Clear all set logs for today?'))return;
-  const l=getLogs();delete l[todayKey()];saveLogs(l);renderAll();
+  const day=getTpl().find(d=>d.id===getActive());
+  if(!day){alert('Pick a day first.');return;}
+  if(!confirm('Clear the sets logged in this '+day.name+' session? Earlier sessions stay in History.'))return;
+  const l=getLogs(),dk=sessionKey(day);
+  if(l[dk]){
+    (day.exercises||[]).forEach(e=>{delete l[dk][e.id];});
+    if(l[dk].__new)delete l[dk].__new[day.id];
+  }
+  saveLogs(l);renderAll();
 });
+
+document.getElementById('gtNewSessionBtn').addEventListener('click',()=>{
+  const day=getTpl().find(d=>d.id===getActive());
+  if(!day){alert('Pick a day first.');return;}
+  const dk=sessionKey(day);
+  if(dk===todayKey()&&!dayHasLog(getLogs()[dk],day)){alert('This session is already fresh — start logging.');return;}
+  if(!confirm('Start a new '+day.name+' session for today? The one you already logged this week is kept in History.'))return;
+  startNewSession(day);
+});
+
+// ── Workout history ────────────────────────────────────────────────────────
+// Reads straight from the logs, which have always been stored per date — this
+// just surfaces them. Names are stamped onto each entry when logged, so renaming
+// or deleting an exercise later doesn't turn your history into "Exercise".
+function histSetIdx(k){return parseInt(k.replace(/^set/,''),10);}
+function entryHasSets(el){
+  return !!el && Object.keys(el).some(k=>/^set\d+R?$/.test(k)&&String(el[k]||'').trim());
+}
+function renderHistory(){
+  const allL=getLogs(),tpl=getTpl();
+  const list=document.getElementById('gtHistList'),sum=document.getElementById('gtHistSum');
+  const tplName=exId=>{
+    for(const d of tpl){const e=(d.exercises||[]).find(x=>x.id===exId);if(e)return e.name;}
+    return null;
+  };
+  const dates=Object.keys(allL).filter(dk=>{
+    const d=allL[dk];
+    return d&&Object.keys(d).some(k=>k.indexOf('__')!==0&&entryHasSets(d[k]));
+  }).sort().reverse();
+
+  if(!dates.length){
+    sum.textContent='';
+    list.innerHTML='<div class="gt-hist-empty">No workouts logged yet.<br>Log some sets and every session will show up here.</div>';
+    return;
+  }
+  let totalSets=0;
+  const html=dates.map(dk=>{
+    const dayLogs=allL[dk];
+    const exIds=Object.keys(dayLogs).filter(k=>k.indexOf('__')!==0&&entryHasSets(dayLogs[k]));
+    let dn='',sets=0;
+    const rows=exIds.map(exId=>{
+      const el=dayLogs[exId];
+      if(!dn&&el.dn)dn=el.dn;
+      const keys=Object.keys(el)
+        .filter(k=>/^set\d+R?$/.test(k)&&String(el[k]||'').trim())
+        .sort((a,b)=>{
+          const ia=histSetIdx(a),ib=histSetIdx(b);
+          if(ia!==ib)return ia-ib;
+          return (/R$/.test(a)?1:0)-(/R$/.test(b)?1:0);
+        });
+      sets+=keys.length;
+      const chips=keys.map(k=>{
+        const fail=!!el['set'+histSetIdx(k)+'F'];
+        return '<span class="gt-hist-set'+(fail?' fail':'')+'">'
+          +esc(el[k])+(/R$/.test(k)?' ᴿ':'')+(fail?' ⚡':'')+'</span>';
+      }).join('');
+      return '<div class="gt-hist-ex">'
+        +'<div class="gt-hist-exname">'+esc(el.nm||tplName(exId)||'Exercise')+'</div>'
+        +'<div class="gt-hist-sets">'+chips+'</div>'
+        +(el.notes?'<div class="gt-hist-notes">'+esc(el.notes)+'</div>':'')
+        +'</div>';
+    }).join('');
+    totalSets+=sets;
+    const d=new Date(dk+'T00:00:00');
+    return '<div class="gt-hist-day">'
+      +'<div class="gt-hist-head">'
+        +'<span class="gt-hist-date">'+esc(fmtDate(d))+'</span>'
+        +(dn?'<span class="gt-hist-name">'+esc(dn)+'</span>':'')
+        +'<span class="gt-hist-vol">'+sets+' set'+(sets===1?'':'s')+'</span>'
+      +'</div>'+rows+'</div>';
+  }).join('');
+  sum.textContent=dates.length+' session'+(dates.length===1?'':'s')+' · '+totalSets+' sets logged · ⚡ = to failure';
+  list.innerHTML=html;
+}
+document.getElementById('gtHistoryBtn').addEventListener('click',()=>{
+  renderHistory();document.getElementById('gtHistModal').classList.add('show');
+});
+document.getElementById('gtHistClose').addEventListener('click',()=>document.getElementById('gtHistModal').classList.remove('show'));
+document.getElementById('gtHistModal').addEventListener('click',e=>{if(e.target.id==='gtHistModal')document.getElementById('gtHistModal').classList.remove('show');});
 
 document.getElementById('gtManageDaysBtn').addEventListener('click',()=>{renderDaysList();document.getElementById('gtDaysModal').classList.add('show');});
 document.getElementById('gtDaysClose').addEventListener('click',()=>document.getElementById('gtDaysModal').classList.remove('show'));
