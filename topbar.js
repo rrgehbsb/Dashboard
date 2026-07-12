@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.5.78';
+const DASHBOARD_VERSION = '2.5.79';
 
 // Auto-update: when a new service worker takes control (new deploy), reload once
 // so the installed app always runs the latest code instead of a stale cached
@@ -1429,11 +1429,26 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
     return false;
   }
 
-  // Add ?diag=1 to any page to see, from the device itself, exactly what
-  // happened to the AI button. Reports on screen so it can be screenshotted.
+  // Add ?diag=1 to any page — or tap the version number 5 times, which is the only
+  // way in from an installed home-screen app, where there's no address bar.
   function coachDiag() {
     try {
+      document.querySelectorAll('.topbar-version').forEach(function (v) {
+        let n = 0, t = 0;
+        v.style.cursor = 'pointer';
+        v.addEventListener('click', function () {
+          clearTimeout(t); n++;
+          t = setTimeout(function () { n = 0; }, 2500);
+          if (n >= 5) { n = 0; showDiag(); }
+        });
+      });
       if (!/[?&]diag=1/.test(window.location.search)) return;
+      showDiag();
+    } catch (e) {}
+  }
+
+  function showDiag() {
+    try {
       setTimeout(function () {
         const fab = document.getElementById('coachFab');
         const L = [];
@@ -1441,6 +1456,22 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
         L.push('path: ' + window.location.pathname);
         L.push('pageKey: ' + currentPageKey());
         L.push('embedded: ' + isEmbedded());
+        let standalone = false;
+        try {
+          standalone = window.navigator.standalone === true
+            || window.matchMedia('(display-mode: standalone)').matches;
+        } catch (e) {}
+        L.push('INSTALLED APP: ' + standalone);
+        try {
+          const c = navigator.serviceWorker && navigator.serviceWorker.controller;
+          L.push('sw: ' + (c ? 'active' : 'none'));
+        } catch (e) {}
+        try {
+          if (window.caches) caches.keys().then(function (k) {
+            const p = document.getElementById('diagCaches');
+            if (p) p.textContent = 'caches: ' + (k.join(', ') || 'none');
+          });
+        } catch (e) {}
         L.push('FAB EXISTS: ' + (!!fab));
         if (fab) {
           const cs = getComputedStyle(fab);
@@ -1464,6 +1495,35 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
           + 'font:11px/1.45 ui-monospace,Menlo,monospace;padding:10px 12px;border:2px solid #0f0;border-radius:10px;'
           + 'white-space:pre-wrap;word-break:break-word;max-height:80vh;overflow:auto;';
         box.textContent = L.join('\n');
+        const cachesLine = document.createElement('div');
+        cachesLine.id = 'diagCaches';
+        cachesLine.textContent = 'caches: …';
+        box.appendChild(cachesLine);
+
+        // Escape hatch for the installed app, which has no address bar and can sit
+        // on a stale service worker forever.
+        const fu = document.createElement('button');
+        fu.textContent = '🔄 FORCE UPDATE';
+        fu.style.cssText = 'display:block;width:100%;margin-top:10px;background:#0f0;color:#000;border:none;'
+          + 'border-radius:6px;padding:9px;font-weight:800;font-size:12px;';
+        fu.onclick = async function () {
+          fu.textContent = 'updating…';
+          try {
+            if ('serviceWorker' in navigator) {
+              const rs = await navigator.serviceWorker.getRegistrations();
+              await Promise.all(rs.map(function (r) { return r.unregister(); }));
+            }
+          } catch (e) {}
+          try {
+            if (window.caches) {
+              const ks = await caches.keys();
+              await Promise.all(ks.map(function (k) { return caches.delete(k); }));
+            }
+          } catch (e) {}
+          window.location.replace('index.html?fresh=' + Date.now());
+        };
+        box.appendChild(fu);
+
         const x = document.createElement('button');
         x.textContent = 'close';
         x.style.cssText = 'margin-top:8px;background:#0f0;color:#000;border:none;border-radius:6px;padding:5px 10px;font-weight:700;';
