@@ -419,6 +419,150 @@ main {
   color: var(--text-tertiary); margin-top: 3px;
 }
 .hb-stat-i { position: absolute; top: 11px; right: 12px; font-size: 15px; opacity: 0.9; }
+
+/* ═══ Partial progress fill ═══
+   The colour bar IS the progress bar — a counted habit at 30/120 is 25% filled. */
+.hb-row { position: relative; overflow: hidden; }
+.hb-fill {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 0;
+  background: var(--hc); transition: width 0.35s cubic-bezier(.22,1,.36,1);
+}
+.hb-row.done .hb-fill { width: 100% !important; }
+.hb-row-in { position: relative; z-index: 1; display: flex; align-items: center; gap: 12px; width: 100%; }
+.hb-row.has-fill .hb-nm { color: #fff; }
+.hb-row.has-fill .hb-sub { color: rgba(255,255,255,0.82); }
+.hb-row.has-fill .hb-fire { color: rgba(255,255,255,0.9); }
+.hb-btn.counted::after {
+  content: '+'; position: absolute; inset: 0; display: flex; align-items: center;
+  justify-content: center; font-size: 20px; font-weight: 700;
+  color: color-mix(in srgb, var(--hc) 80%, #fff);
+}
+
+/* ═══ Groups ═══ */
+.hb-group { margin-bottom: 6px; }
+.hb-group-h {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  background: none; border: none; cursor: pointer; padding: 6px 4px 8px;
+  font-family: inherit; -webkit-tap-highlight-color: transparent;
+}
+.hb-group-nm { font-size: 13px; font-weight: 800; color: var(--text-primary); }
+.hb-group-c {
+  font-size: 10.5px; font-weight: 700; color: var(--text-tertiary);
+  background: rgba(255,255,255,0.06); border-radius: 20px; padding: 2px 7px;
+}
+.hb-group-x { margin-left: auto; color: var(--text-tertiary); font-size: 15px; transition: transform 0.2s; }
+.hb-group-x.c { transform: rotate(180deg); }
+.hb-group-b { overflow: hidden; }
+.hb-group-b.hide { display: none; }
+
+/* ═══ Detail sheet ═══ */
+.hb-sheet-bg {
+  --hc: var(--accent, #a78bfa);
+  position: fixed; inset: 0; z-index: 300; display: flex; align-items: flex-end;
+  justify-content: center; background: rgba(0,0,0,0.65);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  opacity: 0; pointer-events: none; transition: opacity 0.22s;
+}
+.hb-sheet-bg.show { opacity: 1; pointer-events: auto; }
+.hb-sheet {
+  width: 100%; max-width: 460px; background: #16161c;
+  border: 1px solid rgba(255,255,255,0.1); border-bottom: none;
+  border-radius: 26px 26px 0 0; padding: 20px 20px calc(24px + env(safe-area-inset-bottom));
+  transform: translateY(14px); transition: transform 0.28s cubic-bezier(.22,1,.36,1);
+  text-align: center;
+}
+.hb-sheet-bg.show .hb-sheet { transform: none; }
+.hb-sheet-x {
+  position: absolute; left: 20px; margin-top: 2px; width: 32px; height: 32px;
+  border-radius: 50%; border: none; background: rgba(255,255,255,0.08);
+  color: var(--text-secondary); font-size: 19px; cursor: pointer;
+}
+.hb-sheet-title { font-size: 20px; font-weight: 800; color: var(--text-primary); }
+.hb-sheet-sub { font-size: 12px; color: var(--text-tertiary); margin-top: 3px; }
+.hb-ring-row { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 20px 0 8px; }
+.hb-ring-wrap { position: relative; width: 168px; height: 168px; }
+.hb-ring { width: 168px; height: 168px; transform: rotate(-90deg); }
+.hb-ring-bg { fill: none; stroke: rgba(255,255,255,0.07); stroke-width: 10; }
+.hb-ring-fg {
+  fill: none; stroke: var(--hc); stroke-width: 10; stroke-linecap: round;
+  stroke-dasharray: 327; stroke-dashoffset: 327;
+  transition: stroke-dashoffset 0.45s cubic-bezier(.22,1,.36,1);
+}
+.hb-ring-mid { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.hb-ring-val { font-size: 46px; font-weight: 800; color: var(--text-primary); line-height: 1; font-variant-numeric: tabular-nums; }
+.hb-ring-unit { font-size: 12px; color: var(--text-tertiary); margin-top: 4px; }
+.hb-sheet-streak { position: absolute; top: 6px; right: -4px; font-size: 13px; font-weight: 800; color: #f0a500; }
+.hb-step {
+  width: 52px; height: 52px; border-radius: 50%; flex-shrink: 0;
+  border: none; background: color-mix(in srgb, var(--hc) 22%, transparent);
+  color: #fff; font-size: 26px; font-weight: 700; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.hb-step:active { transform: scale(0.9); }
+.hb-sheet-btns { display: flex; gap: 10px; margin-top: 16px; }
+.hb-sheet-b {
+  flex: 1; padding: 13px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.05); color: var(--text-secondary);
+  font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+}
+.hb-sheet-b.pri { background: var(--hc); border-color: var(--hc); color: #fff; }
+
+/* ═══ Calendar ═══ */
+.hb-cal {
+  margin-top: 12px; padding: 14px 12px;
+  background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 18px;
+}
+.hb-cal-h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.hb-cal-t { font-size: 14px; font-weight: 800; color: var(--text-primary); }
+.hb-cal-nav {
+  width: 30px; height: 30px; border-radius: 9px; border: none;
+  background: rgba(255,255,255,0.06); color: var(--text-secondary);
+  font-size: 16px; cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.hb-cal-g { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px 0; }
+.hb-cal-dow {
+  font-size: 9.5px; font-weight: 700; color: var(--text-quaternary, var(--text-tertiary));
+  text-align: center; padding-bottom: 5px;
+}
+.hb-cal-c { position: relative; display: flex; justify-content: center; }
+.hb-cal-d {
+  width: 30px; height: 30px; border-radius: 50%; position: relative; z-index: 1;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11.5px; font-weight: 600; color: var(--text-quaternary, var(--text-tertiary));
+  background: rgba(255,255,255,0.04);
+}
+.hb-cal-d.part {
+  background: conic-gradient(var(--accent) calc(var(--p) * 360deg), rgba(255,255,255,0.06) 0);
+  color: var(--text-primary);
+}
+.hb-cal-d.full { background: var(--accent); color: #fff; }
+.hb-cal-d.today { outline: 2px solid var(--accent); outline-offset: 1.5px; }
+/* the same joined-streak idea as the week strip, but across the month */
+.hb-cal-c.link::before {
+  content: ''; position: absolute; top: 50%; margin-top: -1.25px;
+  right: 50%; left: -50%; height: 2.5px; background: var(--accent); z-index: 0;
+}
+
+/* ═══ Edit modal fields ═══ */
+.hb-f { margin-top: 14px; text-align: left; }
+.hb-f label {
+  display: block; font-size: 11.5px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px;
+}
+.hb-f label small { display: block; font-weight: 500; font-size: 10.5px; color: var(--text-tertiary); margin-top: 2px; }
+.hb-f input {
+  width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+  border-radius: 11px; color: var(--text-primary); font-family: inherit; font-size: 15px;
+  padding: 10px 12px; outline: none;
+}
+.hb-f input:focus { border-color: var(--accent); }
+.hb-f-row { display: flex; gap: 8px; }
+.hb-f-row input:first-child { flex: 0 0 90px; text-align: center; }
+.hb-sw { display: flex; flex-wrap: wrap; gap: 8px; }
+.hb-sw button {
+  width: 30px; height: 30px; border-radius: 50%; border: 2px solid transparent;
+  cursor: pointer; -webkit-tap-highlight-color: transparent; padding: 0;
+}
+.hb-sw button.on { border-color: #fff; transform: scale(1.12); }
 </style>
   <link rel="icon" type="image/svg+xml" href="/icon.svg">
 </head>
@@ -439,10 +583,39 @@ main {
 
   <div class="section-title" style="margin-top:22px">Records</div>
   <div class="hb-stats" id="hbStats"></div>
+  <div class="hb-cal" id="hbCal"></div>
 
   <div class="section-title" style="margin-top:22px">History</div>
   <div class="hb-grid-section" id="hbGridSection"></div>
 </main>
+
+<!-- Habit detail: big ring, big number, − / + -->
+<div class="hb-sheet-bg" id="hbSheet">
+  <div class="hb-sheet">
+    <button class="hb-sheet-x" id="hbSheetX" aria-label="Close">×</button>
+    <div class="hb-sheet-title" id="hbSheetTitle"></div>
+    <div class="hb-sheet-sub" id="hbSheetSub"></div>
+    <div class="hb-ring-row">
+      <button class="hb-step" id="hbMinus" aria-label="Less">−</button>
+      <div class="hb-ring-wrap">
+        <svg class="hb-ring" viewBox="0 0 120 120">
+          <circle class="hb-ring-bg" cx="60" cy="60" r="52"></circle>
+          <circle class="hb-ring-fg" id="hbRingFg" cx="60" cy="60" r="52"></circle>
+        </svg>
+        <div class="hb-ring-mid">
+          <div class="hb-ring-val" id="hbRingVal">0</div>
+          <div class="hb-ring-unit" id="hbRingUnit"></div>
+        </div>
+        <div class="hb-sheet-streak" id="hbSheetStreak"></div>
+      </div>
+      <button class="hb-step" id="hbPlus" aria-label="More">+</button>
+    </div>
+    <div class="hb-sheet-btns">
+      <button class="hb-sheet-b" id="hbSheetReset">Reset</button>
+      <button class="hb-sheet-b pri" id="hbSheetDone">Complete</button>
+    </div>
+  </div>
+</div>
 
 <div class="hb-modal" id="hbEditModal">
   <div class="hb-modal-box">
@@ -450,6 +623,25 @@ main {
     <div class="hb-modal-row">
       <input class="hb-emoji-pick" id="hbEditEmoji" maxlength="2" placeholder="⭐">
       <input class="hb-modal-name" id="hbEditName" placeholder="Habit name" maxlength="40">
+    </div>
+
+    <div class="hb-f">
+      <label>Group <small>optional — habits with the same group are shown together</small></label>
+      <input type="text" id="hbEditGroup" placeholder="e.g. Morning" list="hbGroupList" maxlength="20">
+      <datalist id="hbGroupList"></datalist>
+    </div>
+
+    <div class="hb-f">
+      <label>Goal <small>leave at 1 for a simple done / not-done habit</small></label>
+      <div class="hb-f-row">
+        <input type="number" id="hbEditTarget" min="1" max="100000" step="1" placeholder="1">
+        <input type="text" id="hbEditUnit" placeholder="minutes / pages / glasses" maxlength="12">
+      </div>
+    </div>
+
+    <div class="hb-f">
+      <label>Colour</label>
+      <div class="hb-sw" id="hbEditColors"></div>
     </div>
     <div class="hb-modal-actions">
       <button class="hb-modal-del" id="hbEditDelete">Delete</button>
@@ -501,6 +693,59 @@ function getLog() {
   return _db['habits:log'] || {};
 }
 
+// ── Counted habits ─────────────────────────────────────────────────────────
+// A habit is either SIMPLE (done / not done) or COUNTED (e.g. 30 of 120 minutes).
+// Old log entries are the boolean `true`; counted ones store a number. Both stay
+// valid — `true` reads as "target reached" — so no existing data needs migrating
+// and nothing gets rewritten.
+function hTarget(h) { return Math.max(1, parseInt(h.target, 10) || 1); }
+function isCounted(h) { return hTarget(h) > 1; }
+function hVal(h, day) {
+  const v = (day || {})[h.id];
+  if (v === true) return hTarget(h);
+  return typeof v === 'number' ? v : 0;
+}
+function hDone(h, day) { return hVal(h, day) >= hTarget(h); }
+function hPct(h, day) { return Math.min(1, hVal(h, day) / hTarget(h)); }
+function hUnit(h) { return (h.unit || '').trim(); }
+function hStep(h) { const t = hTarget(h); return t <= 10 ? 1 : (t <= 60 ? 5 : 10); }
+
+// Single write path for both kinds, so XP and pruning behave identically.
+function setVal(id, date, val) {
+  const h = getHabits().find(x => x.id === id);
+  if (!h) return;
+  const log = getLog();
+  const before = log[date] || {};
+  const was = hDone(h, before);
+  const day = Object.assign({}, before);
+  const t = hTarget(h);
+  const v = Math.max(0, Math.min(t, Math.round(val)));
+  if (v <= 0) delete day[id];
+  else day[id] = isCounted(h) ? v : true;
+
+  const newLog = Object.assign({}, log);
+  if (Object.keys(day).length === 0) delete newLog[date];
+  else newLog[date] = day;
+  _db['habits:log'] = newLog;
+
+  if (!was && hDone(h, day) && window.dashAddXpDaily) {
+    window.dashAddXpDaily(15, 'Completed a habit 🔥', 'habit:' + id + ':' + date);
+  }
+  schedulePush();
+  renderAll();
+}
+
+// ── Groups ──
+function collapsedGroups() {
+  try { return JSON.parse(localStorage.getItem('habits:collapsed') || '{}'); } catch (e) { return {}; }
+}
+function toggleGroup(g) {
+  const c = collapsedGroups();
+  if (c[g]) delete c[g]; else c[g] = 1;
+  try { localStorage.setItem('habits:collapsed', JSON.stringify(c)); } catch (e) {}
+  renderToday();
+}
+
 // ── date helpers ──
 function today() {
   const d = new Date();
@@ -511,20 +756,17 @@ function dateOffset(daysAgo) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-// streak = consecutive days where habit was done, going backwards from today
+// streak = consecutive days the habit was COMPLETED (target reached), from today back
 function calcStreak(habitId) {
+  const h = getHabits().find(x => x.id === habitId);
+  if (!h) return 0;
   const log = getLog();
-  const td = today();
-  // start from today if done, else from yesterday
-  let streak = 0;
-  let offset = 0;
-  if (log[td] && log[td][habitId]) { streak = 1; offset = 1; }
-  else { offset = 1; }
-  while (true) {
+  let streak = 0, offset = 1;
+  if (hDone(h, log[today()] || {})) streak = 1;
+  while (offset <= 365) {
     const dk = dateOffset(offset);
-    if (log[dk] && log[dk][habitId]) { streak++; offset++; }
+    if (hDone(h, log[dk] || {})) { streak++; offset++; }
     else break;
-    if (offset > 365) break;
   }
   return streak;
 }
@@ -538,27 +780,67 @@ function renderToday() {
   const el = document.getElementById('habitList');
   if (!el) return;
 
-  el.innerHTML = habits.map(h => {
-    const done = !!todayLog[h.id];
+  function rowHtml(h) {
+    const done = hDone(h, todayLog);
+    const pct = hPct(h, todayLog);
+    const val = hVal(h, todayLog);
     const streak = calcStreak(h.id);
-    const isCustom = h.id.startsWith('custom_');
-    const editBtn = isCustom ? `<button class="hb-edit-btn" data-edit="${h.id}" title="Edit">✎</button>` : '';
-    return `<div class="hb-row${done?' done':''}" style="--hc:${h.color||'#a78bfa'}" data-id="${h.id}" data-date="${td}">
-      <span class="hb-ic">${h.icon}</span>
-      <div class="hb-txt">
-        <div class="hb-nm">${h.name}</div>
-        <div class="hb-sub">${done ? 'Done today' : 'Every day'}</div>
+    const sub = isCounted(h)
+      ? `${val} / ${hTarget(h)}${hUnit(h) ? ' ' + hUnit(h) : ''}`
+      : (done ? 'Done today' : 'Every day');
+    return `<div class="hb-row${done ? ' done' : ''}${pct > 0 ? ' has-fill' : ''}"
+        style="--hc:${h.color || '#a78bfa'}" data-id="${h.id}" data-date="${td}">
+      <div class="hb-fill" style="width:${(pct * 100).toFixed(1)}%"></div>
+      <div class="hb-row-in">
+        <span class="hb-ic">${h.icon}</span>
+        <div class="hb-txt">
+          <div class="hb-nm">${h.name}</div>
+          <div class="hb-sub">${sub}</div>
+        </div>
+        ${streak > 0 ? `<span class="hb-fire">🔥 ${streak}</span>` : ''}
+        <button class="hb-edit-btn" data-edit="${h.id}" title="Edit">✎</button>
+        <button class="hb-btn${isCounted(h) && !done ? ' counted' : ''}" data-act="${h.id}"
+          aria-label="${done ? 'Undo' : 'Complete'} ${h.name}"></button>
       </div>
-      ${streak > 0 ? `<span class="hb-fire">🔥 ${streak}</span>` : ''}
-      ${editBtn}
-      <button class="hb-btn" aria-label="${done?'Undo':'Complete'} ${h.name}"></button>
+    </div>`;
+  }
+
+  // Group habits under collapsible headers (ungrouped ones come first, headerless).
+  const groups = new Map();
+  habits.forEach(h => {
+    const g = (h.group || '').trim();
+    if (!groups.has(g)) groups.set(g, []);
+    groups.get(g).push(h);
+  });
+  const collapsed = collapsedGroups();
+  const ordered = [...groups.keys()].sort((a, b) => (a === '' ? -1 : b === '' ? 1 : a.localeCompare(b)));
+
+  el.innerHTML = ordered.map(g => {
+    const list = groups.get(g);
+    if (!g) return list.map(rowHtml).join('');
+    const doneN = list.filter(h => hDone(h, todayLog)).length;
+    const isC = !!collapsed[g];
+    return `<div class="hb-group">
+      <button class="hb-group-h" data-group="${g}">
+        <span class="hb-group-nm">${g}</span>
+        <span class="hb-group-c">${doneN}/${list.length}</span>
+        <span class="hb-group-x${isC ? ' c' : ''}">⌃</span>
+      </button>
+      <div class="hb-group-b${isC ? ' hide' : ''}">${list.map(rowHtml).join('')}</div>
     </div>`;
   }).join('');
 
+  el.querySelectorAll('.hb-group-h').forEach(b => {
+    b.addEventListener('click', () => toggleGroup(b.getAttribute('data-group')));
+  });
   el.querySelectorAll('.hb-row').forEach(row => {
     row.addEventListener('click', e => {
       if (e.target.closest('.hb-edit-btn')) return;
-      toggleHabit(row.getAttribute('data-id'), row.getAttribute('data-date'));
+      const id = row.getAttribute('data-id');
+      const h = getHabits().find(x => x.id === id);
+      // Counted habits open the detail sheet; simple ones just toggle.
+      if (h && isCounted(h)) openSheet(id);
+      else toggleHabit(id, row.getAttribute('data-date'));
     });
   });
   el.querySelectorAll('.hb-edit-btn').forEach(btn => {
@@ -570,14 +852,21 @@ function renderToday() {
 
   renderWeek();
   renderStats();
+  renderCalendar();
 }
 
-// How much of a given day was completed, 0–1.
+// How much of a given day was completed, 0–1 — partial progress counts.
 function dayPct(dk) {
   const habits = getHabits();
   if (!habits.length) return 0;
   const day = getLog()[dk] || {};
-  return habits.filter(h => day[h.id]).length / habits.length;
+  return habits.reduce((s, h) => s + hPct(h, day), 0) / habits.length;
+}
+function isPerfect(dk) {
+  const habits = getHabits();
+  if (!habits.length) return false;
+  const day = getLog()[dk] || {};
+  return habits.every(h => hDone(h, day));
 }
 
 // The week strip. A perfect day is a filled dot, and consecutive perfect days get
@@ -590,13 +879,13 @@ function renderWeek() {
   for (let i = 6; i >= 0; i--) {
     const d = new Date(); d.setDate(d.getDate() - i);
     const dk = dateOffset(i);
-    days.push({ dk, dow: DOW[d.getDay()], num: d.getDate(), pct: dayPct(dk), today: i === 0 });
+    days.push({ dk, dow: DOW[d.getDay()], num: d.getDate(), pct: dayPct(dk), full: isPerfect(dk), today: i === 0 });
   }
   el.innerHTML = days.map((d, i) => {
-    const full = d.pct >= 1 && d.pct > 0;
+    const full = d.full;
     const cls = full ? 'full' : (d.pct > 0 ? 'part' : '');
     // link back to the previous day only if BOTH are perfect
-    const link = (i > 0 && full && days[i-1].pct >= 1 && days[i-1].pct > 0) ? ' link' : '';
+    const link = (i > 0 && full && days[i-1].full) ? ' link' : '';
     return `<div class="hb-day${link}">
       <span class="hb-dow">${d.dow}</span>
       <div class="hb-dot ${cls}${d.today?' today':''}" style="--p:${d.pct.toFixed(2)}">${d.num}</div>
@@ -617,16 +906,16 @@ function renderStats() {
     let run = 0;
     for (let i = 365; i >= 0; i--) {
       const dk = dateOffset(i);
-      if (log[dk] && log[dk][h.id]) { run++; best = Math.max(best, run); }
+      if (hDone(h, log[dk] || {})) { run++; best = Math.max(best, run); }
       else run = 0;
     }
   });
 
-  // last 30 days: how many ticks, and what share of the possible ones
+  // last 30 days: how many completions, and what share of the possible ones
   let done = 0, possible = 0;
   for (let i = 0; i < 30; i++) {
     const day = log[dateOffset(i)] || {};
-    habits.forEach(h => { possible++; if (day[h.id]) done++; });
+    habits.forEach(h => { possible++; if (hDone(h, day)) done++; });
   }
   const rate = possible ? Math.round(done / possible * 100) : 0;
 
@@ -639,6 +928,51 @@ function renderStats() {
   el.innerHTML = tiles.map(([v, l, i]) =>
     `<div class="hb-stat"><span class="hb-stat-i">${i}</span>
       <div class="hb-stat-v">${v}</div><div class="hb-stat-l">${l}</div></div>`).join('');
+}
+
+// ── Calendar: a month at a glance, with perfect days joined into visible streaks ──
+let _calM = (function () { const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); return d; })();
+function renderCalendar() {
+  const el = document.getElementById('hbCal');
+  if (!el) return;
+  const y = _calM.getFullYear(), m = _calM.getMonth();
+  const MON = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const first = new Date(y, m, 1).getDay();          // 0 = Sunday
+  const days = new Date(y, m + 1, 0).getDate();
+  const td = today();
+
+  const cells = [];
+  for (let i = 0; i < first; i++) cells.push(null);  // lead-in blanks
+  for (let d = 1; d <= days; d++) {
+    const dk = y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    cells.push({ d, dk, pct: dayPct(dk), full: isPerfect(dk), today: dk === td });
+  }
+
+  const html = cells.map((c, i) => {
+    if (!c) return '<div class="hb-cal-c"></div>';
+    const cls = c.full ? 'full' : (c.pct > 0 ? 'part' : '');
+    // Join to the day on the left only when both are perfect AND on the same row.
+    const prev = cells[i - 1];
+    const sameRow = (i % 7) !== 0;
+    const link = (c.full && prev && prev.full && sameRow) ? ' link' : '';
+    return `<div class="hb-cal-c${link}">
+      <div class="hb-cal-d ${cls}${c.today ? ' today' : ''}" style="--p:${c.pct.toFixed(2)}">${c.d}</div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML =
+    `<div class="hb-cal-h">
+       <button class="hb-cal-nav" id="hbCalPrev" aria-label="Previous month">‹</button>
+       <span class="hb-cal-t">${MON[m]} ${y}</span>
+       <button class="hb-cal-nav" id="hbCalNext" aria-label="Next month">›</button>
+     </div>
+     <div class="hb-cal-g">
+       ${['S','M','T','W','T','F','S'].map(d => `<div class="hb-cal-dow">${d}</div>`).join('')}
+       ${html}
+     </div>`;
+
+  document.getElementById('hbCalPrev').addEventListener('click', () => { _calM.setMonth(_calM.getMonth() - 1); renderCalendar(); });
+  document.getElementById('hbCalNext').addEventListener('click', () => { _calM.setMonth(_calM.getMonth() + 1); renderCalendar(); });
 }
 
 // ── render contribution grids ──
@@ -693,17 +1027,49 @@ function renderAll() {
 
 // ── toggle a habit for a given date ──
 function toggleHabit(id, date) {
-  const log = getLog();
-  const dayLog = Object.assign({}, log[date] || {});
-  dayLog[id] = !dayLog[id];
-  if (dayLog[id] && window.dashAddXpDaily) window.dashAddXpDaily(15, 'Completed a habit 🔥', 'habit:' + id + ':' + date);
-  if (!dayLog[id]) delete dayLog[id];
-  const newLog = Object.assign({}, log);
-  if (Object.keys(dayLog).length === 0) delete newLog[date];
-  else newLog[date] = dayLog;
-  _db['habits:log'] = newLog;
-  schedulePush();
-  renderAll();
+  const h = getHabits().find(x => x.id === id);
+  if (!h) return;
+  const done = hDone(h, getLog()[date] || {});
+  setVal(id, date, done ? 0 : hTarget(h));
+}
+
+// ── Detail sheet: big ring, big number, − / + ──
+let _sheetId = null;
+function openSheet(id) {
+  const h = getHabits().find(x => x.id === id);
+  if (!h) return;
+  _sheetId = id;
+  document.getElementById('hbSheet').classList.add('show');
+  renderSheet();
+}
+function closeSheet() {
+  _sheetId = null;
+  document.getElementById('hbSheet').classList.remove('show');
+}
+function renderSheet() {
+  const h = getHabits().find(x => x.id === _sheetId);
+  if (!h) return;
+  const day = getLog()[today()] || {};
+  const val = hVal(h, day), t = hTarget(h), pct = hPct(h, day);
+  const R = 327; // 2πr, r=52
+  const s = document.getElementById('hbSheet');
+  s.style.setProperty('--hc', h.color || '#a78bfa');
+  document.getElementById('hbSheetTitle').textContent = h.icon + ' ' + h.name;
+  document.getElementById('hbSheetSub').textContent =
+    'Every day · ' + t + (hUnit(h) ? ' ' + hUnit(h) : '');
+  document.getElementById('hbRingFg').style.strokeDashoffset = String(R * (1 - pct));
+  document.getElementById('hbRingVal').textContent = String(val);
+  document.getElementById('hbRingUnit').textContent = hUnit(h) || (t > 1 ? 'of ' + t : '');
+  const st = document.getElementById('hbSheetStreak');
+  const streak = calcStreak(h.id);
+  st.textContent = streak > 0 ? '🔥 ' + streak : '';
+}
+function sheetStep(dir) {
+  const h = getHabits().find(x => x.id === _sheetId);
+  if (!h) return;
+  const cur = hVal(h, getLog()[today()] || {});
+  setVal(h.id, today(), cur + dir * hStep(h));
+  renderSheet();
 }
 
 // ── add new habit ──
@@ -735,12 +1101,37 @@ function addHabit() {
 
 // ── Edit modal for custom habits ──
 let _editingId = null;
+const HB_PALETTE = ['#e74c3c','#3498db','#9b59b6','#00bfff','#f39c12','#2ecc71',
+                    '#e91e63','#f472b6','#14b8a6','#fbbf24','#8b5cf6','#fb7185'];
+let _editColor = null;
+
 function openEditModal(id) {
   const habit = getHabits().find(h => h.id === id);
   if (!habit) return;
   _editingId = id;
+  _editColor = habit.color || '#a78bfa';
+
   document.getElementById('hbEditEmoji').value = habit.icon || '⭐';
   document.getElementById('hbEditName').value = habit.name || '';
+  document.getElementById('hbEditGroup').value = habit.group || '';
+  document.getElementById('hbEditTarget').value = hTarget(habit);
+  document.getElementById('hbEditUnit').value = habit.unit || '';
+
+  // suggest the groups already in use
+  const groups = [...new Set(getHabits().map(h => (h.group || '').trim()).filter(Boolean))];
+  document.getElementById('hbGroupList').innerHTML = groups.map(g => `<option value="${g}">`).join('');
+
+  const sw = document.getElementById('hbEditColors');
+  const paint = () => {
+    sw.innerHTML = HB_PALETTE.map(c =>
+      `<button type="button" data-c="${c}" class="${c === _editColor ? 'on' : ''}" style="background:${c}"></button>`).join('');
+    sw.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+      _editColor = b.getAttribute('data-c');
+      paint();
+    }));
+  };
+  paint();
+
   document.getElementById('hbEditModal').classList.add('show');
   document.getElementById('hbEditName').focus();
 }
@@ -758,11 +1149,37 @@ document.getElementById('hbEditSave').addEventListener('click', () => {
   const habits = getHabits().slice();
   const idx = habits.findIndex(h => h.id === _editingId);
   if (idx < 0) return;
-  habits[idx] = {...habits[idx], icon: emoji, name};
+  const target = Math.max(1, parseInt(document.getElementById('hbEditTarget').value, 10) || 1);
+  habits[idx] = Object.assign({}, habits[idx], {
+    icon: emoji,
+    name: name,
+    group: (document.getElementById('hbEditGroup').value || '').trim(),
+    target: target,
+    unit: target > 1 ? (document.getElementById('hbEditUnit').value || '').trim() : '',
+    color: _editColor || habits[idx].color || '#a78bfa',
+  });
   _db['habits:list'] = habits;
   document.getElementById('hbEditModal').classList.remove('show');
   schedulePush();
   renderAll();
+});
+
+// ── Detail sheet wiring ──
+document.getElementById('hbSheetX').addEventListener('click', closeSheet);
+document.getElementById('hbSheet').addEventListener('click', e => { if (e.target.id === 'hbSheet') closeSheet(); });
+document.getElementById('hbMinus').addEventListener('click', () => sheetStep(-1));
+document.getElementById('hbPlus').addEventListener('click', () => sheetStep(1));
+document.getElementById('hbSheetReset').addEventListener('click', () => {
+  if (!_sheetId) return;
+  setVal(_sheetId, today(), 0);
+  renderSheet();
+});
+document.getElementById('hbSheetDone').addEventListener('click', () => {
+  if (!_sheetId) return;
+  const h = getHabits().find(x => x.id === _sheetId);
+  setVal(_sheetId, today(), hTarget(h));
+  renderSheet();
+  setTimeout(closeSheet, 350);
 });
 document.getElementById('hbEditDelete').addEventListener('click', () => {
   if (!_editingId) return;
