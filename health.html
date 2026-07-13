@@ -1466,6 +1466,33 @@ details[open] .mp-details-summary::before { content: '▾ '; }
     <div id="histList" style="margin-top:14px"></div>
   </div>
 
+  <!-- STEPS -->
+  <div class="sw-card" id="stepsSection">
+    <div class="section-title" style="margin-top:0;margin-bottom:14px">Steps</div>
+    <div class="st-top">
+      <div class="st-ring-wrap">
+        <svg class="st-ring" viewBox="0 0 120 120">
+          <circle class="st-ring-bg" cx="60" cy="60" r="52"></circle>
+          <circle class="st-ring-fg" id="stRingFg" cx="60" cy="60" r="52"></circle>
+        </svg>
+        <div class="st-ring-mid">
+          <div class="st-count" id="stCount">—</div>
+          <div class="st-of" id="stGoalLbl">steps</div>
+        </div>
+      </div>
+      <div class="st-side">
+        <div class="st-stat"><span id="stAvg">—</span><small>7-day average</small></div>
+        <div class="st-stat"><span id="stBest">—</span><small>best this week</small></div>
+        <button class="sw-log-btn" id="stSetupBtn">⚙️ Step sync</button>
+      </div>
+    </div>
+    <div class="st-bars" id="stBars"></div>
+    <div class="st-empty" id="stEmpty">
+      Steps come straight from your phone's health data — nothing to log by hand.
+      Tap <b>Step sync</b> and follow the 2-minute setup.
+    </div>
+  </div>
+
   <!-- SLEEP TRACKER -->
   <div class="sw-card" id="sleepSection">
     <div class="section-title" style="margin-top:0;margin-bottom:14px">Sleep</div>
@@ -3054,7 +3081,124 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catc
 .fc-chat-row input:focus{border-color:var(--accent);}
 .fc-chat-send{width:46px;border:none;border-radius:12px;background:var(--accent);color:#fff;font-size:17px;cursor:pointer;-webkit-tap-highlight-color:transparent;}
 .fc-chat-send:disabled{opacity:.5;}
+
+/* ── Steps ── */
+.st-top{display:flex;align-items:center;gap:18px;}
+.st-ring-wrap{position:relative;width:120px;height:120px;flex-shrink:0;}
+.st-ring{width:120px;height:120px;transform:rotate(-90deg);}
+.st-ring-bg{fill:none;stroke:rgba(255,255,255,0.07);stroke-width:9;}
+.st-ring-fg{fill:none;stroke:var(--accent);stroke-width:9;stroke-linecap:round;
+  stroke-dasharray:327;stroke-dashoffset:327;transition:stroke-dashoffset .7s cubic-bezier(.22,1,.36,1);}
+.st-ring-mid{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.st-count{font-size:23px;font-weight:800;color:var(--text-primary);letter-spacing:-0.02em;line-height:1;}
+.st-of{font-size:10.5px;color:var(--text-tertiary);margin-top:3px;}
+.st-side{flex:1;min-width:0;display:flex;flex-direction:column;gap:9px;}
+.st-stat{display:flex;flex-direction:column;}
+.st-stat span{font-size:16px;font-weight:700;color:var(--text-primary);line-height:1.1;}
+.st-stat small{font-size:10.5px;color:var(--text-tertiary);margin-top:1px;}
+.st-bars{display:flex;align-items:flex-end;gap:6px;height:70px;margin-top:16px;}
+.st-bars:empty{display:none;}
+.st-bar{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;height:100%;justify-content:flex-end;}
+.st-bar-fill{width:100%;border-radius:5px 5px 3px 3px;background:color-mix(in srgb,var(--accent) 55%,transparent);
+  min-height:3px;transition:height .5s;}
+.st-bar.today .st-bar-fill{background:var(--accent);box-shadow:0 0 10px -2px var(--accent);}
+.st-bar-lbl{font-size:9.5px;color:var(--text-tertiary);}
+.st-empty{font-size:12px;color:var(--text-tertiary);line-height:1.55;margin-top:14px;
+  padding-top:12px;border-top:1px solid var(--border);}
+.st-empty b{color:var(--accent);}
+.st-empty:empty,.st-empty.hide{display:none;}
+
+/* setup modal */
+.sy-tabs{display:flex;gap:8px;margin-bottom:16px;}
+.sy-tab{flex:1;padding:9px;border-radius:11px;border:1px solid var(--border-strong);
+  background:rgba(255,255,255,0.04);color:var(--text-secondary);font-family:inherit;font-size:13px;
+  font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.sy-tab.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+.sy-pane{display:none;}
+.sy-pane.on{display:block;}
+.sy-link{display:flex;gap:7px;margin-bottom:8px;}
+.sy-link input{flex:1;min-width:0;background:rgba(255,255,255,0.05);border:1px solid var(--border-strong);
+  border-radius:10px;color:var(--text-primary);font-family:ui-monospace,Menlo,monospace;font-size:11px;
+  padding:10px;outline:none;}
+.sy-copy{border:none;border-radius:10px;background:var(--accent);color:#fff;font-weight:700;
+  font-size:12px;padding:0 14px;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.sy-note{font-size:11px;color:var(--text-tertiary);line-height:1.5;margin-bottom:16px;}
+.sy-steps{counter-reset:sy;display:flex;flex-direction:column;gap:11px;}
+.sy-step{display:flex;gap:11px;font-size:13px;line-height:1.55;color:var(--text-secondary);}
+.sy-step::before{counter-increment:sy;content:counter(sy);flex-shrink:0;width:22px;height:22px;
+  border-radius:50%;background:color-mix(in srgb,var(--accent) 18%,transparent);
+  border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);color:var(--accent);
+  font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:1px;}
+.sy-step b{color:var(--text-primary);}
+.sy-step code{background:rgba(255,255,255,0.07);border-radius:5px;padding:1px 5px;
+  font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--accent);}
+.sy-goal{display:flex;align-items:center;gap:10px;margin-top:18px;padding-top:14px;
+  border-top:1px solid var(--border);}
+.sy-goal label{font-size:13px;color:var(--text-secondary);flex:1;}
+.sy-goal input{width:92px;background:rgba(255,255,255,0.05);border:1px solid var(--border-strong);
+  border-radius:10px;color:var(--text-primary);font-family:inherit;font-size:16px;padding:9px;outline:none;text-align:center;}
 </style>
+
+<!-- ══ STEP SYNC SETUP ══ -->
+<div class="mp-modal-bg" id="syModal">
+  <div class="mp-modal" style="max-height:88vh;overflow-y:auto;-webkit-overflow-scrolling:touch">
+    <h3 style="margin:0 0 6px;font-size:18px;font-weight:800;color:var(--text-primary)">Step sync</h3>
+    <p class="sy-note" style="margin-bottom:14px">
+      Websites aren't allowed to read Apple Health or Health Connect — only your phone can.
+      So your phone sends the steps here instead. Set this up once and it runs by itself forever;
+      you'll never log a step by hand.
+    </p>
+
+    <div class="sy-link">
+      <input type="text" id="syUrl" readonly onclick="this.select()">
+      <button class="sy-copy" id="syCopy">Copy</button>
+    </div>
+    <div class="sy-note">This link is yours alone and writes only to your account. Don't share it.</div>
+
+    <div class="sy-tabs">
+      <button class="sy-tab on" data-pane="ios">🍎 iPhone</button>
+      <button class="sy-tab" data-pane="and">🤖 Android</button>
+    </div>
+
+    <div class="sy-pane on" id="syPaneIos">
+      <div class="sy-steps">
+        <div class="sy-step">Open the <b>Shortcuts</b> app (it comes with your iPhone) → <b>Automation</b> tab → <b>+</b> in the corner.</div>
+        <div class="sy-step">Choose <b>Time of Day</b>. Pick a time (e.g. <b>21:00</b>), set it to <b>Daily</b>, and choose <b>Run Immediately</b> so it never asks you.</div>
+        <div class="sy-step">Tap <b>New Blank Automation</b> → search for <b>Find Health Samples</b> and add it. Set <code>Type</code> to <b>Steps</b>, and add a filter <code>Date is Today</code>.</div>
+        <div class="sy-step">On that same action, set <b>Statistic</b> (or "Sort/Limit") to <b>Sum</b>, so you get one total instead of a list.</div>
+        <div class="sy-step">Add the action <b>Get Contents of URL</b>. Paste the link above into it, then put the cursor at the very end — where it says <code>&amp;s=</code> — and insert the <b>Health Samples</b> variable from the previous step.</div>
+        <div class="sy-step">Tap <b>Done</b>. That's it — your steps now appear here every day automatically.</div>
+      </div>
+      <p class="sy-note" style="margin-top:14px;margin-bottom:0">
+        Want it always current? Make a second automation with the trigger <b>App → Dashboard → Is Opened</b>
+        and the same two actions. Then it refreshes every time you open the app.
+      </p>
+    </div>
+
+    <div class="sy-pane" id="syPaneAnd">
+      <div class="sy-steps">
+        <div class="sy-step">Install <b>MacroDroid</b> from the Play Store (free). Android has no Shortcuts app, so this does the same job.</div>
+        <div class="sy-step">Tap <b>Add Macro</b> → under <b>Trigger</b> choose <b>Day/Time</b> → <b>Regular Interval</b>, every <b>2 hours</b>.</div>
+        <div class="sy-step">Under <b>Action</b> choose <b>Applications</b> → <b>HTTP Request</b> → method <b>GET</b>.</div>
+        <div class="sy-step">Paste the link above as the URL, and at the end after <code>&amp;s=</code> insert the step-count variable (in MacroDroid: <b>Sensors → Step Counter</b>, or the <code>[step_count]</code> magic text).</div>
+        <div class="sy-step">Save the macro and leave it enabled. Steps now flow in on their own.</div>
+      </div>
+      <p class="sy-note" style="margin-top:14px;margin-bottom:0">
+        Tasker works exactly the same way if you already own it: a Time profile plus an <b>HTTP Get</b> task pointed at this link.
+      </p>
+    </div>
+
+    <div class="sy-goal">
+      <label for="syGoal">Daily step goal</label>
+      <input type="number" id="syGoal" min="1000" max="50000" step="500" value="10000">
+    </div>
+
+    <div class="mp-modal-btns" style="margin-top:18px">
+      <button class="mp-btn-cancel" id="syClose" style="margin-left:auto">Done</button>
+    </div>
+  </div>
+</div>
+
 <div class="mp-modal-bg" id="fcModal">
   <div class="mp-modal" style="max-height:86vh;overflow-y:auto;-webkit-overflow-scrolling:touch">
 
@@ -4630,6 +4774,136 @@ document.getElementById('msSave').addEventListener('click', () => {
 });
 
 renderMeasurements();
+})();
+</script>
+
+<script>
+// ══ STEPS ═══════════════════════════════════════════════════════════════════
+// Steps live in their own cloud row (uid:steps) because they're written by the
+// PHONE (via /api/steps), not by this page — the page only reads them and owns
+// the goal + the secret token. Keeping them out of the health sync engine means
+// the two writers can't clobber each other.
+(function(){
+  const $=id=>document.getElementById(id);
+  const RING=327; // 2πr, r=52
+  let sb=null,uid=null,row=null,timer=null;
+
+  function client(){ if(!sb) sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY); return sb; }
+  function dkey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function mkToken(){
+    const a=new Uint8Array(16);
+    (window.crypto||window.msCrypto).getRandomValues(a);
+    return Array.from(a).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+
+  async function save(patch){
+    if(!uid) return;
+    row=Object.assign({},row||{},patch);
+    try{
+      await client().from('app_state').upsert(
+        { key: uid+':steps', data: row, updated_at: new Date().toISOString() },
+        { onConflict:'key' }
+      );
+    }catch(e){}
+  }
+
+  async function load(){
+    try{
+      const { data:{ session } } = await client().auth.getSession();
+      if(!session) return;
+      uid=session.user.id;
+      const { data } = await client().from('app_state').select('data').eq('key',uid+':steps').maybeSingle();
+      row=(data&&data.data)||{};
+      // The token is what lets the phone write here without a login. Make one on
+      // first visit so the link is ready the moment the user opens setup.
+      if(!row.token){ await save({ token: mkToken(), goal: row.goal||10000, days: row.days||{} }); }
+      render();
+    }catch(e){}
+  }
+
+  function render(){
+    if(!row) return;
+    const days=row.days||{}, goal=Math.max(1000, row.goal||10000);
+    const today=dkey(new Date());
+    const todaySteps=days[today]||0;
+
+    $('stCount').textContent = todaySteps ? todaySteps.toLocaleString() : '—';
+    $('stGoalLbl').textContent = 'of '+goal.toLocaleString();
+    const pct=Math.min(1, todaySteps/goal);
+    $('stRingFg').style.strokeDashoffset = String(RING*(1-pct));
+
+    // Last 7 days, oldest → today.
+    const week=[];
+    for(let i=6;i>=0;i--){
+      const d=new Date(); d.setDate(d.getDate()-i);
+      week.push({ k:dkey(d), lbl:'SMTWTFS'[d.getDay()], v:days[dkey(d)]||0, today:i===0 });
+    }
+    const logged=week.filter(w=>w.v>0);
+    const max=Math.max(goal, ...week.map(w=>w.v), 1);
+    $('stBars').innerHTML = logged.length ? week.map(w=>
+      '<div class="st-bar'+(w.today?' today':'')+'" title="'+w.k+': '+w.v.toLocaleString()+'">'
+      +'<div class="st-bar-fill" style="height:'+Math.max(3,Math.round(w.v/max*100))+'%"></div>'
+      +'<div class="st-bar-lbl">'+w.lbl+'</div></div>'
+    ).join('') : '';
+
+    const avg = logged.length ? Math.round(logged.reduce((s,w)=>s+w.v,0)/logged.length) : 0;
+    const best = week.reduce((m,w)=>Math.max(m,w.v),0);
+    $('stAvg').textContent = avg ? avg.toLocaleString() : '—';
+    $('stBest').textContent = best ? best.toLocaleString() : '—';
+    $('stEmpty').classList.toggle('hide', logged.length>0);
+
+    if(row.token && uid){
+      // tzo keeps the day correct near midnight without the user adding a date step.
+      $('syUrl').value = location.origin+'/api/steps?u='+uid+'&t='+row.token
+        +'&tzo='+new Date().getTimezoneOffset()+'&s=';
+    }
+    $('syGoal').value = goal;
+  }
+
+  // ── setup modal ──
+  $('stSetupBtn').addEventListener('click',()=>{ render(); $('syModal').classList.add('show'); });
+  $('syClose').addEventListener('click',()=>$('syModal').classList.remove('show'));
+  $('syModal').addEventListener('click',e=>{ if(e.target.id==='syModal') $('syModal').classList.remove('show'); });
+
+  document.querySelectorAll('.sy-tab').forEach(t=>{
+    t.addEventListener('click',()=>{
+      document.querySelectorAll('.sy-tab').forEach(x=>x.classList.remove('on'));
+      t.classList.add('on');
+      const p=t.dataset.pane;
+      $('syPaneIos').classList.toggle('on', p==='ios');
+      $('syPaneAnd').classList.toggle('on', p==='and');
+    });
+  });
+
+  $('syCopy').addEventListener('click',async()=>{
+    const el=$('syUrl');
+    try{ await navigator.clipboard.writeText(el.value); }
+    catch(e){ el.select(); try{ document.execCommand('copy'); }catch(_){} }
+    const b=$('syCopy'), old=b.textContent;
+    b.textContent='Copied ✓';
+    setTimeout(()=>{ b.textContent=old; },1600);
+  });
+
+  $('syGoal').addEventListener('change',e=>{
+    const g=Math.max(1000, Math.min(50000, parseInt(e.target.value,10)||10000));
+    e.target.value=g;
+    save({ goal:g }).then(render);
+  });
+
+  // The phone writes in the background, so re-read periodically and whenever the
+  // page comes back into view — that's how a new count shows up without a reload.
+  async function refresh(){
+    if(!uid) return;
+    try{
+      const { data } = await client().from('app_state').select('data').eq('key',uid+':steps').maybeSingle();
+      if(data&&data.data){ row=data.data; render(); }
+    }catch(e){}
+  }
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) refresh(); });
+  window.addEventListener('focus', refresh);
+  timer=setInterval(()=>{ if(!document.hidden) refresh(); }, 60000);
+
+  load();
 })();
 </script>
 
