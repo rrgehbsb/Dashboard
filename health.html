@@ -5159,12 +5159,13 @@ renderMeasurements();
     $('eyNext').textContent = (c.on && next>Date.now())
       ? Math.max(1,Math.round((next-Date.now())/60000))+'m' : '—';
 
-    // Be honest about the two things that stop this working.
+    // Be honest about what stops this working, rather than letting it fail silently.
     const notes=[];
     if(!E().isDesktop()) notes.push('This only runs on a <b>computer</b> — a phone suspends the page as soon as you leave it, so a background timer can\'t fire. Your phone shows the stats but won\'t interrupt you.');
     else {
       notes.push('Keep the dashboard open in a tab while you work — it can be in the background, the reminder still comes through.');
       if(('Notification' in window) && Notification.permission!=='granted') notes.push('Turn on notifications so it reaches you when the tab is behind other windows.');
+      notes.push('<b>Fullscreen games (Roblox, etc.):</b> Windows hides all notifications while a game is fullscreen, and no browser tab can draw over it — so you\'ll only get the <b>chime</b>, which repeats until the break ends. To get the popup back: play in <b>windowed / borderless</b> mode, and turn off Windows <b>Settings → System → Notifications → Do not disturb when playing a game</b>.');
     }
     $('eyNote').innerHTML=notes.join('<br><br>');
   }

@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.5.85';
+const DASHBOARD_VERSION = '2.5.86';
 
 // Auto-update: when a new service worker takes control (new deploy), reload once
 // so the installed app always runs the latest code instead of a stale cached
@@ -3182,17 +3182,38 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
     } catch (e) {}
   }
 
-  function eyeBeep() {
+  // Sound is the ONLY channel that survives a fullscreen game: Windows hides
+  // notifications behind Focus Assist, and a background tab cannot draw over
+  // Roblox. So the chime has to be audible, not polite. One shared AudioContext,
+  // resumed on demand — a fresh one per beep gets blocked in a background tab.
+  let eyeAudio = null;
+  function eyeCtx() {
+    const A = window.AudioContext || window.webkitAudioContext;
+    if (!A) return null;
+    if (!eyeAudio) eyeAudio = new A();
+    if (eyeAudio.state === 'suspended') { try { eyeAudio.resume(); } catch (e) {} }
+    return eyeAudio;
+  }
+  function eyeTone(ctx, freq, at, dur, vol) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type = 'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, ctx.currentTime + at);
+    g.gain.exponentialRampToValueAtTime(vol, ctx.currentTime + at + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + at + dur);
+    o.start(ctx.currentTime + at); o.stop(ctx.currentTime + at + dur + 0.05);
+  }
+  function eyeBeep(strong) {
     try {
-      const A = window.AudioContext || window.webkitAudioContext; if (!A) return;
-      const ctx = new A(), o = ctx.createOscillator(), g = ctx.createGain();
-      o.connect(g); g.connect(ctx.destination);
-      o.frequency.value = 660; o.type = 'sine';
-      g.gain.setValueAtTime(0.0001, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.08, ctx.currentTime + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.5);
-      o.start(); o.stop(ctx.currentTime + 0.5);
-      setTimeout(function () { try { ctx.close(); } catch (e) {} }, 800);
+      const ctx = eyeCtx(); if (!ctx) return;
+      if (strong) {
+        // Rising 3-note chime, loud enough to hear over a game.
+        eyeTone(ctx, 660, 0.00, 0.28, 0.30);
+        eyeTone(ctx, 880, 0.22, 0.28, 0.30);
+        eyeTone(ctx, 1180, 0.44, 0.40, 0.34);
+      } else {
+        eyeTone(ctx, 880, 0, 0.35, 0.14); // soft "done" note
+      }
     } catch (e) {}
   }
 
@@ -3228,7 +3249,19 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
     if (eyeResting) return;
     eyeResting = true;
     eyeNotify(c);
-    if (c.sound) eyeBeep();
+    if (c.sound) eyeBeep(true);
+
+    // If you're in a fullscreen game, the overlay is hidden behind it and Windows
+    // has swallowed the notification — so the chime keeps repeating until the rest
+    // is over. That's the only signal that can actually reach you there.
+    let nag = null;
+    if (c.sound) {
+      let n = 0;
+      nag = setInterval(function () {
+        if (!eyeResting || ++n > 6) { clearInterval(nag); return; }
+        if (document.hidden) eyeBeep(true); // only nag while you're NOT looking at the tab
+      }, 4000);
+    }
 
     const wrap = document.createElement('div');
     wrap.className = 'eye-ov';
@@ -3255,11 +3288,12 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
 
     function finish(how) {
       clearInterval(iv);
+      if (nag) clearInterval(nag);
       if (!eyeResting) return;
       eyeResting = false;
       wrap.classList.remove('show');
       setTimeout(function () { try { wrap.remove(); } catch (e) {} }, 260);
-      if (how === 'done') { eyeLog('done'); if (c.sound) eyeBeep(); eyeSchedule(c.every); }
+      if (how === 'done') { eyeLog('done'); if (c.sound) eyeBeep(false); eyeSchedule(c.every); }
       else if (how === 'skip') { eyeLog('skipped'); eyeSchedule(c.every); }
       else eyeSchedule(5); // snooze
     }
@@ -3292,6 +3326,16 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
     if (!isDesktop()) return;
     const c = eyeCfg();
     if (!c.on) return;
+    // Browsers refuse to start audio until the page has been interacted with, and a
+    // background tab can't ask. Prime it on the first click/keypress so the chime is
+    // guaranteed to work later, when the tab is hidden behind a game.
+    const unlock = function () {
+      eyeCtx();
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+    window.addEventListener('pointerdown', unlock);
+    window.addEventListener('keydown', unlock);
     // Resume rather than restart, so reloading a page doesn't reset your 19 minutes.
     let at = 0;
     try { at = parseInt(localStorage.getItem('dashboard:eyes:nextAt') || '0', 10); } catch (e) {}
