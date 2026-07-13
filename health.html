@@ -3123,12 +3123,15 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catc
 .sy-copy{border:none;border-radius:10px;background:var(--accent);color:#fff;font-weight:700;
   font-size:12px;padding:0 14px;cursor:pointer;-webkit-tap-highlight-color:transparent;}
 .sy-note{font-size:11px;color:var(--text-tertiary);line-height:1.5;margin-bottom:16px;}
-.sy-steps{counter-reset:sy;display:flex;flex-direction:column;gap:11px;}
-.sy-step{display:flex;gap:11px;font-size:13px;line-height:1.55;color:var(--text-secondary);}
-.sy-step::before{counter-increment:sy;content:counter(sy);flex-shrink:0;width:22px;height:22px;
+.sy-steps{counter-reset:sy;display:flex;flex-direction:column;gap:12px;}
+/* NOT flex: a flex parent turns every text node and <b> into its own column,
+   which stacked each word vertically. Block + an absolutely-placed number. */
+.sy-step{position:relative;padding-left:33px;font-size:13px;line-height:1.6;color:var(--text-secondary);}
+.sy-step::before{counter-increment:sy;content:counter(sy);position:absolute;left:0;top:0;
+  width:22px;height:22px;box-sizing:border-box;
   border-radius:50%;background:color-mix(in srgb,var(--accent) 18%,transparent);
   border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);color:var(--accent);
-  font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:1px;}
+  font-size:11px;font-weight:800;line-height:20px;text-align:center;}
 .sy-step b{color:var(--text-primary);}
 .sy-step code{background:rgba(255,255,255,0.07);border-radius:5px;padding:1px 5px;
   font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--accent);}
@@ -4861,7 +4864,18 @@ renderMeasurements();
   }
 
   // ── setup modal ──
-  $('stSetupBtn').addEventListener('click',()=>{ render(); $('syModal').classList.add('show'); });
+  // The row loads asynchronously, so the modal could open before the token existed
+  // and show an empty link. Make sure it's there before rendering, and say so while
+  // we fetch rather than showing an empty box.
+  $('stSetupBtn').addEventListener('click',async()=>{
+    $('syModal').classList.add('show');
+    if(!row||!row.token){
+      $('syUrl').value='Creating your link…';
+      await load();
+    }
+    if(!row||!row.token){ $('syUrl').value='Could not create your link — check your connection and reopen.'; return; }
+    render();
+  });
   $('syClose').addEventListener('click',()=>$('syModal').classList.remove('show'));
   $('syModal').addEventListener('click',e=>{ if(e.target.id==='syModal') $('syModal').classList.remove('show'); });
 
