@@ -323,24 +323,124 @@ main {
 .hb-cell.today-cell {
   box-shadow: 0 0 0 1px rgba(255,255,255,0.3);
 }
+
+/* ═══ Habit rows ═══════════════════════════════════════════════════════════
+   Each habit owns a colour (--hc). Undone = a dark card faintly tinted with it;
+   done = the row FILLS with it. So the page is readable at a glance: colour is
+   the state, not decoration. */
+.hb-row {
+  --hc: var(--accent, #a78bfa);
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 13px; margin-bottom: 10px; border-radius: 17px;
+  background: color-mix(in srgb, var(--hc) 9%, rgba(255,255,255,0.02));
+  border: 1px solid color-mix(in srgb, var(--hc) 20%, transparent);
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: background 0.22s, border-color 0.22s, transform 0.12s;
+}
+.hb-row:active { transform: scale(0.985); }
+.hb-row.done {
+  background: var(--hc);
+  border-color: var(--hc);
+  box-shadow: 0 6px 20px -8px var(--hc);
+}
+.hb-ic {
+  flex: 0 0 38px; width: 38px; height: 38px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center; font-size: 19px;
+  background: color-mix(in srgb, var(--hc) 20%, rgba(255,255,255,0.05));
+}
+.hb-row.done .hb-ic { background: rgba(255,255,255,0.22); }
+.hb-txt { flex: 1; min-width: 0; }
+.hb-nm {
+  font-size: 15px; font-weight: 700; color: var(--text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hb-sub { font-size: 11.5px; color: var(--text-tertiary); margin-top: 1px; }
+.hb-row.done .hb-nm { color: #fff; }
+.hb-row.done .hb-sub { color: rgba(255,255,255,0.8); }
+.hb-fire {
+  font-size: 11.5px; font-weight: 800; color: var(--text-tertiary);
+  flex-shrink: 0; font-variant-numeric: tabular-nums;
+}
+.hb-row.done .hb-fire { color: rgba(255,255,255,0.9); }
+/* One big, always-in-the-same-place action button. */
+.hb-btn {
+  flex: 0 0 40px; width: 40px; height: 40px; border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--hc) 45%, transparent);
+  background: transparent; cursor: pointer; position: relative;
+  -webkit-tap-highlight-color: transparent; transition: all 0.18s;
+}
+.hb-row.done .hb-btn { background: #fff; border-color: #fff; }
+.hb-row.done .hb-btn::after {
+  content: ''; position: absolute; left: 13px; top: 8px;
+  width: 8px; height: 15px; border: solid var(--hc);
+  border-width: 0 2.5px 2.5px 0; transform: rotate(45deg);
+}
+.hb-edit-btn { opacity: 0.35; }
+.hb-row.done .hb-edit-btn { color: #fff; opacity: 0.7; }
+
+/* ═══ Week strip ═══ */
+.hb-week {
+  display: flex; justify-content: space-between; gap: 2px;
+  margin: 4px 0 20px; padding: 14px 8px;
+  background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+  border-radius: 18px;
+}
+.hb-day { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; }
+.hb-dow { font-size: 10.5px; font-weight: 600; color: var(--text-tertiary); }
+.hb-dot {
+  width: 34px; height: 34px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12.5px; font-weight: 700; color: var(--text-tertiary);
+  background: rgba(255,255,255,0.05); position: relative; z-index: 1;
+}
+/* ring shows how much of the day you completed */
+.hb-dot.part {
+  background:
+    conic-gradient(var(--accent) calc(var(--p) * 360deg), rgba(255,255,255,0.07) 0);
+  color: var(--text-primary);
+}
+.hb-dot.full { background: var(--accent); color: #fff; box-shadow: 0 0 14px -3px var(--accent); }
+.hb-dot.today { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* the line that literally joins consecutive perfect days */
+.hb-day.link::before {
+  content: ''; position: absolute; left: -50%; right: 50%; top: 36px; height: 2.5px;
+  background: var(--accent); z-index: 0;
+}
+
+/* ═══ Record tiles ═══ */
+.hb-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.hb-stat {
+  background: rgba(255,255,255,0.035); border: 1px solid var(--border);
+  border-radius: 15px; padding: 13px 14px; position: relative;
+}
+.hb-stat-v { font-size: 22px; font-weight: 800; color: var(--text-primary); line-height: 1.1; }
+.hb-stat-l {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--text-tertiary); margin-top: 3px;
+}
+.hb-stat-i { position: absolute; top: 11px; right: 12px; font-size: 15px; opacity: 0.9; }
 </style>
   <link rel="icon" type="image/svg+xml" href="/icon.svg">
 </head>
 <body>
 
 <main>
+  <!-- Week strip: consecutive perfect days are joined by a line, so a streak is
+       something you SEE rather than a number you read. -->
+  <div class="hb-week" id="hbWeek"></div>
+
   <div class="section-title">Today</div>
-  <div class="hb-today-card">
-    <div id="habitList"></div>
-    <div class="hb-add-row">
-      <input class="hb-emoji-add" id="hbEmojiInput" maxlength="2" placeholder="⭐">
-      <input class="hb-add-input" id="hbAddInput" placeholder="New habit name…" maxlength="40">
-      <button class="hb-add-btn" id="hbAddBtn">Add</button>
-    </div>
+  <div id="habitList"></div>
+  <div class="hb-add-row">
+    <input class="hb-emoji-add" id="hbEmojiInput" maxlength="2" placeholder="⭐">
+    <input class="hb-add-input" id="hbAddInput" placeholder="New habit name…" maxlength="40">
+    <button class="hb-add-btn" id="hbAddBtn">Add</button>
   </div>
 
+  <div class="section-title" style="margin-top:22px">Records</div>
+  <div class="hb-stats" id="hbStats"></div>
 
-  <div class="section-title" style="margin-top:8px">History</div>
+  <div class="section-title" style="margin-top:22px">History</div>
   <div class="hb-grid-section" id="hbGridSection"></div>
 </main>
 
@@ -441,25 +541,24 @@ function renderToday() {
   el.innerHTML = habits.map(h => {
     const done = !!todayLog[h.id];
     const streak = calcStreak(h.id);
-    const streakTxt = streak > 0 ? `🔥 ${streak}d` : '';
-    const checkStyle = done ? `background:${h.color};border-color:${h.color}` : '';
     const isCustom = h.id.startsWith('custom_');
     const editBtn = isCustom ? `<button class="hb-edit-btn" data-edit="${h.id}" title="Edit">✎</button>` : '';
-    return `<div class="hb-habit-row" data-id="${h.id}" data-date="${td}">
-      <div class="hb-check${done?' done':''}" style="${checkStyle}"></div>
-      <span class="hb-habit-icon">${h.icon}</span>
-      <span class="hb-habit-name">${h.name}</span>
-      <span class="hb-streak${streak>=3?' hot':''}">${streakTxt}</span>
+    return `<div class="hb-row${done?' done':''}" style="--hc:${h.color||'#a78bfa'}" data-id="${h.id}" data-date="${td}">
+      <span class="hb-ic">${h.icon}</span>
+      <div class="hb-txt">
+        <div class="hb-nm">${h.name}</div>
+        <div class="hb-sub">${done ? 'Done today' : 'Every day'}</div>
+      </div>
+      ${streak > 0 ? `<span class="hb-fire">🔥 ${streak}</span>` : ''}
       ${editBtn}
+      <button class="hb-btn" aria-label="${done?'Undo':'Complete'} ${h.name}"></button>
     </div>`;
   }).join('');
 
-  el.querySelectorAll('.hb-habit-row').forEach(row => {
+  el.querySelectorAll('.hb-row').forEach(row => {
     row.addEventListener('click', e => {
       if (e.target.closest('.hb-edit-btn')) return;
-      const id = row.getAttribute('data-id');
-      const date = row.getAttribute('data-date');
-      toggleHabit(id, date);
+      toggleHabit(row.getAttribute('data-id'), row.getAttribute('data-date'));
     });
   });
   el.querySelectorAll('.hb-edit-btn').forEach(btn => {
@@ -468,6 +567,78 @@ function renderToday() {
       openEditModal(btn.getAttribute('data-edit'));
     });
   });
+
+  renderWeek();
+  renderStats();
+}
+
+// How much of a given day was completed, 0–1.
+function dayPct(dk) {
+  const habits = getHabits();
+  if (!habits.length) return 0;
+  const day = getLog()[dk] || {};
+  return habits.filter(h => day[h.id]).length / habits.length;
+}
+
+// The week strip. A perfect day is a filled dot, and consecutive perfect days get
+// joined by a line — so a streak is visible, not just a number.
+function renderWeek() {
+  const el = document.getElementById('hbWeek');
+  if (!el) return;
+  const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const dk = dateOffset(i);
+    days.push({ dk, dow: DOW[d.getDay()], num: d.getDate(), pct: dayPct(dk), today: i === 0 });
+  }
+  el.innerHTML = days.map((d, i) => {
+    const full = d.pct >= 1 && d.pct > 0;
+    const cls = full ? 'full' : (d.pct > 0 ? 'part' : '');
+    // link back to the previous day only if BOTH are perfect
+    const link = (i > 0 && full && days[i-1].pct >= 1 && days[i-1].pct > 0) ? ' link' : '';
+    return `<div class="hb-day${link}">
+      <span class="hb-dow">${d.dow}</span>
+      <div class="hb-dot ${cls}${d.today?' today':''}" style="--p:${d.pct.toFixed(2)}">${d.num}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderStats() {
+  const el = document.getElementById('hbStats');
+  if (!el) return;
+  const habits = getHabits();
+  const log = getLog();
+
+  // best current streak across habits, and the best ever seen in the log
+  let cur = 0, best = 0;
+  habits.forEach(h => { cur = Math.max(cur, calcStreak(h.id)); });
+  habits.forEach(h => {
+    let run = 0;
+    for (let i = 365; i >= 0; i--) {
+      const dk = dateOffset(i);
+      if (log[dk] && log[dk][h.id]) { run++; best = Math.max(best, run); }
+      else run = 0;
+    }
+  });
+
+  // last 30 days: how many ticks, and what share of the possible ones
+  let done = 0, possible = 0;
+  for (let i = 0; i < 30; i++) {
+    const day = log[dateOffset(i)] || {};
+    habits.forEach(h => { possible++; if (day[h.id]) done++; });
+  }
+  const rate = possible ? Math.round(done / possible * 100) : 0;
+
+  const tiles = [
+    [cur,  'Current streak', '🔥'],
+    [best, 'Best streak',    '🏅'],
+    [done, 'Completed · 30d','✅'],
+    [rate + '%', 'Success rate', '🏁'],
+  ];
+  el.innerHTML = tiles.map(([v, l, i]) =>
+    `<div class="hb-stat"><span class="hb-stat-i">${i}</span>
+      <div class="hb-stat-v">${v}</div><div class="hb-stat-l">${l}</div></div>`).join('');
 }
 
 // ── render contribution grids ──
@@ -548,7 +719,13 @@ function addHabit() {
   const icon = (emojiInp.value || '').trim() || '⭐';
   const habits = getHabits().slice();
   const id = 'custom_' + Date.now();
-  habits.push({id, name, icon, color:'#1D9E75'});
+  // Every new habit used to get the SAME green, which is why the list read as one
+  // undifferentiated block. Hand out the next unused colour instead.
+  const PALETTE = ['#e74c3c','#3498db','#9b59b6','#00bfff','#f39c12','#2ecc71',
+                   '#e91e63','#f472b6','#14b8a6','#fbbf24','#8b5cf6','#fb7185'];
+  const used = habits.map(h => h.color);
+  const color = PALETTE.find(c => used.indexOf(c) === -1) || PALETTE[habits.length % PALETTE.length];
+  habits.push({id, name, icon, color});
   _db['habits:list'] = habits;
   inp.value = '';
   emojiInp.value = '';
