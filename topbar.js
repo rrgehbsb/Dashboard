@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.5.89';
+const DASHBOARD_VERSION = '2.5.90';
 
 // Auto-update: when a new service worker takes control (new deploy), reload once
 // so the installed app always runs the latest code instead of a stale cached
@@ -320,40 +320,6 @@ window.applyDashSettings(JSON.parse(localStorage.getItem('dashboard:settings:v1'
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="button"]):not([type="submit"]),
   textarea, select { font-size: 16px !important; }
 }
-/* ── Inverted nav: bottom bar carries this page's sections ── */
-.bottombar.secbar {
-  justify-content: flex-start; align-items: stretch; gap: 0; padding: 0;
-}
-.secbar-menu {
-  flex: 0 0 auto; width: 48px; border: none; background: transparent; cursor: pointer;
-  color: var(--accent, #a78bfa); font-size: 19px; line-height: 1;
-  padding-bottom: env(safe-area-inset-bottom);
-  border-right: 1px solid rgba(255,255,255,0.08);
-  -webkit-tap-highlight-color: transparent;
-}
-.secbar-menu:active { transform: scale(0.9); }
-.secbar-strip {
-  flex: 1; min-width: 0; display: flex; align-items: center; gap: 7px;
-  overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -webkit-overflow-scrolling: touch;
-  padding: 9px 10px calc(9px + env(safe-area-inset-bottom));
-}
-.secbar-strip::-webkit-scrollbar { display: none; }
-.secbar-pill {
-  flex: 0 0 auto; white-space: nowrap; cursor: pointer;
-  border-radius: 999px; padding: 8px 13px;
-  border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.05);
-  color: rgba(255,255,255,0.62); font-family: inherit; font-size: 12.5px; font-weight: 600;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
-  -webkit-tap-highlight-color: transparent;
-}
-.secbar-pill:active { transform: scale(0.95); }
-.secbar-pill.on {
-  background: var(--accent, #a78bfa); border-color: var(--accent, #a78bfa); color: #fff;
-  box-shadow: 0 3px 12px -4px var(--accent, #a78bfa);
-}
-html[data-theme="light"] .secbar-pill { border-color: rgba(0,0,0,0.12); background: rgba(0,0,0,0.04); color: rgba(0,0,0,0.55); }
-html[data-theme="light"] .secbar-pill.on { color: #fff; }
-html[data-theme="light"] .secbar-menu { border-right-color: rgba(0,0,0,0.09); }
 
 /* ── Eye break overlay ── */
 .eye-ov {
@@ -1408,99 +1374,13 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
         '<span class="nav-more-item-label">' + t.label + '</span></a>').join('');
     requestAnimationFrame(() => { bd.classList.add('show'); sheet.classList.add('show'); });
   }
-  // ══ INVERTED NAVIGATION ════════════════════════════════════════════════════
-  // Classic: bottom bar = the 9 pages (cramped), side panel = sections on the page.
-  // Inverted: the two swap. The page list is long, and a vertical panel has room
-  // for all of it with real labels — a bottom bar never did. The bottom bar then
-  // carries THIS page's own sections, which is what your thumb actually reaches for
-  // while you're using the page.
-  function navMode() {
-    try { return readSettings().navMode === 'inverted' ? 'inverted' : 'classic'; }
-    catch (e) { return 'classic'; }
-  }
-  function collectSections() {
-    const out = [], seen = new Set();
-    document.querySelectorAll('.section-title, [data-nav]').forEach(function (el) {
-      if (seen.has(el)) return; seen.add(el);
-      let lbl = (el.getAttribute && el.getAttribute('data-nav')) || el.textContent || '';
-      lbl = lbl.replace(/[↑↓▾▸⋮⋯×]/g, ' ').replace(/\s+/g, ' ').trim().replace(/[:·]+$/, '').trim().slice(0, 26);
-      if (lbl) out.push({ el: el, label: lbl });
-    });
-    return out;
-  }
   function scrollToSection(el) {
     if (!el) return;
     const y = el.getBoundingClientRect().top + window.scrollY - 66;
     window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
   }
 
-  function makeSectionBar(items) {
-    const nav = document.createElement('nav');
-    nav.className = 'bottombar secbar'; nav.id = 'bottombar';
-    nav.setAttribute('role', 'navigation'); nav.setAttribute('aria-label', 'Sections on this page');
-
-    // The page list must stay reachable by thumb, not only from the side tab.
-    const menu = document.createElement('button');
-    menu.type = 'button'; menu.className = 'secbar-menu';
-    menu.setAttribute('aria-label', 'All pages'); menu.textContent = '☰';
-    menu.addEventListener('click', function () { if (window.__dashOpenNav) window.__dashOpenNav(); });
-    nav.appendChild(menu);
-
-    const strip = document.createElement('div');
-    strip.className = 'secbar-strip'; strip.id = 'secbarStrip';
-    items.forEach(function (it, i) {
-      const b = document.createElement('button');
-      b.type = 'button'; b.className = 'secbar-pill'; b.setAttribute('data-i', String(i));
-      b.textContent = it.label;
-      b.addEventListener('click', function () { scrollToSection(it.el); });
-      strip.appendChild(b);
-    });
-    nav.appendChild(strip);
-    return nav;
-  }
-
-  // Highlight whichever section you're actually looking at, and keep that pill in view.
-  function setupSecbarSpy(items) {
-    const strip = document.getElementById('secbarStrip');
-    if (!strip) return;
-    const pills = strip.querySelectorAll('.secbar-pill');
-    let raf = null, last = -1;
-    function update() {
-      raf = null;
-      const y = window.scrollY + 90;
-      let best = 0;
-      items.forEach(function (it, i) {
-        if (it.el.getBoundingClientRect().top + window.scrollY <= y) best = i;
-      });
-      if (best === last) return;
-      last = best;
-      pills.forEach(function (p, i) { p.classList.toggle('on', i === best); });
-      const act = pills[best];
-      if (act) strip.scrollTo({ left: Math.max(0, act.offsetLeft - strip.clientWidth / 2 + act.offsetWidth / 2), behavior: 'smooth' });
-    }
-    window.addEventListener('scroll', function () { if (!raf) raf = requestAnimationFrame(update); }, { passive: true });
-    update();
-  }
-
-  // Sections get reordered by setupSections() AFTER the bar is first built, so the
-  // bar is rebuilt once everything has settled — otherwise the pills are stale.
-  function rebuildBottombar() {
-    const old = document.getElementById('bottombar');
-    if (!old || !old.parentNode) return;
-    old.parentNode.replaceChild(makeBottombar(), old);
-  }
-
   function makeBottombar() {
-    if (navMode() === 'inverted') {
-      const items = collectSections();
-      // Settings and other section-less pages fall back to the page tabs, so you
-      // can never end up on a page with no way out.
-      if (items.length >= 2) {
-        const bar = makeSectionBar(items);
-        setTimeout(function () { setupSecbarSpy(items); }, 0);
-        return bar;
-      }
-    }
     const nav = document.createElement('nav');
     nav.className = 'bottombar'; nav.id = 'bottombar';
     nav.setAttribute('role', 'navigation'); nav.setAttribute('aria-label', 'Main tabs');
@@ -3179,11 +3059,7 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
   // list (no permanent side space). Auto-adapts to whatever the page contains.
   function setupSectionNav(){
     try{
-      if(isEmbedded() || isFinancePage()) return;
-      // Settings normally has no section nav — but in inverted mode this panel IS
-      // the page list, and without it the ☰ on the settings bottom bar would do
-      // nothing and you'd be stranded there.
-      if(isSettingsPage() && navMode() !== 'inverted') return;
+      if(isEmbedded() || isSettingsPage() || isFinancePage()) return;
       function esc(s){ return String(s==null?'':s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}); }
       function collect(){
         var out=[], seen=new Set();
@@ -3195,10 +3071,7 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
         });
         return out;
       }
-      // Classic mode only bothers with the panel if the page HAS sections. Inverted
-      // mode always needs it — it's the page list, and it's the only way out.
-      var inverted = navMode() === 'inverted';
-      if(!inverted && collect().length < 2) return;
+      if(collect().length < 2) return;
       if(!document.getElementById('secnav-style')){
         var st=document.createElement('style'); st.id='secnav-style';
         st.textContent =
@@ -3227,32 +3100,20 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
       document.body.appendChild(tab); document.body.appendChild(bd); document.body.appendChild(panel);
       function close(){ bd.classList.remove('show'); panel.classList.remove('show'); }
       function open(){
-        if(navMode() === 'inverted'){
-          // The panel IS the navigation now: every page, full labels, respecting
-          // kids mode / hidden pages.
-          var cur=currentPageKey();
-          panel.innerHTML='<div class="secnav-h">Pages<button class="secnav-x" id="secnavX" aria-label="Close">×</button></div>'
-            + ALL_TABS.filter(function(t){ return pageVisible(t.key); }).map(function(t){
-                return '<a class="secnav-item secnav-page'+(t.key===cur?' on':'')+'" href="'+t.href+'">'
-                  + '<span class="secnav-ic">'+t.icon+'</span>'+esc(t.label)+'</a>';
-              }).join('');
-        } else {
-          var items=collect();
-          panel.innerHTML='<div class="secnav-h">On this page<button class="secnav-x" id="secnavX" aria-label="Close">×</button></div>'
-            + items.map(function(it,i){ return '<button class="secnav-item" data-i="'+i+'"><span class="secnav-dot"></span>'+esc(it.label)+'</button>'; }).join('');
-          panel.querySelectorAll('.secnav-item').forEach(function(b){
-            b.addEventListener('click', function(){
-              var it=items[+b.dataset.i]; close();
-              if(it && it.el) scrollToSection(it.el);
-            });
+        var items=collect();
+        panel.innerHTML='<div class="secnav-h">On this page<button class="secnav-x" id="secnavX" aria-label="Close">×</button></div>'
+          + items.map(function(it,i){ return '<button class="secnav-item" data-i="'+i+'"><span class="secnav-dot"></span>'+esc(it.label)+'</button>'; }).join('');
+        panel.querySelectorAll('.secnav-item').forEach(function(b){
+          b.addEventListener('click', function(){
+            var it=items[+b.dataset.i]; close();
+            if(it && it.el) scrollToSection(it.el);
           });
-        }
+        });
         panel.querySelector('#secnavX').addEventListener('click', close);
         bd.classList.add('show'); panel.classList.add('show');
       }
       tab.addEventListener('click', open);
       bd.addEventListener('click', close);
-      window.__dashOpenNav = open; // the ☰ in the inverted bottom bar calls this
     }catch(e){}
   }
 
@@ -3502,9 +3363,6 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
     setupXp();
     setupSections();
     setupSectionNav();
-    // setupSections() may reorder the page, so the inverted bar's pills are rebuilt
-    // once the final order is in place.
-    if (navMode() === 'inverted') rebuildBottombar();
     setupEyes();
     applyHomeGreeting();
     // Re-assert the AI button after the page (esp. the home layout collector) settles.
