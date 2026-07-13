@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.5.88';
+const DASHBOARD_VERSION = '2.5.89';
 
 // Auto-update: when a new service worker takes control (new deploy), reload once
 // so the installed app always runs the latest code instead of a stale cached
@@ -3179,7 +3179,11 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
   // list (no permanent side space). Auto-adapts to whatever the page contains.
   function setupSectionNav(){
     try{
-      if(isEmbedded() || isSettingsPage() || isFinancePage()) return;
+      if(isEmbedded() || isFinancePage()) return;
+      // Settings normally has no section nav — but in inverted mode this panel IS
+      // the page list, and without it the ☰ on the settings bottom bar would do
+      // nothing and you'd be stranded there.
+      if(isSettingsPage() && navMode() !== 'inverted') return;
       function esc(s){ return String(s==null?'':s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}); }
       function collect(){
         var out=[], seen=new Set();
