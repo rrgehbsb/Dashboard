@@ -1536,6 +1536,25 @@ details[open] .mp-details-summary::before { content: '▾ '; }
     </div>
   </div>
 
+  <!-- APP USAGE -->
+  <div class="sw-card" id="usageSection">
+    <div class="section-title" style="margin-top:0;margin-bottom:14px">App Usage</div>
+    <div class="ey-head">
+      <div class="ey-lead">
+        <div class="ey-title" id="usTotal">—</div>
+        <div class="ey-sub" id="usSub">Time in the apps you track, today.</div>
+      </div>
+      <button class="sw-log-btn" id="usSetupBtn">⚙️ Set up</button>
+    </div>
+    <div id="usList" style="margin-top:14px"></div>
+    <div class="st-empty" id="usEmpty">
+      iPhone won't hand over your total Screen Time — Apple blocks it for everyone.
+      But your phone <b>can</b> tell us when a specific app opens and closes, so you get
+      the number that actually matters: how long you're in TikTok, Instagram, YouTube.
+      Tap <b>Set up</b>.
+    </div>
+  </div>
+
   <!-- SLEEP TRACKER -->
   <div class="sw-card" id="sleepSection">
     <div class="section-title" style="margin-top:0;margin-bottom:14px">Sleep</div>
@@ -3180,6 +3199,18 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catc
 .ey-note:empty{display:none;}
 .ey-note b{color:var(--accent);}
 
+/* ── App usage ── */
+.us-lbl{font-size:11.5px;font-weight:700;color:var(--text-secondary);margin:12px 0 6px;}
+.us-lbl b{color:var(--accent);}
+.us-row{display:flex;align-items:center;gap:11px;padding:9px 0;}
+.us-row + .us-row{border-top:1px solid rgba(255,255,255,0.05);}
+.us-name{font-size:13.5px;font-weight:600;color:var(--text-primary);width:78px;flex-shrink:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.us-track{flex:1;height:8px;border-radius:4px;background:rgba(255,255,255,0.07);overflow:hidden;}
+.us-fill{height:100%;border-radius:4px;background:var(--accent);transition:width .5s;}
+.us-time{font-size:12.5px;font-weight:700;color:var(--text-primary);width:56px;text-align:right;flex-shrink:0;}
+.us-opens{font-size:10.5px;color:var(--text-tertiary);width:56px;text-align:right;flex-shrink:0;}
+
 /* setup modal */
 .sy-tabs{display:flex;gap:8px;margin-bottom:16px;}
 .sy-tab{flex:1;padding:9px;border-radius:11px;border:1px solid var(--border-strong);
@@ -3213,6 +3244,72 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catc
 .sy-goal input{width:92px;background:rgba(255,255,255,0.05);border:1px solid var(--border-strong);
   border-radius:10px;color:var(--text-primary);font-family:inherit;font-size:16px;padding:9px;outline:none;text-align:center;}
 </style>
+
+<!-- ══ APP USAGE SETUP ══ -->
+<div class="mp-modal-bg" id="usModal">
+  <div class="mp-modal" style="max-height:88vh;overflow-y:auto;-webkit-overflow-scrolling:touch">
+    <h3 style="margin:0 0 6px;font-size:18px;font-weight:800;color:var(--text-primary)">Track an app</h3>
+    <p class="sy-note" style="margin-bottom:14px">
+      Your phone pings the dashboard when an app <b>opens</b> and when it <b>closes</b>, and we do the maths.
+      Start with <b>one app</b> — the worst one — and live with it for a couple of days before adding more.
+    </p>
+
+    <div class="ey-row" style="margin-top:0">
+      <label>App name</label>
+      <input type="text" id="usApp" placeholder="TikTok" style="width:150px;text-align:left" autocomplete="off">
+    </div>
+    <div class="sy-note" style="margin-top:6px">Whatever you type here is just the label you'll see in the dashboard.</div>
+
+    <div id="usLinks" style="margin-top:16px;display:none">
+      <div class="us-lbl">① Link for <b>Is Opened</b></div>
+      <div class="sy-link">
+        <input type="text" id="usOpenUrl" readonly onclick="this.select()">
+        <button class="sy-copy" data-copy="usOpenUrl">Copy</button>
+      </div>
+      <div class="us-lbl">② Link for <b>Is Closed</b></div>
+      <div class="sy-link">
+        <input type="text" id="usCloseUrl" readonly onclick="this.select()">
+        <button class="sy-copy" data-copy="usCloseUrl">Copy</button>
+      </div>
+    </div>
+
+    <div class="sy-tabs" style="margin-top:18px">
+      <button class="sy-tab on" data-upane="ios">🍎 iPhone</button>
+      <button class="sy-tab" data-upane="and">🤖 Android</button>
+    </div>
+
+    <div class="sy-pane on" id="usPaneIos">
+      <div class="sy-steps">
+        <div class="sy-step">Open <b>Shortcuts</b> → <b>Automation</b> tab → <b>+</b>.</div>
+        <div class="sy-step">Scroll to <b>App</b>. Choose the app you typed above, tick <b>Is Opened</b>, and select <b>Run Immediately</b> (so it never nags you with a confirmation).</div>
+        <div class="sy-step">Tap <b>New Blank Automation</b> → add <b>Get Contents of URL</b> → paste <b>link ①</b>. Tap Done.</div>
+        <div class="sy-step">Now do it again: <b>+</b> → <b>App</b> → same app → but this time tick <b>Is Closed</b> (untick Is Opened) → <b>Run Immediately</b>.</div>
+        <div class="sy-step">Add <b>Get Contents of URL</b> → paste <b>link ②</b>. Tap Done.</div>
+        <div class="sy-step">That's the app tracked. Open it, close it, then pull this page down to refresh — the time should appear.</div>
+      </div>
+      <p class="sy-note" style="margin-top:14px;margin-bottom:0">
+        Heads up: an app with an automation on it takes a fraction of a second longer to launch. That's the cost — no battery drain, just a small hitch.
+      </p>
+    </div>
+
+    <div class="sy-pane" id="usPaneAnd">
+      <div class="sy-steps">
+        <div class="sy-step">Install <b>MacroDroid</b> (free) and grant it <b>Usage Access</b> when it asks — that's the permission that lets it see which app is in front.</div>
+        <div class="sy-step"><b>Add Macro</b> → Trigger → <b>Applications</b> → <b>Application Launched/Closed</b> → pick your app → choose <b>Launched</b>.</div>
+        <div class="sy-step">Action → <b>Applications</b> → <b>HTTP Request</b> → <b>GET</b> → paste <b>link ①</b>. Save.</div>
+        <div class="sy-step">Make a second macro exactly the same, but with the trigger set to <b>Closed</b> and using <b>link ②</b>.</div>
+        <div class="sy-step">Done — Android reads usage properly, so this is solid.</div>
+      </div>
+      <p class="sy-note" style="margin-top:14px;margin-bottom:0">
+        Tasker works the same way: an <b>Application</b> profile with an enter task and an exit task, each doing an <b>HTTP Get</b>.
+      </p>
+    </div>
+
+    <div class="mp-modal-btns" style="margin-top:18px">
+      <button class="mp-btn-cancel" id="usClose" style="margin-left:auto">Done</button>
+    </div>
+  </div>
+</div>
 
 <!-- ══ STEP SYNC SETUP ══ -->
 <div class="mp-modal-bg" id="syModal">
@@ -5102,6 +5199,112 @@ renderMeasurements();
     if(n>40) return;
     setTimeout(()=>wait(n+1),100);
   })(0);
+})();
+</script>
+
+<script>
+// ══ APP USAGE ═══════════════════════════════════════════════════════════════
+// The phone reports open/close events to /api/usage; the server turns those into
+// durations and stores them in uid:screen. This page only reads them, plus builds
+// the two links the user pastes into their automations.
+(function(){
+  const $=id=>document.getElementById(id);
+  const SB_URL='https://mtuoqwbrujxutofhyahb.supabase.co';
+  const SB_KEY='sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
+  let sb=null,uid=null,token=null,apps={};
+
+  function client(){ if(!sb) sb=window.supabase.createClient(SB_URL,SB_KEY); return sb; }
+  function dkey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function fmt(ms){
+    const m=Math.round(ms/60000);
+    if(m<1) return '<1m';
+    return m>=60 ? Math.floor(m/60)+'h '+(m%60)+'m' : m+'m';
+  }
+
+  async function load(){
+    try{
+      const { data:{ session } } = await client().auth.getSession();
+      if(!session) return;
+      uid=session.user.id;
+      // Same secret as step sync — one phone link per account.
+      const s=await client().from('app_state').select('data').eq('key',uid+':steps').maybeSingle();
+      token=((s.data&&s.data.data)||{}).token||null;
+      const r=await client().from('app_state').select('data').eq('key',uid+':screen').maybeSingle();
+      apps=((r.data&&r.data.data)||{}).apps||{};
+      render();
+    }catch(e){}
+  }
+
+  function render(){
+    const today=apps[dkey(new Date())]||{};
+    const names=Object.keys(today).filter(a=>(today[a].ms||0)>0||(today[a].opens||0)>0);
+    if(!names.length){
+      $('usTotal').textContent='—';
+      $('usList').innerHTML='';
+      $('usEmpty').classList.remove('hide');
+      return;
+    }
+    $('usEmpty').classList.add('hide');
+    names.sort((a,b)=>(today[b].ms||0)-(today[a].ms||0));
+    const total=names.reduce((s,a)=>s+(today[a].ms||0),0);
+    const max=Math.max(1,...names.map(a=>today[a].ms||0));
+    $('usTotal').textContent=fmt(total)+' today';
+    $('usSub').textContent=names.length+' app'+(names.length===1?'':'s')+' tracked · '
+      +names.reduce((s,a)=>s+(today[a].opens||0),0)+' opens';
+    $('usList').innerHTML=names.map(a=>{
+      const r=today[a];
+      return '<div class="us-row">'
+        +'<div class="us-name" title="'+a+'">'+a+'</div>'
+        +'<div class="us-track"><div class="us-fill" style="width:'+Math.round((r.ms||0)/max*100)+'%"></div></div>'
+        +'<div class="us-time">'+fmt(r.ms||0)+'</div>'
+        +'<div class="us-opens">'+(r.opens||0)+'×</div>'
+      +'</div>';
+    }).join('');
+  }
+
+  function links(){
+    const name=$('usApp').value.trim();
+    if(!name||!uid||!token){ $('usLinks').style.display='none'; return; }
+    const base=location.origin+'/api/usage?u='+uid+'&t='+token
+      +'&tzo='+new Date().getTimezoneOffset()+'&app='+encodeURIComponent(name);
+    $('usOpenUrl').value=base+'&e=open';
+    $('usCloseUrl').value=base+'&e=close';
+    $('usLinks').style.display='';
+  }
+
+  $('usSetupBtn').addEventListener('click',async()=>{
+    $('usModal').classList.add('show');
+    if(!token) await load();
+    if(!token){ alert('Open the Steps card once first — that creates your phone link.'); return; }
+    links();
+  });
+  $('usApp').addEventListener('input',links);
+  $('usClose').addEventListener('click',()=>$('usModal').classList.remove('show'));
+  $('usModal').addEventListener('click',e=>{ if(e.target.id==='usModal') $('usModal').classList.remove('show'); });
+
+  document.querySelectorAll('.sy-copy[data-copy]').forEach(b=>{
+    b.addEventListener('click',async()=>{
+      const el=$(b.dataset.copy);
+      try{ await navigator.clipboard.writeText(el.value); }
+      catch(e){ el.select(); try{ document.execCommand('copy'); }catch(_){} }
+      const old=b.textContent; b.textContent='Copied ✓';
+      setTimeout(()=>{ b.textContent=old; },1500);
+    });
+  });
+
+  document.querySelectorAll('.sy-tab[data-upane]').forEach(t=>{
+    t.addEventListener('click',()=>{
+      document.querySelectorAll('.sy-tab[data-upane]').forEach(x=>x.classList.remove('on'));
+      t.classList.add('on');
+      $('usPaneIos').classList.toggle('on', t.dataset.upane==='ios');
+      $('usPaneAnd').classList.toggle('on', t.dataset.upane==='and');
+    });
+  });
+
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) load(); });
+  window.addEventListener('focus', load);
+  setInterval(()=>{ if(!document.hidden) load(); }, 60000);
+  load();
 })();
 </script>
 
