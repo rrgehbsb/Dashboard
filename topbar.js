@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.5.83';
+const DASHBOARD_VERSION = '2.5.84';
 
 // Auto-update: when a new service worker takes control (new deploy), reload once
 // so the installed app always runs the latest code instead of a stale cached
@@ -320,6 +320,37 @@ window.applyDashSettings(JSON.parse(localStorage.getItem('dashboard:settings:v1'
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="button"]):not([type="submit"]),
   textarea, select { font-size: 16px !important; }
 }
+/* ── Eye break overlay ── */
+.eye-ov {
+  position: fixed; inset: 0; z-index: 9998;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(6,6,10,0.86); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  opacity: 0; transition: opacity .25s;
+}
+.eye-ov.show { opacity: 1; }
+.eye-card {
+  text-align: center; max-width: 420px; padding: 34px 30px;
+  transform: scale(.94); transition: transform .3s cubic-bezier(.22,1,.36,1);
+}
+.eye-ov.show .eye-card { transform: scale(1); }
+.eye-emoji { font-size: 46px; margin-bottom: 10px; animation: eyePulse 2.4s ease-in-out infinite; }
+@keyframes eyePulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+.eye-h { font-size: 26px; font-weight: 800; color: #fff; letter-spacing: -0.02em; }
+.eye-p { font-size: 14px; line-height: 1.6; color: rgba(255,255,255,0.6); margin-top: 10px; }
+.eye-p b { color: var(--accent, #a78bfa); }
+.eye-count {
+  font-size: 68px; font-weight: 800; color: var(--accent, #a78bfa);
+  font-variant-numeric: tabular-nums; margin: 16px 0 6px; line-height: 1;
+  text-shadow: 0 0 40px color-mix(in srgb, var(--accent, #a78bfa) 55%, transparent);
+}
+.eye-btns { display: flex; gap: 10px; justify-content: center; margin-top: 18px; }
+.eye-btns button {
+  border-radius: 11px; padding: 10px 18px; font-family: inherit; font-size: 13px;
+  font-weight: 700; cursor: pointer; border: 1px solid rgba(255,255,255,0.16);
+  background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.75);
+}
+.eye-btns button:hover { background: rgba(255,255,255,0.13); color: #fff; }
+
 /* Floating AI Coach button — one-tap access from every page.
    z-index must beat the home page's own .tabbar (fixed, z-index:50, with a
    backdrop-filter and a near-opaque gradient). At 48 it was painted over and
@@ -3076,6 +3107,199 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
     }catch(e){}
   }
 
+  // ══ EYE BREAKS (20-20-20) ══════════════════════════════════════════════════
+  // Every N minutes at the computer, look ~6m away for 20 seconds. Runs from the
+  // topbar so it works on whichever dashboard page is open, and fires a system
+  // notification so it still reaches you when the tab is in the background.
+  //
+  // DESKTOP ONLY on purpose: this is about computer time, and a phone can't run a
+  // background timer anyway (iOS suspends the page the moment you leave it).
+  //
+  // The clock is driven by TIMESTAMPS, not by counting ticks — browsers throttle
+  // timers in background tabs to about once a minute, so a tick-counting timer
+  // would drift badly exactly when you're not looking at the tab.
+  const EYE_KEY = 'dashboard:eyes:v1';
+  const EYE_DEFAULTS = { on: false, every: 20, rest: 20, from: '09:00', to: '23:59', sound: true };
+  let eyeTimer = null, eyeResting = false;
+
+  function isDesktop() {
+    try {
+      return window.matchMedia('(pointer: fine)').matches && window.innerWidth >= 900;
+    } catch (e) { return false; }
+  }
+  function eyeCfg() {
+    try { return Object.assign({}, EYE_DEFAULTS, JSON.parse(localStorage.getItem(EYE_KEY) || '{}')); }
+    catch (e) { return Object.assign({}, EYE_DEFAULTS); }
+  }
+  function eyeSaveCfg(patch) {
+    const c = Object.assign(eyeCfg(), patch);
+    try { localStorage.setItem(EYE_KEY, JSON.stringify(c)); } catch (e) {}
+    return c;
+  }
+  function eyeDayKey() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function eyeInHours(c) {
+    const now = new Date(), mins = now.getHours() * 60 + now.getMinutes();
+    const p = (s) => { const b = String(s || '').split(':'); return (+b[0] || 0) * 60 + (+b[1] || 0); };
+    const from = p(c.from), to = p(c.to);
+    return from <= to ? (mins >= from && mins <= to) : (mins >= from || mins <= to);
+  }
+
+  // Stats live in the cloud (uid:screen) so the coach can see them and so the
+  // streak survives a browser wipe.
+  async function eyeLog(field) {
+    const day = eyeDayKey();
+    try {
+      const supa = xpSupa(); if (!supa) return;
+      const uid = await xpUid(supa); if (!uid) return;
+      const key = uid + ':screen';
+      const { data } = await supa.from('app_state').select('data').eq('key', key).maybeSingle();
+      const row = (data && data.data) || {};
+      const days = Object.assign({}, row.days || {});
+      const d = Object.assign({ done: 0, skipped: 0 }, days[day] || {});
+      d[field] = (d[field] || 0) + 1;
+      days[day] = d;
+      await supa.from('app_state').upsert(
+        { key: key, data: Object.assign({}, row, { days: days, updatedAt: Date.now() }), updated_at: new Date().toISOString() },
+        { onConflict: 'key' }
+      );
+      window.dispatchEvent(new CustomEvent('eyes-changed'));
+    } catch (e) {}
+  }
+
+  function eyeNotify(c) {
+    try {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      const n = new Notification('👀 Eye break', {
+        body: 'Look ~6 metres away for ' + c.rest + ' seconds. Blink a few times.',
+        icon: '/apple-touch-icon.png',
+        tag: 'eye-break',
+        renotify: true,
+      });
+      n.onclick = function () { window.focus(); n.close(); };
+    } catch (e) {}
+  }
+
+  function eyeBeep() {
+    try {
+      const A = window.AudioContext || window.webkitAudioContext; if (!A) return;
+      const ctx = new A(), o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.value = 660; o.type = 'sine';
+      g.gain.setValueAtTime(0.0001, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.08, ctx.currentTime + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.5);
+      o.start(); o.stop(ctx.currentTime + 0.5);
+      setTimeout(function () { try { ctx.close(); } catch (e) {} }, 800);
+    } catch (e) {}
+  }
+
+  function eyeSchedule(minutes) {
+    clearTimeout(eyeTimer);
+    const c = eyeCfg();
+    if (!c.on || !isDesktop()) return;
+    const at = Date.now() + minutes * 60000;
+    try { localStorage.setItem('dashboard:eyes:nextAt', String(at)); } catch (e) {}
+    eyeTick();
+  }
+  // Poll instead of one long setTimeout: a throttled/suspended tab can sleep
+  // straight through a 20-minute timeout, but comparing against a stored
+  // timestamp catches it the moment the tab wakes up.
+  function eyeTick() {
+    clearTimeout(eyeTimer);
+    eyeTimer = setTimeout(function () {
+      const c = eyeCfg();
+      if (!c.on || !isDesktop()) return;
+      let at = 0;
+      try { at = parseInt(localStorage.getItem('dashboard:eyes:nextAt') || '0', 10); } catch (e) {}
+      if (!at) { eyeSchedule(c.every); return; }
+      if (Date.now() >= at) {
+        if (eyeInHours(c)) eyeStartBreak(c);
+        else eyeSchedule(c.every); // outside your hours — just roll it forward
+        return;
+      }
+      eyeTick();
+    }, 15000);
+  }
+
+  function eyeStartBreak(c) {
+    if (eyeResting) return;
+    eyeResting = true;
+    eyeNotify(c);
+    if (c.sound) eyeBeep();
+
+    const wrap = document.createElement('div');
+    wrap.className = 'eye-ov';
+    wrap.innerHTML =
+      '<div class="eye-card">'
+      + '<div class="eye-emoji">👀</div>'
+      + '<div class="eye-h">Look away</div>'
+      + '<div class="eye-p">Focus on something about <b>6 metres away</b> — out a window if you can. Blink properly a few times.</div>'
+      + '<div class="eye-count" id="eyeCount">' + c.rest + '</div>'
+      + '<div class="eye-btns">'
+        + '<button class="eye-skip" id="eyeSkip">Skip</button>'
+        + '<button class="eye-snooze" id="eyeSnooze">Snooze 5 min</button>'
+      + '</div></div>';
+    document.body.appendChild(wrap);
+    requestAnimationFrame(function () { wrap.classList.add('show'); });
+
+    const end = Date.now() + c.rest * 1000;
+    let iv = setInterval(function () {
+      const left = Math.ceil((end - Date.now()) / 1000);
+      const el = document.getElementById('eyeCount');
+      if (el) el.textContent = String(Math.max(0, left));
+      if (left <= 0) finish('done');
+    }, 250);
+
+    function finish(how) {
+      clearInterval(iv);
+      if (!eyeResting) return;
+      eyeResting = false;
+      wrap.classList.remove('show');
+      setTimeout(function () { try { wrap.remove(); } catch (e) {} }, 260);
+      if (how === 'done') { eyeLog('done'); if (c.sound) eyeBeep(); eyeSchedule(c.every); }
+      else if (how === 'skip') { eyeLog('skipped'); eyeSchedule(c.every); }
+      else eyeSchedule(5); // snooze
+    }
+    const sk = document.getElementById('eyeSkip'), sn = document.getElementById('eyeSnooze');
+    if (sk) sk.addEventListener('click', function () { finish('skip'); });
+    if (sn) sn.addEventListener('click', function () { finish('snooze'); });
+  }
+
+  // Exposed so the Health page's card can drive it without duplicating any logic.
+  window.dashEyes = {
+    cfg: eyeCfg,
+    isDesktop: isDesktop,
+    save: function (patch) {
+      const c = eyeSaveCfg(patch);
+      if (c.on) eyeSchedule(c.every); else { clearTimeout(eyeTimer); try { localStorage.removeItem('dashboard:eyes:nextAt'); } catch (e) {} }
+      return c;
+    },
+    nextAt: function () { try { return parseInt(localStorage.getItem('dashboard:eyes:nextAt') || '0', 10); } catch (e) { return 0; } },
+    test: function () { eyeStartBreak(eyeCfg()); },
+    ask: async function () {
+      try {
+        if (!('Notification' in window)) return 'unsupported';
+        if (Notification.permission === 'granted') return 'granted';
+        return await Notification.requestPermission();
+      } catch (e) { return 'denied'; }
+    },
+  };
+
+  function setupEyes() {
+    if (!isDesktop()) return;
+    const c = eyeCfg();
+    if (!c.on) return;
+    // Resume rather than restart, so reloading a page doesn't reset your 19 minutes.
+    let at = 0;
+    try { at = parseInt(localStorage.getItem('dashboard:eyes:nextAt') || '0', 10); } catch (e) {}
+    if (!at || at - Date.now() > c.every * 60000) eyeSchedule(c.every);
+    else eyeTick();
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) eyeTick(); });
+  }
+
   function boot() {
     injectStyleAndHTML();
     injectUiStyle();
@@ -3085,6 +3309,7 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
     setupXp();
     setupSections();
     setupSectionNav();
+    setupEyes();
     applyHomeGreeting();
     // Re-assert the AI button after the page (esp. the home layout collector) settles.
     window.addEventListener('load', ensureCoachFab);

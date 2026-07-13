@@ -1493,6 +1493,49 @@ details[open] .mp-details-summary::before { content: '▾ '; }
     </div>
   </div>
 
+  <!-- EYE BREAKS -->
+  <div class="sw-card" id="eyesSection">
+    <div class="section-title" style="margin-top:0;margin-bottom:14px">Screen &amp; Eyes</div>
+    <div class="ey-head">
+      <div class="ey-lead">
+        <div class="ey-title">20-20-20 eye breaks</div>
+        <div class="ey-sub" id="eySub">Every 20 min at the computer, look 6m away for 20s.</div>
+      </div>
+      <button class="ey-toggle" id="eyToggle" type="button" role="switch" aria-checked="false"></button>
+    </div>
+
+    <div class="ey-body" id="eyBody">
+      <div class="ey-stats">
+        <div class="ey-stat"><span id="eyToday">0</span><small>breaks today</small></div>
+        <div class="ey-stat"><span id="eyStreak">0</span><small>day streak</small></div>
+        <div class="ey-stat"><span id="eyNext">—</span><small>next break</small></div>
+      </div>
+      <div class="st-bars" id="eyBars"></div>
+      <div class="ey-row">
+        <label>Break every</label>
+        <input type="number" id="eyEvery" min="5" max="120" step="5"> <span class="ey-unit">min</span>
+      </div>
+      <div class="ey-row">
+        <label>Look away for</label>
+        <input type="number" id="eyRest" min="10" max="120" step="5"> <span class="ey-unit">sec</span>
+      </div>
+      <div class="ey-row">
+        <label>Only between</label>
+        <input type="time" id="eyFrom" style="width:auto"> <span class="ey-unit">–</span>
+        <input type="time" id="eyTo" style="width:auto">
+      </div>
+      <div class="ey-row">
+        <label>Chime</label>
+        <input type="checkbox" id="eySound" style="width:auto;transform:scale(1.25)">
+      </div>
+      <div class="ey-actions">
+        <button class="sw-log-btn" id="eyNotifBtn">🔔 Enable notifications</button>
+        <button class="sw-log-btn" id="eyTestBtn">Preview a break</button>
+      </div>
+      <div class="ey-note" id="eyNote"></div>
+    </div>
+  </div>
+
   <!-- SLEEP TRACKER -->
   <div class="sw-card" id="sleepSection">
     <div class="section-title" style="margin-top:0;margin-bottom:14px">Sleep</div>
@@ -3107,6 +3150,35 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catc
   padding-top:12px;border-top:1px solid var(--border);}
 .st-empty b{color:var(--accent);}
 .st-empty:empty,.st-empty.hide{display:none;}
+
+/* ── Eye breaks ── */
+.ey-head{display:flex;align-items:center;gap:14px;}
+.ey-lead{flex:1;min-width:0;}
+.ey-title{font-size:15px;font-weight:700;color:var(--text-primary);}
+.ey-sub{font-size:11.5px;color:var(--text-tertiary);margin-top:2px;line-height:1.45;}
+.ey-toggle{position:relative;flex-shrink:0;width:46px;height:27px;border-radius:14px;border:none;cursor:pointer;
+  background:rgba(255,255,255,0.12);transition:background .2s;-webkit-tap-highlight-color:transparent;}
+.ey-toggle::after{content:'';position:absolute;top:3px;left:3px;width:21px;height:21px;border-radius:50%;
+  background:#fff;transition:transform .2s;}
+.ey-toggle.on{background:var(--accent);}
+.ey-toggle.on::after{transform:translateX(19px);}
+.ey-body{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+.ey-body.off{opacity:.45;pointer-events:none;}
+.ey-stats{display:flex;gap:20px;margin-bottom:4px;}
+.ey-stat{display:flex;flex-direction:column;}
+.ey-stat span{font-size:19px;font-weight:800;color:var(--text-primary);line-height:1.1;}
+.ey-stat small{font-size:10.5px;color:var(--text-tertiary);margin-top:2px;}
+.ey-row{display:flex;align-items:center;gap:9px;margin-top:11px;}
+.ey-row label{flex:1;font-size:13px;color:var(--text-secondary);}
+.ey-row input{width:74px;background:rgba(255,255,255,0.05);border:1px solid var(--border-strong);
+  border-radius:9px;color:var(--text-primary);font-family:inherit;font-size:15px;padding:7px 9px;
+  outline:none;text-align:center;}
+.ey-row input:focus{border-color:var(--accent);}
+.ey-unit{font-size:12px;color:var(--text-tertiary);}
+.ey-actions{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;}
+.ey-note{font-size:11.5px;color:var(--text-tertiary);line-height:1.55;margin-top:12px;}
+.ey-note:empty{display:none;}
+.ey-note b{color:var(--accent);}
 
 /* setup modal */
 .sy-tabs{display:flex;gap:8px;margin-bottom:16px;}
@@ -4922,6 +4994,114 @@ renderMeasurements();
   timer=setInterval(()=>{ if(!document.hidden) refresh(); }, 60000);
 
   load();
+})();
+</script>
+
+<script>
+// ══ EYE BREAKS — the card. The engine itself lives in topbar.js (window.dashEyes)
+// so the timer keeps running on whatever dashboard page is open, not just here.
+(function(){
+  const $=id=>document.getElementById(id);
+  const SB_URL='https://mtuoqwbrujxutofhyahb.supabase.co';
+  const SB_KEY='sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
+  let sb=null,uid=null,days={};
+
+  const E=()=>window.dashEyes;
+  function client(){ if(!sb) sb=window.supabase.createClient(SB_URL,SB_KEY); return sb; }
+  function dkey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+  async function loadStats(){
+    try{
+      const { data:{ session } } = await client().auth.getSession();
+      if(!session) return;
+      uid=session.user.id;
+      const { data } = await client().from('app_state').select('data').eq('key',uid+':screen').maybeSingle();
+      days=((data&&data.data)||{}).days||{};
+      renderStats();
+    }catch(e){}
+  }
+
+  function renderStats(){
+    const today=dkey(new Date());
+    $('eyToday').textContent=String((days[today]||{}).done||0);
+
+    // Streak: consecutive days (ending today or yesterday) with at least one break.
+    let streak=0;
+    for(let i=0;i<400;i++){
+      const d=new Date(); d.setDate(d.getDate()-i);
+      const rec=days[dkey(d)];
+      if(rec&&rec.done>0) streak++;
+      else if(i>0) break;          // a gap ends it
+      else if(i===0) continue;     // today not done yet — don't break the streak
+    }
+    $('eyStreak').textContent=String(streak);
+
+    const week=[];
+    for(let i=6;i>=0;i--){
+      const d=new Date(); d.setDate(d.getDate()-i);
+      week.push({ lbl:'SMTWTFS'[d.getDay()], v:((days[dkey(d)]||{}).done)||0, today:i===0 });
+    }
+    const max=Math.max(1,...week.map(w=>w.v));
+    $('eyBars').innerHTML = week.some(w=>w.v>0) ? week.map(w=>
+      '<div class="st-bar'+(w.today?' today':'')+'" title="'+w.v+' breaks">'
+      +'<div class="st-bar-fill" style="height:'+Math.max(3,Math.round(w.v/max*100))+'%"></div>'
+      +'<div class="st-bar-lbl">'+w.lbl+'</div></div>').join('') : '';
+  }
+
+  function renderCfg(){
+    if(!E()) return;
+    const c=E().cfg();
+    $('eyToggle').classList.toggle('on', !!c.on);
+    $('eyToggle').setAttribute('aria-checked', c.on?'true':'false');
+    $('eyBody').classList.toggle('off', !c.on);
+    $('eyEvery').value=c.every; $('eyRest').value=c.rest;
+    $('eyFrom').value=c.from;   $('eyTo').value=c.to;
+    $('eySound').checked=!!c.sound;
+
+    const next=E().nextAt();
+    $('eyNext').textContent = (c.on && next>Date.now())
+      ? Math.max(1,Math.round((next-Date.now())/60000))+'m' : '—';
+
+    // Be honest about the two things that stop this working.
+    const notes=[];
+    if(!E().isDesktop()) notes.push('This only runs on a <b>computer</b> — a phone suspends the page as soon as you leave it, so a background timer can\'t fire. Your phone shows the stats but won\'t interrupt you.');
+    else {
+      notes.push('Keep the dashboard open in a tab while you work — it can be in the background, the reminder still comes through.');
+      if(('Notification' in window) && Notification.permission!=='granted') notes.push('Turn on notifications so it reaches you when the tab is behind other windows.');
+    }
+    $('eyNote').innerHTML=notes.join('<br><br>');
+  }
+
+  $('eyToggle').addEventListener('click',()=>{
+    const c=E().cfg();
+    E().save({ on:!c.on });
+    if(!c.on && ('Notification' in window) && Notification.permission==='default') E().ask().then(renderCfg);
+    renderCfg();
+  });
+  const bind=(id,key,parse)=>$(id).addEventListener('change',e=>{ E().save({ [key]: parse(e.target) }); renderCfg(); });
+  bind('eyEvery','every',t=>Math.max(5,Math.min(120,parseInt(t.value,10)||20)));
+  bind('eyRest','rest', t=>Math.max(10,Math.min(120,parseInt(t.value,10)||20)));
+  bind('eyFrom','from', t=>t.value||'09:00');
+  bind('eyTo','to',     t=>t.value||'23:59');
+  bind('eySound','sound',t=>t.checked);
+
+  $('eyNotifBtn').addEventListener('click',async()=>{
+    const r=await E().ask();
+    $('eyNotifBtn').textContent = r==='granted' ? '🔔 Notifications on' : (r==='denied' ? '🔕 Blocked in browser' : '🔔 Enable notifications');
+    renderCfg();
+  });
+  $('eyTestBtn').addEventListener('click',()=>E().test());
+
+  window.addEventListener('eyes-changed',()=>{ loadStats(); });
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ loadStats(); renderCfg(); } });
+  setInterval(renderCfg, 30000); // keeps the "next break" countdown honest
+
+  // topbar.js is deferred, so dashEyes may not exist yet on first paint.
+  (function wait(n){
+    if(E()){ renderCfg(); loadStats(); return; }
+    if(n>40) return;
+    setTimeout(()=>wait(n+1),100);
+  })(0);
 })();
 </script>
 
