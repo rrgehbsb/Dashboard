@@ -2777,5 +2777,27 @@ window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashG
 })();
 </script>
 
+<!-- ══ AI COACH BUTTON ══════════════════════════════════════════════════════
+     Deliberately hard-coded here rather than injected by topbar.js. topbar.js is
+     pre-cached by the service worker, so an installed home-screen app can boot
+     from a stale copy of it (cold launch → fetch fails → SW serves its cache) and
+     then no injected button exists at all. This one ships with the page, carries
+     its own styles, and needs no JavaScript to appear. topbar.js checks for
+     #coachFab before creating one, so there is never a duplicate. -->
+<style>
+#coachFab{
+  position:fixed; right:15px; z-index:52;
+  bottom:calc(76px + env(safe-area-inset-bottom));
+  width:56px; height:56px; border-radius:50%; border:none; cursor:pointer;
+  background:var(--accent,#a78bfa); color:#fff; font-size:26px; line-height:1;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 8px 24px -6px var(--accent,#a78bfa), 0 2px 8px rgba(0,0,0,0.3);
+  -webkit-tap-highlight-color:transparent;
+}
+#coachFab:active{ transform:scale(0.9); }
+</style>
+<button id="coachFab" class="coach-fab" type="button" aria-label="Ask your AI Coach"
+        onclick="window.location.href='coach.html'">🧠</button>
+
 </body>
 </html>
