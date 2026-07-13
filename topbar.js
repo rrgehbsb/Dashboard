@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.5.90';
+const DASHBOARD_VERSION = '2.5.91';
 
 // Auto-update: when a new service worker takes control (new deploy), reload once
 // so the installed app always runs the latest code instead of a stale cached
@@ -533,17 +533,43 @@ body.topbar-modal-open { overflow: hidden; touch-action: none; }
 }
 
 /* Section titles — same look on every page */
+/* Section headers used to be 10px at 35% opacity — invisible, so a long page read
+   as one undifferentiated list. Each section now gets a readable name, an icon and
+   its own colour, so you can find things by scanning instead of reading. */
 .section-title {
-  font-size: 10px !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.1em !important;
-  text-transform: uppercase !important;
-  color: rgba(255,255,255,0.35) !important;
-  margin-bottom: 16px !important;
+  --sec-c: var(--accent, #a78bfa);
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 9px !important;
+  font-size: 13.5px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.005em !important;
+  text-transform: none !important;
+  color: rgba(255,255,255,0.93) !important;
+  margin-bottom: 14px !important;
   padding-bottom: 11px !important;
-  border-bottom: 1px solid rgba(255,255,255,0.07) !important;
-  display: block !important;
+  border-bottom: 1px solid rgba(255,255,255,0.06) !important;
 }
+/* pages draw their own '≡' glyph here — the icon chip replaces it */
+.section-title::before { content: none !important; }
+/* the section's colour, as a short underline rather than a loud background */
+.section-title::after {
+  content: ''; position: absolute; left: 0; bottom: -1px;
+  width: 40px; height: 2px; border-radius: 2px;
+  background: var(--sec-c);
+}
+.section-title .sec-ic {
+  flex: 0 0 27px; width: 27px; height: 27px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 9px; font-size: 14px; line-height: 1;
+  background: color-mix(in srgb, var(--sec-c) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--sec-c) 32%, transparent);
+}
+/* Reorder/collapse controls: present, but they shouldn't compete with the name. */
+.section-title .sec-right { margin-left: auto !important; opacity: 0.3; transition: opacity 0.15s; }
+.section-title:hover .sec-right, .section-title .sec-right:focus-within { opacity: 0.85; }
+html[data-theme="light"] .section-title { color: rgba(0,0,0,0.88) !important; }
 html[data-theme="light"] .section-title {
   color: rgba(0,0,0,0.35) !important;
   border-bottom-color: rgba(0,0,0,0.07) !important;
@@ -3057,6 +3083,61 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
   // elements the reorder system uses, in live DOM order — so moving a section
   // moves it here too. On phone it's a right-edge tab that opens a slide-out
   // list (no permanent side space). Auto-adapts to whatever the page contains.
+  // Give every section its own icon + colour, so a long page can be scanned rather
+  // than read. Matched on the header's own words, so it works on every page without
+  // touching any of them.
+  const SECTION_LOOKS = [
+    [/water|hydrat/i,            '💧', '#38bdf8'],
+    [/step/i,                    '👟', '#34d399'],
+    [/sleep/i,                   '😴', '#818cf8'],
+    [/stack|supplement/i,        '💊', '#f472b6'],
+    [/screen|eye/i,              '👀', '#fbbf24'],
+    [/app usage|usage/i,         '📱', '#fb7185'],
+    [/measure/i,                 '📏', '#22d3ee'],
+    [/meal|food|nutrition|fuel/i,'🍽️', '#f59e0b'],
+    [/weight/i,                  '⚖️', '#c084fc'],
+    [/workout|exercise|gym/i,    '💪', '#f97316'],
+    [/overload|progress/i,       '📈', '#4ade80'],
+    [/coach/i,                   '🧠', '#a78bfa'],
+    [/mood/i,                    '🙂', '#facc15'],
+    [/goal/i,                    '🎯', '#f43f5e'],
+    [/gem/i,                     '💎', '#2dd4bf'],
+    [/habit|streak/i,            '🔥', '#fb923c'],
+    [/school|study|grade|exam/i, '📚', '#60a5fa'],
+    [/task|todo|assignment/i,    '✅', '#4ade80'],
+    [/bus|train|transport/i,     '🚌', '#38bdf8'],
+    [/alert|reminder|notif/i,    '🔔', '#fbbf24'],
+    [/project/i,                 '🗂️', '#a3a3a3'],
+    [/friend|social/i,           '👥', '#f472b6'],
+    [/money|finance|spend/i,     '💰', '#4ade80'],
+    [/day|today|ring/i,          '⏱️', '#818cf8'],
+  ];
+  function styleSections() {
+    try {
+      document.querySelectorAll('.section-title').forEach(function (t) {
+        if (t.querySelector('.sec-ic')) return; // already done
+        const txt = (t.textContent || '').trim();
+        let icon = '◆', color = '';
+        for (let i = 0; i < SECTION_LOOKS.length; i++) {
+          if (SECTION_LOOKS[i][0].test(txt)) { icon = SECTION_LOOKS[i][1]; color = SECTION_LOOKS[i][2]; break; }
+        }
+        if (!color) {
+          // Unknown section: derive a stable hue from its name so it still gets an
+          // identity of its own rather than defaulting into the same purple.
+          let h = 0;
+          for (let i = 0; i < txt.length; i++) h = (h * 31 + txt.charCodeAt(i)) % 360;
+          color = 'hsl(' + h + ' 65% 62%)';
+        }
+        t.style.setProperty('--sec-c', color);
+        const ic = document.createElement('span');
+        ic.className = 'sec-ic';
+        ic.textContent = icon;
+        ic.setAttribute('aria-hidden', 'true');
+        t.insertBefore(ic, t.firstChild);
+      });
+    } catch (e) {}
+  }
+
   function setupSectionNav(){
     try{
       if(isEmbedded() || isSettingsPage() || isFinancePage()) return;
@@ -3362,6 +3443,7 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
     setupBuddy();
     setupXp();
     setupSections();
+    styleSections(); // after setupSections, so the icon lands before its controls
     setupSectionNav();
     setupEyes();
     applyHomeGreeting();
