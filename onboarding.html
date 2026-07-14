@@ -10,379 +10,398 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
       --ac: #a78bfa;
-      --bg: #07070c;
-      --ink: #f4f5fb;
-      --ink-dim: rgba(244,245,251,0.5);
-      --ink-faint: rgba(244,245,251,0.32);
-      --card: rgba(255,255,255,0.045);
-      --line: rgba(255,255,255,0.09);
-      --mono: ui-monospace,"SF Mono",Menlo,Consolas,monospace;
-    }
-    :root.lite {
-      --bg: #eef0f6; --ink: #14151c; --ink-dim: rgba(20,21,28,0.55);
-      --ink-faint: rgba(20,21,28,0.4); --card: rgba(255,255,255,0.7); --line: rgba(0,0,0,0.09);
+      --bg: #000;
+      --ink: #fff;
+      --dim: rgba(255,255,255,0.62);
+      --faint: rgba(255,255,255,0.34);
+      --card: rgba(255,255,255,0.07);
+      --line: rgba(255,255,255,0.1);
     }
     html, body { height: 100%; }
     body {
+      background: var(--bg); color: var(--ink);
       font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
-      background: var(--bg); color: var(--ink); overflow: hidden;
-      transition: background .5s ease, color .3s ease;
-      -webkit-font-smoothing: antialiased;
+      -webkit-font-smoothing: antialiased; overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
     }
 
-    /* ── Animated background ── */
-    .bg { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
-    .orb { position: absolute; border-radius: 50%; filter: blur(60px); opacity: 0.55;
-      mix-blend-mode: screen; animation: float 18s ease-in-out infinite; }
-    :root.lite .orb { mix-blend-mode: multiply; opacity: 0.4; }
-    .orb.a { width: 46vmax; height: 46vmax; left: -12vmax; top: -14vmax;
-      background: radial-gradient(circle, var(--ac), transparent 65%); }
-    .orb.b { width: 40vmax; height: 40vmax; right: -12vmax; top: 20vmax;
-      background: radial-gradient(circle, #3ba6ff, transparent 65%); animation-delay: -6s; }
-    .orb.c { width: 38vmax; height: 38vmax; left: 20vmax; bottom: -18vmax;
-      background: radial-gradient(circle, #ff5da2, transparent 65%); animation-delay: -11s; }
-    @keyframes float {
-      0%,100% { transform: translate(0,0) scale(1); }
-      33% { transform: translate(6vmax,4vmax) scale(1.12); }
-      66% { transform: translate(-5vmax,3vmax) scale(0.94); }
+    /* ── Top rail: back + progress ── */
+    .rail {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+      display: flex; align-items: center; gap: 14px;
+      padding: calc(12px + env(safe-area-inset-top)) 18px 12px;
     }
-    .grid { position: absolute; inset: -2px; opacity: 0.35;
-      background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
-      background-size: 46px 46px; mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 30%, transparent 78%);
-      -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 30%, transparent 78%);
-      animation: gridpan 24s linear infinite; }
-    @keyframes gridpan { to { background-position: 46px 46px; } }
+    .back {
+      width: 42px; height: 42px; flex-shrink: 0; border-radius: 50%;
+      border: none; background: rgba(255,255,255,0.1); color: #fff;
+      font-size: 20px; cursor: pointer; display: grid; place-items: center;
+      transition: opacity .2s;
+    }
+    .back:disabled { opacity: 0; pointer-events: none; }
+    .bar { flex: 1; height: 6px; border-radius: 3px; background: rgba(255,255,255,0.14); overflow: hidden; }
+    .bar i { display: block; height: 100%; width: 0; border-radius: 3px; background: var(--ac); transition: width .45s cubic-bezier(.22,1,.36,1); }
 
-    /* ── Layout ── */
-    .stage { position: relative; z-index: 1; min-height: 100dvh; display: flex; flex-direction: column;
-      align-items: center; justify-content: center; padding: 22px 16px calc(22px + env(safe-area-inset-bottom)); }
-    .shell { width: 100%; max-width: 520px; }
+    /* ── Stage ── */
+    .stage {
+      height: 100dvh; display: flex; flex-direction: column;
+      padding: calc(74px + env(safe-area-inset-top)) 20px calc(20px + env(safe-area-inset-bottom));
+    }
+    .scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    .scroll::-webkit-scrollbar { display: none; }
 
-    /* ── Progress rail ── */
-    .rail { display: flex; align-items: center; gap: 6px; justify-content: center; margin-bottom: 20px; opacity: 0; height: 0; overflow: hidden; transition: opacity .4s; }
-    .rail.show { opacity: 1; height: auto; }
-    .rail-node { display: flex; align-items: center; gap: 6px; cursor: pointer; }
-    .rail-dot { width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--line);
-      display: grid; place-items: center; font-size: 11px; font-weight: 800; color: var(--ink-faint);
-      font-family: var(--mono); transition: all .3s; background: var(--card); }
-    .rail-node.done .rail-dot { border-color: var(--ac); color: var(--ac); }
-    .rail-node.active .rail-dot { border-color: var(--ac); color: #fff; background: var(--ac);
-      box-shadow: 0 0 0 4px color-mix(in srgb, var(--ac) 22%, transparent); }
-    .rail-line { width: 26px; height: 2px; border-radius: 2px; background: var(--line); transition: background .3s; }
-    .rail-node.done + .rail-line { background: var(--ac); }
-    @media (max-width: 420px){ .rail-line { width: 16px; } }
-
-    /* ── Deck / card ── */
-    .deck { position: relative; }
     .slide { display: none; }
-    .slide.on { display: block; animation: slidein .5s cubic-bezier(.22,1,.36,1); }
-    @keyframes slidein { from { opacity: 0; transform: translateY(16px) scale(.985); } to { opacity: 1; transform: none; } }
+    .slide.on { display: block; animation: in .45s cubic-bezier(.22,1,.36,1); }
+    @keyframes in { from { opacity: 0; transform: translateY(18px); } }
 
-    .card { background: var(--card); border: 1px solid var(--line); border-radius: 26px;
-      padding: 30px 24px 26px; backdrop-filter: blur(26px); -webkit-backdrop-filter: blur(26px);
-      box-shadow: 0 30px 80px -30px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06);
-      position: relative; overflow: hidden; }
-    .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
-      background: linear-gradient(90deg, transparent, var(--ac), transparent); opacity: .7; }
+    h1 {
+      font-size: 31px; font-weight: 850; line-height: 1.12; letter-spacing: -0.025em;
+      text-align: center;
+    }
+    h1.left { text-align: left; }
+    .lede { font-size: 15.5px; color: var(--dim); line-height: 1.5; text-align: center; margin-top: 12px; }
+    .grad { background: linear-gradient(92deg, #f87171, #fb923c, #fbbf24); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .grad2 { background: linear-gradient(92deg, #fbbf24, #34d399, #22d3ee); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .kicker { font-size: 16px; font-weight: 700; color: var(--faint); text-align: center; margin-bottom: 8px; }
 
-    .eyebrow { font-family: var(--mono); font-size: 10.5px; letter-spacing: .22em; text-transform: uppercase;
-      color: var(--ac); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
-    .eyebrow::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--ac), transparent); opacity: .5; }
-    h1 { font-size: 27px; font-weight: 850; letter-spacing: -0.02em; line-height: 1.12; }
-    h1 .hl { color: var(--ac); }
-    .lede { font-size: 14.5px; color: var(--ink-dim); line-height: 1.55; margin-top: 10px; }
+    /* ── Phone mockup (intro slides) ── */
+    .phone {
+      width: 236px; margin: 0 auto 26px; border-radius: 30px; padding: 10px 9px;
+      background: #0d0d12; border: 2px solid rgba(255,255,255,0.14);
+      box-shadow: 0 0 44px -8px color-mix(in srgb, var(--ac) 55%, transparent);
+    }
+    .pnotch { width: 58px; height: 4px; border-radius: 3px; background: rgba(255,255,255,0.18); margin: 1px auto 9px; }
+    .prow {
+      display: flex; align-items: center; gap: 8px; padding: 8px 9px; margin-bottom: 6px;
+      border-radius: 11px; background: rgba(255,255,255,0.05);
+    }
+    .prow.fill { background: var(--pc, var(--ac)); }
+    .pic { font-size: 14px; }
+    .pbar { flex: 1; height: 6px; border-radius: 3px; background: rgba(255,255,255,0.14); overflow: hidden; }
+    .pbar i { display: block; height: 100%; background: var(--pc, var(--ac)); border-radius: 3px; }
+    .prow.fill .pbar { background: rgba(255,255,255,0.35); }
+    .ptxt { font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.8); }
+    .prow.fill .ptxt { color: #fff; }
+    .pring {
+      width: 62px; height: 62px; border-radius: 50%; margin: 4px auto 10px;
+      background: conic-gradient(var(--ac) 68%, rgba(255,255,255,0.1) 0);
+      display: grid; place-items: center;
+    }
+    .pring b { width: 46px; height: 46px; border-radius: 50%; background: #0d0d12; display: grid; place-items: center; font-size: 12px; }
+    .pgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .ptile { border-radius: 10px; padding: 9px 8px; background: rgba(255,255,255,0.05); }
+    .ptile s { display: block; font-size: 14px; font-weight: 800; text-decoration: none; }
+    .ptile u { display: block; font-size: 7.5px; color: var(--faint); text-decoration: none; margin-top: 1px; }
 
-    .reveal > * { opacity: 0; animation: rise .55s cubic-bezier(.22,1,.36,1) forwards; }
-    .reveal > *:nth-child(1){ animation-delay: .05s; }
-    .reveal > *:nth-child(2){ animation-delay: .13s; }
-    .reveal > *:nth-child(3){ animation-delay: .21s; }
-    .reveal > *:nth-child(4){ animation-delay: .29s; }
-    .reveal > *:nth-child(5){ animation-delay: .37s; }
-    .reveal > *:nth-child(6){ animation-delay: .45s; }
-    @keyframes rise { to { opacity: 1; transform: none; } }
-    [style*="rise"], .reveal > * { transform: translateY(10px); }
+    /* ── Option cards ── */
+    .opts { display: flex; flex-direction: column; gap: 11px; margin-top: 22px; }
+    .opt {
+      display: flex; align-items: center; gap: 13px; width: 100%; text-align: left;
+      padding: 16px 15px; border-radius: 17px; cursor: pointer;
+      background: var(--card); border: 1.5px solid transparent;
+      color: var(--ink); font-family: inherit; font-size: 15px; line-height: 1.4;
+      transition: background .18s, transform .1s;
+    }
+    .opt:active { transform: scale(0.985); }
+    .opt.on { background: var(--ac); color: #fff; }
+    .opt .oe { font-size: 21px; flex-shrink: 0; }
+    .opt b { font-weight: 800; }
+    .opt .od { display: block; font-size: 12.5px; color: var(--dim); margin-top: 2px; }
+    .opt.on .od { color: rgba(255,255,255,0.85); }
 
-    /* chips */
-    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
-    .chip { font-size: 12.5px; font-weight: 600; padding: 7px 12px; border-radius: 20px;
-      background: color-mix(in srgb, var(--ac) 12%, transparent); border: 1px solid color-mix(in srgb, var(--ac) 30%, transparent);
-      color: var(--ink); display: inline-flex; align-items: center; gap: 6px; }
+    /* insight card at the foot of a question */
+    .insight {
+      display: flex; gap: 13px; align-items: flex-start; margin-top: 22px;
+      padding: 15px 15px; border-radius: 17px; background: var(--card);
+      font-size: 13.5px; line-height: 1.5; color: var(--dim);
+    }
+    .insight .ie { font-size: 24px; flex-shrink: 0; }
+    .insight b { color: var(--ink); font-weight: 800; }
 
-    /* fields */
-    .field { margin-top: 20px; }
-    .field label { display: block; font-size: 11px; font-weight: 700; letter-spacing: .05em;
-      text-transform: uppercase; color: var(--ink-faint); margin-bottom: 8px; }
-    .field input { width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--line);
-      border-radius: 13px; padding: 13px 15px; font-size: 16px; color: var(--ink); font-family: inherit; outline: none;
-      transition: border-color .15s, box-shadow .15s; -webkit-appearance: none; }
-    :root.lite .field input { background: rgba(255,255,255,0.6); }
-    .field input:focus { border-color: var(--ac); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ac) 16%, transparent); }
+    /* ── Name field ── */
+    .namewrap { margin-top: 46px; text-align: center; }
+    .namewrap input {
+      width: 100%; background: none; border: none; border-bottom: 2px solid var(--line);
+      color: var(--ink); font-family: inherit; font-size: 30px; font-weight: 800;
+      text-align: center; padding: 10px 0; outline: none;
+    }
+    .namewrap input:focus { border-bottom-color: var(--ac); }
+    .count { font-size: 12px; color: var(--faint); text-align: right; margin-top: 8px; }
 
-    /* big option cards (intro) */
-    .opts { display: grid; gap: 13px; margin-top: 22px; }
-    .opt { display: flex; align-items: center; gap: 15px; text-align: left; cursor: pointer;
-      background: rgba(255,255,255,0.035); border: 1.5px solid var(--line); border-radius: 18px;
-      padding: 17px 17px; color: var(--ink); font-family: inherit;
-      transition: transform .12s, border-color .18s, background .18s; -webkit-tap-highlight-color: transparent; }
-    :root.lite .opt { background: rgba(255,255,255,0.55); }
-    .opt:hover { border-color: color-mix(in srgb, var(--ac) 55%, transparent); transform: translateY(-2px); }
-    .opt:active { transform: scale(.99); }
-    .opt-ic { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; font-size: 25px;
-      background: color-mix(in srgb, var(--ac) 15%, transparent); border: 1px solid color-mix(in srgb, var(--ac) 26%, transparent); flex-shrink: 0; }
-    .opt-tt { font-size: 16.5px; font-weight: 750; }
-    .opt-ds { font-size: 12.5px; color: var(--ink-dim); margin-top: 3px; line-height: 1.4; }
-    .opt-go { margin-left: auto; color: var(--ac); font-size: 22px; }
+    /* ── Toggle rows (notifications) ── */
+    .trow { display: flex; align-items: center; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+    .trow:last-of-type { border-bottom: none; }
+    .trow .tt { flex: 1; }
+    .trow .tt b { display: block; font-size: 15px; font-weight: 800; }
+    .trow .tt span { display: block; font-size: 12.5px; color: var(--dim); margin-top: 2px; line-height: 1.4; }
+    .sw {
+      width: 50px; height: 30px; border-radius: 16px; border: none; flex-shrink: 0;
+      background: rgba(255,255,255,0.16); position: relative; cursor: pointer; transition: background .2s;
+    }
+    .sw::after { content:''; position:absolute; top:3px; left:3px; width:24px; height:24px; border-radius:50%; background:#fff; transition: transform .2s; }
+    .sw.on { background: #34d399; }
+    .sw.on::after { transform: translateX(20px); }
 
-    /* page picker */
-    .pgs { display: grid; gap: 9px; margin-top: 16px; max-height: 46dvh; overflow-y: auto; padding-right: 3px;
-      -webkit-overflow-scrolling: touch; }
-    .pgs::-webkit-scrollbar { width: 5px; } .pgs::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
-    .pg { display: flex; align-items: center; gap: 13px; background: rgba(255,255,255,0.035);
-      border: 1px solid var(--line); border-radius: 15px; padding: 12px 14px; cursor: pointer;
-      transition: border-color .15s, background .15s, opacity .2s; -webkit-tap-highlight-color: transparent; }
-    :root.lite .pg { background: rgba(255,255,255,0.5); }
-    .pg.locked { cursor: default; opacity: .6; }
-    .pg.off { opacity: .5; }
-    .pg-ic { font-size: 23px; width: 30px; text-align: center; }
-    .pg-b { flex: 1; min-width: 0; }
-    .pg-n { font-size: 15px; font-weight: 650; }
-    .pg-n .tag { font-size: 10px; font-weight: 700; font-family: var(--mono); letter-spacing: .04em;
-      color: var(--ink-faint); margin-left: 6px; text-transform: uppercase; }
-    .pg-d { font-size: 12px; color: var(--ink-dim); margin-top: 1px; }
-    .sw { width: 46px; height: 27px; border-radius: 14px; background: rgba(255,255,255,0.16);
-      position: relative; flex-shrink: 0; transition: background .2s; }
-    .sw::after { content: ''; position: absolute; top: 3px; left: 3px; width: 21px; height: 21px; border-radius: 50%;
-      background: #fff; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
-    .pg.on .sw, .sw.on { background: var(--ac); }
-    .pg.on .sw::after, .sw.on::after { transform: translateX(19px); }
+    /* ── Chips (habit picker / accents) ── */
+    .chips { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 20px; }
+    .chip {
+      display: flex; align-items: center; gap: 7px; padding: 11px 14px; border-radius: 15px;
+      background: var(--card); border: 1.5px solid transparent; color: var(--ink);
+      font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+    }
+    .chip.on { background: var(--ac); color: #fff; }
+    .sws { display: flex; flex-wrap: wrap; gap: 11px; justify-content: center; margin-top: 20px; }
+    .sws button { width: 40px; height: 40px; border-radius: 50%; border: 2.5px solid transparent; cursor: pointer; }
+    .sws button.on { border-color: #fff; transform: scale(1.12); }
+    .modes { display: flex; gap: 10px; margin-top: 18px; }
+    .mode {
+      flex: 1; padding: 15px 12px; border-radius: 16px; cursor: pointer;
+      background: var(--card); border: 1.5px solid transparent; color: var(--ink);
+      font-family: inherit; text-align: center;
+    }
+    .mode.on { border-color: var(--ac); background: color-mix(in srgb, var(--ac) 16%, transparent); }
+    .mode b { display: block; font-size: 14px; font-weight: 800; }
+    .mode span { display: block; font-size: 11px; color: var(--dim); margin-top: 3px; }
 
-    /* simplify banner */
-    .simp { display: flex; align-items: center; gap: 13px; margin-top: 4px; margin-bottom: 4px;
-      background: color-mix(in srgb, var(--ac) 10%, transparent); border: 1px solid color-mix(in srgb, var(--ac) 26%, transparent);
-      border-radius: 16px; padding: 13px 15px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-    .simp-b { flex: 1; }
-    .simp-n { font-size: 14.5px; font-weight: 750; }
-    .simp-d { font-size: 12px; color: var(--ink-dim); margin-top: 2px; line-height: 1.4; }
+    /* ── Contract ── */
+    .contract { margin-top: 18px; }
+    .cl { display: flex; gap: 11px; font-size: 15px; line-height: 1.5; margin-bottom: 14px; color: var(--dim); }
+    .cl::before { content: '•'; color: var(--ac); font-weight: 800; }
+    .cl b { color: var(--ink); font-weight: 800; }
+    .hold {
+      width: 116px; height: 116px; margin: 26px auto 10px; position: relative;
+      display: grid; place-items: center; cursor: pointer;
+    }
+    .hold svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+    .hold .hbg { fill: none; stroke: rgba(255,255,255,0.14); stroke-width: 4; }
+    .hold .hfg {
+      fill: none; stroke: var(--ac); stroke-width: 4; stroke-linecap: round;
+      stroke-dasharray: 339; stroke-dashoffset: 339; transition: stroke-dashoffset .1s linear;
+    }
+    .hold span { font-size: 30px; }
+    .holdt { text-align: center; font-size: 21px; font-weight: 850; }
+    .holdh { text-align: center; font-size: 13px; color: var(--faint); margin-top: 8px; line-height: 1.5; }
 
-    /* design */
-    .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
-    .seg button { padding: 15px; border-radius: 15px; border: 1.5px solid var(--line); background: rgba(255,255,255,0.035);
-      color: var(--ink); font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
-      transition: all .16s; -webkit-tap-highlight-color: transparent; display: flex; align-items: center; justify-content: center; gap: 8px; }
-    .seg button.sel { border-color: var(--ac); background: color-mix(in srgb, var(--ac) 14%, transparent); }
-    .swatches { display: flex; flex-wrap: wrap; gap: 11px; margin-top: 14px; }
-    .swatch { width: 42px; height: 42px; border-radius: 50%; cursor: pointer; position: relative;
-      transition: transform .14s; border: 2px solid transparent; }
-    .swatch:hover { transform: scale(1.1); }
-    .swatch.sel { border-color: var(--ink); box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px currentColor; }
-    .swatch.sel::after { content: '✓'; position: absolute; inset: 0; display: grid; place-items: center; color: #fff;
-      font-size: 16px; font-weight: 900; text-shadow: 0 1px 3px rgba(0,0,0,.5); }
-    .preview { margin-top: 20px; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: rgba(0,0,0,0.18); }
-    :root.lite .preview { background: rgba(0,0,0,0.04); }
-    .pv-bar { height: 42px; display: flex; align-items: center; gap: 8px; padding: 0 13px;
-      border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--ac) 8%, transparent); }
-    .pv-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ac); box-shadow: 0 0 8px var(--ac); }
-    .pv-t { font-size: 12px; font-weight: 800; letter-spacing: .04em; }
-    .pv-body { padding: 14px; display: grid; gap: 9px; }
-    .pv-row { height: 34px; border-radius: 9px; background: rgba(255,255,255,0.05); position: relative; overflow: hidden; }
-    :root.lite .pv-row { background: rgba(0,0,0,0.05); }
-    .pv-row::before { content: ''; position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-      width: 18px; height: 18px; border-radius: 6px; background: var(--ac); opacity: .85; }
-    .pv-fill { height: 100%; border-radius: 9px; background: linear-gradient(90deg, var(--ac), transparent);
-      opacity: .4; animation: grow 1.4s ease infinite alternate; }
-    @keyframes grow { from { width: 35%; } to { width: 85%; } }
+    /* ── Footer CTA ── */
+    .foot { padding-top: 16px; flex-shrink: 0; }
+    .cta {
+      width: 100%; padding: 17px; border-radius: 30px; border: none;
+      background: var(--ac); color: #fff; font-family: inherit;
+      font-size: 16.5px; font-weight: 800; cursor: pointer;
+      transition: opacity .2s, transform .1s;
+    }
+    .cta:active { transform: scale(0.985); }
+    .cta:disabled { opacity: 0.35; }
+    .skip {
+      display: block; width: 100%; margin-top: 12px; background: none; border: none;
+      color: var(--faint); font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+    }
 
-    /* finish */
-    .done-ic { width: 78px; height: 78px; margin: 4px auto 4px; border-radius: 50%; display: grid; place-items: center;
-      font-size: 38px; background: color-mix(in srgb, var(--ac) 16%, transparent);
-      border: 1.5px solid color-mix(in srgb, var(--ac) 34%, transparent);
-      animation: pop .6s cubic-bezier(.2,1.5,.4,1), glow 2.2s ease-in-out infinite; }
-    @keyframes pop { from { transform: scale(0); } }
-    @keyframes glow { 0%,100%{ box-shadow: 0 0 0 0 color-mix(in srgb, var(--ac) 40%, transparent);} 50%{ box-shadow: 0 0 0 14px transparent;} }
-    .sum { margin-top: 18px; display: grid; gap: 8px; }
-    .sum-row { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--ink-dim);
-      background: rgba(255,255,255,0.03); border: 1px solid var(--line); border-radius: 12px; padding: 11px 13px; }
-    .sum-row b { color: var(--ink); font-weight: 700; }
-    .sum-row .k { color: var(--ac); }
-
-    /* buttons */
-    .row { display: flex; gap: 10px; margin-top: 22px; align-items: center; }
-    .btn { flex: 1; padding: 15px; border: none; border-radius: 15px; background: var(--ac); color: #fff;
-      font-size: 15px; font-weight: 800; font-family: inherit; cursor: pointer; letter-spacing: .01em;
-      box-shadow: 0 12px 30px -10px var(--ac); transition: transform .1s, box-shadow .2s, opacity .15s; -webkit-tap-highlight-color: transparent; }
-    .btn:active { transform: scale(.98); }
-    .btn:disabled { opacity: .5; }
-    .btn.ghost { background: transparent; color: var(--ink-dim); box-shadow: none; border: 1px solid var(--line); flex: 0 0 auto; padding: 15px 18px; }
-    .skip { display: block; width: 100%; text-align: center; margin-top: 12px; background: none; border: none;
-      color: var(--ink-faint); font-size: 13px; font-family: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
-
-    .loading { text-align: center; color: var(--ink-dim); font-size: 14px; padding: 40px; }
-    .spin { display: inline-block; width: 18px; height: 18px; border: 2px solid var(--line); border-top-color: var(--ac);
-      border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: 8px; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    /* Preview mode (from Settings) */
-    .pv-badge { position: fixed; top: calc(12px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 30;
-      font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; font-weight: 700;
-      color: var(--ac); background: color-mix(in srgb, var(--ac) 14%, transparent);
-      border: 1px solid color-mix(in srgb, var(--ac) 34%, transparent); padding: 6px 13px; border-radius: 20px; white-space: nowrap; }
-    .pv-exit { position: fixed; top: calc(10px + env(safe-area-inset-top)); right: 12px; z-index: 30;
-      background: var(--card); border: 1px solid var(--line); color: var(--ink); font-family: inherit; font-size: 13px; font-weight: 600;
-      padding: 8px 12px; border-radius: 12px; cursor: pointer; -webkit-tap-highlight-color: transparent; backdrop-filter: blur(10px); }
-    @media (prefers-reduced-motion: reduce){ *{ animation-duration: .001s !important; } }
+    /* floating emoji on the hello screen */
+    .floaters { position: relative; height: 150px; }
+    .floaters i {
+      position: absolute; font-size: 30px; font-style: normal;
+      animation: bob 4.5s ease-in-out infinite;
+    }
+    @keyframes bob { 0%,100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-16px) rotate(4deg); } }
   </style>
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-  <link rel="icon" type="image/svg+xml" href="/icon.svg">
 </head>
 <body>
-  <div class="bg"><div class="grid"></div><div class="orb a"></div><div class="orb b"></div><div class="orb c"></div></div>
 
-  <button id="pvExit" class="pv-exit" onclick="location.href='settings.html'" style="display:none">✕ Close preview</button>
-  <div id="pvBadge" class="pv-badge" style="display:none">👁 Preview · nothing is saved</div>
+<div class="rail">
+  <button class="back" id="backBtn" aria-label="Back">‹</button>
+  <div class="bar"><i id="barFill"></i></div>
+</div>
 
-  <div class="stage">
-    <div class="shell">
-      <div id="boot" class="loading"><span class="spin"></span> Loading…</div>
+<div class="stage">
+  <div class="scroll" id="scroll">
 
-      <div id="app" style="display:none">
-        <!-- progress rail -->
-        <div class="rail" id="rail">
-          <div class="rail-node" data-step="welcome" onclick="jump('welcome')"><span class="rail-dot">1</span></div>
-          <div class="rail-line"></div>
-          <div class="rail-node" data-step="pages" onclick="jump('pages')"><span class="rail-dot">2</span></div>
-          <div class="rail-line"></div>
-          <div class="rail-node" data-step="design" onclick="jump('design')"><span class="rail-dot">3</span></div>
-          <div class="rail-line"></div>
-          <div class="rail-node" data-step="finish" onclick="jump('finish')"><span class="rail-dot">✓</span></div>
+    <!-- ══ 1–3 · What this thing is ══ -->
+    <div class="slide" data-step="intro1">
+      <div class="phone">
+        <div class="pnotch"></div>
+        <div class="pring"><b>78%</b></div>
+        <div class="prow fill" style="--pc:#e74c3c"><span class="pic">💪</span><span class="ptxt">Push day · done</span></div>
+        <div class="prow" style="--pc:#00bfff"><span class="pic">💧</span><div class="pbar"><i style="width:62%"></i></div></div>
+        <div class="prow" style="--pc:#8b5cf6"><span class="pic">🧠</span><div class="pbar"><i style="width:30%"></i></div></div>
+      </div>
+      <h1>Everything you're<br>tracking, in one place</h1>
+      <p class="lede">Training, food, water, sleep, school and habits — all in one dashboard, on every device you own.</p>
+    </div>
+
+    <div class="slide" data-step="intro2">
+      <div class="phone">
+        <div class="pnotch"></div>
+        <div class="pgrid">
+          <div class="ptile"><s style="color:#34d399">58.6</s><u>kg · up 1.2</u></div>
+          <div class="ptile"><s style="color:#fb923c">12</s><u>day streak</u></div>
+          <div class="ptile"><s style="color:#60a5fa">2,340</s><u>kcal today</u></div>
+          <div class="ptile"><s style="color:#f472b6">5/5</s><u>workouts</u></div>
         </div>
+        <div class="prow" style="margin-top:6px;--pc:#a78bfa"><span class="pic">📈</span><div class="pbar"><i style="width:78%"></i></div></div>
+      </div>
+      <h1>It remembers,<br>so you don't have to</h1>
+      <p class="lede">Every set, every weigh-in, every meal is kept. You get to see whether things are actually moving — not just guess.</p>
+    </div>
 
-        <div class="deck">
-          <!-- INTRO -->
-          <div class="slide on" id="s-intro">
-            <div class="card reveal">
-              <div class="eyebrow">Welcome aboard</div>
-              <h1>Your <span class="hl">dashboard</span>,<br>your way.</h1>
-              <div class="lede">This is your personal command center — health, fitness, school, habits and more, all in one place that syncs across your devices.</div>
-              <div class="opts">
-                <button class="opt" onclick="startTour()">
-                  <span class="opt-ic">✨</span>
-                  <span><div class="opt-tt">Take the guided tour</div><div class="opt-ds">I'll walk you through it in a few quick steps.</div></span>
-                  <span class="opt-go">→</span>
-                </button>
-                <button class="opt" onclick="doItMyself()">
-                  <span class="opt-ic">⚡</span>
-                  <span><div class="opt-tt">I'll set it up myself</div><div class="opt-ds">Skip the tour — jump straight to the dashboard.</div></span>
-                  <span class="opt-go">→</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- WELCOME (step 1) -->
-          <div class="slide" id="s-welcome">
-            <div class="card">
-              <div class="eyebrow">Step 01 / 03 · Hello</div>
-              <h1>First — what should we <span class="hl">call you?</span></h1>
-              <div class="lede">We'll use it to say hi on your home screen. Totally optional.</div>
-              <div class="field">
-                <label>Your name</label>
-                <input type="text" id="nameIn" placeholder="e.g. Alex" maxlength="24" autocomplete="off">
-              </div>
-              <div class="chips">
-                <span class="chip">🔒 Private to your account</span>
-                <span class="chip">☁️ Synced everywhere</span>
-              </div>
-              <div class="row">
-                <button class="btn ghost" onclick="jump('intro')">←</button>
-                <button class="btn" onclick="jump('pages')">Continue →</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- PAGES (step 2) -->
-          <div class="slide" id="s-pages">
-            <div class="card">
-              <div class="eyebrow">Step 02 / 03 · Sections</div>
-              <h1>Pick your <span class="hl">pages</span>.</h1>
-              <div class="lede">Turn on what you'll use. You can change any of this later in Settings.</div>
-
-              <div class="simp" id="simpRow" onclick="toggleSimplify()">
-                <span style="font-size:23px">🧸</span>
-                <div class="simp-b">
-                  <div class="simp-n">Simplify it</div>
-                  <div class="simp-d">Great for younger users — hides Finance, Projects &amp; Trends and makes the tabs bigger.</div>
-                </div>
-                <span class="sw" id="simpSw"></span>
-              </div>
-
-              <div class="pgs" id="pgs"></div>
-              <div class="row">
-                <button class="btn ghost" onclick="jump('welcome')">←</button>
-                <button class="btn" onclick="jump('design')">Continue →</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- DESIGN (step 3) -->
-          <div class="slide" id="s-design">
-            <div class="card">
-              <div class="eyebrow">Step 03 / 03 · Style</div>
-              <h1>Make it <span class="hl">yours</span>.</h1>
-              <div class="lede">Pick a look. Watch it change live below — you can fine-tune skins &amp; more in Settings.</div>
-
-              <div class="field" style="margin-top:16px"><label>Theme</label>
-                <div class="seg">
-                  <button id="thDark" class="sel" onclick="setTheme('dark')">🌙 Dark</button>
-                  <button id="thLite" onclick="setTheme('light')">☀️ Light</button>
-                </div>
-              </div>
-              <div class="field"><label>Accent colour</label>
-                <div class="swatches" id="swatches"></div>
-              </div>
-
-              <div class="preview">
-                <div class="pv-bar"><span class="pv-dot"></span><span class="pv-t" id="pvHi">Hi there 👋</span></div>
-                <div class="pv-body">
-                  <div class="pv-row"><div class="pv-fill"></div></div>
-                  <div class="pv-row"></div>
-                </div>
-              </div>
-
-              <div class="row">
-                <button class="btn ghost" onclick="jump('pages')">←</button>
-                <button class="btn" onclick="jump('finish')">Continue →</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- FINISH -->
-          <div class="slide" id="s-finish">
-            <div class="card">
-              <div class="done-ic">🚀</div>
-              <h1 style="text-align:center">You're all <span class="hl">set!</span></h1>
-              <div class="lede" style="text-align:center" id="finLede">Everything's saved and synced to your account.</div>
-              <div class="sum" id="sum"></div>
-              <div class="row">
-                <button class="btn ghost" onclick="jump('design')">←</button>
-                <button class="btn" id="enterBtn" onclick="finish()">Enter my dashboard →</button>
-              </div>
-            </div>
-          </div>
-
+    <div class="slide" data-step="intro3">
+      <div class="phone">
+        <div class="pnotch"></div>
+        <div class="prow" style="background:color-mix(in srgb,var(--ac) 20%,transparent)">
+          <span class="pic">🧠</span><span class="ptxt">You're eating 300 kcal under.</span>
         </div>
+        <div class="prow"><span class="pic">💬</span><span class="ptxt" style="color:var(--faint)">Fix my meal plan</span></div>
+        <div class="prow fill"><span class="pic">✅</span><span class="ptxt">Plan updated</span></div>
+      </div>
+      <h1>And a coach that<br>can actually change it</h1>
+      <p class="lede">Your AI coach sees all of it and can rewrite your plan when you ask — you approve every change.</p>
+    </div>
+
+    <!-- ══ 4 · Name ══ -->
+    <div class="slide" data-step="name">
+      <h1>What should we<br>call you?</h1>
+      <p class="lede">Just a first name is fine — it's used to greet you on the home page.</p>
+      <div class="namewrap">
+        <input type="text" id="nameIn" maxlength="20" placeholder="Tom" autocomplete="given-name" autocapitalize="words">
+        <div class="count" id="nameCount">0/20</div>
       </div>
     </div>
+
+    <!-- ══ 5 · Hello ══ -->
+    <div class="slide" data-step="hello">
+      <div class="floaters">
+        <i style="left:8%;top:20px">💪</i>
+        <i style="right:12%;top:6px;animation-delay:-1.2s">🥗</i>
+        <i style="left:26%;bottom:12px;animation-delay:-2.4s">🔥</i>
+        <i style="right:24%;bottom:26px;animation-delay:-3.1s">🧠</i>
+      </div>
+      <h1>Glad you're here,<br><span id="helloName" style="color:var(--ac)">friend</span> 👋</h1>
+      <p class="lede">A few quick questions so the dashboard starts out set up for you, not for someone else.<br><br>Nothing here is permanent — you can change all of it later.</p>
+    </div>
+
+    <!-- ══ 6 · Chronotype ══ -->
+    <div class="slide" data-step="chrono">
+      <h1 class="left">Which one sounds<br>most like you?</h1>
+      <div class="opts" id="chronoOpts"></div>
+      <div class="insight">
+        <span class="ie">⭐</span>
+        <div><b>Your energy decides your routine.</b> New habits get slotted into the part of the day you're actually awake for.</div>
+      </div>
+    </div>
+
+    <!-- ══ 7 · Goal ══ -->
+    <div class="slide" data-step="goal">
+      <h1 class="left">What are you<br>mainly here for?</h1>
+      <div class="opts" id="goalOpts"></div>
+      <div class="insight">
+        <span class="ie">🎯</span>
+        <div><b>This picks your starting pages.</b> You'll get the ones that matter for your goal — and none of the ones that don't.</div>
+      </div>
+    </div>
+
+    <!-- ══ 8 · Truth ══ -->
+    <div class="slide" data-step="truth">
+      <div class="kicker">Here's the honest bit</div>
+      <h1 id="truthBad">Most of this is <span class="grad">lost to memory</span></h1>
+      <p class="lede" id="truthBadSub"></p>
+      <div class="insight" style="margin-top:30px">
+        <span class="ie">📈</span>
+        <div id="truthGood"></div>
+      </div>
+    </div>
+
+    <!-- ══ 9 · Pages ══ -->
+    <div class="slide" data-step="pages">
+      <h1 class="left">What do you<br>want in it?</h1>
+      <p class="lede" style="text-align:left;margin-top:10px">Home, Health and Settings are always there. Pick the rest — hidden pages disappear from the nav completely.</p>
+      <div class="modes">
+        <button class="mode on" id="modeFull"><b>Everything</b><span>The full dashboard</span></button>
+        <button class="mode" id="modeKid"><b>Simplified</b><span>Hides money & admin</span></button>
+      </div>
+      <div class="opts" id="pageOpts" style="margin-top:16px"></div>
+    </div>
+
+    <!-- ══ 10 · Habits ══ -->
+    <div class="slide" data-step="habits">
+      <h1 class="left">Start with a<br>couple of habits</h1>
+      <p class="lede" style="text-align:left;margin-top:10px">Pick a few — small ones. You can add, rename and time them later. Skip if you'd rather start empty.</p>
+      <div class="chips" id="habitChips"></div>
+    </div>
+
+    <!-- ══ 11 · Design ══ -->
+    <div class="slide" data-step="design">
+      <h1>Make it yours</h1>
+      <p class="lede">Pick a colour. This is the accent used across every page.</p>
+      <div class="sws" id="swatches"></div>
+      <div class="modes" style="margin-top:26px">
+        <button class="mode on" id="thDark"><b>🌙 Dark</b><span>Easier at night</span></button>
+        <button class="mode" id="thLight"><b>☀️ Light</b><span>Easier outdoors</span></button>
+      </div>
+    </div>
+
+    <!-- ══ 12 · Notifications ══ -->
+    <div class="slide" data-step="notify">
+      <div class="kicker">Hard to stay consistent?</div>
+      <h1>Let it nudge you</h1>
+      <p class="lede" style="margin-bottom:22px">Only if you want. You can turn any of it off later.</p>
+      <div class="trow">
+        <div class="tt"><b>Habit reminders</b><span>A nudge at the time you set for each habit</span></div>
+        <button class="sw on" id="swHabit" role="switch"></button>
+      </div>
+      <div class="trow">
+        <div class="tt"><b>Eye breaks</b><span>Every 20 minutes at the computer, look away for 20 seconds</span></div>
+        <button class="sw" id="swEyes" role="switch"></button>
+      </div>
+      <div class="trow">
+        <div class="tt"><b>Water &amp; streaks</b><span>Don't let a streak die over something small</span></div>
+        <button class="sw on" id="swStreak" role="switch"></button>
+      </div>
+    </div>
+
+    <!-- ══ 13 · Contract ══ -->
+    <div class="slide" data-step="contract">
+      <h1><span id="contractName" style="color:var(--ac)">Your</span>'s Contract</h1>
+      <div class="contract" id="contractList"></div>
+      <div class="hold" id="holdBtn">
+        <svg viewBox="0 0 116 116">
+          <circle class="hbg" cx="58" cy="58" r="54"></circle>
+          <circle class="hfg" id="holdRing" cx="58" cy="58" r="54"></circle>
+        </svg>
+        <span id="holdEmoji">🤝</span>
+      </div>
+      <div class="holdt" id="holdTitle">Hold to agree</div>
+      <div class="holdh">Committing out loud makes you far more likely to actually follow through. That's the only reason this screen exists.</div>
+    </div>
+
+    <!-- ══ 14 · Done ══ -->
+    <div class="slide" data-step="done">
+      <div class="floaters" style="height:130px">
+        <i style="left:14%;top:14px">🎉</i>
+        <i style="right:16%;top:0;animation-delay:-1.5s">🚀</i>
+        <i style="left:40%;bottom:8px;animation-delay:-2.8s">✅</i>
+      </div>
+      <h1>You're set up,<br><span id="doneName" style="color:var(--ac)">friend</span></h1>
+      <p class="lede" id="doneSummary"></p>
+    </div>
+
   </div>
+
+  <div class="foot">
+    <button class="cta" id="cta">Continue</button>
+    <button class="skip" id="skip">Skip straight to the app</button>
+  </div>
+</div>
 
 <script>
 const SB_URL = 'https://mtuoqwbrujxutofhyahb.supabase.co';
 const SB_KEY = 'sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
 const sb = supabase.createClient(SB_URL, SB_KEY);
+
 // Preview mode (launched from Settings): identical tour, but nothing is saved.
 const PREVIEW = new URLSearchParams(location.search).get('preview') === '1';
 const DONE_URL = PREVIEW ? 'settings.html' : 'index.html';
 
 // Base pages are always present (can't be turned off): Home, Health, Settings.
-// Everything below is optional. GROWNUP ones are what "Simplify" hides.
+// Everything below is optional. GROWNUP ones are what "Simplified" hides.
 const PAGES = [
   { key:'health',    ic:'💊', n:'Health',    d:'Water, sleep, supplements, weight', base:true },
   { key:'fitness',   ic:'💪', n:'Fitness',   d:'Workouts, progress & photos' },
@@ -398,110 +417,242 @@ const ACCENTS = [
   ['purple','#a78bfa'],['blue','#60a5fa'],['green','#34d399'],['orange','#fb923c'],
   ['pink','#f472b6'],['red','#f87171'],['yellow','#fbbf24'],['teal','#2dd4bf']
 ];
-const ORDER = ['intro','welcome','pages','design','finish'];
-const TOUR = ['welcome','pages','design','finish'];
+
+const CHRONOS = [
+  ['early',  '🐦', 'Early bird',     'I get going in the morning'],
+  ['night',  '🦉', 'Night owl',      'I come alive later on'],
+  ['flex',   '⚡', 'Flexible',       'Depends on the day'],
+  ['tired',  '🪫', 'Low energy',     "Honestly, I'm tired most of the time"],
+];
+const GOALS = [
+  ['muscle',  '💪', 'Build muscle',      'Bulk, get stronger, eat enough'],
+  ['lean',    '🥗', 'Get leaner',        'Lose fat without losing strength'],
+  ['school',  '📚', 'Stay on top of school', 'Grades, assignments, timetable'],
+  ['habits',  '🔥', 'Build better habits','Consistency, streaks, routine'],
+  ['organise','🗂️', 'Just get organised', 'One place for all of it'],
+];
+// Each goal turns on the pages that actually serve it.
+const GOAL_PAGES = {
+  muscle:  ['fitness','habits'],
+  lean:    ['fitness','habits'],
+  school:  ['school','habits'],
+  habits:  ['habits','fitness'],
+  organise:['habits','school','projects'],
+};
+const STARTER_HABITS = [
+  ['🛏️','Make your bed','#8b5cf6','morning'],
+  ['📚','Study','#3498db','afternoon'],
+  ['📖','Read','#f39c12','night'],
+  ['🧘','Stretch','#2ecc71','evening'],
+  ['☀️','Wake up on time','#fbbf24','morning'],
+  ['📵','No phone in bed','#e74c3c','night'],
+  ['📝','Plan tomorrow','#14b8a6','evening'],
+  ['🚶','Walk 30 min','#00bfff','afternoon'],
+];
+
+const STEPS = ['intro1','intro2','intro3','name','hello','chrono','goal','truth','pages','habits','design','notify','contract','done'];
 
 let uid = null, current = {};
-let step = 'intro', maxReached = 0;
-const state = { name:'', simplify:false, theme:'dark', accent:'purple', pages:{} };
+let i = 0;
+const state = {
+  name: '', chrono: '', goal: '', simplify: false,
+  theme: 'dark', accent: 'purple', pages: {},
+  habits: [], notify: { habit: true, eyes: false, streak: true },
+};
 
-/* ── navigation ── */
-function show(id){
-  step = id;
-  document.querySelectorAll('.slide').forEach(s => s.classList.remove('on'));
-  const el = document.getElementById('s-'+id); if (el) el.classList.add('on');
-  const inTour = TOUR.indexOf(id) !== -1;
-  document.getElementById('rail').classList.toggle('show', inTour);
-  if (inTour) maxReached = Math.max(maxReached, TOUR.indexOf(id));
-  updateRail();
-  window.scrollTo(0,0);
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ── theme ── */
+function setAccent(name) {
+  const hit = ACCENTS.find(a => a[0] === name) || ACCENTS[0];
+  document.documentElement.style.setProperty('--ac', hit[1]);
 }
-function updateRail(){
-  const i = TOUR.indexOf(step);
-  document.querySelectorAll('.rail-node').forEach(node => {
-    const si = TOUR.indexOf(node.dataset.step);
-    node.classList.toggle('active', si === i);
-    node.classList.toggle('done', si < i || (si <= maxReached && si !== i));
+function setTheme(t) {
+  const light = t === 'light';
+  document.documentElement.style.setProperty('--bg', light ? '#f2f2f7' : '#000');
+  document.documentElement.style.setProperty('--ink', light ? '#111' : '#fff');
+  document.documentElement.style.setProperty('--dim', light ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.62)');
+  document.documentElement.style.setProperty('--faint', light ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.34)');
+  document.documentElement.style.setProperty('--card', light ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.07)');
+  document.documentElement.style.setProperty('--line', light ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)');
+}
+
+/* ── renderers ── */
+function optHtml(list, sel) {
+  return list.map(([k, e, n, d]) =>
+    `<button class="opt${k === sel ? ' on' : ''}" data-k="${k}">
+       <span class="oe">${e}</span>
+       <span><b>${n}</b><span class="od">${esc(d)}</span></span>
+     </button>`).join('');
+}
+function wire(el, list, onPick) {
+  el.querySelectorAll('.opt').forEach(b => b.addEventListener('click', () => {
+    onPick(b.getAttribute('data-k'));
+    el.innerHTML = optHtml(list, b.getAttribute('data-k'));
+    wire(el, list, onPick);
+    refresh();
+  }));
+}
+function renderChrono() {
+  const el = $('chronoOpts');
+  el.innerHTML = optHtml(CHRONOS, state.chrono);
+  wire(el, CHRONOS, k => { state.chrono = k; });
+}
+function renderGoal() {
+  const el = $('goalOpts');
+  el.innerHTML = optHtml(GOALS, state.goal);
+  wire(el, GOALS, k => {
+    state.goal = k;
+    // Turn on the pages this goal needs (never turns anything off you chose).
+    (GOAL_PAGES[k] || []).forEach(p => { state.pages[p] = true; });
+    renderPages();
   });
 }
-function jump(id){
-  // rail nodes only allow going to reached steps
-  if (TOUR.indexOf(id) !== -1 && TOUR.indexOf(id) > maxReached + 1) return;
-  if (id === 'pages') state.name = (document.getElementById('nameIn').value||'').trim();
-  if (id === 'finish') buildSummary();
-  show(id);
-}
-function startTour(){ show('welcome'); if (state.name) document.getElementById('nameIn').value = state.name; }
-
-/* ── simplify + pages ── */
-function toggleSimplify(){
-  state.simplify = !state.simplify;
-  renderPages();
-}
-function renderPages(){
-  document.getElementById('simpSw').classList.toggle('on', state.simplify);
-  document.getElementById('simpRow').classList.toggle('on', state.simplify);
-
-  const el = document.getElementById('pgs');
+function renderPages() {
+  const el = $('pageOpts');
   el.innerHTML = PAGES.map(p => {
-    const hiddenBySimp = state.simplify && p.grownup;
-    const on = p.base ? true : (hiddenBySimp ? false : state.pages[p.key] !== false);
-    const locked = p.base || hiddenBySimp;
-    const tag = p.base ? '<span class="tag">· always on</span>' : (hiddenBySimp ? '<span class="tag">· hidden</span>' : '');
-    return '<div class="pg '+(on?'on':'off')+' '+(locked?'locked':'')+'" data-k="'+p.key+'">'
-      + '<span class="pg-ic">'+p.ic+'</span>'
-      + '<div class="pg-b"><div class="pg-n">'+p.n+tag+'</div><div class="pg-d">'+p.d+'</div></div>'
-      + '<span class="sw'+(on?' on':'')+'"></span></div>';
+    const forced = p.base;
+    const hidden = state.simplify && p.grownup;
+    const on = forced || (!hidden && state.pages[p.key] !== false);
+    return `<button class="opt${on ? ' on' : ''}" data-p="${p.key}" ${forced || hidden ? 'disabled style="opacity:.5"' : ''}>
+      <span class="oe">${p.ic}</span>
+      <span><b>${p.n}</b><span class="od">${forced ? 'Always on' : (hidden ? 'Hidden in Simplified' : p.d)}</span></span>
+    </button>`;
   }).join('');
-  el.querySelectorAll('.pg').forEach(row => {
-    const p = PAGES.find(x => x.key === row.dataset.k);
-    if (p.base || (state.simplify && p.grownup)) return;
-    row.addEventListener('click', () => {
-      state.pages[p.key] = !(state.pages[p.key] !== false);
-      renderPages();
-    });
-  });
+  el.querySelectorAll('.opt[data-p]').forEach(b => b.addEventListener('click', () => {
+    const k = b.getAttribute('data-p');
+    state.pages[k] = !(state.pages[k] !== false);
+    renderPages();
+  }));
 }
-/* ── design ── */
-function setTheme(t){
-  state.theme = t;
-  document.documentElement.classList.toggle('lite', t === 'light');
-  document.getElementById('thDark').classList.toggle('sel', t === 'dark');
-  document.getElementById('thLite').classList.toggle('sel', t === 'light');
+function renderHabitChips() {
+  const el = $('habitChips');
+  el.innerHTML = STARTER_HABITS.map(([e, n], idx) =>
+    `<button class="chip${state.habits.indexOf(idx) >= 0 ? ' on' : ''}" data-h="${idx}">${e} ${esc(n)}</button>`).join('');
+  el.querySelectorAll('.chip').forEach(b => b.addEventListener('click', () => {
+    const idx = +b.getAttribute('data-h');
+    const at = state.habits.indexOf(idx);
+    if (at >= 0) state.habits.splice(at, 1); else state.habits.push(idx);
+    renderHabitChips();
+    refresh();
+  }));
 }
-function setAccent(key, hex){
-  state.accent = key;
-  document.documentElement.style.setProperty('--ac', hex);
-  document.querySelectorAll('.swatch').forEach(s => s.classList.toggle('sel', s.dataset.k === key));
-}
-function renderSwatches(){
-  const el = document.getElementById('swatches');
-  el.innerHTML = ACCENTS.map(([k,c]) =>
-    '<div class="swatch" data-k="'+k+'" style="background:'+c+';color:'+c+'" onclick="setAccent(\''+k+'\',\''+c+'\')"></div>'
-  ).join('');
-  const cur = ACCENTS.find(a => a[0] === state.accent) || ACCENTS[0];
-  setAccent(cur[0], cur[1]);
+function renderSwatches() {
+  const el = $('swatches');
+  el.innerHTML = ACCENTS.map(([n, hex]) =>
+    `<button data-a="${n}" class="${state.accent === n ? 'on' : ''}" style="background:${hex}"></button>`).join('');
+  el.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    state.accent = b.getAttribute('data-a');
+    setAccent(state.accent);
+    renderSwatches();
+  }));
 }
 
-/* ── finish ── */
-function buildSummary(){
-  state.name = (document.getElementById('nameIn').value||'').trim();
-  const shown = PAGES.filter(p => p.base || (!(state.simplify && p.grownup) && state.pages[p.key] !== false)).length + 2; // +home +settings
-  const acName = (ACCENTS.find(a=>a[0]===state.accent)||['purple'])[0];
-  document.getElementById('finLede').textContent = PREVIEW
-    ? 'That\'s the whole tour — this was just a preview, nothing was changed.'
-    : (state.name ? ('Nice to meet you, ' + state.name + ' — you\'re ready to go.')
-                  : 'Everything\'s saved and synced to your account.');
-  document.getElementById('sum').innerHTML =
-      '<div class="sum-row">📄 <span><b>'+shown+'</b> sections enabled'+(state.simplify?' · <span class="k">simplified</span>':'')+'</span></div>'
-    + '<div class="sum-row">🎨 <span><b>'+state.theme[0].toUpperCase()+state.theme.slice(1)+'</b> theme · <span class="k">'+acName+'</span> accent</span></div>'
-    + (PREVIEW
-        ? '<div class="sum-row">👁 <span><b>Preview</b> — no changes were saved</span></div>'
-        : '<div class="sum-row">☁️ <span>Synced to <b>all your devices</b></span></div>');
+// The "honest bit" — built from THEIR answer, not from invented statistics.
+const TRUTH = {
+  muscle: ['about 250 workouts and 20,000 reps a year',
+           'Whether you actually grew comes down to two numbers: is the weight on the bar going up, and is the weight on you going up. Everything here exists to answer those two.'],
+  lean:   ['roughly 1,100 meals a year',
+           "Fat loss isn't willpower, it's arithmetic you can't do from memory. Log the weight, log the food, and the trend tells you the truth."],
+  school: ['dozens of deadlines and every grade you get',
+           "You don't fall behind in a day — you fall behind in the week nobody was counting. This counts."],
+  habits: ['365 chances to keep a streak alive',
+           'A streak only works if you can see it. That is the entire trick, and it is why the streak is drawn on screen instead of buried in a number.'],
+  organise: ['every plan, note and number you make this year',
+           "You already do the work. You just lose the record of it — and then have to guess. This keeps the record."],
+};
+function renderTruth() {
+  const t = TRUTH[state.goal] || TRUTH.organise;
+  $('truthBad').innerHTML = 'This year is <span class="grad">' + esc(t[0]) + '</span>';
+  $('truthBadSub').textContent = "Nobody remembers that. Not honestly, not a month later.";
+  $('truthGood').innerHTML = '<b>So don\'t rely on remembering.</b> ' + esc(t[1]);
 }
-function buildSettings(){
-  state.name = (document.getElementById('nameIn').value||'').trim();
-  const pages = { health: true };
+function renderContract() {
+  const nm = state.name || 'Your';
+  $('contractName').textContent = nm + (/s$/i.test(nm) ? '' : '');
+  const c = [];
+  const g = GOALS.find(x => x[0] === state.goal);
+  if (g) c.push(`I'm here to <b>${esc(g[2].toLowerCase())}</b>, and I'll keep it in front of me.`);
+  const ch = CHRONOS.find(x => x[0] === state.chrono);
+  if (ch) c.push(`I know I'm a <b>${esc(ch[2].toLowerCase())}</b> — I'll plan around it instead of fighting it.`);
+  if (state.habits.length) c.push(`I'll start with <b>${state.habits.length} habit${state.habits.length > 1 ? 's' : ''}</b> and actually tick them off.`);
+  c.push("I'll <b>log it even when it's bad</b> — a missed day I can see beats a perfect week I made up.");
+  c.push("I won't quit over <b>one broken streak</b>.");
+  $('contractList').innerHTML = c.map(x => `<div class="cl">${x}</div>`).join('');
+}
+function renderDone() {
+  const on = PAGES.filter(p => p.base || (!(state.simplify && p.grownup) && state.pages[p.key] !== false)).length;
+  $('doneSummary').textContent =
+    `${on} pages, ${state.habits.length} habit${state.habits.length === 1 ? '' : 's'} to start, and a coach that can see all of it. Let's go.`;
+}
+
+/* ── step machine ── */
+function go(n) {
+  i = Math.max(0, Math.min(STEPS.length - 1, n));
+  const key = STEPS[i];
+  document.querySelectorAll('.slide').forEach(s => s.classList.toggle('on', s.getAttribute('data-step') === key));
+  $('scroll').scrollTop = 0;
+  $('barFill').style.width = ((i + 1) / STEPS.length * 100) + '%';
+  $('backBtn').disabled = i === 0;
+
+  if (key === 'hello') { $('helloName').textContent = state.name || 'friend'; }
+  if (key === 'truth') renderTruth();
+  if (key === 'contract') { renderContract(); resetHold(); }
+  if (key === 'done') { $('doneName').textContent = state.name || 'friend'; renderDone(); }
+  refresh();
+}
+// The CTA changes label and enablement per step — a question you haven't answered
+// shouldn't let you past it.
+function refresh() {
+  const key = STEPS[i];
+  const cta = $('cta');
+  cta.disabled = false;
+  cta.textContent = 'Continue';
+  $('skip').style.display = (i < 5) ? '' : 'none';
+
+  if (key === 'name') { cta.disabled = !$('nameIn').value.trim(); }
+  if (key === 'chrono') cta.disabled = !state.chrono;
+  if (key === 'goal') cta.disabled = !state.goal;
+  if (key === 'habits') cta.textContent = state.habits.length ? `Continue (${state.habits.length})` : 'Skip for now';
+  if (key === 'contract') { cta.style.display = 'none'; return; }
+  if (key === 'done') cta.textContent = PREVIEW ? 'Back to Settings' : 'Enter the dashboard';
+  cta.style.display = '';
+}
+
+/* ── hold to agree ── */
+let holdTimer = null, holdStart = 0;
+const HOLD_MS = 1300;
+function resetHold() {
+  clearInterval(holdTimer); holdTimer = null;
+  $('holdRing').style.strokeDashoffset = '339';
+  $('holdEmoji').textContent = '🤝';
+  $('holdTitle').textContent = 'Hold to agree';
+}
+function startHold() {
+  if (holdTimer) return;
+  holdStart = Date.now();
+  holdTimer = setInterval(() => {
+    const p = Math.min(1, (Date.now() - holdStart) / HOLD_MS);
+    $('holdRing').style.strokeDashoffset = String(339 * (1 - p));
+    if (p >= 1) {
+      clearInterval(holdTimer); holdTimer = null;
+      $('holdEmoji').textContent = '✅';
+      $('holdTitle').textContent = 'Signed';
+      try { navigator.vibrate && navigator.vibrate(30); } catch (e) {}
+      setTimeout(() => go(i + 1), 420);
+    }
+  }, 40);
+}
+function endHold() {
+  if (!holdTimer) return;
+  clearInterval(holdTimer); holdTimer = null;
+  $('holdRing').style.strokeDashoffset = '339';
+}
+
+/* ── save ── */
+function buildSettings() {
+  const pages = {};
   PAGES.forEach(p => {
     if (p.base) return;
     if (state.simplify && p.grownup) { pages[p.key] = false; return; }
@@ -512,13 +663,15 @@ function buildSettings(){
     pages: pages,
     theme: state.theme,
     accent: state.accent,
+    chrono: state.chrono,
+    goal: state.goal,
     setupDone: true,
-    _pushAt: Date.now()
+    _pushAt: Date.now(),
   });
   if (state.name) merged.name = state.name; else delete merged.name;
   return merged;
 }
-async function persist(merged){
+async function persist(merged) {
   try {
     localStorage.setItem('dashboard:settings:v1', JSON.stringify(merged));
     await sb.from('app_state').upsert(
@@ -527,26 +680,109 @@ async function persist(merged){
     );
   } catch (e) { console.warn('Setup save failed:', e); }
 }
-async function finish(){
-  const b = document.getElementById('enterBtn');
-  if (PREVIEW) { window.location.href = DONE_URL; return; }   // preview: don't save
+// Seed the habits the user picked. MERGES into whatever is already there — a
+// re-run of the tour must never wipe an existing habit list or its logs.
+async function seedHabits() {
+  if (!state.habits.length) return;
+  try {
+    const key = uid + ':habits';
+    const { data } = await sb.from('app_state').select('data').eq('key', key).maybeSingle();
+    const row = (data && data.data) || {};
+    const list = Array.isArray(row['habits:list']) ? row['habits:list'].slice() : [];
+    state.habits.forEach(idx => {
+      const [icon, name, color, when] = STARTER_HABITS[idx];
+      if (list.some(h => h.name === name)) return;
+      list.push({ id: 'custom_' + Date.now() + '_' + idx, name, icon, color, when });
+    });
+    row['habits:list'] = list;
+    await sb.from('app_state').upsert(
+      { key, data: row, updated_at: new Date().toISOString() },
+      { onConflict: 'key' }
+    );
+  } catch (e) { console.warn('Habit seed failed:', e); }
+}
+function saveNotifyPrefs() {
+  try {
+    if (state.notify.eyes) {
+      const cfg = JSON.parse(localStorage.getItem('dashboard:eyes:v1') || '{}');
+      cfg.on = true;
+      localStorage.setItem('dashboard:eyes:v1', JSON.stringify(cfg));
+    }
+  } catch (e) {}
+}
+async function finish() {
+  const b = $('cta');
+  if (PREVIEW) { window.location.href = DONE_URL; return; }
   b.disabled = true; b.textContent = 'Saving…';
   await persist(buildSettings());
+  await seedHabits();
+  saveNotifyPrefs();
   window.location.href = DONE_URL;
 }
-// "I'll set it up myself" — keep whatever exists, just mark done + sensible defaults.
-async function doItMyself(){
-  if (PREVIEW) { window.location.href = DONE_URL; return; }   // preview: don't save
-  const pages = Object.assign({}, current.pages || {});
+async function skipAll() {
+  if (PREVIEW) { window.location.href = DONE_URL; return; }
   const merged = Object.assign({}, current, {
     setupDone: true,
     mode: current.mode || 'adult',
-    pages: pages,
-    _pushAt: Date.now()
+    pages: Object.assign({}, current.pages || {}),
+    _pushAt: Date.now(),
   });
   await persist(merged);
   window.location.href = DONE_URL;
 }
+
+/* ── wiring ── */
+$('cta').addEventListener('click', () => {
+  const key = STEPS[i];
+  if (key === 'name') state.name = $('nameIn').value.trim();
+  if (key === 'done') { finish(); return; }
+  go(i + 1);
+});
+$('backBtn').addEventListener('click', () => go(i - 1));
+$('skip').addEventListener('click', skipAll);
+
+$('nameIn').addEventListener('input', e => {
+  $('nameCount').textContent = e.target.value.length + '/20';
+  refresh();
+});
+$('nameIn').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && $('nameIn').value.trim()) { state.name = $('nameIn').value.trim(); go(i + 1); }
+});
+
+$('modeFull').addEventListener('click', () => {
+  state.simplify = false;
+  $('modeFull').classList.add('on'); $('modeKid').classList.remove('on');
+  renderPages();
+});
+$('modeKid').addEventListener('click', () => {
+  state.simplify = true;
+  $('modeKid').classList.add('on'); $('modeFull').classList.remove('on');
+  renderPages();
+});
+$('thDark').addEventListener('click', () => {
+  state.theme = 'dark'; setTheme('dark');
+  $('thDark').classList.add('on'); $('thLight').classList.remove('on');
+});
+$('thLight').addEventListener('click', () => {
+  state.theme = 'light'; setTheme('light');
+  $('thLight').classList.add('on'); $('thDark').classList.remove('on');
+});
+
+[['swHabit','habit'],['swEyes','eyes'],['swStreak','streak']].forEach(([id, k]) => {
+  $(id).addEventListener('click', async () => {
+    const on = !$(id).classList.contains('on');
+    $(id).classList.toggle('on', on);
+    state.notify[k] = on;
+    // Ask the browser for real permission the first time something is switched on.
+    if (on && 'Notification' in window && Notification.permission === 'default') {
+      try { await Notification.requestPermission(); } catch (e) {}
+    }
+  });
+});
+
+const hold = $('holdBtn');
+['pointerdown','touchstart'].forEach(ev => hold.addEventListener(ev, e => { e.preventDefault(); startHold(); }));
+['pointerup','pointerleave','pointercancel','touchend','touchcancel'].forEach(ev => hold.addEventListener(ev, endHold));
 
 /* ── boot ── */
 (async () => {
@@ -555,34 +791,34 @@ async function doItMyself(){
     if (!session) { window.location.replace('login.html'); return; }
     uid = session.user.id;
     localStorage.setItem('_dashUid', uid);
-    // Prefill from existing settings (so re-running from Settings shows real config)
     try {
       const { data } = await sb.from('app_state').select('data').eq('key', uid + ':settings').maybeSingle();
       if (data && data.data && typeof data.data === 'object') current = data.data;
     } catch (e) {}
   } catch (e) { window.location.replace('login.html'); return; }
 
+  // Prefill from whatever already exists, so re-running from Settings shows the truth.
   state.name = current.name || '';
   state.simplify = current.mode === 'kid';
   state.theme = current.theme === 'light' ? 'light' : 'dark';
   state.accent = current.accent || 'purple';
+  state.chrono = current.chrono || '';
+  state.goal = current.goal || '';
   PAGES.forEach(p => { if (!p.base) state.pages[p.key] = !(current.pages && current.pages[p.key] === false); });
 
   setTheme(state.theme);
-  renderSwatches();
-  renderPages();
-  if (state.name) document.getElementById('nameIn').value = state.name;
+  setAccent(state.accent);
+  if (state.name) { $('nameIn').value = state.name; $('nameCount').textContent = state.name.length + '/20'; }
+  $('modeKid').classList.toggle('on', state.simplify);
+  $('modeFull').classList.toggle('on', !state.simplify);
+  $('thLight').classList.toggle('on', state.theme === 'light');
+  $('thDark').classList.toggle('on', state.theme !== 'light');
 
-  if (PREVIEW) {
-    document.getElementById('pvBadge').style.display = 'block';
-    document.getElementById('pvExit').style.display = 'block';
-    const eb = document.getElementById('enterBtn'); if (eb) eb.textContent = 'Done — close preview';
-  }
-
-  document.getElementById('boot').style.display = 'none';
-  document.getElementById('app').style.display = 'block';
-  show('intro');
+  renderChrono(); renderGoal(); renderPages(); renderHabitChips(); renderSwatches();
+  go(0);
 })();
 </script>
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
 </body>
 </html>
