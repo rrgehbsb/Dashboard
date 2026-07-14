@@ -298,14 +298,22 @@ body::after{
 }
 .gm-push-btn:hover{color:var(--text-primary);border-color:rgba(255,255,255,0.3);}
 .gm-push-btn.visible{display:block;}
+/* The input plus BOTH buttons couldn't fit on a phone and pushed the whole page
+   74px wide, so the home screen scrolled sideways. The input may now shrink, and
+   on a narrow screen the buttons drop onto their own row. */
 .goal-input-wrap{
-  display:flex;flex-direction:row;gap:8px;align-items:center;
+  display:flex;flex-direction:row;flex-wrap:wrap;gap:8px;align-items:center;
   border-top:1px solid rgba(255,255,255,0.05);padding-top:14px;margin-top:14px;
 }
 .goal-input-wrap input[type="text"]{
-  flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);
+  flex:1 1 150px;min-width:0;
+  background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);
   border-radius:12px;padding:11px 14px;color:var(--text-primary);font-family:inherit;
   font-size:13px;outline:none;transition:border-color 0.2s;
+}
+@media(max-width:480px){
+  .goal-input-wrap input[type="text"]{flex:1 1 100%;}
+  .goal-input-wrap .gm-add-btn,.goal-input-wrap .gm-polish-btn{flex:1 1 0;min-width:0;}
 }
 .goal-input-wrap input[type="text"]::placeholder{color:var(--text-tertiary);}
 .goal-input-wrap input[type="text"]:focus{border-color:rgba(255,255,255,0.25);}

@@ -370,6 +370,16 @@ main {
   gap: 6px;
   align-items: center;
 }
+/* Grid items size to their CONTENT by default, and the long placeholders refused to
+   shrink — which pushed the whole page 58px wide and made Health scroll sideways.
+   Let them shrink, and drop to two columns on a phone. */
+.stack-add-row > * { min-width: 0; }
+.stack-add-row input,
+.stack-add-row select,
+.stack-add-row button { width: 100%; }
+@media (max-width: 560px) {
+  .stack-add-row { grid-template-columns: 1fr 1fr; }
+}
 .stack-input {
   font-size: 13px;
   padding: 9px 11px;
