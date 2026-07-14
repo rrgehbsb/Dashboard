@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.5.94';
+const DASHBOARD_VERSION = '2.5.95';
 
 // Auto-update: when a new service worker takes control (new deploy), reload once
 // so the installed app always runs the latest code instead of a stale cached
@@ -461,13 +461,17 @@ window.applyDashSettings(JSON.parse(localStorage.getItem('dashboard:settings:v1'
 .bottombar-tab {
   flex: 1; min-width: 0; position: relative;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 2px; padding: 7px 2px 6px; text-decoration: none;
+  gap: 2px; padding: 7px 1px 6px; text-decoration: none;
   border-radius: 17px;
   color: rgba(255, 255, 255, 0.45);
-  font-size: 9.5px; font-weight: 600; letter-spacing: 0.02em;
-  white-space: nowrap; overflow: hidden;
+  /* 9 tabs on a 390px screen leaves ~41px each, and "Transport" doesn't fit at
+     10px — so the label shrinks and truncates rather than being cut off mid-word. */
+  font-size: 8.5px; font-weight: 600; letter-spacing: -0.01em;
   -webkit-tap-highlight-color: transparent;
   transition: color 0.15s, background 0.2s;
+}
+.bottombar-tab > span:last-child {
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 /* the highlighted pill behind whichever tab you're on */
 .bottombar-tab.active { background: rgba(255, 255, 255, 0.08); }
