@@ -598,6 +598,7 @@ main {
 .mp-section { margin-top: 32px; }
 .mp-section-head {
   display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;
+  flex-wrap: wrap; gap: 8px;   /* title + 3 buttons overflowed a 320px phone */
 }
 .mp-today-card {
   background: var(--bg-card); border: 1px solid var(--border);
@@ -1778,7 +1779,8 @@ details[open] .mp-details-summary::before { content: '▾ '; }
   <div class="mp-section" id="mpSection">
     <div class="mp-section-head">
       <div class="section-title" style="margin-top:0;margin-bottom:0">Daily Meal Prep</div>
-      <div style="display:flex;gap:8px">
+      <!-- wraps: three buttons plus the title don't fit on a 320px phone -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="mp-btn" id="mpCoachBtn" style="color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,transparent)">🎯 Coach</button>
         <button class="mp-btn" id="mpTargetBtn">Targets</button>
         <button class="mp-btn" id="mpManageBtn">Edit meals</button>

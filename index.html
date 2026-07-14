@@ -575,6 +575,10 @@ body::after{
 .mood-emoji-row{
   display:flex;justify-content:space-between;gap:8px;margin-bottom:12px;
 }
+/* the 5 mood buttons refuse to shrink below their content and pushed the page
+   4px wide on a 320px phone */
+.mood-emoji-row .mood-btn{min-width:0;}
+@media(max-width:360px){.mood-emoji-row{gap:5px;}}
 .mood-btn{
   flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:4px;padding:10px 4px;border-radius:12px;border:1.5px solid rgba(255,255,255,0.08);

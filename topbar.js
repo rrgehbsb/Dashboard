@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.6.0';
+const DASHBOARD_VERSION = '2.6.1';
 
 // Auto-update: when a new service worker takes control (new deploy), reload once
 // so the installed app always runs the latest code instead of a stale cached
@@ -319,6 +319,61 @@ window.applyDashSettings(JSON.parse(localStorage.getItem('dashboard:settings:v1'
 @media (max-width: 767px) {
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="button"]):not([type="submit"]),
   textarea, select { font-size: 16px !important; }
+}
+
+/* ══ DESKTOP LAYOUT ═══════════════════════════════════════════════════════════
+   Every page is a single phone-width column, so on a monitor it was a narrow strip
+   floating in a black void — most pages used less than half the screen. On a wide
+   screen the cards now flow into two (then three) columns. Multi-column is used on
+   purpose rather than grid: it needs no per-page wrapper markup, and break-inside
+   keeps each card whole. */
+@media (min-width: 1000px) {
+  html[data-wide="1"] main {
+    max-width: 1500px !important;
+    columns: 2;
+    column-gap: 20px;
+  }
+  html[data-wide="1"] main > * {
+    break-inside: avoid;
+    -webkit-column-break-inside: avoid;
+    page-break-inside: avoid;
+    margin-bottom: 20px !important;
+  }
+  /* things that should never be split into a side column */
+  html[data-wide="1"] main > :is(h1, .dash-title, .page-title, .install-card, .ticker-row, .cmd-bar) {
+    column-span: all;
+  }
+}
+@media (min-width: 1500px) {
+  html[data-wide="1"] main { columns: 3; }
+}
+/* The install prompt tells you to "open in Safari → Add to Home Screen".
+   Nonsense on a computer. */
+@media (min-width: 900px) and (pointer: fine) {
+  .install-card { display: none !important; }
+}
+
+/* ══ TAP TARGETS ══════════════════════════════════════════════════════════════
+   The section reorder arrows were 13x16px. Apple's minimum is 44x44. These keep
+   their look but get a real hit area via padding. */
+.sec-move, .sec-chev {
+  min-width: 32px !important; min-height: 32px !important;
+  display: inline-flex !important; align-items: center; justify-content: center;
+  font-size: 15px !important;
+}
+.sec-right { gap: 2px !important; }
+
+/* ── The floating buttons sit ON TOP of whatever is under them, which on some pages
+      is a real button you can't press. Fade them out of the way while you scroll,
+      and let taps pass straight through while they're faded. ── */
+.coach-fab, .buddy {
+  transition: opacity .22s, transform .22s;
+}
+body.dash-scrolling .coach-fab,
+body.dash-scrolling .buddy {
+  opacity: 0.18;
+  transform: scale(0.86);
+  pointer-events: none;
 }
 
 /* ── Eye break overlay ── */
@@ -3454,8 +3509,36 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
     document.addEventListener('visibilitychange', function () { if (!document.hidden) eyeTick(); });
   }
 
+  // Pages whose <main> is a stack of independent cards — those can safely flow into
+  // columns on a wide screen. Gym and Settings already fill the width and have
+  // ordered/interdependent content, so they're left alone.
+  const WIDE_PAGES = ['main', 'health', 'habits', 'school', 'trends', 'projects', 'transport', 'friends'];
+  function setupWideLayout() {
+    try {
+      if (isEmbedded() || isFinancePage()) return;
+      if (WIDE_PAGES.indexOf(currentPageKey()) === -1) return;
+      if (!document.querySelector('main')) return;
+      document.documentElement.setAttribute('data-wide', '1');
+    } catch (e) {}
+  }
+
+  // Fade the floating buttons while scrolling so they stop covering content — and
+  // make them click-through while faded, so a button underneath is reachable.
+  function setupScrollFade() {
+    try {
+      let t = null;
+      window.addEventListener('scroll', function () {
+        document.body.classList.add('dash-scrolling');
+        clearTimeout(t);
+        t = setTimeout(function () { document.body.classList.remove('dash-scrolling'); }, 650);
+      }, { passive: true });
+    } catch (e) {}
+  }
+
   function boot() {
     injectStyleAndHTML();
+    setupWideLayout();
+    setupScrollFade();
     injectUiStyle();
     injectLoadSweep();
     showWelcomeToast();
