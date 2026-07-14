@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.6.1';
+const DASHBOARD_VERSION = '2.6.2';
 
 // Auto-update: when a new service worker takes control (new deploy), reload once
 // so the installed app always runs the latest code instead of a stale cached
@@ -328,6 +328,8 @@ window.applyDashSettings(JSON.parse(localStorage.getItem('dashboard:settings:v1'
    purpose rather than grid: it needs no per-page wrapper markup, and break-inside
    keeps each card whole. */
 @media (min-width: 1000px) {
+  /* several pages cap the BODY at 800px, so widening main alone did nothing */
+  html[data-wide="1"] body { max-width: 1500px !important; }
   html[data-wide="1"] main {
     max-width: 1500px !important;
     columns: 2;
