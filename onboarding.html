@@ -804,7 +804,16 @@ const hold = $('holdBtn');
   state.accent = current.accent || 'purple';
   state.chrono = current.chrono || '';
   state.goal = current.goal || '';
-  PAGES.forEach(p => { if (!p.base) state.pages[p.key] = !(current.pages && current.pages[p.key] === false); });
+
+  // A brand-new account starts with the optional pages OFF, so answering "what are
+  // you here for?" actually decides something — it switches on the pages that serve
+  // that goal, and the Pages step is where you add anything else. Someone re-running
+  // the tour from Settings instead sees their real current setup.
+  const isNew = !current.setupDone;
+  PAGES.forEach(p => {
+    if (p.base) return;
+    state.pages[p.key] = isNew ? false : !(current.pages && current.pages[p.key] === false);
+  });
 
   setTheme(state.theme);
   setAccent(state.accent);
