@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.6.4';
+const DASHBOARD_VERSION = '2.6.5';
 
 // Auto-update: when a new service worker takes control (new deploy), reload once
 // so the installed app always runs the latest code instead of a stale cached
@@ -3612,7 +3612,10 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
           + 'background:rgba(255,255,255,.05);color:var(--text-secondary,rgba(255,255,255,.62));'
           + 'font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;}'
           + '.ptab.on{background:var(--accent,#a78bfa);border-color:var(--accent,#a78bfa);color:#fff;}'
-          + '@media(min-width:1000px){.ptabs{position:static;}}';
+          + '@media(min-width:1000px){.ptabs{position:static;}}'
+          // Must be !important: .section-title is itself styled `display:flex !important`,
+          // so an inline style="display:none" loses to it and the heading never hides.
+          + '.ptab-hide{display:none !important;}';
         document.head.appendChild(st);
       }
 
@@ -3633,7 +3636,7 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
       function show(n) {
         buckets.forEach((b, i) => {
           b.items.forEach((run) => {
-            run.blocks.forEach((el) => { el.style.display = (i === n) ? '' : 'none'; });
+            run.blocks.forEach((el) => { el.classList.toggle('ptab-hide', i !== n); });
           });
         });
         bar.querySelectorAll('.ptab').forEach((t, i) => t.classList.toggle('on', i === n));
