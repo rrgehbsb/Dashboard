@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.6.3';
+const DASHBOARD_VERSION = '2.6.4';
 
 // Auto-update: when a new service worker takes control (new deploy), reload once
 // so the installed app always runs the latest code instead of a stale cached
@@ -3055,7 +3055,13 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
   // Saved per-device in dashboard:sections:v1.
   // =============================================================
   const SEC_KEY = 'dashboard:sections:v1';
-  const SEC_SKIP = '.topbar,.bottombar,.skin-banner,#buddy,.bc-panel,.xp-toast,#xpModal,.nav-more-sheet,.nav-more-backdrop,.skin-toast,.skin-splash,.install-card,.modal-bg,.po-modal-bg,.rm-modal-bg,.schedule-modal-bg,.w-modal-bg,.gt-modal-bg,.m-bg,.wt-overlay,.bg-wash,script,style,link,noscript,[id*="odal"],[id*="Overlay"]';
+  // A "section" is its title plus every sibling after it, up to the next title. So
+  // anything floating that happens to sit AFTER the last title gets swallowed into
+  // that section — and collapsing it then hides the floating thing too. That is
+  // exactly how the AI button vanished: it's the last child of the home page's body,
+  // so collapsing the final section set display:none on it. Collapse state is stored
+  // per device, which is why it was hidden in the installed app but not in Safari.
+  const SEC_SKIP = '.topbar,.bottombar,.skin-banner,#buddy,.bc-panel,.xp-toast,#xpModal,.nav-more-sheet,.nav-more-backdrop,.skin-toast,.skin-splash,.install-card,.modal-bg,.po-modal-bg,.rm-modal-bg,.schedule-modal-bg,.w-modal-bg,.gt-modal-bg,.m-bg,.wt-overlay,.bg-wash,script,style,link,noscript,[id*="odal"],[id*="Overlay"],#coachFab,.coach-fab,.secnav-tab,.secnav-panel,.secnav-bd,.eye-ov,#homeStructBtn,#homeStructModal,.ptabs';
   const secCss = `
 .section-title.sec-h{cursor:pointer;-webkit-tap-highlight-color:transparent;}
 .sec-h .sec-right{margin-left:auto;display:inline-flex;align-items:center;gap:1px;flex-shrink:0;}
@@ -3105,6 +3111,9 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
       Array.from(container.children).forEach((el)=>{
         if(el.nodeType!==1) return;
         let skip=false; try{ skip = el.matches(SEC_SKIP); }catch(e){}
+        // Belt and braces: a fixed/absolute element is page chrome, never content,
+        // so it must never be absorbed into a section and hidden when it collapses.
+        if(!skip){ try{ const p=getComputedStyle(el).position; if(p==='fixed'||p==='absolute') skip=true; }catch(e){} }
         if(skip) return;
         let titleEl=null; try{ titleEl = el.matches('.section-title') ? el : el.querySelector('.section-title'); }catch(e){}
         if(titleEl){
@@ -3559,26 +3568,36 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
       const groups = PAGE_TABS[currentPageKey()];
       if (!groups) return;
 
-      const titles = [...document.querySelectorAll('.section-title')];
-      if (titles.length < 3) return;
+      if (document.querySelectorAll('.section-title').length < 3) return;
 
-      // Each section = its title plus everything up to the next title. Sections on
-      // this page live inside their own card, so the card IS the unit to hide.
-      const units = titles.map((t) => {
-        let el = t;
-        while (el.parentElement && el.parentElement.tagName !== 'MAIN' && el.parentElement !== document.body) {
-          el = el.parentElement;
-        }
-        return { el: el, text: (t.textContent || '').trim() };
+      // A section is its TITLE BLOCK PLUS EVERY SIBLING AFTER IT until the next
+      // title — the same rule the collapse feature uses. Health mixes two markup
+      // patterns: some titles live inside their card, but Stack and Water are a bare
+      // title followed by a separate card. Treating the title as the whole section
+      // hid the heading and left the content on screen, so those two showed up under
+      // every tab and it looked like the tabs did nothing.
+      const container = document.querySelector('main') || document.body;
+      const runs = [];
+      let cur = null;
+      [...container.children].forEach((el) => {
+        if (el.nodeType !== 1) return;
+        let skip = false;
+        try { skip = el.matches(SEC_SKIP); } catch (e) {}
+        if (!skip) { try { const p = getComputedStyle(el).position; if (p === 'fixed' || p === 'absolute') skip = true; } catch (e) {} }
+        if (skip) return;
+        let t = null;
+        try { t = el.matches('.section-title') ? el : el.querySelector('.section-title'); } catch (e) {}
+        if (t) { cur = { text: (t.textContent || '').trim(), blocks: [el] }; runs.push(cur); }
+        else if (cur) cur.blocks.push(el);   // trailing content belongs to the last title
       });
+      if (runs.length < 3) return;
 
       const buckets = groups.map(([name, re]) => ({
         name: name,
-        items: units.filter((u) => re.test(u.text)),
+        items: runs.filter((r) => re.test(r.text)),
       })).filter((b) => b.items.length);
-      // anything the map didn't claim
-      const claimed = new Set(buckets.flatMap((b) => b.items.map((i) => i.el)));
-      const rest = units.filter((u) => !claimed.has(u.el));
+      const claimed = new Set(buckets.flatMap((b) => b.items));
+      const rest = runs.filter((r) => !claimed.has(r));
       if (rest.length) buckets.push({ name: 'More', items: rest });
       if (buckets.length < 2) return;
 
@@ -3613,7 +3632,9 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
 
       function show(n) {
         buckets.forEach((b, i) => {
-          b.items.forEach((u) => { u.el.style.display = (i === n) ? '' : 'none'; });
+          b.items.forEach((run) => {
+            run.blocks.forEach((el) => { el.style.display = (i === n) ? '' : 'none'; });
+          });
         });
         bar.querySelectorAll('.ptab').forEach((t, i) => t.classList.toggle('on', i === n));
         try { localStorage.setItem('dashboard:ptab:' + currentPageKey(), String(n)); } catch (e) {}
