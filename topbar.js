@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.6.2';
+const DASHBOARD_VERSION = '2.6.3';
 
 // Auto-update: when a new service worker takes control (new deploy), reload once
 // so the installed app always runs the latest code instead of a stale cached
@@ -3537,6 +3537,94 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
     } catch (e) {}
   }
 
+  // ══ PAGE TABS (opt-in, off by default) ═══════════════════════════════════════
+  // A page shouldn't be a 5-screen scroll of every feature it owns. With this on,
+  // the sections get grouped and only one group is shown at a time.
+  //
+  // Nothing is destroyed or moved permanently: the sections stay exactly where they
+  // are in the DOM, they're just hidden and shown. Turning the setting off restores
+  // the original page exactly, and no data is touched either way.
+  const PAGE_TABS = {
+    health: [
+      ['Today',  /stack|water|steps/i],
+      ['Body',   /weight|measure/i],
+      ['Food',   /meal|fuel|food/i],
+      ['Rest',   /sleep|screen|eye|usage/i],
+    ],
+  };
+  function setupPageTabs() {
+    try {
+      if (isEmbedded() || isFinancePage()) return;
+      if (readSettings().pageTabs !== true) return;
+      const groups = PAGE_TABS[currentPageKey()];
+      if (!groups) return;
+
+      const titles = [...document.querySelectorAll('.section-title')];
+      if (titles.length < 3) return;
+
+      // Each section = its title plus everything up to the next title. Sections on
+      // this page live inside their own card, so the card IS the unit to hide.
+      const units = titles.map((t) => {
+        let el = t;
+        while (el.parentElement && el.parentElement.tagName !== 'MAIN' && el.parentElement !== document.body) {
+          el = el.parentElement;
+        }
+        return { el: el, text: (t.textContent || '').trim() };
+      });
+
+      const buckets = groups.map(([name, re]) => ({
+        name: name,
+        items: units.filter((u) => re.test(u.text)),
+      })).filter((b) => b.items.length);
+      // anything the map didn't claim
+      const claimed = new Set(buckets.flatMap((b) => b.items.map((i) => i.el)));
+      const rest = units.filter((u) => !claimed.has(u.el));
+      if (rest.length) buckets.push({ name: 'More', items: rest });
+      if (buckets.length < 2) return;
+
+      if (!document.getElementById('ptabs-style')) {
+        const st = document.createElement('style');
+        st.id = 'ptabs-style';
+        st.textContent =
+          '.ptabs{position:sticky;top:0;z-index:35;display:flex;gap:6px;padding:10px 0;margin-bottom:6px;'
+          + 'overflow-x:auto;scrollbar-width:none;background:var(--bg,#050506);}'
+          + '.ptabs::-webkit-scrollbar{display:none;}'
+          + '.ptab{flex:0 0 auto;padding:9px 15px;border-radius:999px;border:1px solid rgba(255,255,255,.12);'
+          + 'background:rgba(255,255,255,.05);color:var(--text-secondary,rgba(255,255,255,.62));'
+          + 'font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;}'
+          + '.ptab.on{background:var(--accent,#a78bfa);border-color:var(--accent,#a78bfa);color:#fff;}'
+          + '@media(min-width:1000px){.ptabs{position:static;}}';
+        document.head.appendChild(st);
+      }
+
+      const bar = document.createElement('div');
+      bar.className = 'ptabs'; bar.id = 'ptabs';
+      buckets.forEach((b, i) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'ptab' + (i === 0 ? ' on' : '');
+        btn.textContent = b.name;
+        btn.addEventListener('click', () => show(i));
+        bar.appendChild(btn);
+      });
+
+      const host = document.querySelector('main') || document.body;
+      host.insertBefore(bar, host.firstChild);
+
+      function show(n) {
+        buckets.forEach((b, i) => {
+          b.items.forEach((u) => { u.el.style.display = (i === n) ? '' : 'none'; });
+        });
+        bar.querySelectorAll('.ptab').forEach((t, i) => t.classList.toggle('on', i === n));
+        try { localStorage.setItem('dashboard:ptab:' + currentPageKey(), String(n)); } catch (e) {}
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      let start = 0;
+      try { start = parseInt(localStorage.getItem('dashboard:ptab:' + currentPageKey()) || '0', 10) || 0; } catch (e) {}
+      show(Math.min(start, buckets.length - 1));
+    } catch (e) {}
+  }
+
   function boot() {
     injectStyleAndHTML();
     setupWideLayout();
@@ -3548,6 +3636,7 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
     setupXp();
     setupSections();
     styleSections(); // after setupSections, so the icon lands before its controls
+    setupPageTabs();  // after sections exist; does nothing unless you switch it on
     setupSectionNav();
     setupEyes();
     applyHomeGreeting();

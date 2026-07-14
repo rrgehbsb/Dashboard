@@ -723,6 +723,14 @@
         <span class="st-ver" id="verLabel">—</span>
       </div>
 
+      <div class="st-row" id="pageTabsRow" style="cursor:pointer">
+        <div class="st-row-icon">🗂️</div>
+        <div class="st-row-label">Tabbed pages <span style="font-size:9px;background:var(--accent);color:#fff;padding:1px 5px;border-radius:4px;vertical-align:middle;margin-left:4px">TRY IT</span>
+          <div style="font-size:11px;color:var(--s-text2,rgba(255,255,255,0.4));font-weight:500;margin-top:1px">Health becomes Today / Body / Food / Rest instead of one long scroll. Off = exactly as it is now.</div>
+        </div>
+        <div class="pm-toggle" id="pageTabsToggle"></div>
+      </div>
+
       <div class="st-row" id="forceUpdateRow" style="cursor:pointer">
         <div class="st-row-icon">🔄</div>
         <div class="st-row-label">Force Update<div style="font-size:11px;color:var(--s-text2,rgba(255,255,255,0.4));font-weight:500;margin-top:1px">Stuck on an old version? Clears the cache and reloads. Your data is safe.</div></div>
@@ -1367,6 +1375,25 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) {}
     // Cache-busting query param so iOS can't serve the page from memory either.
     window.location.replace('index.html?fresh=' + Date.now());
+  });
+});
+
+// Tabbed pages — purely how the page is drawn. Off by default, and turning it off
+// restores the page exactly. No data is involved either way.
+function paintPageTabs() {
+  const t = document.getElementById('pageTabsToggle');
+  if (t) t.classList.toggle('on', load().pageTabs === true);
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const row = document.getElementById('pageTabsRow');
+  if (!row) return;
+  paintPageTabs();
+  row.addEventListener('click', () => {
+    const s = load();
+    s.pageTabs = !(s.pageTabs === true);
+    s._pushAt = Date.now();
+    save(s);
+    paintPageTabs();
   });
 });
 
