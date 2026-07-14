@@ -563,6 +563,27 @@ main {
   cursor: pointer; -webkit-tap-highlight-color: transparent; padding: 0;
 }
 .hb-sw button.on { border-color: #fff; transform: scale(1.12); }
+
+/* new-habit button */
+.hb-new {
+  width: 100%; margin-top: 4px; padding: 13px; border-radius: 15px;
+  border: 1.5px dashed rgba(255,255,255,0.16); background: rgba(255,255,255,0.03);
+  color: var(--text-secondary); font-family: inherit; font-size: 14px; font-weight: 700;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.hb-new:active { transform: scale(0.99); }
+
+/* when-chips */
+.hb-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.hb-chip {
+  border-radius: 999px; padding: 8px 12px; cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.13); background: rgba(255,255,255,0.05);
+  color: var(--text-secondary); font-family: inherit; font-size: 12.5px; font-weight: 600;
+  -webkit-tap-highlight-color: transparent;
+}
+.hb-chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.hb-hint { font-size: 11.5px; color: var(--text-tertiary); }
+.hb-group-ic { font-size: 14px; }
 </style>
   <link rel="icon" type="image/svg+xml" href="/icon.svg">
 </head>
@@ -575,11 +596,7 @@ main {
 
   <div class="section-title">Today</div>
   <div id="habitList"></div>
-  <div class="hb-add-row">
-    <input class="hb-emoji-add" id="hbEmojiInput" maxlength="2" placeholder="⭐">
-    <input class="hb-add-input" id="hbAddInput" placeholder="New habit name…" maxlength="40">
-    <button class="hb-add-btn" id="hbAddBtn">Add</button>
-  </div>
+  <button class="hb-new" id="hbNewBtn">+ New habit</button>
 
   <div class="section-title" style="margin-top:22px">Records</div>
   <div class="hb-stats" id="hbStats"></div>
@@ -619,16 +636,19 @@ main {
 
 <div class="hb-modal" id="hbEditModal">
   <div class="hb-modal-box">
-    <div class="hb-modal-title">Edit Habit</div>
+    <div class="hb-modal-title" id="hbModalTitle">Edit Habit</div>
     <div class="hb-modal-row">
       <input class="hb-emoji-pick" id="hbEditEmoji" maxlength="2" placeholder="⭐">
       <input class="hb-modal-name" id="hbEditName" placeholder="Habit name" maxlength="40">
     </div>
 
     <div class="hb-f">
-      <label>Group <small>optional — habits with the same group are shown together</small></label>
-      <input type="text" id="hbEditGroup" placeholder="e.g. Morning" list="hbGroupList" maxlength="20">
-      <datalist id="hbGroupList"></datalist>
+      <label>When <small>the list is grouped by this</small></label>
+      <div class="hb-chips" id="hbWhenChips"></div>
+      <div class="hb-f-row" style="margin-top:8px;align-items:center">
+        <input type="time" id="hbEditAt" style="flex:0 0 120px">
+        <span class="hb-hint" id="hbAtHint">or set an exact time — optional</span>
+      </div>
     </div>
 
     <div class="hb-f">
@@ -735,6 +755,30 @@ function setVal(id, date, val) {
   renderAll();
 }
 
+// ── When: time of day ──────────────────────────────────────────────────────
+// A habit is either pinned to a part of the day (Morning/Afternoon/Evening/Night)
+// or to an exact time. An exact time wins and picks its own slot, so you never have
+// to set both. Everything is optional — no slot means "Anytime".
+const SLOTS = [
+  ['morning',   'Morning',   '🌅'],
+  ['afternoon', 'Afternoon', '☀️'],
+  ['evening',   'Evening',   '🌆'],
+  ['night',     'Night',     '🌙'],
+  ['',          'Anytime',   '🕓'],
+];
+function slotOf(h) {
+  if (h.at && /^\d{1,2}:\d{2}$/.test(h.at)) {
+    const hh = parseInt(h.at.split(':')[0], 10);
+    if (hh < 12) return 'morning';
+    if (hh < 17) return 'afternoon';
+    if (hh < 21) return 'evening';
+    return 'night';
+  }
+  const w = String(h.when || '').toLowerCase();
+  return ['morning', 'afternoon', 'evening', 'night'].indexOf(w) >= 0 ? w : '';
+}
+function slotMeta(key) { return SLOTS.find(s => s[0] === key) || SLOTS[SLOTS.length - 1]; }
+
 // ── Groups ──
 function collapsedGroups() {
   try { return JSON.parse(localStorage.getItem('habits:collapsed') || '{}'); } catch (e) { return {}; }
@@ -785,9 +829,10 @@ function renderToday() {
     const pct = hPct(h, todayLog);
     const val = hVal(h, todayLog);
     const streak = calcStreak(h.id);
-    const sub = isCounted(h)
+    const base = isCounted(h)
       ? `${val} / ${hTarget(h)}${hUnit(h) ? ' ' + hUnit(h) : ''}`
       : (done ? 'Done today' : 'Every day');
+    const sub = h.at ? `${h.at} · ${base}` : base;
     return `<div class="hb-row${done ? ' done' : ''}${pct > 0 ? ' has-fill' : ''}"
         style="--hc:${h.color || '#a78bfa'}" data-id="${h.id}" data-date="${td}">
       <div class="hb-fill" style="width:${(pct * 100).toFixed(1)}%"></div>
@@ -805,24 +850,23 @@ function renderToday() {
     </div>`;
   }
 
-  // Group habits under collapsible headers (ungrouped ones come first, headerless).
-  const groups = new Map();
-  habits.forEach(h => {
-    const g = (h.group || '').trim();
-    if (!groups.has(g)) groups.set(g, []);
-    groups.get(g).push(h);
-  });
+  // Grouped by time of day, in the order the day actually happens. Within a slot,
+  // habits with an exact time come first, earliest first.
   const collapsed = collapsedGroups();
-  const ordered = [...groups.keys()].sort((a, b) => (a === '' ? -1 : b === '' ? 1 : a.localeCompare(b)));
-
-  el.innerHTML = ordered.map(g => {
-    const list = groups.get(g);
-    if (!g) return list.map(rowHtml).join('');
+  el.innerHTML = SLOTS.map(([key, label, icon]) => {
+    const list = habits.filter(h => slotOf(h) === key).sort((a, b) => {
+      if (a.at && b.at) return a.at.localeCompare(b.at);
+      if (a.at) return -1;
+      if (b.at) return 1;
+      return 0;
+    });
+    if (!list.length) return '';
     const doneN = list.filter(h => hDone(h, todayLog)).length;
-    const isC = !!collapsed[g];
+    const isC = !!collapsed[key || 'anytime'];
     return `<div class="hb-group">
-      <button class="hb-group-h" data-group="${g}">
-        <span class="hb-group-nm">${g}</span>
+      <button class="hb-group-h" data-group="${key || 'anytime'}">
+        <span class="hb-group-ic">${icon}</span>
+        <span class="hb-group-nm">${label}</span>
         <span class="hb-group-c">${doneN}/${list.length}</span>
         <span class="hb-group-x${isC ? ' c' : ''}">⌃</span>
       </button>
@@ -1073,67 +1117,81 @@ function sheetStep(dir) {
 }
 
 // ── add new habit ──
-document.getElementById('hbAddBtn').addEventListener('click', addHabit);
-document.getElementById('hbAddInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') addHabit();
-});
-function addHabit() {
-  const inp = document.getElementById('hbAddInput');
-  const emojiInp = document.getElementById('hbEmojiInput');
-  const name = (inp.value || '').trim();
-  if (!name) return;
-  const icon = (emojiInp.value || '').trim() || '⭐';
-  const habits = getHabits().slice();
-  const id = 'custom_' + Date.now();
-  // Every new habit used to get the SAME green, which is why the list read as one
-  // undifferentiated block. Hand out the next unused colour instead.
-  const PALETTE = ['#e74c3c','#3498db','#9b59b6','#00bfff','#f39c12','#2ecc71',
-                   '#e91e63','#f472b6','#14b8a6','#fbbf24','#8b5cf6','#fb7185'];
-  const used = habits.map(h => h.color);
-  const color = PALETTE.find(c => used.indexOf(c) === -1) || PALETTE[habits.length % PALETTE.length];
-  habits.push({id, name, icon, color});
-  _db['habits:list'] = habits;
-  inp.value = '';
-  emojiInp.value = '';
-  schedulePush();
-  renderAll();
-}
+// Creating a habit now goes through the SAME modal as editing (see openEditModal),
+// so you set when, how much and what colour up front rather than after the fact.
 
-// ── Edit modal for custom habits ──
+// ── Create / edit modal ──
 let _editingId = null;
 const HB_PALETTE = ['#e74c3c','#3498db','#9b59b6','#00bfff','#f39c12','#2ecc71',
                     '#e91e63','#f472b6','#14b8a6','#fbbf24','#8b5cf6','#fb7185'];
 let _editColor = null;
 
+let _editWhen = '';
+
+// One modal for BOTH creating and editing — a new habit asks for when, how much and
+// what colour up front, instead of making you create it and then go find the edit
+// button to configure it.
 function openEditModal(id) {
-  const habit = getHabits().find(h => h.id === id);
-  if (!habit) return;
-  _editingId = id;
-  _editColor = habit.color || '#a78bfa';
+  const isNew = !id;
+  const habit = isNew ? null : getHabits().find(h => h.id === id);
+  if (!isNew && !habit) return;
 
-  document.getElementById('hbEditEmoji').value = habit.icon || '⭐';
-  document.getElementById('hbEditName').value = habit.name || '';
-  document.getElementById('hbEditGroup').value = habit.group || '';
-  document.getElementById('hbEditTarget').value = hTarget(habit);
-  document.getElementById('hbEditUnit').value = habit.unit || '';
+  _editingId = id || null;
+  _editWhen = habit ? slotOf(habit) : '';
+  _editColor = habit ? (habit.color || '#a78bfa') : nextColor();
 
-  // suggest the groups already in use
-  const groups = [...new Set(getHabits().map(h => (h.group || '').trim()).filter(Boolean))];
-  document.getElementById('hbGroupList').innerHTML = groups.map(g => `<option value="${g}">`).join('');
+  document.getElementById('hbModalTitle').textContent = isNew ? 'New Habit' : 'Edit Habit';
+  document.getElementById('hbEditEmoji').value = habit ? (habit.icon || '⭐') : '';
+  document.getElementById('hbEditName').value = habit ? (habit.name || '') : '';
+  document.getElementById('hbEditAt').value = habit ? (habit.at || '') : '';
+  document.getElementById('hbEditTarget').value = habit ? hTarget(habit) : 1;
+  document.getElementById('hbEditUnit').value = habit ? (habit.unit || '') : '';
+  document.getElementById('hbEditDelete').style.display = isNew ? 'none' : '';
 
-  const sw = document.getElementById('hbEditColors');
-  const paint = () => {
-    sw.innerHTML = HB_PALETTE.map(c =>
-      `<button type="button" data-c="${c}" class="${c === _editColor ? 'on' : ''}" style="background:${c}"></button>`).join('');
-    sw.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
-      _editColor = b.getAttribute('data-c');
-      paint();
-    }));
-  };
-  paint();
+  paintWhen();
+  paintColors();
 
   document.getElementById('hbEditModal').classList.add('show');
   document.getElementById('hbEditName').focus();
+}
+
+function nextColor() {
+  const used = getHabits().map(h => h.color);
+  return HB_PALETTE.find(c => used.indexOf(c) === -1) || HB_PALETTE[getHabits().length % HB_PALETTE.length];
+}
+
+function paintWhen() {
+  const el = document.getElementById('hbWhenChips');
+  el.innerHTML = SLOTS.map(([k, label, icon]) =>
+    `<button type="button" class="hb-chip${k === _editWhen ? ' on' : ''}" data-w="${k}">${icon} ${label}</button>`).join('');
+  el.querySelectorAll('.hb-chip').forEach(b => b.addEventListener('click', () => {
+    _editWhen = b.getAttribute('data-w');
+    document.getElementById('hbEditAt').value = ''; // a slot and an exact time are alternatives
+    paintWhen();
+    syncAtHint();
+  }));
+}
+function paintColors() {
+  const sw = document.getElementById('hbEditColors');
+  sw.innerHTML = HB_PALETTE.map(c =>
+    `<button type="button" data-c="${c}" class="${c === _editColor ? 'on' : ''}" style="background:${c}"></button>`).join('');
+  sw.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    _editColor = b.getAttribute('data-c');
+    paintColors();
+  }));
+}
+// An exact time picks its own slot, so show which one it landed in.
+function syncAtHint() {
+  const at = document.getElementById('hbEditAt').value;
+  const hint = document.getElementById('hbAtHint');
+  if (at) {
+    const m = slotMeta(slotOf({ at }));
+    hint.textContent = '→ ' + m[2] + ' ' + m[1];
+    _editWhen = '';
+    document.getElementById('hbWhenChips').querySelectorAll('.hb-chip').forEach(c => c.classList.remove('on'));
+  } else {
+    hint.textContent = 'or set an exact time — optional';
+  }
 }
 document.getElementById('hbEditCancel').addEventListener('click', () => {
   document.getElementById('hbEditModal').classList.remove('show');
@@ -1141,28 +1199,39 @@ document.getElementById('hbEditCancel').addEventListener('click', () => {
 document.getElementById('hbEditModal').addEventListener('click', e => {
   if (e.target.id === 'hbEditModal') document.getElementById('hbEditModal').classList.remove('show');
 });
+document.getElementById('hbEditAt').addEventListener('input', syncAtHint);
+
 document.getElementById('hbEditSave').addEventListener('click', () => {
-  if (!_editingId) return;
-  const emoji = (document.getElementById('hbEditEmoji').value || '').trim() || '⭐';
   const name = (document.getElementById('hbEditName').value || '').trim();
-  if (!name) return;
-  const habits = getHabits().slice();
-  const idx = habits.findIndex(h => h.id === _editingId);
-  if (idx < 0) return;
+  if (!name) { document.getElementById('hbEditName').focus(); return; }
+  const emoji = (document.getElementById('hbEditEmoji').value || '').trim() || '⭐';
   const target = Math.max(1, parseInt(document.getElementById('hbEditTarget').value, 10) || 1);
-  habits[idx] = Object.assign({}, habits[idx], {
+  const at = document.getElementById('hbEditAt').value || '';
+  const fields = {
     icon: emoji,
     name: name,
-    group: (document.getElementById('hbEditGroup').value || '').trim(),
+    when: at ? '' : _editWhen,   // an exact time supersedes the slot
+    at: at,
     target: target,
     unit: target > 1 ? (document.getElementById('hbEditUnit').value || '').trim() : '',
-    color: _editColor || habits[idx].color || '#a78bfa',
-  });
+    color: _editColor || '#a78bfa',
+  };
+
+  const habits = getHabits().slice();
+  if (_editingId) {
+    const idx = habits.findIndex(h => h.id === _editingId);
+    if (idx < 0) return;
+    habits[idx] = Object.assign({}, habits[idx], fields);
+  } else {
+    habits.push(Object.assign({ id: 'custom_' + Date.now() }, fields));
+  }
   _db['habits:list'] = habits;
   document.getElementById('hbEditModal').classList.remove('show');
   schedulePush();
   renderAll();
 });
+
+document.getElementById('hbNewBtn').addEventListener('click', () => openEditModal(null));
 
 // ── Detail sheet wiring ──
 document.getElementById('hbSheetX').addEventListener('click', closeSheet);

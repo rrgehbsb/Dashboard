@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.5.93';
+const DASHBOARD_VERSION = '2.5.94';
 
 // Auto-update: when a new service worker takes control (new deploy), reload once
 // so the installed app always runs the latest code instead of a stale cached
@@ -442,24 +442,35 @@ window.applyDashSettings(JSON.parse(localStorage.getItem('dashboard:settings:v1'
   font-size: 20px; line-height: 1;
   filter: grayscale(100%) brightness(1.4); opacity: 0.85;
 }
+/* Floating pill nav — the look of a native app bar, doing exactly the same job as
+   before. It sits above the screen edge rather than welded to it, and the active
+   tab gets a soft highlight instead of a hairline. */
 .bottombar {
-  position: fixed; bottom: 0; left: 0; right: 0; z-index: 40;
+  position: fixed; z-index: 40;
+  left: 10px; right: 10px; bottom: calc(8px + env(safe-area-inset-bottom));
   display: flex; justify-content: space-around; align-items: stretch;
-  padding: 6px 0 calc(6px + env(safe-area-inset-bottom));
-  background: rgba(10, 10, 13, 0.72);
-  backdrop-filter: blur(20px) saturate(1.4);
-  -webkit-backdrop-filter: blur(20px) saturate(1.4);
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 7px 5px;
+  background: rgba(18, 18, 24, 0.82);
+  backdrop-filter: blur(22px) saturate(1.5);
+  -webkit-backdrop-filter: blur(22px) saturate(1.5);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 26px;
+  box-shadow: 0 12px 34px -12px rgba(0, 0, 0, 0.75), 0 2px 8px rgba(0,0,0,0.3);
   font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
 }
 .bottombar-tab {
-  flex: 1;
+  flex: 1; min-width: 0; position: relative;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 3px; padding: 6px 0 4px; text-decoration: none;
+  gap: 2px; padding: 7px 2px 6px; text-decoration: none;
+  border-radius: 17px;
   color: rgba(255, 255, 255, 0.45);
-  font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
-  -webkit-tap-highlight-color: transparent; transition: color 0.15s;
+  font-size: 9.5px; font-weight: 600; letter-spacing: 0.02em;
+  white-space: nowrap; overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.15s, background 0.2s;
 }
+/* the highlighted pill behind whichever tab you're on */
+.bottombar-tab.active { background: rgba(255, 255, 255, 0.08); }
 .bottombar-tab-icon {
   font-size: 24px; line-height: 1;
   filter: grayscale(100%) brightness(1.2); opacity: 0.55;
@@ -475,13 +486,12 @@ html[data-skin="none"] .bottombar-tab { position: relative; }
 html[data-skin="none"] .bottombar-tab.active { color: var(--accent); }
 html[data-skin="none"] .bottombar-tab.active .bottombar-tab-icon { opacity: 1; }
 html[data-skin="none"] .bottombar-tab.active span:last-child { text-shadow: 0 0 10px color-mix(in srgb, var(--accent) 60%, transparent); }
-html[data-skin="none"] .bottombar-tab.active::before {
-  content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
-  width: 20px; height: 3px; border-radius: 0 0 3px 3px;
-  background: var(--accent); box-shadow: 0 0 9px var(--accent);
-}
+/* The old hairline indicator hung off the top edge — wrong for a rounded pill,
+   where the active tab's own highlight does that job. */
+html[data-skin="none"] .bottombar-tab.active::before { content: none; }
+html[data-skin="none"] .bottombar-tab.active { background: color-mix(in srgb, var(--accent) 18%, transparent); }
 body.has-bottombar {
-  padding-bottom: calc(72px + env(safe-area-inset-bottom)) !important;
+  padding-bottom: calc(88px + env(safe-area-inset-bottom)) !important;
 }
 @media (max-width: 480px) {
   .topbar { padding-left: 10px; padding-right: 10px; gap: 6px; }
@@ -619,7 +629,12 @@ body { transition: background-color 0.25s, color 0.25s; }
 /* Light mode overrides */
 html[data-theme="light"] body { background: #f2f2f7 !important; color: #1a1a1a !important; }
 html[data-theme="light"] .topbar { background: rgba(242,242,247,0.97) !important; border-bottom-color: rgba(0,0,0,0.09) !important; }
-html[data-theme="light"] .bottombar { background: rgba(242,242,247,0.97) !important; border-top-color: rgba(0,0,0,0.09) !important; }
+html[data-theme="light"] .bottombar {
+  background: rgba(255,255,255,0.9) !important;
+  border-color: rgba(0,0,0,0.09) !important;
+  box-shadow: 0 10px 30px -12px rgba(0,0,0,0.25) !important;
+}
+html[data-theme="light"] .bottombar-tab.active { background: rgba(0,0,0,0.06); }
 html[data-theme="light"] .bottombar-tab { color: rgba(0,0,0,0.36) !important; }
 html[data-theme="light"] .bottombar-tab.active { color: #111 !important; }
 html[data-theme="light"] .topbar-water-pill { color: #111 !important; background: rgba(125,211,252,0.13) !important; border-color: rgba(125,211,252,0.28) !important; }
