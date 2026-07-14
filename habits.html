@@ -698,11 +698,13 @@ function client() {
 }
 
 // ── defaults ──
+// No Gym or Water here: the Fitness page already tracks workouts and Health already
+// tracks water, so having them as habits too meant logging the same thing twice.
+// Anyone who has customised their list keeps whatever they have — this only changes
+// what a fresh account starts with, and no existing logs are touched.
 const DEFAULT_HABITS = [
-  {id:'gym',   name:'Gym',   icon:'💪', color:'#e74c3c'},
   {id:'study', name:'Study', icon:'📚', color:'#3498db'},
   {id:'sleep', name:'Sleep', icon:'😴', color:'#9b59b6'},
-  {id:'water', name:'Water', icon:'💧', color:'#00bfff'},
   {id:'read',  name:'Read',  icon:'📖', color:'#f39c12'},
 ];
 
