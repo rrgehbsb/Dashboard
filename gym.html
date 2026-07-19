@@ -4253,13 +4253,17 @@ function r25(x){const v=Math.round(x/2.5)*2.5;return v%1?v.toFixed(1):String(v);
 function readJSON(k){try{return JSON.parse(localStorage.getItem(k));}catch(e){return null;}}
 
 let BW=null, SEXMULT=1, fetched=false, lastSummary='';
+const DBG=window.__rkDebug={phase:'init'};
 
 async function fetchBody(){
   if(fetched)return; fetched=true;
+  DBG.phase='fetching';
   try{
-    const uid=localStorage.getItem('_dashUid'); if(!uid)return;
+    const uid=localStorage.getItem('_dashUid'); DBG.uid=uid; if(!uid)return;
     const r=await fetch(SB_U+'/rest/v1/app_state?key=eq.'+encodeURIComponent(uid+':health')+'&select=data',{headers:{apikey:SB_K,Authorization:'Bearer '+SB_K}});
+    DBG.status=r.status;
     const rows=await r.json();
+    DBG.rows=rows.length;
     const d=(rows&&rows[0]&&rows[0].data)||{};
     const ws=Array.isArray(d.po_coach_weights)?d.po_coach_weights.slice():[];
     ws.sort((a,b)=>String(a.dateKey||'').localeCompare(String(b.dateKey||'')));
@@ -4268,7 +4272,8 @@ async function fetchBody(){
     const prof=(d.po_water_v1&&d.po_water_v1.profile)||{};
     if(!BW&&prof.weightKg)BW=parseFloat(prof.weightKg)||null;
     if(String(prof.sex||'').toLowerCase()==='female')SEXMULT=0.72;  // female standards run ~72% of male tables
-  }catch(e){}
+    DBG.bw=BW; DBG.phase='fetched';
+  }catch(e){DBG.err=String(e&&e.message);DBG.phase='fetch-failed';}
 }
 
 // Liftoff-style streak: rest days count, breaks after 3 straight missed days.
@@ -4389,7 +4394,7 @@ function render(){
   }catch(e){}
 }
 
-async function tick(){await fetchBody();render();}
+async function tick(){await fetchBody();DBG.phase='rendering';render();DBG.phase='rendered';}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)render();});
 window.addEventListener('focus',()=>render());
 setTimeout(tick,600);setTimeout(render,2500);setTimeout(render,6000);
