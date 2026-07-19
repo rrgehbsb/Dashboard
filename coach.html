@@ -226,15 +226,15 @@ function describe(name,a){
 // Actually apply an approved tool call. Returns a result string for the model.
 async function applyAction(name,a){
   if(name==='set_nutrition_targets'){
-    await patchRow('health',row=>{row[MEAL_SET]={kcal:{min:a.kcal_min,max:a.kcal_max},protein:{min:a.protein_min,max:a.protein_max},carbs:{min:a.carbs_min,max:a.carbs_max},fat:{min:a.fat_min,max:a.fat_max}};});
+    await patchRow('food',row=>{const mid=(x,y)=>Math.round(((+x||0)+((+y)||(+x)||0))/2);row.custom={kcal:mid(a.kcal_min,a.kcal_max),protein_g:mid(a.protein_min,a.protein_max),carbs_g:mid(a.carbs_min,a.carbs_max),fat_g:mid(a.fat_min,a.fat_max),_at:Date.now()};row._pushAt=Date.now();});
     return 'Done — targets updated.';
   }
   if(name==='replace_meal_plan'){
-    await patchRow('health',row=>{row[MEAL_TPL]=(a.meals||[]).map(m=>({id:rid('mp'),name:m.name,foods:m.foods||'',kcal:Math.round(m.kcal)||0,protein:Math.round(m.protein)||0,carbs:Math.round(m.carbs)||0,fat:Math.round(m.fat)||0,notes:'AI Coach'}));});
+    await patchRow('food',row=>{row.library=Array.isArray(row.library)?row.library:[];row.meals=[];(a.meals||[]).forEach(m=>{const fid=rid('fd');row.library.push({id:fid,name:m.name,kind:'serving',per:1,unit:'serving',nutrients:{kcal:Math.round(m.kcal)||0,protein_g:Math.round(m.protein)||0,carbs_g:Math.round(m.carbs)||0,fat_g:Math.round(m.fat)||0},src:'coach',note:m.foods||'',updatedAt:Date.now()});row.meals.push({id:rid('ml'),name:m.name,items:[{foodId:fid,qty:1}],updatedAt:Date.now()});});row._pushAt=Date.now();});
     return 'Done — meal plan replaced ('+(a.meals||[]).length+' meals).';
   }
   if(name==='add_meal'){
-    await patchRow('health',row=>{const t=Array.isArray(row[MEAL_TPL])?row[MEAL_TPL]:[];t.push({id:rid('mp'),name:a.name,foods:a.foods||'',kcal:Math.round(a.kcal)||0,protein:Math.round(a.protein)||0,carbs:Math.round(a.carbs)||0,fat:Math.round(a.fat)||0,notes:'AI Coach'});row[MEAL_TPL]=t;});
+    await patchRow('food',row=>{row.library=Array.isArray(row.library)?row.library:[];row.meals=Array.isArray(row.meals)?row.meals:[];const fid=rid('fd');row.library.push({id:fid,name:a.name,kind:'serving',per:1,unit:'serving',nutrients:{kcal:Math.round(a.kcal)||0,protein_g:Math.round(a.protein)||0,carbs_g:Math.round(a.carbs)||0,fat_g:Math.round(a.fat)||0},src:'coach',note:a.foods||'',updatedAt:Date.now()});row.meals.push({id:rid('ml'),name:a.name,items:[{foodId:fid,qty:1}],updatedAt:Date.now()});row._pushAt=Date.now();});
     return 'Done — meal added.';
   }
   if(name==='set_gym_exercise'){

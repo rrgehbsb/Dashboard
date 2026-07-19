@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.6.8';
+const DASHBOARD_VERSION = '2.6.9';
 
 // Auto-update: when a new service worker takes control (new deploy), reload once
 // so the installed app always runs the latest code instead of a stale cached
@@ -924,6 +924,7 @@ html[data-skin]:not([data-skin="none"]) #saveBtn {
   const ALL_TABS = [
     { key:'main',      href:'index.html',     icon:'🏠',  label:'Main' },
     { key:'health',    href:'health.html',    icon:'💊',  label:'Health' },
+    { key:'food',      href:'food.html',      icon:'🍽️', label:'Food' },
     { key:'fitness',   href:'gym.html',       icon:'💪',  label:'Fitness' },
     { key:'school',    href:'school.html',    icon:'📚',  label:'School' },
     { key:'habits',    href:'habits.html',    icon:'🔥',  label:'Habits' },
@@ -943,7 +944,7 @@ html[data-skin]:not([data-skin="none"]) #saveBtn {
   // 'coach' is NOT hideable: it has no nav tab, it's reached only via the floating
   // button, and who may actually USE the AI is enforced server-side by the admin
   // allowlist. Making it hideable only ever produced an invisible-button mystery.
-  const HIDEABLE_PAGES = ['health','fitness','school','habits','transport','projects','friends','finance','trends'];
+  const HIDEABLE_PAGES = ['health','fitness','school','habits','food','transport','projects','friends','finance','trends'];
   function pageVisible(key) {
     if (key === 'main' || key === 'settings') return true;
     const s = readSettings();
@@ -1511,6 +1512,7 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
   function currentPageKey() {
     const p = (window.location.pathname || '').toLowerCase();
     if (p.endsWith('health.html')) return 'health';
+    if (p.endsWith('food.html')) return 'food';
     if (p.endsWith('gym.html')) return 'fitness';
     if (p.endsWith('school.html')) return 'school';
     if (p.endsWith('habits.html')) return 'habits';
@@ -1539,6 +1541,7 @@ html[data-home="mono"] .dash-mini-card::before{ counter-increment:dmm; content:"
       else if (p.endsWith('habits.html')) key = 'habits';
       else if (p.endsWith('gym.html')) key = 'fitness';
       else if (p.endsWith('health.html')) key = 'health';
+      else if (p.endsWith('food.html')) key = 'food';
       if (key && !pageVisible(key)) { window.location.replace('index.html'); return true; }
     } catch (e) {}
     return false;

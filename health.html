@@ -1775,8 +1775,31 @@ details[open] .mp-details-summary::before { content: '▾ '; }
     </div>
   </div>
 
-  <!-- MEAL PREP TRACKER -->
-  <div class="mp-section" id="mpSection">
+  <!-- FOOD SUMMARY — the tracker itself lives on food.html; this is the ring. -->
+  <div class="sw-card" id="foodSection">
+    <div class="section-title" style="margin-top:0;margin-bottom:14px">Food</div>
+    <a href="food.html" style="display:flex;align-items:center;gap:16px;text-decoration:none;color:inherit">
+      <div style="position:relative;width:92px;height:92px;flex-shrink:0">
+        <svg viewBox="0 0 92 92" style="width:92px;height:92px;transform:rotate(-90deg)">
+          <circle cx="46" cy="46" r="40" style="fill:none;stroke:rgba(255,255,255,.07);stroke-width:8"></circle>
+          <circle id="fsRing" cx="46" cy="46" r="40" style="fill:none;stroke:var(--accent);stroke-width:8;stroke-linecap:round;stroke-dasharray:251;stroke-dashoffset:251;transition:stroke-dashoffset .6s"></circle>
+        </svg>
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+          <b id="fsKcal" style="font-size:19px;color:var(--text-primary)">—</b>
+          <small style="font-size:9px;color:var(--text-tertiary)">kcal</small>
+        </div>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div id="fsLine" style="font-size:13px;color:var(--text-secondary);line-height:1.5">Track calories, protein &amp; meals →</div>
+        <div id="fsProt" style="font-size:11.5px;color:#f472b6;font-weight:700;margin-top:4px"></div>
+      </div>
+      <span style="color:var(--accent);font-size:20px;font-weight:700">→</span>
+    </a>
+  </div>
+
+  <!-- MEAL PREP TRACKER — absorbed into food.html (v2.6.9); markup kept so its
+       scripts don't break, but hidden. -->
+  <div class="mp-section" id="mpSection" style="display:none">
     <div class="mp-section-head">
       <div class="section-title" style="margin-top:0;margin-bottom:0">Daily Meal Prep</div>
       <!-- wraps: three buttons plus the title don't fit on a 320px phone -->
@@ -5205,6 +5228,39 @@ renderMeasurements();
   window.addEventListener('eyes-changed',()=>{ loadStats(); });
   document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ loadStats(); renderCfg(); } });
   setInterval(renderCfg, 30000); // keeps the "next break" countdown honest
+
+  // ── Food summary ring (reads the uid:food row the Food page owns) ──
+  async function foodRing(){
+    try{
+      const { data:{ session } } = await client().auth.getSession();
+      if(!session) return;
+      const { data } = await client().from('app_state').select('data').eq('key',session.user.id+':food').maybeSingle();
+      const d=(data&&data.data)||{};
+      const dk=(()=>{const x=new Date();return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');})();
+      const entries=((d.days||{})[dk]||{}).entries||[];
+      let kcal=0,prot=0;
+      entries.forEach(e=>{kcal+=(e.n&&e.n.kcal)||0;prot+=(e.n&&e.n.protein_g)||0;});
+      const el=document.getElementById('fsKcal'); if(!el) return;
+      el.textContent=String(Math.round(kcal));
+      document.getElementById('fsProt').textContent=Math.round(prot)+'g protein today';
+      document.getElementById('fsLine').textContent=entries.length
+        ? entries.length+' item'+(entries.length===1?'':'s')+' logged today'
+        : 'Nothing logged yet today — tap to add';
+      // target for the ring: custom kcal if set, else rough Mifflin from profile
+      const p=d.profile||{},c=d.custom||{};
+      let goal=c.kcal||null;
+      if(!goal&&p.heightCm&&p.age){
+        const ws=(Array.isArray((typeof _dbH!=='undefined'&&_dbH['po_coach_weights'])||null)?_dbH['po_coach_weights']:[]).slice().sort((a,b)=>String(a.dateKey||'').localeCompare(String(b.dateKey||'')));
+        const bw=ws.length?parseFloat(ws[ws.length-1].kg):null;
+        if(bw){const s=String(p.sex||'male')==='female'?-161:5;
+          goal=Math.round(((10*bw+6.25*p.heightCm-5*p.age+s)*(parseFloat(p.activity)||1.55)+(parseFloat(p.goalRate)||0)*7700/7)/10)*10;}
+      }
+      if(goal)document.getElementById('fsRing').style.strokeDashoffset=String(251*(1-Math.min(1,kcal/goal)));
+    }catch(e){}
+  }
+  foodRing();
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) foodRing(); });
+  setInterval(foodRing, 60000);
 
   // topbar.js is deferred, so dashEyes may not exist yet on first paint.
   (function wait(n){
