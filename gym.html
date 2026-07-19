@@ -1620,6 +1620,71 @@ img, video, canvas, svg { max-width: 100%; }
     <span class="po-day-split" id="dayPillSplit">—</span>
   </button>
 
+  <!-- ===== STRENGTH RANK ═══ your lifts scored like a game ===== -->
+  <style>
+  .rk-wrap{margin:2px 0 26px;--tc:#9ca3af;}
+  .rk-hero{position:relative;display:flex;gap:16px;align-items:center;padding:20px 17px;border-radius:22px;overflow:hidden;
+    background:radial-gradient(130% 170% at 15% -10%, color-mix(in srgb,var(--tc) 22%, transparent), rgba(255,255,255,0.02) 58%), rgba(255,255,255,0.025);
+    border:1px solid color-mix(in srgb,var(--tc) 38%, transparent);}
+  .rk-emblem{flex:0 0 84px;width:84px;height:94px;display:grid;place-items:center;font-size:36px;
+    clip-path:polygon(50% 0,94% 25%,94% 75%,50% 100%,6% 75%,6% 25%);
+    background:linear-gradient(160deg,color-mix(in srgb,var(--tc) 80%,#fff 8%),color-mix(in srgb,var(--tc) 40%,#000));
+    filter:drop-shadow(0 0 20px color-mix(in srgb,var(--tc) 55%,transparent));
+    animation:rkIn .6s cubic-bezier(.2,1.4,.4,1);}
+  @keyframes rkIn{from{transform:scale(.6) rotate(-8deg);opacity:0;}}
+  .rk-main{flex:1;min-width:0;}
+  .rk-tier{font-size:25px;font-weight:900;letter-spacing:-0.02em;color:#fafafa;line-height:1.1;}
+  .rk-tier b{color:var(--tc);}
+  .rk-sub{font-size:11.5px;color:rgba(255,255,255,.5);margin-top:3px;line-height:1.45;}
+  .rk-lpbar{height:10px;border-radius:6px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:10px;}
+  .rk-lpbar i{display:block;height:100%;width:0;border-radius:6px;
+    background:linear-gradient(90deg,var(--tc),color-mix(in srgb,var(--tc) 50%,#fff));
+    box-shadow:0 0 12px var(--tc);transition:width .9s cubic-bezier(.22,1,.36,1);}
+  .rk-lpmeta{display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:rgba(255,255,255,.55);margin-top:5px;}
+  .rk-lpmeta b{color:var(--tc);}
+  .rk-stats{display:flex;gap:9px;margin-top:11px;}
+  .rk-stat{flex:1;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:9px 6px;text-align:center;}
+  .rk-stat s{display:block;font-size:17px;font-weight:800;color:#fafafa;text-decoration:none;}
+  .rk-stat u{display:block;font-size:9.5px;color:rgba(255,255,255,.4);text-decoration:none;margin-top:2px;letter-spacing:.04em;text-transform:uppercase;}
+  .rk-close{display:none;align-items:center;gap:9px;margin-top:11px;padding:11px 13px;border-radius:14px;font-size:12.5px;line-height:1.45;color:rgba(255,255,255,.75);
+    background:color-mix(in srgb,var(--tc) 10%,transparent);border:1px solid color-mix(in srgb,var(--tc) 30%,transparent);}
+  .rk-close.show{display:flex;}
+  .rk-close b{color:#fff;}
+  .rk-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:11px;}
+  @media(min-width:900px){.rk-grid{grid-template-columns:repeat(3,1fr);}}
+  .rk-card{--tc:#9ca3af;text-align:left;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-top:2.5px solid var(--tc);
+    border-radius:14px;padding:11px 12px;cursor:pointer;font-family:inherit;color:#fafafa;-webkit-tap-highlight-color:transparent;}
+  .rk-card:active{transform:scale(.985);}
+  .rk-card-top{display:flex;align-items:center;gap:7px;}
+  .rk-card-nm{flex:1;min-width:0;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .rk-chip{flex:0 0 auto;font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#0a0a0b;background:var(--tc);border-radius:6px;padding:2.5px 6px;}
+  .rk-card-est{font-size:11px;color:rgba(255,255,255,.5);margin-top:4px;}
+  .rk-card-bar{height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:7px;}
+  .rk-card-bar i{display:block;height:100%;background:var(--tc);border-radius:3px;}
+  .rk-tgt{display:none;font-size:11px;line-height:1.55;color:rgba(255,255,255,.6);margin-top:8px;padding-top:8px;border-top:1px dashed rgba(255,255,255,.12);}
+  .rk-card.open .rk-tgt{display:block;}
+  .rk-tgt b{color:var(--tc);}
+  .rk-note{font-size:10px;color:rgba(255,255,255,.32);line-height:1.5;margin-top:10px;}
+  .rk-lockbtn{margin-top:8px;display:inline-block;background:var(--accent,#a78bfa);color:#fff;border:none;border-radius:10px;
+    padding:8px 14px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;text-decoration:none;}
+  @media(max-width:420px){.rk-emblem{flex-basis:70px;width:70px;height:80px;font-size:30px;}.rk-tier{font-size:21px;}}
+  </style>
+  <section class="rk-wrap" id="rkWrap" data-nav="Rank">
+    <div class="rk-hero">
+      <div class="rk-emblem" id="rkEmblem">🔒</div>
+      <div class="rk-main">
+        <div class="rk-tier" id="rkTier">Unranked</div>
+        <div class="rk-sub" id="rkSub">Loading your lifts…</div>
+        <div class="rk-lpbar"><i id="rkLpFill"></i></div>
+        <div class="rk-lpmeta"><b id="rkLp"></b><span id="rkNext"></span></div>
+      </div>
+    </div>
+    <div class="rk-stats" id="rkStats" style="display:none"></div>
+    <div class="rk-close" id="rkClose"></div>
+    <div class="rk-grid" id="rkGrid"></div>
+    <div class="rk-note" id="rkNote" style="display:none">Ranks estimate your 1-rep max from your logged sets (weight × reps, Epley) relative to your bodyweight, scored against published strength standards. Machines vary between gyms — treat it as motivation, not a meet result.</div>
+  </section>
+
   <!-- ===== WORKOUT TRACKER ===== -->
   <div class="gt-wrap" id="gymTracker">
     <div class="gt-section-head">
@@ -3117,6 +3182,7 @@ img, video, canvas, svg { max-width: 100%; }
     // in the po-coach row caused the cross-device weight-sync bug.
     'po_coach_v1', 'po_coach_workout_done',
     'dashboard:gym:v1:template', 'dashboard:gym:v1:logs', 'dashboard:gym:v1:activeDay',
+    'dashboard:gym:v1:rank',   // computed strength-rank summary (feeds the future friends leaderboard)
   ];
 
   const _dbG = {};
@@ -4110,5 +4176,225 @@ window._gtRenderAll = renderAll;
 if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}
 </script>
 
+<script>
+// ══ STRENGTH RANK ENGINE ═════════════════════════════════════════════════════
+// Liftoff-style ranks from data the app ALREADY has: estimated 1RM (Epley) from
+// logged sets, divided by bodyweight (from the Health page's weight log), scored
+// against strength-standard ratio tables per lift. No new data entry.
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+// Own SB constants — the page's live inside the sync IIFE closure (steps-card lesson).
+const SB_U='https://mtuoqwbrujxutofhyahb.supabase.co';
+const SB_K='sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
+
+const TIERS=[
+  {n:'Iron',    c:'#9ca3af', i:'🔩', min:0},
+  {n:'Bronze',  c:'#e08b3d', i:'🥉', min:20},
+  {n:'Silver',  c:'#cbd5e1', i:'🥈', min:35},
+  {n:'Gold',    c:'#fbbf24', i:'🥇', min:50},
+  {n:'Platinum',c:'#6ee7d8', i:'💠', min:65},
+  {n:'Diamond', c:'#60a5fa', i:'💎', min:80},
+  {n:'Titan',   c:'#c084fc', i:'⚡', min:92},
+];
+
+// [pattern, ratio thresholds] — est-1RM as a multiple of bodyweight at
+// [beginner, novice, intermediate, advanced, elite] → scores [20,40,60,80,100].
+// Approximations of published strength standards. ORDER MATTERS (curl before
+// incline, so "incline curl" doesn't rank as a press).
+const STANDARDS=[
+  [/curl/i,                               [0.25,0.40,0.55,0.75,0.95]],
+  [/pull.?up|chin.?up/i,                  [0.90,1.10,1.35,1.65,2.00]],
+  [/\bdip/i,                              [0.95,1.20,1.50,1.85,2.25]],
+  [/leg press/i,                          [1.20,1.80,2.50,3.20,4.00]],
+  [/hip thrust|glute bridge/i,            [1.00,1.50,2.05,2.65,3.30]],
+  [/pulldown|lat pull/i,                  [0.50,0.75,1.00,1.25,1.55]],
+  [/row\b|pendlay|seal row|cable row/i,   [0.50,0.75,1.00,1.30,1.65]],
+  [/deadlift|rdl|romanian/i,              [0.85,1.20,1.65,2.15,2.70]],
+  [/squat|hack/i,                         [0.70,1.00,1.40,1.85,2.35]],
+  [/lunge|split squat|bulgarian/i,        [0.50,0.75,1.05,1.40,1.80]],
+  [/overhead|ohp|shoulder press|military/i,[0.35,0.55,0.75,1.00,1.30]],
+  [/incline/i,                            [0.45,0.70,0.95,1.25,1.60]],
+  [/bench|chest press|floor press/i,      [0.50,0.75,1.05,1.40,1.80]],
+  [/lateral|\bfly|flye|raise|pushdown|extension|face pull|shrug|calf/i,[0.15,0.30,0.45,0.65,0.85]],
+];
+const GENERIC=[0.35,0.55,0.80,1.10,1.45];
+const SEG=[20,40,60,80,100];
+
+function stdFor(name){for(const[re,t]of STANDARDS)if(re.test(name))return t;return GENERIC;}
+function ratioToScore(r,t){
+  if(r<=0)return 0;
+  if(r<t[0])return 20*r/t[0];
+  for(let i=0;i<4;i++)if(r<t[i+1])return SEG[i]+20*(r-t[i])/(t[i+1]-t[i]);
+  return 100;
+}
+function scoreToRatio(s,t){
+  if(s>=100)return t[4];
+  if(s<20)return t[0]*s/20;
+  const k=Math.floor(s/20);            // segment 1..4 → [t[k-1],t[k]]
+  return t[k-1]+(t[k]-t[k-1])*((s-SEG[k-1])/20);
+}
+function tierOf(s){let x=TIERS[0];for(const t of TIERS)if(s>=t.min)x=t;return x;}
+function nextTier(t){const i=TIERS.indexOf(t);return i<TIERS.length-1?TIERS[i+1]:null;}
+function lpOf(s,t){const nx=nextTier(t);const max=nx?nx.min:100;return Math.round(Math.max(0,Math.min(1,(s-t.min)/(max-t.min)))*100);}
+
+// "60x8" / "bw x 9" / "bw+10x6" → est 1RM. Reps capped at 15: Epley gets silly past that.
+function parseSet(v,bw){
+  const s=String(v||'').trim().toLowerCase();
+  const m=s.match(/^(bw)?\s*\+?\s*(\d+(?:[.,]\d+)?)?\s*(?:kg)?\s*[x×*]\s*(\d+(?:[.,]\d+)?)/i);
+  if(!m)return null;
+  const reps=parseFloat(String(m[3]).replace(',','.'));
+  let w=m[2]!=null?parseFloat(String(m[2]).replace(',','.')):0;
+  if(m[1]){ if(!bw)return null; w=bw+(m[2]!=null?w:0); }
+  if(!w||!reps)return null;
+  return {w:w,r:reps,est:w*(1+Math.min(reps,15)/30)};
+}
+function r25(x){const v=Math.round(x/2.5)*2.5;return v%1?v.toFixed(1):String(v);}
+function readJSON(k){try{return JSON.parse(localStorage.getItem(k));}catch(e){return null;}}
+
+let BW=null, SEXMULT=1, fetched=false, lastSummary='';
+
+async function fetchBody(){
+  if(fetched)return; fetched=true;
+  try{
+    const uid=localStorage.getItem('_dashUid'); if(!uid)return;
+    const r=await fetch(SB_U+'/rest/v1/app_state?key=eq.'+encodeURIComponent(uid+':health')+'&select=data',{headers:{apikey:SB_K,Authorization:'Bearer '+SB_K}});
+    const rows=await r.json();
+    const d=(rows&&rows[0]&&rows[0].data)||{};
+    const ws=Array.isArray(d.po_coach_weights)?d.po_coach_weights.slice():[];
+    ws.sort((a,b)=>String(a.dateKey||'').localeCompare(String(b.dateKey||'')));
+    const last=ws[ws.length-1];
+    if(last)BW=parseFloat(last.kg??last.weightKg??last.w??last.value)||null;
+    const prof=(d.po_water_v1&&d.po_water_v1.profile)||{};
+    if(!BW&&prof.weightKg)BW=parseFloat(prof.weightKg)||null;
+    if(String(prof.sex||'').toLowerCase()==='female')SEXMULT=0.72;  // female standards run ~72% of male tables
+  }catch(e){}
+}
+
+// Liftoff-style streak: rest days count, breaks after 3 straight missed days.
+function calcStreak(logs){
+  const days=Object.keys(logs).filter(dk=>{
+    const d=logs[dk];return d&&Object.keys(d).some(k=>k.indexOf('__')!==0&&d[k]&&Object.keys(d[k]).some(x=>/^set\d+/.test(x)&&String(d[k][x]||'').trim()));
+  }).sort();
+  if(!days.length)return 0;
+  const day=s=>Math.floor(new Date(s+'T12:00:00').getTime()/864e5);
+  const today=Math.floor(Date.now()/864e5);
+  const last=day(days[days.length-1]);
+  if(today-last>3)return 0;
+  let start=last;
+  for(let i=days.length-2;i>=0;i--){const d=day(days[i]);if(start-d<=3)start=d;else break;}
+  return last-start+1;
+}
+
+function compute(){
+  const tpl=readJSON('dashboard:gym:v1:template')||[];
+  const logs=readJSON('dashboard:gym:v1:logs')||{};
+  const exs=[];tpl.forEach(d=>(d.exercises||[]).forEach(e=>exs.push({id:e.id,name:e.name})));
+  const ranked=[],unranked=[];
+  exs.forEach(ex=>{
+    let best=null;
+    Object.keys(logs).forEach(dk=>{
+      const el=logs[dk]&&logs[dk][ex.id];if(!el)return;
+      Object.keys(el).forEach(k=>{
+        if(!/^set\d+R?$/.test(k))return;
+        const p=parseSet(el[k],BW);
+        if(p&&(!best||p.est>best.est))best=Object.assign({dk:dk},p);
+      });
+    });
+    if(!best){unranked.push(ex);return;}
+    const t=stdFor(ex.name);
+    const ratio=(best.est/BW)/SEXMULT;
+    const score=ratioToScore(ratio,t);
+    ranked.push({ex:ex,best:best,t:t,ratio:ratio,score:score});
+  });
+  ranked.sort((a,b)=>b.score-a.score);
+  const top=ranked.slice(0,5);
+  const overall=top.length?top.reduce((s,r)=>s+r.score,0)/top.length:0;
+  return {ranked:ranked,unranked:unranked,overall:overall,logs:logs};
+}
+
+function workoutsThisWeek(logs){
+  const now=new Date();const sun=new Date(now);sun.setHours(0,0,0,0);sun.setDate(sun.getDate()-sun.getDay());
+  return Object.keys(logs).filter(dk=>new Date(dk+'T12:00:00')>=sun&&Object.keys(logs[dk]).some(k=>k.indexOf('__')!==0)).length;
+}
+
+function render(){
+  const wrap=$('rkWrap');if(!wrap)return;
+  if(!BW){
+    wrap.style.setProperty('--tc','#9ca3af');
+    $('rkEmblem').textContent='🔒';
+    $('rkTier').textContent='Unranked';
+    $('rkSub').innerHTML='Ranks need your <b>bodyweight</b>. Log a weigh-in on the Health page to unlock them.'
+      +'<br><a class="rk-lockbtn" href="health.html">⚖️ Log my weight</a>';
+    $('rkLp').textContent='';$('rkNext').textContent='';
+    return;
+  }
+  const d=compute();
+  if(!d.ranked.length){
+    $('rkEmblem').textContent='🏋️';
+    $('rkTier').textContent='Unranked';
+    $('rkSub').textContent='Log sets as weight × reps (e.g. 60x8) and your rank appears here.';
+    return;
+  }
+  const tier=tierOf(d.overall),lp=lpOf(d.overall,tier),nx=nextTier(tier);
+  wrap.style.setProperty('--tc',tier.c);
+  $('rkEmblem').textContent=tier.i;
+  $('rkTier').innerHTML='<b>'+tier.n+'</b>';
+  $('rkSub').textContent='Your 5 best lifts, scored against your bodyweight ('+BW.toFixed(1)+' kg)';
+  $('rkLpFill').style.width=lp+'%';
+  $('rkLp').textContent=lp+' LP';
+  $('rkNext').textContent=nx?(100-lp)+' LP to '+nx.n:'Top rank — hold it';
+
+  const streak=calcStreak(d.logs);
+  $('rkStats').style.display='flex';
+  $('rkStats').innerHTML=
+    '<div class="rk-stat"><s>🔥 '+streak+'</s><u>day streak</u></div>'
+    +'<div class="rk-stat"><s>'+workoutsThisWeek(d.logs)+'</s><u>this week</u></div>'
+    +'<div class="rk-stat"><s>'+d.ranked.length+'</s><u>ranked lifts</u></div>';
+
+  // Closest rank-up = the most motivating single number in the app.
+  const close=d.ranked.filter(r=>r.score<100).sort((a,b)=>lpOf(b.score,tierOf(b.score))-lpOf(a.score,tierOf(a.score)))[0];
+  if(close){
+    const ct=tierOf(close.score),cn=nextTier(ct);
+    if(cn){
+      const need1=scoreToRatio(cn.min,close.t)*SEXMULT*BW;
+      $('rkClose').className='rk-close show';
+      $('rkClose').innerHTML='🎯 <span>Closest rank-up: <b>'+close.ex.name+'</b> — hit <b>'+r25(need1/(1+8/30))+' × 8</b> for <b>'+cn.n+'</b></span>';
+    }
+  }
+
+  $('rkGrid').innerHTML=d.ranked.map((r,i)=>{
+    const t=tierOf(r.score),lp2=lpOf(r.score,t),nx2=nextTier(t);
+    let tgt='';
+    if(nx2){
+      const need=scoreToRatio(nx2.min,r.t)*SEXMULT*BW;
+      tgt='Next: <b>'+nx2.n+'</b> at est. '+Math.round(need)+' kg — '
+        +r25(need/(1+6/30))+'×6 · '+r25(need/(1+8/30))+'×8 · '+r25(need/(1+10/30))+'×10';
+    }else tgt='Maxed. Absolute unit.';
+    return '<button class="rk-card" style="--tc:'+t.c+'" data-i="'+i+'">'
+      +'<div class="rk-card-top"><span class="rk-card-nm">'+r.ex.name+'</span><span class="rk-chip">'+t.n+'</span></div>'
+      +'<div class="rk-card-est">est. 1RM <b>'+Math.round(r.best.est)+' kg</b> · '+r.ratio.toFixed(2)+'×BW · '+lp2+' LP</div>'
+      +'<div class="rk-card-bar"><i style="width:'+lp2+'%"></i></div>'
+      +'<div class="rk-tgt">Best: '+r.best.w+' × '+r.best.r+' ('+r.best.dk+')<br>'+tgt+'</div>'
+      +'</button>';
+  }).join('')
+  +d.unranked.map(ex=>'<button class="rk-card" style="--tc:#4b5563;opacity:.55"><div class="rk-card-top"><span class="rk-card-nm">'+ex.name+'</span><span class="rk-chip">—</span></div><div class="rk-card-est">no weight×reps sets yet</div></button>').join('');
+  $('rkGrid').querySelectorAll('.rk-card[data-i]').forEach(c=>c.addEventListener('click',()=>c.classList.toggle('open')));
+  $('rkNote').style.display='';
+
+  // Publish a compact summary into the synced row (future friends leaderboard).
+  try{
+    const sum=JSON.stringify({score:Math.round(d.overall*10)/10,tier:tier.n,lp:lp,lifts:d.ranked.length});
+    if(sum!==lastSummary){lastSummary=sum;localStorage.setItem('dashboard:gym:v1:rank',sum);}
+  }catch(e){}
+}
+
+async function tick(){await fetchBody();render();}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)render();});
+window.addEventListener('focus',()=>render());
+setTimeout(tick,600);setTimeout(render,2500);setTimeout(render,6000);
+setInterval(render,30000);
+})();
+</script>
 </body>
 </html>
