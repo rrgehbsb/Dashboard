@@ -146,6 +146,16 @@ main{max-width:760px;margin:0 auto;padding:12px 16px calc(120px + env(safe-area-
   color:#f87171;font-size:15px;cursor:pointer;flex-shrink:0;}
 .fd-pick.usda{border-color:color-mix(in srgb,var(--accent,#a78bfa) 30%,var(--border));}
 .fd-pick .pbrand{color:color-mix(in srgb,var(--accent,#a78bfa) 85%,#fff);font-weight:700;}
+.fd-ai-item{display:flex;align-items:center;gap:10px;padding:10px 11px;border-radius:13px;
+  background:rgba(255,255,255,.04);border:1px solid var(--border);margin-bottom:7px;}
+.fd-ai-item .an{flex:1;min-width:0;}
+.fd-ai-item .an b{display:block;font-size:13px;font-weight:700;color:var(--t1);}
+.fd-ai-item .an small{font-size:10.5px;color:var(--t3);}
+.fd-ai-item .ak{font-size:12px;font-weight:700;color:var(--t2);flex-shrink:0;}
+.fd-ai-add{width:30px;height:30px;border-radius:9px;border:1px solid var(--border-strong);background:rgba(255,255,255,.05);
+  color:var(--accent,#a78bfa);font-size:17px;cursor:pointer;flex-shrink:0;-webkit-tap-highlight-color:transparent;}
+.fd-ai-item.added{opacity:.4;}
+.fd-ai-item.added .fd-ai-add{color:#34d399;}
 .fd-setup{background:color-mix(in srgb,var(--accent,#a78bfa) 10%,transparent);
   border:1px solid color-mix(in srgb,var(--accent,#a78bfa) 30%,transparent);
   border-radius:14px;padding:12px 13px;font-size:12.5px;line-height:1.55;margin-bottom:14px;}
@@ -293,6 +303,8 @@ body.fd-boot main>:nth-child(8){animation-delay:.35s}
       <button class="fd-tab" data-t="meals">Meals</button>
       <button class="fd-tab" data-t="quick">Quick add</button>
       <button class="fd-tab" data-t="recipe">Recipe</button>
+      <button class="fd-tab" data-t="barcode">Barcode</button>
+      <button class="fd-tab" data-t="ai">AI</button>
     </div>
     <div id="fdTabLib">
       <input type="text" class="fd-search" id="fdLibSearch" placeholder="Search your foods…" autocomplete="off">
@@ -339,6 +351,26 @@ body.fd-boot main>:nth-child(8){animation-delay:.35s}
       </div>
       <div class="fd-note">Cooking loses water, not calories — the final weight is usually less than the sum of raw ingredients. That's why this is separate from "grams in".</div>
       <div class="fd-btns"><button class="fd-b pri" id="fdRecSave">Save &amp; log 1 serving</button></div>
+    </div>
+    <div id="fdTabBarcode" style="display:none">
+      <div class="fd-frow">
+        <div class="fd-f" style="flex:1"><label>Barcode number</label><input type="text" inputmode="numeric" id="fdBcCode" placeholder="e.g. 5449000000996" maxlength="20"></div>
+        <button class="fd-b pri" id="fdBcLookup" style="flex:0 0 auto;align-self:flex-end;margin-bottom:11px">Look up</button>
+      </div>
+      <button class="fd-b" id="fdBcScanBtn" style="display:none;width:100%;margin-bottom:11px">📷 Scan with camera</button>
+      <div id="fdBcCamWrap" style="display:none;margin-bottom:11px">
+        <video id="fdBcVideo" playsinline muted style="width:100%;border-radius:14px;background:#000"></video>
+        <button class="fd-b" id="fdBcCamStop" style="width:100%;margin-top:8px">Stop scanning</button>
+      </div>
+      <div id="fdBcResult"></div>
+      <div class="fd-note" id="fdBcCamNote"></div>
+    </div>
+    <div id="fdTabAi" style="display:none">
+      <div class="fd-f"><label>Describe what you ate</label>
+        <input type="text" id="fdAiText" placeholder="e.g. 3 eggs, toast with butter, a banana" maxlength="300">
+      </div>
+      <div class="fd-btns"><button class="fd-b pri" id="fdAiGo" style="flex:1">✨ Estimate</button></div>
+      <div id="fdAiResult" style="margin-top:12px"></div>
     </div>
   </div>
 </div>
@@ -772,6 +804,8 @@ function openAdd(g){
   recipeIngs=[];recipeWeightTouched=false;
   $('fdRecName').value='';$('fdRecSearch').value='';$('fdRecWeight').value='';$('fdRecServings').value='1';
   renderRecipeIngs();renderRecipeSearch('');
+  $('fdBcCode').value='';$('fdBcResult').innerHTML='';stopBcScan();
+  $('fdAiText').value='';$('fdAiResult').innerHTML='';
   showTab('lib');$('fdAddM').classList.add('show');
 }
 function showTab(t){
@@ -780,6 +814,9 @@ function showTab(t){
   $('fdTabMeals').style.display=t==='meals'?'':'none';
   $('fdTabQuick').style.display=t==='quick'?'':'none';
   $('fdTabRecipe').style.display=t==='recipe'?'':'none';
+  $('fdTabBarcode').style.display=t==='barcode'?'':'none';
+  $('fdTabAi').style.display=t==='ai'?'':'none';
+  if(t==='barcode')initBarcodeTab();
 }
 document.querySelectorAll('#fdAddM .fd-tab').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.t)));
 $('fdAddM').addEventListener('click',e=>{if(e.target.id==='fdAddM')$('fdAddM').classList.remove('show');});
@@ -954,6 +991,98 @@ $('fdRecSave').addEventListener('click',()=>{
   _db.library.push(food);
   addEntry(viewDate,addGroup,food,weight/servings,'recipe');   // logs 1 serving immediately
   $('fdAddM').classList.remove('show');
+});
+
+/* ── barcode ── */
+let bcStream=null,bcDetector=null,bcRAF=null;
+function initBarcodeTab(){
+  const supported='BarcodeDetector' in window;
+  $('fdBcScanBtn').style.display=supported?'':'none';
+  $('fdBcCamNote').textContent=supported
+    ? 'Or type the number if scanning misses it.'
+    : 'Camera scanning isn\'t available in this browser (iPhone Safari can\'t do it yet) — type the barcode number instead.';
+}
+async function bcLookup(code){
+  code=(code||'').trim();
+  if(code.length<6){$('fdBcResult').innerHTML='<div class="fd-note">That doesn\'t look like a barcode.</div>';return;}
+  $('fdBcResult').innerHTML='<div class="fd-note">Looking up…</div>';
+  try{
+    const r=await fetch('/api/barcode?code='+encodeURIComponent(code));
+    const j=await r.json();
+    if(!j.ok){$('fdBcResult').innerHTML='<div class="fd-note">'+esc(j.message||'Not found.')+'</div>';return;}
+    $('fdBcResult').innerHTML='<button class="fd-pick" id="fdBcPick"><span class="pn">'+esc(j.name)
+      +(j.brand?' <span class="pbrand">'+esc(j.brand)+'</span>':'')
+      +'<small>'+Math.round(j.nutrients.kcal||0)+' kcal · '+Math.round(j.nutrients.protein_g||0)+'g protein · per 100 g</small></span><span class="pk">+</span></button>';
+    document.getElementById('fdBcPick').addEventListener('click',()=>{
+      const food={id:rid('f'),name:j.name+(j.brand?' ('+j.brand+')':''),kind:'per100',per:100,
+        nutrients:Object.assign({},j.nutrients),src:'barcode',ref:{barcode:j.code},updatedAt:Date.now()};
+      _db.library.push(food);
+      addEntry(viewDate,addGroup,food,100,'barcode');
+      stopBcScan();
+      $('fdAddM').classList.remove('show');
+    });
+  }catch(e){$('fdBcResult').innerHTML='<div class="fd-note">Network error — try again.</div>';}
+}
+$('fdBcLookup').addEventListener('click',()=>bcLookup($('fdBcCode').value));
+$('fdBcCode').addEventListener('keydown',e=>{if(e.key==='Enter')bcLookup($('fdBcCode').value);});
+function stopBcScan(){
+  if(bcRAF)cancelAnimationFrame(bcRAF);bcRAF=null;
+  if(bcStream){bcStream.getTracks().forEach(t=>t.stop());bcStream=null;}
+  $('fdBcCamWrap').style.display='none';
+}
+$('fdBcScanBtn').addEventListener('click',async()=>{
+  try{
+    bcDetector=bcDetector||new window.BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e']});
+    bcStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    const v=$('fdBcVideo');v.srcObject=bcStream;await v.play();
+    $('fdBcCamWrap').style.display='';
+    const tick=async()=>{
+      if(!bcStream)return;
+      try{
+        const codes=await bcDetector.detect(v);
+        if(codes.length){stopBcScan();bcLookup(codes[0].rawValue);return;}
+      }catch(e){}
+      bcRAF=requestAnimationFrame(tick);
+    };
+    tick();
+  }catch(e){
+    $('fdBcResult').innerHTML='<div class="fd-note">Couldn\'t access the camera — check permissions, or type the number instead.</div>';
+  }
+});
+$('fdBcCamStop').addEventListener('click',stopBcScan);
+
+/* ── AI estimate ── */
+async function aiAuthToken(){
+  try{const{data}=await client().auth.getSession();return(data&&data.session&&data.session.access_token)||'';}catch(e){return'';}
+}
+$('fdAiGo').addEventListener('click',async()=>{
+  const text=($('fdAiText').value||'').trim();
+  if(!text){$('fdAiText').focus();return;}
+  $('fdAiGo').disabled=true;
+  $('fdAiResult').innerHTML='<div class="fd-note">Thinking…</div>';
+  try{
+    const token=await aiAuthToken();
+    const r=await fetch('/api/food',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,token})});
+    const j=await r.json();
+    $('fdAiGo').disabled=false;
+    if(!j.ok){$('fdAiResult').innerHTML='<div class="fd-note">'+esc(j.message||"Couldn't estimate that.")+'</div>';return;}
+    $('fdAiResult').innerHTML=j.items.map((it,i)=>
+      '<div class="fd-ai-item" data-i="'+i+'"><span class="an"><b>'+esc(it.name)+'</b><small>'+esc(it.qty_desc||'')+'</small></span>'
+      +'<span class="ak">'+it.kcal+' kcal</span><button class="fd-ai-add" data-add="'+i+'" aria-label="Add">+</button></div>').join('')
+      +'<div class="fd-note">Estimated — check anything that matters before you rely on it. Tap + to log an item.</div>';
+    $('fdAiResult').querySelectorAll('[data-add]').forEach(btn=>btn.addEventListener('click',()=>{
+      const it=j.items[+btn.dataset.add];if(!it)return;
+      const food={id:rid('f'),name:it.name,kind:'serving',per:1,unit:'serving',
+        nutrients:{kcal:it.kcal,protein_g:it.protein_g,carbs_g:it.carbs_g,fat_g:it.fat_g},src:'ai',updatedAt:Date.now()};
+      _db.library.push(food);
+      addEntry(viewDate,addGroup,food,1,'ai');
+      btn.closest('.fd-ai-item').classList.add('added');
+      btn.textContent='✓';btn.disabled=true;
+    }));
+  }catch(e){
+    $('fdAiGo').disabled=false;
+    $('fdAiResult').innerHTML='<div class="fd-note">Network error — try again.</div>';
+  }
 });
 
 /* entry edit */

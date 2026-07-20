@@ -1,7 +1,11 @@
-// Food search — proxies USDA FoodData Central so the key stays server-side (same
-// pattern as api/coach.js). GET /api/food?q=chicken+breast
+// Food data endpoint — two jobs, split by HTTP method:
 //
-// Vercel env var:  USDA_API_KEY   (free key from fdc.nal.usda.gov/api-key-signup.html)
+//   GET  /api/food?q=...          → USDA FoodData Central search (see below)
+//   POST /api/food  {text,token}  → AI estimate: "3 eggs and toast" → food items
+//
+// Vercel env vars:
+//   USDA_API_KEY                              (free, fdc.nal.usda.gov/api-key-signup.html)
+//   OPENROUTER_API_KEY or ANTHROPIC_API_KEY    (same key api/coach.js uses)
 //
 // Design goal (per project spec): store EVERYTHING USDA gives us, display only the
 // app's highlighted subset. Every nutrient USDA returns is mapped into the result —
@@ -39,12 +43,7 @@ function mapNutrients(foodNutrients) {
   return out;
 }
 
-module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Cache-Control', 'no-store');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'GET') return res.status(405).json({ ok: false, error: 'method' });
-
+async function searchUSDA(req, res) {
   const KEY = (process.env.USDA_API_KEY || '').trim();
   if (!KEY) {
     return res.status(200).json({ ok: false, error: 'no-key',
@@ -90,4 +89,121 @@ module.exports = async function handler(req, res) {
   } catch (e) {
     return res.status(200).json({ ok: false, error: 'network', message: "Couldn't reach the food database — try again." });
   }
+}
+
+// ── AI estimate: "3 eggs and toast with butter" → structured food items ──────
+const SYS_PROMPT = 'You are a nutrition estimator inside a fitness app. The user describes what they ate in plain '
+  + 'language. Break it into distinct food items and estimate calories and macros for each using typical, realistic '
+  + 'portion sizes when none is given. Respond with ONLY a JSON array — no markdown fences, no commentary, no extra '
+  + 'text before or after. Each item must look exactly like this shape: '
+  + '{"name":"Scrambled eggs","qty_desc":"3 eggs","kcal":234,"protein_g":18,"carbs_g":2,"fat_g":17}. '
+  + 'kcal/protein_g/carbs_g/fat_g must all be plain numbers (no units, no ranges). Keep names short and specific.';
+
+function extractJsonArray(text) {
+  try { const v = JSON.parse(text); if (Array.isArray(v)) return v; } catch (e) {}
+  const m = String(text || '').match(/\[[\s\S]*\]/);
+  if (m) { try { const v = JSON.parse(m[0]); if (Array.isArray(v)) return v; } catch (e) {} }
+  return null;
+}
+
+async function aiEstimate(req, res) {
+  // ── ACCESS CONTROL (identical to api/coach.js) ──────────────────────────────
+  // This spends the owner's LLM credit exactly like the coach does, so it must be
+  // gated the same way: verify the caller's real Supabase account server-side,
+  // then check the admin's allowlist. No bypassing this for a "smaller" feature.
+  const SB_URL = 'https://mtuoqwbrujxutofhyahb.supabase.co';
+  const SB_ANON = 'sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
+  const ADMIN_EMAIL = 'tomayala55@gmail.com';
+
+  const { text, token } = req.body || {};
+
+  let caller = null;
+  if (token) {
+    try {
+      const ur = await fetch(SB_URL + '/auth/v1/user', { headers: { apikey: SB_ANON, Authorization: 'Bearer ' + token } });
+      if (ur.ok) caller = await ur.json();
+    } catch (e) {}
+  }
+  if (!caller || !caller.id) {
+    return res.status(200).json({ ok: false, error: 'auth', message: 'Please sign out and sign back in — your session expired.' });
+  }
+  const isAdmin = String(caller.email || '').toLowerCase() === ADMIN_EMAIL;
+  if (!isAdmin) {
+    let allowed = false;
+    try {
+      const alr = await fetch(SB_URL + '/rest/v1/app_state?key=eq.ai%3Aallowlist&select=data', {
+        headers: { apikey: SB_ANON, Authorization: 'Bearer ' + SB_ANON },
+      });
+      const rows = await alr.json();
+      const list = (rows && rows[0] && rows[0].data && rows[0].data.allowed) || {};
+      allowed = !!list[caller.id];
+    } catch (e) {}
+    if (!allowed) {
+      return res.status(200).json({ ok: false, error: 'not-allowed',
+        message: '🔒 AI food logging isn\'t enabled for your account. Ask the owner to switch it on in Settings → AI Access.' });
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const desc = String(text || '').trim().slice(0, 500);
+  if (!desc) return res.status(200).json({ ok: false, error: 'empty', message: 'Describe what you ate first.' });
+
+  const cands = [process.env.OPENROUTER_API_KEY, process.env.ANTHROPIC_API_KEY, process.env.COACH_API_KEY]
+    .map((k) => (k || '').trim()).filter(Boolean);
+  const KEY = cands.find((k) => k.indexOf('sk-or-') === 0) || cands.find((k) => k.indexOf('sk-ant-') === 0) || cands[0] || '';
+  if (!KEY) return res.status(200).json({ ok: false, error: 'no-key', message: 'AI logging isn\'t set up yet — the owner needs to add an API key.' });
+  const isOR = KEY.indexOf('sk-or-') === 0;
+  const MODEL = process.env.COACH_MODEL || (isOR ? 'google/gemini-2.5-flash' : 'claude-haiku-4-5-20251001');
+
+  try {
+    let raw;
+    if (isOR) {
+      const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + KEY, 'HTTP-Referer': 'https://dashboard.app', 'X-Title': 'Dashboard Food AI' },
+        body: JSON.stringify({ model: MODEL, temperature: 0.3, messages: [{ role: 'system', content: SYS_PROMPT }, { role: 'user', content: desc }] }),
+      });
+      if (!r.ok) return res.status(200).json({ ok: false, error: 'upstream', message: 'The AI is busy right now — try again in a moment.' });
+      const data = await r.json();
+      raw = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+    } else {
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': KEY, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model: MODEL, max_tokens: 1024, system: SYS_PROMPT, messages: [{ role: 'user', content: desc }] }),
+      });
+      if (!r.ok) return res.status(200).json({ ok: false, error: 'upstream', message: 'The AI is busy right now — try again in a moment.' });
+      const data = await r.json();
+      raw = data && data.content && data.content[0] && data.content[0].text;
+    }
+
+    const items = extractJsonArray(raw);
+    if (!items || !items.length) {
+      return res.status(200).json({ ok: false, error: 'parse', message: "Couldn't make sense of that — try rephrasing (e.g. \"2 eggs, toast, a banana\")." });
+    }
+    const clean = items
+      .filter((it) => it && it.name)
+      .slice(0, 12)
+      .map((it) => ({
+        name: String(it.name).slice(0, 60),
+        qty_desc: it.qty_desc ? String(it.qty_desc).slice(0, 40) : '',
+        kcal: Math.max(0, Math.round(Number(it.kcal) || 0)),
+        protein_g: Math.max(0, Math.round((Number(it.protein_g) || 0) * 10) / 10),
+        carbs_g: Math.max(0, Math.round((Number(it.carbs_g) || 0) * 10) / 10),
+        fat_g: Math.max(0, Math.round((Number(it.fat_g) || 0) * 10) / 10),
+      }));
+    return res.status(200).json({ ok: true, items: clean });
+  } catch (e) {
+    return res.status(200).json({ ok: false, error: 'network', message: 'Could not reach the AI — try again.' });
+  }
+}
+
+module.exports = async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Cache-Control', 'no-store');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method === 'GET') return searchUSDA(req, res);
+  if (req.method === 'POST') return aiEstimate(req, res);
+  return res.status(405).json({ ok: false, error: 'method' });
 };
