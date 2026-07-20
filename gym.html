@@ -4040,11 +4040,21 @@ function restRender(){
   if(fg)fg.style.strokeDashoffset=String(REST_CIRC*(1-frac));
   if(remain<=0)restStop();
 }
+function restPositionPill(pill){
+  // Sit above the fixed bottom nav bar (id="bottombar", injected by topbar.js) when present.
+  const bar=document.getElementById('bottombar');
+  if(bar && getComputedStyle(bar).display!=='none'){
+    pill.style.bottom=(bar.getBoundingClientRect().height+14)+'px';
+  }else{
+    pill.style.bottom='';
+  }
+}
 function restStart(tc){
   _restDur=_restDur||REST_DEFAULT;
   _restEnd=Date.now()+_restDur*1000;
   const pill=document.getElementById('gtRestPill');if(!pill)return;
   pill.style.setProperty('--tc',tc||'#6ee7d8');
+  restPositionPill(pill);
   pill.style.display='flex';pill.classList.remove('leaving');
   restRender();
   if(_restTimerId)clearInterval(_restTimerId);
@@ -4066,6 +4076,8 @@ function restAdjust(deltaSec){
   const skip=document.getElementById('gtRestSkip');if(skip)skip.addEventListener('click',restStop);
   const plus=document.getElementById('gtRestPlus');if(plus)plus.addEventListener('click',()=>restAdjust(15));
   const minus=document.getElementById('gtRestMinus');if(minus)minus.addEventListener('click',()=>restAdjust(-15));
+  const pill=document.getElementById('gtRestPill');
+  if(pill)window.addEventListener('resize',()=>{if(pill.style.display!=='none')restPositionPill(pill);});
 })();
 
 function renderCards(day,dayL,allL,dk){
