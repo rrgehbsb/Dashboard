@@ -843,6 +843,47 @@ details[open] .mp-details-summary::before { content: '▾ '; }
   height: 2px;
 }
 
+/* Composition estimate */
+.wt-comp {
+  margin-top: 18px; padding: 14px 16px;
+  background: rgba(255,255,255,0.025);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.wt-comp-h {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 8px;
+}
+.wt-comp-label {
+  font-size: 10px; letter-spacing: 0.16em; font-weight: 700;
+  text-transform: uppercase; color: var(--text-3);
+}
+.wt-comp-window {
+  font-size: 10px; color: var(--text-4);
+  font-family: var(--font-mono);
+}
+.wt-comp-headline {
+  font-size: 15px; font-weight: 600; line-height: 1.3;
+  color: var(--text-1); margin-bottom: 10px;
+}
+.wt-comp-headline.good   { color: var(--good); }
+.wt-comp-headline.warn   { color: var(--warn); }
+.wt-comp-headline.bad    { color: var(--bad); }
+.wt-comp-bars {
+  display: flex; height: 10px; border-radius: 5px;
+  overflow: hidden; margin-bottom: 8px;
+  background: rgba(255,255,255,0.04);
+}
+.wt-comp-bar {
+  height: 100%; transition: width 0.3s ease;
+}
+.wt-comp-bar.muscle { background: var(--good); }
+.wt-comp-bar.fat    { background: var(--warn); }
+.wt-comp-foot {
+  font-size: 11.5px; line-height: 1.45; color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
 /* Locked state */
 .wt-locked {
   display: flex; align-items: center; justify-content: space-between;
@@ -1619,6 +1660,19 @@ details[open] .mp-details-summary::before { content: '▾ '; }
       <div class="wt-legend hidden" id="wtLegend">
         <span class="wt-legend-item"><span class="wt-legend-dot"></span>DAILY</span>
         <span class="wt-legend-item"><span class="wt-legend-dot wt-legend-dot-avg"></span>7-DAY AVG</span>
+      </div>
+
+      <!-- Composition estimate — uses strength trend (read from the gym page's
+           synced logs) + weight trend to guess how much of recent weight
+           change was muscle vs fat. -->
+      <div class="wt-comp hidden" id="wtComp">
+        <div class="wt-comp-h">
+          <span class="wt-comp-label">Composition estimate</span>
+          <span class="wt-comp-window" id="wtCompWindow">last 30d</span>
+        </div>
+        <div class="wt-comp-headline" id="wtCompHeadline">—</div>
+        <div class="wt-comp-bars" id="wtCompBars"></div>
+        <div class="wt-comp-foot" id="wtCompFoot">—</div>
       </div>
 
       <div class="wt-locked hidden" id="wtLocked">
@@ -4230,8 +4284,9 @@ renderAll();
 // ============================================================
 // WEIGHT TRACKER + PROGRESS PHOTOS — moved here from the gym page.
 // Stores through the health sync store (_dbH) so it syncs across
-// devices like everything else. Composition estimate was dropped
-// on the move (it needed the gym's strength data).
+// devices like everything else. Composition estimate reads the gym
+// page's synced logs directly from Supabase (own client, same
+// cross-page-read pattern the Strength Rank arena uses in reverse).
 //   po_coach_weights : [{ dateKey:'YYYY-MM-DD', weight:Number }]
 //   po_coach_photos  : [{ id, dataUrl, dateKey, weight }]
 // ============================================================
@@ -4311,10 +4366,12 @@ renderAll();
       $('wtLegend').classList.remove('hidden');
       wtRenderChart();
       wtRenderDelta();
+      wtRenderComposition();
     } else {
       $('wtChartWrap').classList.add('hidden');
       $('wtLegend').classList.add('hidden');
       $('wtDelta').classList.add('hidden');
+      $('wtComp').classList.add('hidden');
     }
     wtRenderStreak();
   }
@@ -4389,6 +4446,179 @@ renderAll();
     el.classList.toggle('up',   diff > 0);
     el.classList.toggle('down', diff < 0);
     el.classList.remove('hidden');
+  }
+
+  // ============================================================
+  // COMPOSITION ESTIMATE — muscle vs fat from weight + strength trend.
+  // Strength trend comes from the gym page's own synced logs, read
+  // directly here (own Supabase client, same cross-page pattern the
+  // Strength Rank arena on gym.html uses to read bodyweight from Health).
+  //
+  // Math (unchanged from the original gym-page version):
+  //   weightDelta   = current weight − weight ~30 days ago
+  //   strengthDelta = avg of (current est-1RM / est-1RM 30 days ago,
+  //                   across exercises with logs in BOTH windows)
+  //   yearsTraining → max muscle gain rate per week:
+  //     1y → 0.45 kg, 2y → 0.23 kg, 3y+ → 0.11 kg
+  //   estimated muscle gain = max muscle rate × weeks × strengthBoost × frequencyFactor
+  //   estimated fat gain    = weightDelta − estimated muscle gain
+  // ============================================================
+  const COMP_SB_URL = 'https://mtuoqwbrujxutofhyahb.supabase.co';
+  const COMP_SB_KEY = 'sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
+  const CONFIG_COMPOSITION = { enabled: true, yearsTraining: 1, windowDays: 30 };
+  let gymLogs = null, gymFetchStarted = false;
+
+  async function fetchGymLogs() {
+    if (gymFetchStarted) return;
+    gymFetchStarted = true;
+    try {
+      const uid = localStorage.getItem('_dashUid');
+      if (!uid) return;
+      const r = await fetch(COMP_SB_URL + '/rest/v1/app_state?key=eq.' + encodeURIComponent(uid + ':po-coach') + '&select=data',
+        { headers: { apikey: COMP_SB_KEY, Authorization: 'Bearer ' + COMP_SB_KEY } });
+      const rows = await r.json();
+      const d = (rows && rows[0] && rows[0].data) || {};
+      gymLogs = d['dashboard:gym:v1:logs'] || {};
+    } catch (e) { gymLogs = gymLogs || {}; }
+    wtRenderComposition();
+  }
+
+  // "60x8" / "bw x 9" / "bw+10x6" → est 1RM (Epley, reps capped at 15).
+  // Same parser as gym.html's Strength Rank arena — kept in sync by hand
+  // since this page reads the gym page's raw log strings directly.
+  function compParseSet1RM(v, bw) {
+    const s = String(v || '').trim().toLowerCase();
+    const m = s.match(/^(bw)?\s*\+?\s*(\d+(?:[.,]\d+)?)?\s*(?:kg)?\s*[x×*]\s*(\d+(?:[.,]\d+)?)/i);
+    if (!m) return null;
+    const reps = parseFloat(String(m[3]).replace(',', '.'));
+    let w = m[2] != null ? parseFloat(String(m[2]).replace(',', '.')) : 0;
+    if (m[1]) { if (!bw) return null; w = bw + (m[2] != null ? w : 0); }
+    if (!w || !reps) return null;
+    return w * (1 + Math.min(reps, 15) / 30);
+  }
+  function compSetKeys(el) {
+    return Object.keys(el || {}).filter(k => /^set\d+R?$/.test(k) && String(el[k] || '').trim());
+  }
+
+  function wtRenderComposition() {
+    const compEl = $('wtComp');
+    if (!compEl) return;
+    if (!CONFIG_COMPOSITION.enabled || wtEntries.length < 2 || !gymLogs) { compEl.classList.add('hidden'); return; }
+
+    const windowDays = CONFIG_COMPOSITION.windowDays || 30;
+    const endEntry = wtEntries[wtEntries.length - 1];
+    const now = wtParseKey(endEntry.dateKey);
+    const start = new Date(now); start.setDate(start.getDate() - windowDays);
+    const startEntry = wtEntries.find(e => wtParseKey(e.dateKey) >= start);
+    if (!startEntry || startEntry === endEntry) { compEl.classList.add('hidden'); return; }
+
+    const weightDelta = endEntry.weight - startEntry.weight;
+    const actualDays = Math.max(1, Math.round((wtParseKey(endEntry.dateKey) - wtParseKey(startEntry.dateKey)) / 86400000));
+    const weeks = actualDays / 7;
+    const bw = endEntry.weight;
+
+    const dateKeys = Object.keys(gymLogs);
+    if (!dateKeys.length) { compEl.classList.add('hidden'); return; }
+
+    // Group every logged set (across all sessions) by exercise id.
+    const byEx = {};
+    dateKeys.forEach(dk => {
+      const dayLogs = gymLogs[dk]; if (!dayLogs) return;
+      const d = new Date(dk + 'T12:00:00');
+      Object.keys(dayLogs).forEach(exId => {
+        if (exId.indexOf('__') === 0) return;
+        const el = dayLogs[exId]; if (!el || typeof el !== 'object') return;
+        compSetKeys(el).forEach(k => {
+          const est = compParseSet1RM(el[k], bw);
+          if (est == null) return;
+          (byEx[exId] = byEx[exId] || []).push({ date: d, est });
+        });
+      });
+    });
+
+    let strengthRatios = [];
+    let workoutDays = new Set();
+    Object.keys(byEx).forEach(exId => {
+      const logs = byEx[exId];
+      logs.forEach(l => { if (l.date >= start) workoutDays.add(l.date.toISOString().slice(0, 10)); });
+      const inWin = logs.filter(l => l.date >= start);
+      const before = logs.filter(l => l.date < start);
+      if (!inWin.length || !before.length) return;
+      const avg = arr => arr.reduce((s, l) => s + l.est, 0) / arr.length;
+      const a = avg(before), b = avg(inWin);
+      if (a <= 0) return;
+      strengthRatios.push(b / a);
+    });
+    const strengthDelta = strengthRatios.length
+      ? (strengthRatios.reduce((s, r) => s + r, 0) / strengthRatios.length) - 1
+      : 0;
+    const sessionsPerWeek = (workoutDays.size / actualDays) * 7;
+    const frequencyFactor = Math.max(0.4, Math.min(1.2, sessionsPerWeek / 4));
+
+    const yt = CONFIG_COMPOSITION.yearsTraining || 1;
+    let maxMuscleKgPerWeek;
+    if (yt <= 1) maxMuscleKgPerWeek = 0.45;
+    else if (yt === 2) maxMuscleKgPerWeek = 0.23;
+    else maxMuscleKgPerWeek = 0.11;
+    const maxMusclePerWeek = maxMuscleKgPerWeek; // state.units is always kg on Health
+
+    const strengthBoost = Math.max(0.5, Math.min(1.5, 1 + strengthDelta * 4));
+    let estMuscle = maxMusclePerWeek * weeks * strengthBoost * frequencyFactor;
+    let estFat, headlineCls = '', headline = '';
+    if (weightDelta > 0) {
+      estMuscle = Math.min(estMuscle, weightDelta);
+      estFat = Math.max(0, weightDelta - estMuscle);
+      const musclePct = estMuscle / weightDelta;
+      if (musclePct >= 0.6 && strengthDelta > 0) {
+        headlineCls = 'good';
+        headline = '+' + weightDelta.toFixed(1) + ' ' + state.units + ' — mostly muscle, strength up.';
+      } else if (musclePct >= 0.35) {
+        headlineCls = 'warn';
+        headline = '+' + weightDelta.toFixed(1) + ' ' + state.units + ' — mixed. Tighten kcal or push lifts harder.';
+      } else {
+        headlineCls = 'bad';
+        headline = '+' + weightDelta.toFixed(1) + ' ' + state.units + ' — mostly fat. Strength flat. Cut kcal.';
+      }
+    } else {
+      const wDown = Math.abs(weightDelta);
+      if (strengthDelta >= 0) {
+        estMuscle = Math.min(maxMusclePerWeek * weeks * 0.3, 0.5);
+        estFat = wDown + estMuscle;
+        headlineCls = 'good';
+        headline = '−' + wDown.toFixed(1) + ' ' + state.units + ' — strength holding, fat dropping.';
+      } else {
+        const lossPct = Math.min(0.4, Math.abs(strengthDelta) * 2);
+        estMuscle = -wDown * lossPct;
+        estFat = -(wDown + estMuscle);
+        headlineCls = 'warn';
+        headline = '−' + wDown.toFixed(1) + ' ' + state.units + ' — strength slipping. You may be losing muscle.';
+      }
+    }
+
+    compEl.classList.remove('hidden');
+    $('wtCompWindow').textContent = 'last ' + actualDays + 'd';
+    const headlineEl = $('wtCompHeadline');
+    headlineEl.textContent = headline;
+    headlineEl.className = 'wt-comp-headline ' + headlineCls;
+
+    const totalAbs = Math.abs(estMuscle) + Math.abs(estFat) || 1;
+    const musclePct2 = (Math.abs(estMuscle) / totalAbs) * 100;
+    const fatPct2 = (Math.abs(estFat) / totalAbs) * 100;
+    $('wtCompBars').innerHTML =
+      '<div class="wt-comp-bar muscle" style="width:' + musclePct2.toFixed(1) + '%"></div>' +
+      '<div class="wt-comp-bar fat" style="width:' + fatPct2.toFixed(1) + '%"></div>';
+
+    const sd = strengthDelta * 100;
+    const sdStr = (sd >= 0 ? '+' : '') + sd.toFixed(1) + '%';
+    const muscleSign = estMuscle >= 0 ? '+' : '';
+    const fatSign = estFat >= 0 ? '+' : '';
+    const freqStr = sessionsPerWeek.toFixed(1) + ' sessions/wk';
+    $('wtCompFoot').textContent =
+      '~' + muscleSign + estMuscle.toFixed(1) + ' ' + state.units + ' muscle · '
+      + '~' + fatSign + estFat.toFixed(1) + ' ' + state.units + ' fat · '
+      + 'strength ' + sdStr
+      + ' · ' + freqStr
+      + (strengthRatios.length ? '' : ' (no lift data)');
   }
 
   // Wire weight UI
@@ -4702,6 +4932,10 @@ renderAll();
   // Boot
   wtRender();
   photosRender();
+  fetchGymLogs();
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) { gymFetchStarted = false; fetchGymLogs(); }
+  });
 })();
 </script>
 

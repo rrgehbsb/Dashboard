@@ -48,16 +48,6 @@ const CONFIG = {
   // raise it for more volume bias (e.g. 10).
   upgradeAtReps: 8,
 
-  // Composition estimate (optional, for the weight chart).
-  // Estimates how much of recent weight change is muscle vs fat by
-  // cross-referencing the strength trend. Set yearsTraining to scale
-  // expected muscle gain rate.
-  composition: {
-    enabled: true,
-    yearsTraining: 1,        // 1 = beginner, 2 = intermediate, 3+ = advanced
-    windowDays: 30           // window to compute weight + strength change
-  },
-
   // Starter exercise list. Each one needs:
   //   name        — what shows in the dropdown
   //   gym         — one of the gym ids above, or "both"
@@ -931,46 +921,6 @@ img, video, canvas, svg { max-width: 100%; }
   height: 2px;
 }
 
-/* Composition estimate */
-.wt-comp {
-  margin-top: 18px; padding: 14px 16px;
-  background: rgba(255,255,255,0.025);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-}
-.wt-comp-h {
-  display: flex; justify-content: space-between; align-items: baseline;
-  margin-bottom: 8px;
-}
-.wt-comp-label {
-  font-size: 10px; letter-spacing: 0.16em; font-weight: 700;
-  text-transform: uppercase; color: var(--text-3);
-}
-.wt-comp-window {
-  font-size: 10px; color: var(--text-4);
-  font-family: var(--font-mono);
-}
-.wt-comp-headline {
-  font-size: 15px; font-weight: 600; line-height: 1.3;
-  color: var(--text-1); margin-bottom: 10px;
-}
-.wt-comp-headline.good   { color: var(--good); }
-.wt-comp-headline.warn   { color: var(--warn); }
-.wt-comp-headline.bad    { color: var(--bad); }
-.wt-comp-bars {
-  display: flex; height: 10px; border-radius: 5px;
-  overflow: hidden; margin-bottom: 8px;
-  background: rgba(255,255,255,0.04);
-}
-.wt-comp-bar {
-  height: 100%; transition: width 0.3s ease;
-}
-.wt-comp-bar.muscle { background: var(--good); }
-.wt-comp-bar.fat    { background: var(--warn); }
-.wt-comp-foot {
-  font-size: 11.5px; line-height: 1.45; color: var(--text-2);
-  font-variant-numeric: tabular-nums;
-}
 
 /* Locked state */
 .wt-locked {
@@ -1554,6 +1504,12 @@ img, video, canvas, svg { max-width: 100%; }
 
 /* ── Workout history ── */
 .gt-hist-modal { max-height: 86vh; }
+.gt-hist-filter {
+  width: 100%; margin-bottom: 12px; background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1); border-radius: 10px;
+  padding: 9px 11px; color: var(--text-1); font-size: 13px; font-family: inherit;
+  outline: none; cursor: pointer; appearance: none; -webkit-appearance: none;
+}
 .gt-hist-sum {
   font-size: 12px; color: var(--text-3); margin-bottom: 14px;
   padding-bottom: 12px; border-bottom: 1px solid var(--border);
@@ -1565,7 +1521,7 @@ img, video, canvas, svg { max-width: 100%; }
   border-radius: 14px; padding: 12px 13px;
 }
 .gt-hist-head {
-  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 6px;
 }
 .gt-hist-date { font-size: 13.5px; font-weight: 700; color: var(--text-1); }
 .gt-hist-name {
@@ -1574,20 +1530,44 @@ img, video, canvas, svg { max-width: 100%; }
   background: color-mix(in srgb, var(--accent, #a78bfa) 14%, transparent);
   border-radius: 6px; padding: 2px 7px;
 }
-.gt-hist-vol { margin-left: auto; font-size: 11px; color: var(--text-3); }
+.gt-hist-vol { margin-left: auto; font-size: 11px; color: var(--text-3); white-space: nowrap; }
+.gt-hist-del-day {
+  flex-shrink: 0; background: none; border: none; color: var(--text-4); font-size: 13px;
+  padding: 2px 4px; cursor: pointer; line-height: 1; border-radius: 4px;
+  -webkit-tap-highlight-color: transparent;
+}
+.gt-hist-del-day:hover { color: var(--bad); background: rgba(248,113,113,0.1); }
+.gt-hist-pr {
+  font-size: 11px; color: #fbbf24; margin-bottom: 9px;
+}
 .gt-hist-ex { padding: 7px 0; }
 .gt-hist-ex + .gt-hist-ex { border-top: 1px solid rgba(255,255,255,0.05); }
-.gt-hist-exname { font-size: 13px; font-weight: 600; color: var(--text-2); margin-bottom: 5px; }
+.gt-hist-exname-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+.gt-hist-exname { font-size: 13px; font-weight: 600; color: var(--text-2); }
+.gt-hist-del-ex {
+  flex-shrink: 0; background: none; border: none; color: var(--text-4); font-size: 11px;
+  padding: 1px 3px; cursor: pointer; line-height: 1; border-radius: 4px;
+  -webkit-tap-highlight-color: transparent; opacity: 0.7;
+}
+.gt-hist-del-ex:hover { color: var(--bad); opacity: 1; }
 .gt-hist-sets { display: flex; flex-wrap: wrap; gap: 5px; }
 .gt-hist-set {
   font-family: var(--font-mono, ui-monospace, Menlo, monospace);
   font-size: 11.5px; color: var(--text-1);
   background: rgba(255,255,255,0.06); border: 1px solid var(--border);
-  border-radius: 7px; padding: 3px 8px;
+  border-radius: 7px; padding: 3px 8px; cursor: pointer; transition: border-color 0.15s, background 0.15s;
+  -webkit-tap-highlight-color: transparent;
 }
+.gt-hist-set:hover { border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.1); }
 .gt-hist-set.fail {
   color: #fca5a5; border-color: rgba(248,113,113,0.4);
   background: rgba(248,113,113,0.12);
+}
+.gt-hist-set-input {
+  font-family: var(--font-mono, ui-monospace, Menlo, monospace);
+  font-size: 11.5px; color: var(--text-1); width: 62px; text-align: center;
+  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 7px; padding: 3px 6px; outline: none;
 }
 .gt-hist-notes { font-size: 11.5px; color: var(--text-3); font-style: italic; margin-top: 5px; }
 
@@ -2016,7 +1996,7 @@ img, video, canvas, svg { max-width: 100%; }
     <!-- Today's Workout — every set logged today, grouped by exercise.
          "Mark done" stamps the day so the past-workouts list shows it
          as a completed session. The volume here also feeds the
-         composition estimate at the top of the page. -->
+         composition estimate on the Health page's weight tracker. -->
     <div class="po-sub-section">
       <div class="po-sub-title">Today's workout</div>
       <div class="po-tw" id="poTw">
@@ -2120,6 +2100,7 @@ img, video, canvas, svg { max-width: 100%; }
 <div class="gt-modal-bg" id="gtHistModal">
   <div class="gt-modal gt-hist-modal">
     <h3>Workout History</h3>
+    <select class="gt-hist-filter" id="gtHistFilter"><option value="">All exercises</option></select>
     <div class="gt-hist-sum" id="gtHistSum"></div>
     <div class="gt-hist-list" id="gtHistList"></div>
     <div class="gt-manage-btns">
@@ -4342,31 +4323,99 @@ function histSetIdx(k){return parseInt(k.replace(/^set/,''),10);}
 function entryHasSets(el){
   return !!el && Object.keys(el).some(k=>/^set\d+R?$/.test(k)&&String(el[k]||'').trim());
 }
+// "80x8" / "82.5x7" → {weight,reps}. No bodyweight resolution here (History
+// has no bodyweight in scope) — "bw..." sets are simply excluded from
+// volume/PR math, same as everywhere else in the app that lacks it.
+function histParseWR(v){
+  const s=String(v||'').trim().toLowerCase();
+  const m=s.match(/(\d+(?:[.,]\d+)?)\s*(?:kg)?\s*[x×*]\s*(\d+(?:[.,]\d+)?)/i);
+  if(!m)return null;
+  const w=parseFloat(String(m[1]).replace(',','.')),r=parseFloat(String(m[2]).replace(',','.'));
+  if(!w||!r)return null;
+  return{w:w,r:r};
+}
+function histVolumeOf(v){const p=histParseWR(v);return p?p.w*p.r:0;}
+function histEst1RM(v){const p=histParseWR(v);return p?p.w*(1+Math.min(p.r,15)/30):0;}
+let _histFilterEx='';
+function histExerciseOptions(allL){
+  const tpl=getTpl();
+  const tplName=exId=>{for(const d of tpl){const e=(d.exercises||[]).find(x=>x.id===exId);if(e)return e.name;}return null;};
+  const map={};
+  Object.keys(allL).forEach(dk=>{
+    const day=allL[dk];if(!day)return;
+    Object.keys(day).forEach(exId=>{
+      if(exId.indexOf('__')===0)return;
+      const el=day[exId];
+      if(el&&entryHasSets(el))map[exId]=el.nm||tplName(exId)||'Exercise';
+    });
+  });
+  return map;
+}
+function histDeleteSession(dk){
+  if(!confirm('Delete this entire session? This removes every set logged that day.'))return;
+  const l=getLogs();delete l[dk];saveLogs(l);
+  renderHistory();renderAll();
+}
+function histDeleteExercise(dk,exId){
+  if(!confirm('Remove this exercise from the session?'))return;
+  const l=getLogs();if(!l[dk])return;
+  delete l[dk][exId];
+  if(!Object.keys(l[dk]).some(k=>k.indexOf('__')!==0))delete l[dk];
+  saveLogs(l);
+  renderHistory();renderAll();
+}
+function histSaveSetVal(dk,exId,key,val){
+  const l=getLogs();if(!l[dk]||!l[dk][exId])return;
+  if(String(val||'').trim())l[dk][exId][key]=val;else delete l[dk][exId][key];
+  saveLogs(l);
+  renderHistory();renderAll();
+}
 function renderHistory(){
   const allL=getLogs(),tpl=getTpl();
   const list=document.getElementById('gtHistList'),sum=document.getElementById('gtHistSum');
+  const filterSel=document.getElementById('gtHistFilter');
   const tplName=exId=>{
     for(const d of tpl){const e=(d.exercises||[]).find(x=>x.id===exId);if(e)return e.name;}
     return null;
   };
+
+  // Filter dropdown — rebuild options only if they've actually changed, so an
+  // open selection isn't reset by every re-render (e.g. after an edit).
+  const exMap=histExerciseOptions(allL);
+  const optHtml='<option value="">All exercises</option>'+Object.keys(exMap)
+    .sort((a,b)=>exMap[a].localeCompare(exMap[b]))
+    .map(id=>'<option value="'+id+'"'+(id===_histFilterEx?' selected':'')+'>'+esc(exMap[id])+'</option>').join('');
+  if(filterSel.dataset.opts!==optHtml){filterSel.innerHTML=optHtml;filterSel.dataset.opts=optHtml;}
+  filterSel.value=_histFilterEx;
+
   const dates=Object.keys(allL).filter(dk=>{
     const d=allL[dk];
-    return d&&Object.keys(d).some(k=>k.indexOf('__')!==0&&entryHasSets(d[k]));
+    if(!d)return false;
+    return Object.keys(d).some(k=>{
+      if(k.indexOf('__')===0)return false;
+      if(_histFilterEx&&k!==_histFilterEx)return false;
+      return entryHasSets(d[k]);
+    });
   }).sort().reverse();
 
   if(!dates.length){
     sum.textContent='';
-    list.innerHTML='<div class="gt-hist-empty">No workouts logged yet.<br>Log some sets and every session will show up here.</div>';
+    list.innerHTML='<div class="gt-hist-empty">'+(_histFilterEx?'No sessions with that exercise yet.':'No workouts logged yet.<br>Log some sets and every session will show up here.')+'</div>';
     return;
   }
-  let totalSets=0;
+  let totalSets=0,totalVolume=0;
   const html=dates.map(dk=>{
     const dayLogs=allL[dk];
-    const exIds=Object.keys(dayLogs).filter(k=>k.indexOf('__')!==0&&entryHasSets(dayLogs[k]));
-    let dn='',sets=0;
+    const exIds=Object.keys(dayLogs).filter(k=>{
+      if(k.indexOf('__')===0)return false;
+      if(_histFilterEx&&k!==_histFilterEx)return false;
+      return entryHasSets(dayLogs[k]);
+    });
+    let dn='',sets=0,dayVolume=0,best=null,bestName='';
     const rows=exIds.map(exId=>{
       const el=dayLogs[exId];
       if(!dn&&el.dn)dn=el.dn;
+      const exName=el.nm||tplName(exId)||'Exercise';
       const keys=Object.keys(el)
         .filter(k=>/^set\d+R?$/.test(k)&&String(el[k]||'').trim())
         .sort((a,b)=>{
@@ -4377,30 +4426,55 @@ function renderHistory(){
       sets+=keys.length;
       const chips=keys.map(k=>{
         const fail=!!el['set'+histSetIdx(k)+'F'];
-        return '<span class="gt-hist-set'+(fail?' fail':'')+'">'
+        const vol=histVolumeOf(el[k]);dayVolume+=vol;
+        const est=histEst1RM(el[k]);
+        if(est>0&&(!best||est>best)){best=est;bestName=exName+' '+el[k];}
+        return '<span class="gt-hist-set'+(fail?' fail':'')+'" data-dk="'+dk+'" data-exid="'+exId+'" data-key="'+k+'" title="Tap to edit">'
           +esc(el[k])+(/R$/.test(k)?' ᴿ':'')+(fail?' ⚡':'')+'</span>';
       }).join('');
       return '<div class="gt-hist-ex">'
-        +'<div class="gt-hist-exname">'+esc(el.nm||tplName(exId)||'Exercise')+'</div>'
+        +'<div class="gt-hist-exname-row"><span class="gt-hist-exname">'+esc(exName)+'</span>'
+        +'<button type="button" class="gt-hist-del-ex" data-del-ex-dk="'+dk+'" data-del-ex-id="'+exId+'" title="Remove this exercise from the session">remove</button></div>'
         +'<div class="gt-hist-sets">'+chips+'</div>'
         +(el.notes?'<div class="gt-hist-notes">'+esc(el.notes)+'</div>':'')
         +'</div>';
     }).join('');
-    totalSets+=sets;
+    totalSets+=sets;totalVolume+=dayVolume;
     const d=new Date(dk+'T00:00:00');
     return '<div class="gt-hist-day">'
       +'<div class="gt-hist-head">'
         +'<span class="gt-hist-date">'+esc(fmtDate(d))+'</span>'
         +(dn?'<span class="gt-hist-name">'+esc(dn)+'</span>':'')
-        +'<span class="gt-hist-vol">'+sets+' set'+(sets===1?'':'s')+'</span>'
-      +'</div>'+rows+'</div>';
+        +'<span class="gt-hist-vol">'+sets+' set'+(sets===1?'':'s')+(dayVolume?' · '+Math.round(dayVolume).toLocaleString()+' kg vol':'')+'</span>'
+        +'<button type="button" class="gt-hist-del-day" data-del-day="'+dk+'" title="Delete this entire session">🗑</button>'
+      +'</div>'
+      +(best?'<div class="gt-hist-pr">🏆 Best: '+esc(bestName)+' · est. '+Math.round(best)+' kg 1RM</div>':'')
+      +rows+'</div>';
   }).join('');
-  sum.textContent=dates.length+' session'+(dates.length===1?'':'s')+' · '+totalSets+' sets logged · ⚡ = to failure';
+  sum.textContent=dates.length+' session'+(dates.length===1?'':'s')+' · '+totalSets+' sets · '+Math.round(totalVolume).toLocaleString()+' kg total volume · ⚡ = to failure';
   list.innerHTML=html;
+
+  list.querySelectorAll('[data-del-day]').forEach(b=>b.addEventListener('click',()=>histDeleteSession(b.dataset.delDay)));
+  list.querySelectorAll('[data-del-ex-id]').forEach(b=>b.addEventListener('click',()=>histDeleteExercise(b.dataset.delExDk,b.dataset.delExId)));
+  list.querySelectorAll('.gt-hist-set').forEach(chip=>chip.addEventListener('click',()=>{
+    if(chip.querySelector('input'))return;
+    const {dk,exid,key}=chip.dataset;
+    const raw=(getLogs()[dk]&&getLogs()[dk][exid]&&getLogs()[dk][exid][key])||'';
+    chip.innerHTML='<input type="text" class="gt-hist-set-input" value="'+esc(raw)+'" autocomplete="off">';
+    const inp=chip.querySelector('input');inp.focus();inp.select();
+    let cancelled=false;
+    // Rebuilding the list on Escape removes this input while it's still
+    // focused, which implicitly fires 'blur' — guard so that doesn't
+    // silently re-commit the value the user just cancelled.
+    inp.addEventListener('keydown',e=>{if(e.key==='Enter')inp.blur();if(e.key==='Escape'){e.preventDefault();cancelled=true;renderHistory();}});
+    inp.addEventListener('blur',()=>{if(!cancelled)histSaveSetVal(dk,exid,key,inp.value);});
+    inp.addEventListener('click',e=>e.stopPropagation());
+  }));
 }
 document.getElementById('gtHistoryBtn').addEventListener('click',()=>{
   renderHistory();document.getElementById('gtHistModal').classList.add('show');
 });
+document.getElementById('gtHistFilter').addEventListener('change',e=>{_histFilterEx=e.target.value;renderHistory();});
 document.getElementById('gtHistClose').addEventListener('click',()=>document.getElementById('gtHistModal').classList.remove('show'));
 document.getElementById('gtHistModal').addEventListener('click',e=>{if(e.target.id==='gtHistModal')document.getElementById('gtHistModal').classList.remove('show');});
 
