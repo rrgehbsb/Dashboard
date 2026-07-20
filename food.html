@@ -142,6 +142,79 @@ main{max-width:760px;margin:0 auto;padding:12px 16px calc(120px + env(safe-area-
   border-radius:14px;padding:12px 13px;font-size:12.5px;line-height:1.55;margin-bottom:14px;}
 .fd-setup b{color:var(--t1);}
 </style>
+
+<style id="fd-v2">
+/* ambient accent aura at the top — the page has its own atmosphere */
+body::before{content:'';position:fixed;left:50%;top:-160px;transform:translateX(-50%);
+  width:min(680px,150vw);height:420px;border-radius:50%;pointer-events:none;z-index:0;
+  background:radial-gradient(closest-side,color-mix(in srgb,var(--accent,#a78bfa) 17%,transparent),transparent 70%);
+  filter:blur(30px);}
+main{position:relative;z-index:1;}
+/* header becomes a statement */
+.fd-date{margin:6px 0 18px;}
+.fd-date b{font-size:27px;font-weight:900;letter-spacing:-0.03em;
+  background:linear-gradient(120deg,#fff 30%,color-mix(in srgb,var(--accent,#a78bfa) 70%,#fff));
+  -webkit-background-clip:text;background-clip:text;color:transparent;}
+.fd-date small{font-size:11.5px;margin-top:2px;}
+/* hero: stacked + dramatic on phone, side-by-side on wide */
+.fd-hero{flex-direction:column;text-align:center;padding:22px 16px 18px;border-radius:24px;overflow:hidden;position:relative;
+  background:radial-gradient(130% 100% at 50% 0%,color-mix(in srgb,var(--accent,#a78bfa) 14%,transparent),transparent 62%),
+    linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015));
+  border:1px solid color-mix(in srgb,var(--accent,#a78bfa) 32%,transparent);
+  box-shadow:0 22px 60px -32px color-mix(in srgb,var(--accent,#a78bfa) 70%,#000);}
+.fd-ringwrap,.fd-ring{width:172px;height:172px;}
+.fd-ring .bg{stroke-width:11;}
+.fd-ring .fg{stroke:url(#fdGrad);stroke-width:11;filter:drop-shadow(0 0 14px color-mix(in srgb,var(--accent,#a78bfa) 60%,transparent));}
+.fd-ring .fg.over{stroke:#fbbf24;}
+.fd-kcal{font-size:38px;letter-spacing:-0.03em;}
+.fd-kcal-sub{font-size:11px;margin-top:5px;}
+.fd-macros{width:100%;margin-top:14px;}
+.fd-mbar{height:9px;}
+.fd-mbar i{position:relative;}
+.fd-mbar i::after{content:'';position:absolute;inset:0;border-radius:4px;
+  background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.45) 50%,transparent 70%);
+  background-size:220% 100%;animation:fdSheen 3s ease-in-out infinite;}
+@keyframes fdSheen{0%{background-position:130% 0;}60%,100%{background-position:-130% 0;}}
+.fd-macro.p .fd-mbar i{background:linear-gradient(90deg,#be3d7f,#f472b6);}
+.fd-macro.c .fd-mbar i{background:linear-gradient(90deg,#2f6fbd,#60a5fa);}
+.fd-macro.f .fd-mbar i{background:linear-gradient(90deg,#b8860b,#fbbf24);}
+@media(min-width:760px){.fd-hero{flex-direction:row;text-align:left;}.fd-macros{margin-top:0;}}
+/* quick-log strip — the app's action row */
+.fd-quick{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;
+  margin-top:12px;padding-bottom:2px;}
+.fd-quick::-webkit-scrollbar{display:none;}
+.fd-qchip{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-start;gap:2px;
+  min-width:118px;padding:10px 12px;border-radius:15px;cursor:pointer;font-family:inherit;color:var(--t1);
+  background:linear-gradient(160deg,color-mix(in srgb,var(--accent,#a78bfa) 16%,transparent),rgba(255,255,255,.03));
+  border:1px solid color-mix(in srgb,var(--accent,#a78bfa) 30%,transparent);
+  -webkit-tap-highlight-color:transparent;transition:transform .1s;}
+.fd-qchip:active{transform:scale(.96);}
+.fd-qchip b{font-size:12px;font-weight:800;white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis;}
+.fd-qchip small{font-size:10px;color:var(--t3);font-weight:600;}
+.fd-qhead{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin:14px 0 0;}
+/* micro tiles: state colours */
+.fd-micro.ok s b{color:#34d399;}
+.fd-micro.ok .fd-mbar i{background:#34d399;}
+/* groups: icon squircles + fatter cards */
+.fd-group{border-radius:18px;}
+.fd-ghead .gi{width:32px;height:32px;display:grid;place-items:center;border-radius:10px;font-size:15px;
+  background:color-mix(in srgb,var(--accent,#a78bfa) 14%,transparent);
+  border:1px solid color-mix(in srgb,var(--accent,#a78bfa) 26%,transparent);}
+.fd-gadd{width:34px;height:34px;border-radius:11px;font-size:19px;
+  background:color-mix(in srgb,var(--accent,#a78bfa) 16%,transparent);
+  border-color:color-mix(in srgb,var(--accent,#a78bfa) 35%,transparent);}
+/* week bars: gradient + glow on today */
+.fd-week{height:86px;border-radius:16px;}
+.fd-wbar{background:linear-gradient(180deg,color-mix(in srgb,var(--accent,#a78bfa) 75%,#fff),color-mix(in srgb,var(--accent,#a78bfa) 45%,transparent));opacity:.55;}
+.fd-wday.t .fd-wbar{opacity:1;box-shadow:0 0 12px -2px var(--accent,#a78bfa);}
+/* entrance stagger, once per load */
+body.fd-boot main>*{animation:fdUp .5s cubic-bezier(.22,1,.36,1) both;}
+body.fd-boot main>:nth-child(2){animation-delay:.05s}body.fd-boot main>:nth-child(3){animation-delay:.1s}
+body.fd-boot main>:nth-child(4){animation-delay:.15s}body.fd-boot main>:nth-child(5){animation-delay:.2s}
+body.fd-boot main>:nth-child(6){animation-delay:.25s}body.fd-boot main>:nth-child(7){animation-delay:.3s}
+body.fd-boot main>:nth-child(8){animation-delay:.35s}
+@keyframes fdUp{from{opacity:0;transform:translateY(14px);}}
+</style>
 </head>
 <body>
 <main>
@@ -156,7 +229,7 @@ main{max-width:760px;margin:0 auto;padding:12px 16px calc(120px + env(safe-area-
   <div class="section-title" style="margin-top:0" data-nav="Energy">Energy</div>
   <div class="fd-hero">
     <div class="fd-ringwrap">
-      <svg class="fd-ring" viewBox="0 0 124 124">
+      <svg class="fd-ring" viewBox="0 0 124 124"><defs><linearGradient id="fdGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--accent,#a78bfa)"></stop><stop offset="1" style="stop-color:#f472b6"></stop></linearGradient></defs>
         <circle class="bg" cx="62" cy="62" r="56"></circle>
         <circle class="fg" id="fdRingFg" cx="62" cy="62" r="56"></circle>
       </svg>
@@ -175,6 +248,8 @@ main{max-width:760px;margin:0 auto;padding:12px 16px calc(120px + env(safe-area-
       </div>
     </div>
   </div>
+  <div class="fd-qhead" id="fdQuickHead" style="display:none">⚡ Quick log</div>
+  <div class="fd-quick" id="fdQuick"></div>
   <div class="fd-micros" id="fdMicros"></div>
 
   <div class="section-title" data-nav="Diary">Diary</div>
@@ -473,6 +548,41 @@ function targets(){
 
 /* ── render ── */
 function fmt(v,dp){return v==null?'—':(+v).toFixed(dp==null?0:dp).replace(/\.0$/,'');}
+function countUp(el,to,suffix){
+  const from=parseInt(String(el.textContent).replace(/[^0-9]/g,''))||0;
+  if(from===to){el.textContent=to+(suffix||'');return;}
+  const t0=performance.now(),dur=650;
+  requestAnimationFrame(function f2(t){const p=Math.min(1,(t-t0)/dur);
+    el.textContent=Math.round(from+(to-from)*(1-Math.pow(1-p,3)))+(suffix||'');
+    if(p<1)requestAnimationFrame(f2);});
+}
+// Quick log: meals + your most-logged foods from the last 14 days, one tap, auto
+// group by time of day — the "open app, tap what you ate, done" flow.
+function autoGroup(){const hr=new Date().getHours();return hr<11?'breakfast':hr<16?'lunch':hr<21?'dinner':'snacks';}
+function renderQuick(){
+  const freq={};
+  Object.keys(_db.days).sort().reverse().slice(0,14).forEach(dk=>
+    (_db.days[dk].entries||[]).forEach(e=>{if(e.foodId)freq[e.foodId]=(freq[e.foodId]||0)+1;}));
+  const chips=[];
+  _db.meals.slice(0,3).forEach(m=>chips.push({t:'meal',id:m.id,name:m.name,sub:m.items.length+' items'}));
+  Object.keys(freq).sort((a,b)=>freq[b]-freq[a]).slice(0,6).forEach(fid=>{
+    const f=foodById(fid);if(!f)return;
+    chips.push({t:'food',id:fid,name:f.name,sub:Math.round(f.nutrients.kcal||0)+' kcal'});
+  });
+  $('fdQuickHead').style.display=chips.length?'':'none';
+  $('fdQuick').innerHTML=chips.map(c=>
+    '<button class="fd-qchip" data-t="'+c.t+'" data-id="'+c.id+'"><b>'+(c.t==='meal'?'⭐ ':'')+esc(c.name)+'</b><small>'+esc(c.sub)+'</small></button>').join('');
+  $('fdQuick').querySelectorAll('.fd-qchip').forEach(b=>b.addEventListener('click',()=>{
+    const g=autoGroup();
+    if(b.dataset.t==='meal'){
+      const m=_db.meals.find(x=>x.id===b.dataset.id);if(!m)return;
+      m.items.forEach(it=>{const f=foodById(it.foodId);if(f)addEntry(viewDate,g,f,it.qty,'meal');});
+    }else{
+      const f=foodById(b.dataset.id);if(!f)return;
+      addEntry(viewDate,g,f,f.kind==='per100'?100:1,'quick');
+    }
+  }));
+}
 function render(){
   const dk=viewDate,t=targets(),tot=dayTotals(dk);
   const isToday=dk===today();
@@ -486,7 +596,7 @@ function render(){
   else setup.style.display='none';
 
   const kcal=Math.round(tot.kcal||0);
-  $('fdKcal').textContent=kcal;
+  countUp($('fdKcal'),kcal);renderQuick();
   $('fdKcalSub').textContent=t.kcal?('of '+t.kcal+' kcal · '+Math.max(0,t.kcal-kcal)+' left'):'set targets →';
   const pct=t.kcal?Math.min(1,kcal/t.kcal):0;
   const fg=$('fdRingFg');fg.style.strokeDashoffset=String(352*(1-pct));
@@ -501,8 +611,8 @@ function render(){
   $('fdMicros').innerHTML=hl.map(k=>{
     const def=NUTR.find(x=>x.k===k);if(!def)return'';
     const v=tot[k]||0,g=t[k];
-    const over=def.maxOnly&&g&&v>g;
-    return'<div class="fd-micro'+(over?' max':'')+'"><s><span>'+def.n+'</span><b>'+fmt(v,def.dp)+(g?' / '+fmt(g,def.dp):'')+' '+def.u+'</b></s>'
+    const over=def.maxOnly&&g&&v>g;const okc=!def.maxOnly&&g&&v>=g;
+    return'<div class="fd-micro'+(over?' max':'')+(okc?' ok':'')+'"><s><span>'+def.n+'</span><b>'+fmt(v,def.dp)+(g?' / '+fmt(g,def.dp):'')+' '+def.u+'</b></s>'
       +'<div class="fd-mbar"><i style="width:'+(g?Math.min(100,v/g*100):0)+'%"></i></div></div>';
   }).join('');
 
@@ -695,6 +805,7 @@ function prune(){
 }
 
 /* ── boot ── */
+document.body.classList.add('fd-boot');setTimeout(()=>document.body.classList.remove('fd-boot'),1500);
 window.__fdDebug={get db(){return _db;},get bw(){return BW;}};
 (async function boot(){
   try{
