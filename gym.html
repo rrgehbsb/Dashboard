@@ -1246,6 +1246,19 @@ img, video, canvas, svg { max-width: 100%; }
   cursor: pointer; transition: all 0.15s; -webkit-tap-highlight-color: transparent;
 }
 .gt-day-tab:hover { background: rgba(255,255,255,0.07); color: var(--text-2); }
+.gt-day-tab-cta {
+  border-color: var(--accent, #a78bfa); color: var(--accent, #a78bfa);
+  background: color-mix(in srgb, var(--accent, #a78bfa) 12%, transparent);
+  font-weight: 800;
+}
+.gt-day-tab-cta:hover { background: color-mix(in srgb, var(--accent, #a78bfa) 20%, transparent); color: var(--accent, #a78bfa); }
+.gt-first-day-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.022));
+  border: 1px solid rgba(255,255,255,0.08); border-radius: 18px;
+  padding: 26px 20px; text-align: center;
+}
+.gt-first-day-title { font-size: 16px; font-weight: 800; color: var(--text-1); margin-bottom: 8px; }
+.gt-first-day-body { font-size: 13px; color: var(--text-3); line-height: 1.5; margin-bottom: 16px; max-width: 360px; margin-left: auto; margin-right: auto; }
 .gt-day-tab.active {
   background: #fff; border-color: transparent; color: #0a0a0b;
   box-shadow: 0 6px 18px -8px rgba(255,255,255,0.4);
@@ -3865,6 +3878,12 @@ window.__gymRerenderTracker=renderAll;
 
 function renderTabs(t,a){
   const c=document.getElementById('gtDayTabs');if(!c)return;
+  if(!t.length){
+    c.innerHTML=`<button class="gt-day-tab gt-day-tab-cta" id="gtFirstDayBtn">+ Create your first day</button>`;
+    const b=document.getElementById('gtFirstDayBtn');
+    if(b)b.addEventListener('click',()=>{renderDaysList();document.getElementById('gtDaysModal').classList.add('show');});
+    return;
+  }
   c.innerHTML=t.map(d=>`<button class="gt-day-tab${d.id===a?' active':''}" data-day="${d.id}">${esc(d.name)}</button>`).join('');
   c.querySelectorAll('.gt-day-tab').forEach(b=>b.addEventListener('click',()=>{saveActive(b.dataset.day);renderAll();}));
 }
@@ -3874,10 +3893,18 @@ function renderWorkout(t,a){
   const day=t.find(d=>d.id===a);
   if(!day){
     document.getElementById('gtTodayDay').textContent='—';
-    document.getElementById('gtProgressStats').textContent='Select a day above';
+    document.getElementById('gtProgressStats').textContent = t.length
+      ? 'Select a day above'
+      : 'No workout days yet — tap "+ Create your first day" above to get started';
     document.getElementById('gtProgressFill').style.width='0%';
-    document.getElementById('gtTableRows').innerHTML='';
-    document.getElementById('gtCards').innerHTML='';
+    const firstDayCardHtml = t.length ? '' : `<div class="gt-first-day-card">
+      <div class="gt-first-day-title">Let's set up your first workout day</div>
+      <div class="gt-first-day-body">A day is a split like "Push", "Pull", "Legs", or just "Workout" — you'll add exercises to it next.</div>
+      <button type="button" class="gt-btn-primary gt-first-day-btn">+ Create your first day</button>
+    </div>`;
+    document.getElementById('gtTableRows').innerHTML = firstDayCardHtml;
+    document.getElementById('gtCards').innerHTML = firstDayCardHtml;
+    document.querySelectorAll('.gt-first-day-btn').forEach(b=>b.addEventListener('click',()=>{renderDaysList();document.getElementById('gtDaysModal').classList.add('show');}));
     const cl=document.getElementById('gtCoachList');
     if(cl)cl.innerHTML='<div class="gt-coach-empty">Select a day to see coaching notes.</div>';
     return;

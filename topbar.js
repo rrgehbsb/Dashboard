@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.7.5';
+const DASHBOARD_VERSION = '2.7.6';
 
 // Auto-update: when a new service worker takes control (new deploy), reload once
 // so the installed app always runs the latest code instead of a stale cached
@@ -2422,6 +2422,15 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
       if (has("can't do", "cant do", "i can't", "i cant", 'give up', 'giving up', 'motivat', 'inspire', 'pump me', 'hype me', 'encourage', 'push me', 'no motivation')) return 'motivate';
       if (has('exhaust', 'so tired', 'tired', 'sleepy', 'no energy', 'drained', 'burnt out', 'burned out', 'burnout')) return 'tired';
       if (has('depress', 'lonely', 'hopeless', 'anxious', 'anxiety', 'stress', 'overwhelm', 'worried', 'scared', 'afraid', 'i feel sad', "i'm sad", 'im sad', 'feel down', 'feeling down', 'upset', 'cry')) return 'down';
+      if (has('angry', 'mad', 'furious', 'pissed', 'annoyed', 'irritat', 'frustrat', 'so done', 'hate this', 'hate it')) return 'angry';
+      if (has('confus', "don't understand", 'dont understand', "don't get it", 'dont get it', 'stuck', 'lost', 'no idea', "don't know", 'dont know', 'not sure how')) return 'confused';
+      if (has('proud', 'so happy with myself', 'i did good', 'i did well')) return 'proud';
+      if (has('sick', 'ill', 'not feeling well', 'headache', 'stomach', 'nausea', 'fever', 'cold', 'flu', 'in pain', 'hurts') && !has('sick of', 'sick and tired')) return 'sick';
+      if (has('sick of', 'sick and tired')) return 'angry';
+      if (has('broke', ' money', 'budget', 'expensive', "can't afford", 'cant afford', 'debt', 'bills')) return 'money';
+      if (has('hungry', 'starving', 'need food', 'want to eat', 'what to eat', 'no food')) return 'food';
+      if (has('fight with', 'argument', 'argued', 'mad at me', 'broke up', 'breakup', 'relationship', 'my friend', 'my family', 'my mom', 'my dad', 'my parents')) return 'relationship';
+      if (has('help me', 'can you help', 'need help', 'need advice', 'what should i do', 'what do i do')) return 'help';
       if (has('thank', ' thx ', ' ty ', 'appreciate')) return 'thanks';
       if (has('love you', ' ily ', "you're the best", 'youre the best', 'i like you', 'best friend', 'love u')) return 'love';
       if (has('how are you', 'how r u', 'hows it going', "how's it going", 'you good', 'how you doing', 'how do you do', "what's up", 'whats up', ' sup ', ' wyd ')) return 'howareyou';
@@ -2455,7 +2464,15 @@ html[data-theme="light"] .bc-input{background:rgba(0,0,0,0.05);border-color:rgba
       school:    { mood:'cool',  lines:["Break it into tiny chunks — one page, one problem, one win. 📚","Future you will be SO grateful you studied today. Start with 10 minutes.","You don't have to ace it — just show up and try. That's enough."] },
       goals:     { mood:'cool',  lines:["Pick the one that scares you a little and do it first. Momentum loves courage. 🎯","Tiny progress is still progress. What's the next checkbox?","Focus beats hustle. One task, full attention. Let's go."] },
       question:  { mood:'think', lines:["Good question! Honestly, I think you already know — what does your gut say?","Hmm — my take: start small, stay kind to yourself, keep going.","I'd trust yourself on this one. You're sharper than you give yourself credit for."] },
-      fallback:  { mood:'cool',  lines:["I hear you. Tell me more — what's really on your mind?","Got it. Want a pep talk, a plan, or just someone to listen?","I'm with you. What would help most right now?","Mhm. Keep going, I'm listening. 👂"] },
+      angry:     { mood:'care',  lines:["That's a fair thing to be mad about. Let it out — what happened?","Frustration means you care. What's actually going on?","Take a breath with me. Then tell me what set this off — I'm listening for real."] },
+      confused:  { mood:'think', lines:["Let's untangle it together — what's the first part that's confusing you?","Being stuck just means you haven't found the next small step yet. What are you working on?","No shame in not knowing. Walk me through where it fell apart."] },
+      proud:     { mood:'party', lines:["As you should be! Say it louder for the people in the back. 🎉","That's earned pride right there. Let it sink in for a second.","Love this energy. What did you pull off?"] },
+      sick:      { mood:'care',  lines:["Ugh, that's rough — go easy on yourself and rest up. 🩹","Take care of you first, everything else can wait. Drink some water.","Hope you feel better soon. Anything I can do from here?"] },
+      money:     { mood:'care',  lines:["Money stress is real and exhausting. What's weighing on you most right now?","One step at a time — even a small budget win counts. What's the situation?","That's a lot to carry. Want to think through it together?"] },
+      food:      { mood:'cool',  lines:["Go eat something! You'll think clearer with fuel in you. 🍽️","Hungry brain makes everything harder. Go fix that first.","Food break, then we tackle the rest. Deal?"] },
+      relationship: { mood:'care', lines:["That sounds like a lot. Want to tell me what happened?","People stuff is hard, even with the ones we love most. I'm here.","Take your time — I'm not going anywhere. What's on your mind?"] },
+      help:      { mood:'cool',  lines:["I'm on it — tell me exactly what's going on and let's figure it out.","Happy to help. What's the situation?","Let's break it down together — what are you trying to do?"] },
+      fallback:  { mood:'cool',  lines:["Tell me more — what's actually going on?","I want to get this right — can you say a bit more?","What's really on your mind right now?","I'm following — keep going, what happened next?"] },
     };
     // Bonus buddy lines unlocked as your level climbs (leveling "gives" something)
     const LEVEL_LINES = [[5, "Level 5 already? You're on a roll. 🚀"], [10, "Double digits — look at you go! ⭐"], [20, "Level 20… that's serious dedication. 💎"], [35, "Honestly? You inspire ME now. 🌟"]];
