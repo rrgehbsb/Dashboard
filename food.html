@@ -144,6 +144,8 @@ main{max-width:760px;margin:0 auto;padding:12px 16px calc(120px + env(safe-area-
   color:var(--t1);font-family:inherit;font-size:14px;padding:6px 8px;outline:none;text-align:center;}
 .fd-ing-x{width:26px;height:26px;border-radius:8px;border:none;background:rgba(248,113,113,.15);
   color:#f87171;font-size:15px;cursor:pointer;flex-shrink:0;}
+.fd-pick.usda{border-color:color-mix(in srgb,var(--accent,#a78bfa) 30%,var(--border));}
+.fd-pick .pbrand{color:color-mix(in srgb,var(--accent,#a78bfa) 85%,#fff);font-weight:700;}
 .fd-setup{background:color-mix(in srgb,var(--accent,#a78bfa) 10%,transparent);
   border:1px solid color-mix(in srgb,var(--accent,#a78bfa) 30%,transparent);
   border-radius:14px;padding:12px 13px;font-size:12.5px;line-height:1.55;margin-bottom:14px;}
@@ -295,6 +297,10 @@ body.fd-boot main>:nth-child(8){animation-delay:.35s}
     <div id="fdTabLib">
       <input type="text" class="fd-search" id="fdLibSearch" placeholder="Search your foods…" autocomplete="off">
       <div id="fdLibList"></div>
+      <div id="fdUsdaWrap" style="display:none">
+        <div class="fd-qhead" style="margin-top:16px">🌐 Food database</div>
+        <div id="fdUsdaList"></div>
+      </div>
     </div>
     <div id="fdTabMeals" style="display:none"><div id="fdMealList"></div></div>
     <div id="fdTabQuick" style="display:none">
@@ -762,6 +768,7 @@ function openAdd(g){
   addGroup=g;
   $('fdAddTitle').textContent='Add to '+(GROUPS.find(x=>x[0]===g)||[,, 'Diary'])[2];
   renderLib('');$('fdLibSearch').value='';renderMeals();
+  _usdaSeq++;$('fdUsdaWrap').style.display='none';$('fdUsdaList').innerHTML='';   // clear stale results from last open
   recipeIngs=[];recipeWeightTouched=false;
   $('fdRecName').value='';$('fdRecSearch').value='';$('fdRecWeight').value='';$('fdRecServings').value='1';
   renderRecipeIngs();renderRecipeSearch('');
@@ -797,7 +804,47 @@ function renderLib(q){
     $('fdAddM').classList.remove('show');
   }));
 }
-$('fdLibSearch').addEventListener('input',e=>renderLib(e.target.value));
+let _usdaTimer=null,_usdaSeq=0;
+$('fdLibSearch').addEventListener('input',e=>{
+  const q=e.target.value;
+  renderLib(q);
+  clearTimeout(_usdaTimer);
+  const wrap=$('fdUsdaWrap');
+  if(q.trim().length<2){wrap.style.display='none';return;}
+  wrap.style.display='';
+  $('fdUsdaList').innerHTML='<div class="fd-note">Searching…</div>';
+  _usdaTimer=setTimeout(()=>usdaSearch(q),450);
+});
+async function usdaSearch(q){
+  const seq=++_usdaSeq;   // guards against a slow earlier request overwriting a newer one
+  try{
+    const r=await fetch('/api/food?q='+encodeURIComponent(q));
+    const j=await r.json();
+    if(seq!==_usdaSeq)return;   // a newer keystroke already fired another search
+    if(!j.ok){
+      $('fdUsdaList').innerHTML='<div class="fd-note">'+esc(j.message||"Couldn't search right now.")+'</div>';
+      return;
+    }
+    if(!j.results.length){$('fdUsdaList').innerHTML='<div class="fd-note">No matches in the food database.</div>';return;}
+    $('fdUsdaList').innerHTML=j.results.map((f,i)=>
+      '<button class="fd-pick usda" data-u="'+i+'"><span class="pn">'+esc(f.name)
+      +(f.brand?' <span class="pbrand">'+esc(f.brand)+'</span>':'')
+      +'<small>'+Math.round(f.nutrients.kcal||0)+' kcal · '+Math.round(f.nutrients.protein_g||0)+'g protein · per 100 g'
+      +(f.dataType?' · '+esc(f.dataType):'')+'</small></span><span class="pk">+</span></button>').join('');
+    $('fdUsdaList').querySelectorAll('[data-u]').forEach(b=>b.addEventListener('click',()=>{
+      const uf=j.results[+b.dataset.u];if(!uf)return;
+      // Store EVERYTHING USDA returned, not just the registry subset — see api/food.js.
+      const food={id:rid('f'),name:uf.name+(uf.brand?' ('+uf.brand+')':''),kind:'per100',per:100,
+        nutrients:Object.assign({},uf.nutrients),src:'usda',ref:{fdcId:uf.fdcId},updatedAt:Date.now()};
+      _db.library.push(food);
+      addEntry(viewDate,addGroup,food,100,'usda');
+      $('fdAddM').classList.remove('show');
+    }));
+  }catch(e){
+    if(seq!==_usdaSeq)return;
+    $('fdUsdaList').innerHTML='<div class="fd-note">Network error — try again.</div>';
+  }
+}
 
 function renderMeals(){
   $('fdMealList').innerHTML=_db.meals.map(m=>{
