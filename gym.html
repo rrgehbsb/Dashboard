@@ -1282,9 +1282,12 @@ img, video, canvas, svg { max-width: 100%; }
 }
 .gt-progress-fill {
   height: 100%; background: linear-gradient(90deg, #6ee7b7, #7DD3FC); border-radius: 9999px;
-  transition: width 0.5s cubic-bezier(.22,1,.36,1); width: 0%;
+  transition: width 0.5s cubic-bezier(.22,1,.36,1); width: 0%; position: relative; overflow: hidden;
   box-shadow: 0 0 12px rgba(110,231,183,0.4);
 }
+.gt-progress-fill::after { content: ''; position: absolute; inset: 0;
+  background: linear-gradient(110deg,transparent 30%,rgba(255,255,255,.5) 50%,transparent 70%);
+  background-size: 220% 100%; animation: rkSheen 2.6s ease-in-out infinite; }
 .gt-progress-stats { font-size: 11.5px; color: var(--text-3); font-variant-numeric: tabular-nums; }
 .gt-day-tabs { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 14px; }
 .gt-day-tab {
@@ -1435,17 +1438,25 @@ img, video, canvas, svg { max-width: 100%; }
   letter-spacing: 0.08em; text-transform: uppercase;
 }
 .gt-set-input-mobile {
-  width: 100%; background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.1); border-radius: 11px;
+  width: 100%; background: color-mix(in srgb, var(--tc,#9ca3af) 8%, rgba(255,255,255,0.03));
+  border: 1px solid color-mix(in srgb, var(--tc,#9ca3af) 26%, rgba(255,255,255,0.1)); border-radius: 11px;
   color: var(--text-2); font-size: 16px; font-weight: 600; padding: 11px 6px;
   font-family: var(--font-mono); text-align: center; outline: none;
-  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s, transform 0.15s;
 }
 .gt-set-input-mobile::placeholder { color: var(--text-4); font-weight: 400; }
-.gt-set-input-mobile:focus { border-color: rgba(255,255,255,0.34); background: rgba(255,255,255,0.08);
-  box-shadow: 0 0 0 3px rgba(255,255,255,0.06); }
-.gt-set-input-mobile.has-value { color: var(--text-1); border-color: rgba(110,231,183,0.35);
-  background: rgba(110,231,183,0.06); }
+.gt-set-input-mobile:focus { border-color: color-mix(in srgb, var(--tc,#9ca3af) 55%, transparent);
+  background: color-mix(in srgb, var(--tc,#9ca3af) 12%, rgba(255,255,255,0.05));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tc,#9ca3af) 18%, transparent); }
+.gt-set-input-mobile.has-value { color: var(--text-1); border-color: color-mix(in srgb, var(--tc,#9ca3af) 55%, transparent);
+  background: color-mix(in srgb, var(--tc,#9ca3af) 15%, rgba(255,255,255,0.04));
+  box-shadow: 0 0 12px -4px color-mix(in srgb, var(--tc,#9ca3af) 55%, transparent); }
+.gt-set-input-mobile.gt-pop { animation: gtSetPop .5s cubic-bezier(.34,1.56,.64,1); }
+@keyframes gtSetPop {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.08); box-shadow: 0 0 0 4px color-mix(in srgb, var(--tc,#9ca3af) 45%, transparent), 0 0 22px -2px var(--tc,#9ca3af); }
+  100% { transform: scale(1); }
+}
 .gt-card-notes {
   width: 100%; background: transparent;
   border: 1px solid rgba(255,255,255,0.06); border-radius: 8px;
@@ -1454,6 +1465,75 @@ img, video, canvas, svg { max-width: 100%; }
 }
 .gt-card-notes::placeholder { color: var(--text-4); }
 .gt-card-footer { display: flex; justify-content: flex-end; }
+/* ── Feel-good redesign: per-exercise identity, decluttered header, reskinned set cells, rest timer ── */
+.gt-card{--tc:#9ca3af;}
+.gt-card-header{--tc:#9ca3af;}
+.gt-card-id{display:flex;align-items:center;gap:9px;min-width:0;flex:1;}
+.gt-ex-ic{flex-shrink:0;width:30px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+  font-size:15px;background:linear-gradient(160deg,color-mix(in srgb,var(--tc) 30%,rgba(255,255,255,.04)),rgba(255,255,255,.02));
+  border:1px solid color-mix(in srgb,var(--tc) 42%,transparent);
+  box-shadow:0 4px 14px -6px color-mix(in srgb,var(--tc) 55%,transparent);}
+.gt-ex-rank{flex-shrink:0;font-size:9.5px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#0a0a0b;
+  background:linear-gradient(120deg,var(--tc),color-mix(in srgb,var(--tc) 60%,#fff));
+  border-radius:7px;padding:3px 7px;box-shadow:0 3px 10px -4px var(--tc);}
+.gt-card-menu-wrap{position:relative;flex-shrink:0;}
+.gt-menu-btn{width:30px;height:30px;border-radius:9px;border:1px solid var(--border);background:rgba(255,255,255,.05);
+  color:var(--text-2);font-size:16px;font-weight:800;line-height:1;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.gt-menu-btn:active{transform:scale(.94);}
+.gt-card-menu{display:none;position:absolute;right:0;top:calc(100% + 6px);z-index:12;min-width:168px;
+  background:rgba(24,24,28,.98);border:1px solid var(--border-strong);border-radius:13px;padding:5px;
+  box-shadow:0 20px 48px -18px rgba(0,0,0,.7);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);}
+.gt-card-menu.show{display:block;animation:gtMenuIn .14s ease-out;}
+@keyframes gtMenuIn{from{opacity:0;transform:translateY(-4px) scale(.96);}to{opacity:1;transform:translateY(0) scale(1);}}
+.gt-card-menu button{display:block;width:100%;text-align:left;background:none;border:none;color:var(--text-1);
+  font-family:inherit;font-size:13px;font-weight:600;padding:9px 11px;border-radius:9px;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.gt-card-menu button:active{background:rgba(255,255,255,.08);}
+.gt-card-menu button.danger{color:var(--bad);}
+.gt-set-input-wrap{position:relative;border-radius:11px;}
+.gt-set-input-wrap::after{content:'';position:absolute;inset:0;border-radius:11px;pointer-events:none;opacity:0;
+  background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.6) 50%,transparent 70%);
+  background-size:220% 100%;background-position:120% 0;}
+.gt-set-input-wrap.sheen::after{animation:rkSheen .6s ease-out 1;opacity:1;}
+.gt-fail-badge{position:absolute;top:-7px;right:-7px;min-width:20px;height:20px;padding:0 4px;
+  border-radius:7px;border:1px dashed rgba(251,191,36,.55);background:rgba(20,20,24,.92);
+  color:#fbbf24;font-family:inherit;font-size:10px;font-weight:800;line-height:1;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;transition:all .15s;z-index:2;}
+.gt-fail-badge.on{border-style:solid;border-color:rgba(248,113,113,.55);background:rgba(248,113,113,.16);
+  color:#ff8a8a;box-shadow:0 0 0 2px rgba(248,113,113,.12);}
+.gt-card-notes-wrap{display:flex;align-items:center;gap:7px;width:100%;
+  border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:2px 4px 2px 10px;margin-bottom:8px;
+  background:rgba(255,255,255,.02);transition:border-color .15s;}
+.gt-card-notes-wrap:focus-within{border-color:color-mix(in srgb,var(--tc) 45%,rgba(255,255,255,.15));}
+.gt-notes-ic{flex-shrink:0;font-size:11px;opacity:.4;}
+.gt-card-notes{border:none;margin-bottom:0;padding:7px 2px;background:transparent;}
+
+/* rest-timer floating widget */
+.gt-rest-pill{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom));transform:translateX(-50%);
+  --tc:#6ee7d8;z-index:90;display:flex;align-items:center;gap:10px;padding:8px 14px 8px 8px;border-radius:999px;
+  background:linear-gradient(160deg,color-mix(in srgb,var(--tc) 22%,rgba(20,20,24,.94)),color-mix(in srgb,var(--tc) 8%,rgba(20,20,24,.94)));
+  border:1px solid color-mix(in srgb,var(--tc) 45%,transparent);
+  box-shadow:0 14px 34px -14px color-mix(in srgb,var(--tc) 60%,#000),0 0 0 1px rgba(255,255,255,.04) inset;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);animation:gtRestIn .32s cubic-bezier(.22,1,.36,1);}
+.gt-rest-pill.leaving{animation:gtRestOut .22s ease forwards;}
+@keyframes gtRestIn{from{opacity:0;transform:translateX(-50%) translateY(14px) scale(.94);}to{opacity:1;transform:translateX(-50%) translateY(0) scale(1);}}
+@keyframes gtRestOut{to{opacity:0;transform:translateX(-50%) translateY(10px) scale(.94);}}
+.gt-rest-ring{width:38px;height:38px;flex-shrink:0;transform:rotate(-90deg);}
+.gt-rest-ring-bg{fill:none;stroke:rgba(255,255,255,.14);stroke-width:3;}
+.gt-rest-ring-fg{fill:none;stroke:var(--tc);stroke-width:3;stroke-linecap:round;
+  stroke-dasharray:119.4;stroke-dashoffset:0;transition:stroke-dashoffset 1s linear;
+  filter:drop-shadow(0 0 5px var(--tc));}
+.gt-rest-text{display:flex;flex-direction:column;line-height:1.15;min-width:40px;}
+.gt-rest-label{font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.55);}
+.gt-rest-time{font-size:16px;font-weight:800;font-family:var(--font-mono);color:#fff;font-variant-numeric:tabular-nums;}
+.gt-rest-adj{display:flex;gap:4px;}
+.gt-rest-adj button{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.75);
+  font-size:10.5px;font-weight:700;border-radius:8px;padding:5px 7px;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;}
+.gt-rest-adj button:active{transform:scale(.94);}
+.gt-rest-skip{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14);color:#fff;font-weight:800;
+  font-size:11.5px;border-radius:999px;padding:7px 12px;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;}
+.gt-rest-skip:active{transform:scale(.95);}
+@media(min-width:860px){.gt-rest-pill{bottom:22px;}}
+
 .gt-days-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
 .gt-day-name-input {
   flex: 1; background: rgba(255,255,255,0.05);
@@ -1755,6 +1835,22 @@ img, video, canvas, svg { max-width: 100%; }
     </div>
 
     <div class="gt-day-tabs" id="gtDayTabs"></div>
+
+    <div class="gt-rest-pill" id="gtRestPill" style="display:none">
+      <svg class="gt-rest-ring" viewBox="0 0 44 44">
+        <circle class="gt-rest-ring-bg" cx="22" cy="22" r="19"></circle>
+        <circle class="gt-rest-ring-fg" id="gtRestRingFg" cx="22" cy="22" r="19"></circle>
+      </svg>
+      <div class="gt-rest-text">
+        <span class="gt-rest-label">Rest</span>
+        <span class="gt-rest-time" id="gtRestTime">1:30</span>
+      </div>
+      <div class="gt-rest-adj">
+        <button type="button" id="gtRestMinus" title="-15s">−15</button>
+        <button type="button" id="gtRestPlus" title="+15s">+15</button>
+      </div>
+      <button type="button" class="gt-rest-skip" id="gtRestSkip">Skip</button>
+    </div>
 
     <div class="gt-table-wrap">
       <div class="gt-table-head">
@@ -3784,6 +3880,7 @@ function exDone(ex,exLog){
 }
 
 function renderAll(){const t=getTpl(),a=getActive();renderTabs(t,a);renderWorkout(t,a);}
+window.__gymRerenderTracker=renderAll;
 
 function renderTabs(t,a){
   const c=document.getElementById('gtDayTabs');if(!c)return;
@@ -3884,6 +3981,93 @@ function renderRows(day,dayL,allL,dk){
   c.querySelectorAll('.gt-prep-fill').forEach(b=>b.addEventListener('click',()=>prepFillClick(day,b)));
 }
 
+// ── Per-exercise identity: keyword icon/color, overridden by Strength Rank tier when ranked ──
+const EX_LOOKS=[
+  [/squat|lunge|leg press|hack|split squat|bulgarian/i,{i:'🦵',c:'#60a5fa'}],
+  [/deadlift|rdl|romanian/i,{i:'🏋️',c:'#c084fc'}],
+  [/hip thrust|glute bridge|glute/i,{i:'🍑',c:'#f472b6'}],
+  [/bench|chest press|floor press|\bfly\b|flye/i,{i:'💪',c:'#fb7185'}],
+  [/curl/i,{i:'💪',c:'#fbbf24'}],
+  [/press|push/i,{i:'💪',c:'#fb923c'}],
+  [/row\b|pendlay|seal row|cable row|pulldown|lat pull|pull.?up|chin.?up/i,{i:'🎯',c:'#34d399'}],
+  [/dip|triceps|pushdown|extension/i,{i:'🔻',c:'#f472b6'}],
+  [/shoulder|lateral|raise|delt|face pull|shrug/i,{i:'🔺',c:'#22d3ee'}],
+  [/calf/i,{i:'🦶',c:'#a3e635'}],
+  [/\bab\b|core|plank|crunch/i,{i:'🎯',c:'#facc15'}],
+];
+function exerciseLook(ex){
+  const tier=window.__gymExerciseTier&&window.__gymExerciseTier[ex.id];
+  if(tier)return{i:tier.i,c:tier.c,n:tier.n};
+  for(const[re,look]of EX_LOOKS)if(re.test(ex.name))return look;
+  let hh=0;const nm=ex.name||'';for(let i=0;i<nm.length;i++)hh=(hh*31+nm.charCodeAt(i))>>>0;
+  return{i:'🏋️',c:'hsl('+(hh%360)+',55%,60%)'};
+}
+
+// ── Card overflow menu: only one open at a time, closes on outside click / Escape ──
+function closeAllCardMenus(){document.querySelectorAll('.gt-card-menu.show').forEach(m=>m.classList.remove('show'));}
+if(!window.__gymMenuCloseWired){
+  window.__gymMenuCloseWired=true;
+  document.addEventListener('click',closeAllCardMenus);
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAllCardMenus();});
+}
+
+// ── Set-confirm pop/sheen + auto-advance ──
+const SET_COMPLETE_RE=/^(bw)?\s*\+?\s*\d*(?:[.,]\d+)?\s*(?:kg)?\s*[x×*]\s*\d+(?:[.,]\d+)?\s*$/i;
+function confirmSetCell(inp){
+  const wrap=inp.closest('.gt-set-input-wrap');
+  inp.classList.remove('gt-pop');void inp.offsetWidth;inp.classList.add('gt-pop');
+  if(wrap){wrap.classList.remove('sheen');void wrap.offsetWidth;wrap.classList.add('sheen');}
+  clearTimeout(inp._gtPopT);
+  inp._gtPopT=setTimeout(()=>{inp.classList.remove('gt-pop');if(wrap)wrap.classList.remove('sheen');},650);
+}
+function advanceToNextSet(card,inp){
+  const all=Array.from(card.querySelectorAll('.gt-set-input-mobile'));
+  const i=all.indexOf(inp);
+  for(let j=i+1;j<all.length;j++){if(!all[j].value.trim()){all[j].focus();if(all[j].select)all[j].select();return;}}
+}
+
+// ── Rest timer: floating widget, wall-clock based (survives a backgrounded/locked phone) ──
+const REST_DEFAULT=90,REST_CIRC=119.4;
+let _restEnd=0,_restDur=REST_DEFAULT,_restTimerId=null;
+function restRender(){
+  const pill=document.getElementById('gtRestPill');if(!pill)return;
+  const remain=Math.max(0,Math.ceil((_restEnd-Date.now())/1000));
+  const m=Math.floor(remain/60),s=remain%60;
+  const timeEl=document.getElementById('gtRestTime');
+  if(timeEl)timeEl.textContent=m+':'+String(s).padStart(2,'0');
+  const frac=_restDur>0?Math.max(0,Math.min(1,remain/_restDur)):0;
+  const fg=document.getElementById('gtRestRingFg');
+  if(fg)fg.style.strokeDashoffset=String(REST_CIRC*(1-frac));
+  if(remain<=0)restStop();
+}
+function restStart(tc){
+  _restDur=_restDur||REST_DEFAULT;
+  _restEnd=Date.now()+_restDur*1000;
+  const pill=document.getElementById('gtRestPill');if(!pill)return;
+  pill.style.setProperty('--tc',tc||'#6ee7d8');
+  pill.style.display='flex';pill.classList.remove('leaving');
+  restRender();
+  if(_restTimerId)clearInterval(_restTimerId);
+  _restTimerId=setInterval(restRender,250);
+}
+function restStop(){
+  if(_restTimerId){clearInterval(_restTimerId);_restTimerId=null;}
+  const pill=document.getElementById('gtRestPill');if(!pill)return;
+  pill.classList.add('leaving');
+  setTimeout(()=>{if(pill.classList.contains('leaving')){pill.style.display='none';pill.classList.remove('leaving');}},240);
+}
+function restAdjust(deltaSec){
+  if(!_restTimerId)return;
+  _restEnd+=deltaSec*1000;
+  _restDur=Math.max(15,_restDur+deltaSec);
+  restRender();
+}
+(function wireRestControls(){
+  const skip=document.getElementById('gtRestSkip');if(skip)skip.addEventListener('click',restStop);
+  const plus=document.getElementById('gtRestPlus');if(plus)plus.addEventListener('click',()=>restAdjust(15));
+  const minus=document.getElementById('gtRestMinus');if(minus)minus.addEventListener('click',()=>restAdjust(-15));
+})();
+
 function renderCards(day,dayL,allL,dk){
   const c=document.getElementById('gtCards');if(!c)return;
   c.innerHTML='';
@@ -3894,24 +4078,35 @@ function renderCards(day,dayL,allL,dk){
     const chip=coachChip(ex,dayL,allL);
     const cols=Math.min(ex.sets,4);
     const nFail=Math.min(ex.failSets||0,ex.sets);
+    const look=exerciseLook(ex);
+    const rankChip=look.n?`<span class="gt-ex-rank">${esc(look.n)}</span>`:'';
     const setCols=sets.map((v,i)=>{
       const f=!!el['set'+i+'F'];
       const presc=nFail>0 && i>=ex.sets-nFail;
-      const failBtn=presc?`<button type="button" class="gt-fail-btn prescribed${f?' on':''}" data-exid="${ex.id}" data-set="${i}" title="Set up as a to-failure (AMRAP) set — tap when you hit failure">F</button>`:'';
+      const failBadge=presc?`<button type="button" class="gt-fail-badge${f?' on':''}" data-exid="${ex.id}" data-set="${i}" title="Set up as a to-failure (AMRAP) set — tap when you hit failure">F</button>`:'';
       const lbl=presc?`Set ${i+1} · <span style="color:#fbbf24">failure</span>`:`Set ${i+1}`;
-      if(ex.unilateral){const vR=el['set'+i+'R']||'';return`<div class="gt-set-cell"><span class="gt-set-label">${lbl}</span><div class="gt-uni-mobile-pair"><div class="gt-uni-label-row"><span class="gt-uni-label">R</span><input class="gt-set-input-mobile${vR?' has-value':''}" type="text" inputmode="decimal" placeholder="${esc(last['set'+i+'R']||'—')}" value="${esc(vR)}" data-exid="${ex.id}" data-set="${i}" data-side="R" autocomplete="off"></div><div class="gt-uni-label-row"><span class="gt-uni-label">L</span><input class="gt-set-input-mobile${v?' has-value':''}" type="text" inputmode="decimal" placeholder="${esc(last['set'+i]||'—')}" value="${esc(v)}" data-exid="${ex.id}" data-set="${i}" data-side="L" autocomplete="off"></div></div>${failBtn}</div>`;}
-      return`<div class="gt-set-cell"><span class="gt-set-label">${lbl}</span><input class="gt-set-input-mobile${v?' has-value':''}" type="text" inputmode="decimal" placeholder="${esc(last['set'+i]||'—')}" value="${esc(v)}" data-exid="${ex.id}" data-set="${i}" autocomplete="off">${failBtn}</div>`;
+      if(ex.unilateral){const vR=el['set'+i+'R']||'';return`<div class="gt-set-cell"><span class="gt-set-label">${lbl}</span><div class="gt-uni-mobile-pair"><div class="gt-uni-label-row"><span class="gt-uni-label">R</span><div class="gt-set-input-wrap"><input class="gt-set-input-mobile${vR?' has-value':''}" type="text" inputmode="decimal" placeholder="${esc(last['set'+i+'R']||'—')}" value="${esc(vR)}" data-exid="${ex.id}" data-set="${i}" data-side="R" autocomplete="off"></div></div><div class="gt-uni-label-row"><span class="gt-uni-label">L</span><div class="gt-set-input-wrap"><input class="gt-set-input-mobile${v?' has-value':''}" type="text" inputmode="decimal" placeholder="${esc(last['set'+i]||'—')}" value="${esc(v)}" data-exid="${ex.id}" data-set="${i}" data-side="L" autocomplete="off">${failBadge}</div></div></div></div>`;}
+      return`<div class="gt-set-cell"><span class="gt-set-label">${lbl}</span><div class="gt-set-input-wrap"><input class="gt-set-input-mobile${v?' has-value':''}" type="text" inputmode="decimal" placeholder="${esc(last['set'+i]||'—')}" value="${esc(v)}" data-exid="${ex.id}" data-set="${i}" autocomplete="off">${failBadge}</div></div>`;
     }).join('');
     const card=document.createElement('div');
     card.className='gt-card';
+    card.style.setProperty('--tc',look.c);
     card.innerHTML=`<div class="gt-card-header">
-      <div class="gt-card-name">${esc(ex.name)}</div>
-      <div style="display:flex;gap:4px;align-items:center">
-        <button class="gt-reorder-btn" data-move-exid="${ex.id}" data-move-dir="up" data-day="${day.id}" title="Move up">↑</button>
-        <button class="gt-reorder-btn" data-move-exid="${ex.id}" data-move-dir="down" data-day="${day.id}" title="Move down">↓</button>
-        <button class="gt-icon-btn" style="width:28px;height:28px;padding:0;justify-content:center;font-size:12px" data-edit-ex="${ex.id}" data-day="${day.id}" title="Edit">✎</button>
-        <button class="gt-icon-btn" style="width:28px;height:28px;padding:0;justify-content:center;font-size:15px;color:var(--bad)" data-del-ex="${ex.id}" data-day="${day.id}" title="Remove">×</button>
-      </div></div>
+      <div class="gt-card-id">
+        <span class="gt-ex-ic">${look.i}</span>
+        <div class="gt-card-name">${esc(ex.name)}</div>
+        ${rankChip}
+      </div>
+      <div class="gt-card-menu-wrap">
+        <button type="button" class="gt-menu-btn" data-menu-ex="${ex.id}" title="More">⋯</button>
+        <div class="gt-card-menu" data-menu-for="${ex.id}">
+          <button type="button" data-edit-ex="${ex.id}" data-day="${day.id}">✎ Edit exercise</button>
+          <button type="button" data-move-exid="${ex.id}" data-move-dir="up" data-day="${day.id}">↑ Move up</button>
+          <button type="button" data-move-exid="${ex.id}" data-move-dir="down" data-day="${day.id}">↓ Move down</button>
+          <button type="button" class="danger" data-del-ex="${ex.id}" data-day="${day.id}">× Remove</button>
+        </div>
+      </div>
+    </div>
     <div class="gt-card-meta">
       <span class="gt-meta-chip">${ex.sets} sets</span>
       <span class="gt-meta-chip">${ex.repMin}–${ex.repMax} reps</span>
@@ -3920,31 +4115,48 @@ function renderCards(day,dayL,allL,dk){
     </div>
     ${prepHTML(ex,allL,dk)}
     <div class="gt-sets-row" style="grid-template-columns:repeat(${cols},1fr)">${setCols}</div>
-    <input class="gt-card-notes" type="text" placeholder="Notes…" value="${esc(el.notes||'')}" data-exid="${ex.id}" autocomplete="off">
+    <div class="gt-card-notes-wrap"><span class="gt-notes-ic">✎</span><input class="gt-card-notes" type="text" placeholder="Notes…" value="${esc(el.notes||'')}" data-exid="${ex.id}" autocomplete="off"></div>
     <div class="gt-card-footer"><span class="gt-coach-chip ${chip.cls}">${chip.label}</span></div>`;
 
     card.querySelectorAll('.gt-set-input-mobile').forEach(inp=>{
+      inp.dataset.wasComplete=SET_COMPLETE_RE.test(inp.value.trim())?'1':'';
       inp.addEventListener('input',()=>{
-        inp.classList.toggle('has-value',!!inp.value.trim());
+        const val=inp.value;
+        inp.classList.toggle('has-value',!!val.trim());
         if(_lastFill&&_lastFill.exId===inp.dataset.exid)_lastFill=null;
-        saveSetVal(inp.dataset.exid,inp.dataset.set,inp.value,inp.dataset.side);
+        saveSetVal(inp.dataset.exid,inp.dataset.set,val,inp.dataset.side);
         updateProgress(day);
         const allI=Array.from(card.querySelectorAll('.gt-set-input-mobile'));
         const lg={};allI.forEach(ii=>{lg['set'+ii.dataset.set+(ii.dataset.side==='R'?'R':'')]=ii.value;});
         const nc=coachChip(ex,{[ex.id]:lg},getLogs());
         const ce=card.querySelector('.gt-coach-chip');
         if(ce){ce.className='gt-coach-chip '+nc.cls;ce.textContent=nc.label;}
+        const nowComplete=SET_COMPLETE_RE.test(val.trim());
+        if(nowComplete&&inp.dataset.wasComplete!=='1'){
+          confirmSetCell(inp);
+          advanceToNextSet(card,inp);
+          restStart(look.c);
+        }
+        inp.dataset.wasComplete=nowComplete?'1':'';
       });
     });
-    card.querySelectorAll('.gt-fail-btn').forEach(btn=>btn.addEventListener('click',()=>{
+    card.querySelectorAll('.gt-fail-badge').forEach(btn=>btn.addEventListener('click',()=>{
       const on=!btn.classList.contains('on');
       btn.classList.toggle('on',on);
       saveSetFail(btn.dataset.exid,btn.dataset.set,on);
     }));
     card.querySelector('.gt-card-notes').addEventListener('input',e=>saveNotes(ex.id,e.target.value));
-    card.querySelector('[data-edit-ex]').addEventListener('click',()=>openEdit(ex.id,day.id));
-    card.querySelector('[data-del-ex]').addEventListener('click',()=>delEx(ex.id,day.id));
-    card.querySelectorAll('.gt-reorder-btn').forEach(btn=>btn.addEventListener('click',()=>moveEx(btn.dataset.moveExid,btn.dataset.day,btn.dataset.moveDir)));
+    const menuBtn=card.querySelector('.gt-menu-btn'),menu=card.querySelector('.gt-card-menu');
+    menuBtn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const willOpen=!menu.classList.contains('show');
+      closeAllCardMenus();
+      if(willOpen)menu.classList.add('show');
+    });
+    menu.addEventListener('click',e=>e.stopPropagation());
+    menu.querySelector('[data-edit-ex]').addEventListener('click',()=>{closeAllCardMenus();openEdit(ex.id,day.id);});
+    menu.querySelector('[data-del-ex]').addEventListener('click',()=>{closeAllCardMenus();delEx(ex.id,day.id);});
+    menu.querySelectorAll('[data-move-exid]').forEach(btn=>btn.addEventListener('click',()=>{closeAllCardMenus();moveEx(btn.dataset.moveExid,btn.dataset.day,btn.dataset.moveDir);}));
     const _pf=card.querySelector('.gt-prep-fill'); if(_pf)_pf.addEventListener('click',()=>prepFillClick(day,_pf));
     c.appendChild(card);
   });
@@ -4283,6 +4495,17 @@ function scoreToRatio(s,t){
 function tierOf(s){let x=TIERS[0];for(const t of TIERS)if(s>=t.min)x=t;return x;}
 function nextTier(t){const i=TIERS.indexOf(t);return i<TIERS.length-1?TIERS[i+1]:null;}
 function lpOf(s,t){const nx=nextTier(t);const max=nx?nx.min:100;return Math.round(Math.max(0,Math.min(1,(s-t.min)/(max-t.min)))*100);}
+function syncExerciseTiers(ranked){
+  try{
+    const map={};
+    (ranked||[]).forEach(r=>{const t=tierOf(r.score);map[r.ex.id]={i:t.i,c:t.c,n:t.n};});
+    const sig=JSON.stringify(map);
+    if(sig===window.__gymExerciseTierSig)return;
+    window.__gymExerciseTierSig=sig;
+    window.__gymExerciseTier=map;
+    if(typeof window.__gymRerenderTracker==='function')window.__gymRerenderTracker();
+  }catch(e){}
+}
 
 // "60x8" / "bw x 9" / "bw+10x6" → est 1RM. Reps capped at 15: Epley gets silly past that.
 function parseSet(v,bw){
@@ -4386,9 +4609,11 @@ function render(){
     $('rkSub').innerHTML='Ranks need your <b>bodyweight</b>. Log a weigh-in on the Health page to unlock them.'
       +'<br><a class="rk-lockbtn" href="health.html">⚖️ Log my weight</a>';
     $('rkLp').textContent='';$('rkNext').textContent='';
+    syncExerciseTiers([]);
     return;
   }
   const d=compute();
+  syncExerciseTiers(d.ranked);
   if(!d.ranked.length){
     $('rkEmblem').textContent='🏋️';
     $('rkTier').textContent='Unranked';
