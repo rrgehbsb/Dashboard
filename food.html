@@ -137,6 +137,13 @@ main{max-width:760px;margin:0 auto;padding:12px 16px calc(120px + env(safe-area-
   cursor:pointer;padding:4px 0;margin-bottom:8px;}
 #fdMicroFields{display:none;}
 #fdMicroFields.show{display:block;}
+.fd-ing{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:11px;
+  background:rgba(255,255,255,.04);border:1px solid var(--border);margin-bottom:6px;}
+.fd-ing-nm{flex:1;min-width:0;font-size:12.5px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.fd-ing-g{width:64px;background:rgba(255,255,255,.06);border:1px solid var(--border-strong);border-radius:9px;
+  color:var(--t1);font-family:inherit;font-size:14px;padding:6px 8px;outline:none;text-align:center;}
+.fd-ing-x{width:26px;height:26px;border-radius:8px;border:none;background:rgba(248,113,113,.15);
+  color:#f87171;font-size:15px;cursor:pointer;flex-shrink:0;}
 .fd-setup{background:color-mix(in srgb,var(--accent,#a78bfa) 10%,transparent);
   border:1px solid color-mix(in srgb,var(--accent,#a78bfa) 30%,transparent);
   border-radius:14px;padding:12px 13px;font-size:12.5px;line-height:1.55;margin-bottom:14px;}
@@ -207,6 +214,18 @@ main{position:relative;z-index:1;}
 .fd-week{height:86px;border-radius:16px;}
 .fd-wbar{background:linear-gradient(180deg,color-mix(in srgb,var(--accent,#a78bfa) 75%,#fff),color-mix(in srgb,var(--accent,#a78bfa) 45%,transparent));opacity:.55;}
 .fd-wday.t .fd-wbar{opacity:1;box-shadow:0 0 12px -2px var(--accent,#a78bfa);}
+.fd-verdict{background:linear-gradient(160deg,color-mix(in srgb,var(--accent,#a78bfa) 12%,transparent),rgba(255,255,255,.02));
+  border:1px solid color-mix(in srgb,var(--accent,#a78bfa) 30%,transparent);border-radius:18px;padding:15px 16px;
+  font-size:12.5px;line-height:1.6;color:var(--t2);}
+.fd-verdict b{color:var(--t1);}
+.fd-verdict .vhead{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:800;color:var(--t1);margin-bottom:6px;}
+.fd-verdict .vnum{font-variant-numeric:tabular-nums;}
+.fd-verdict.up .vhead{color:#34d399;}
+.fd-verdict.down .vhead{color:#f87171;}
+.fd-verdict.hold .vhead{color:var(--accent,#a78bfa);}
+.fd-vactions{display:flex;gap:8px;margin-top:11px;}
+.fd-vbtn{flex:1;padding:9px;border-radius:11px;border:1px solid var(--border-strong);background:rgba(255,255,255,.05);
+  color:var(--t1);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;}
 /* entrance stagger, once per load */
 body.fd-boot main>*{animation:fdUp .5s cubic-bezier(.22,1,.36,1) both;}
 body.fd-boot main>:nth-child(2){animation-delay:.05s}body.fd-boot main>:nth-child(3){animation-delay:.1s}
@@ -255,6 +274,9 @@ body.fd-boot main>:nth-child(8){animation-delay:.35s}
   <div class="section-title" data-nav="Diary">Diary</div>
   <div id="fdGroups"></div>
 
+  <div class="section-title" data-nav="Verdict">Weekly Verdict</div>
+  <div class="fd-verdict" id="fdVerdict"></div>
+
   <div class="section-title" data-nav="Week">This Week</div>
   <div class="fd-week" id="fdWeek"></div>
   <div class="fd-note">Bars = kcal per day vs target. Nutrient values are estimates from your logged portions; foods logged from labels carry macros only — an empty micro doesn't mean zero, it means unmeasured.</div>
@@ -268,6 +290,7 @@ body.fd-boot main>:nth-child(8){animation-delay:.35s}
       <button class="fd-tab on" data-t="lib">Library</button>
       <button class="fd-tab" data-t="meals">Meals</button>
       <button class="fd-tab" data-t="quick">Quick add</button>
+      <button class="fd-tab" data-t="recipe">Recipe</button>
     </div>
     <div id="fdTabLib">
       <input type="text" class="fd-search" id="fdLibSearch" placeholder="Search your foods…" autocomplete="off">
@@ -294,6 +317,22 @@ body.fd-boot main>:nth-child(8){animation-delay:.35s}
         <input type="checkbox" id="fdQSave" checked style="width:auto;transform:scale(1.2)"> Save to my library for next time
       </label>
       <div class="fd-btns"><button class="fd-b pri" id="fdQAdd">Add to diary</button></div>
+    </div>
+    <div id="fdTabRecipe" style="display:none">
+      <div class="fd-f"><label>Recipe name</label><input type="text" id="fdRecName" placeholder="e.g. Chicken &amp; rice bowl" maxlength="60"></div>
+      <div class="fd-f">
+        <label>Ingredients <small>search your library, tap to add</small></label>
+        <input type="text" class="fd-search" id="fdRecSearch" placeholder="Search…" autocomplete="off" style="margin-bottom:6px">
+        <div id="fdRecResults"></div>
+      </div>
+      <div id="fdRecIngList"></div>
+      <div class="fd-note" id="fdRecTotals" style="margin:2px 0 10px"></div>
+      <div class="fd-frow">
+        <div class="fd-f"><label>Final cooked weight <small>grams, after cooking</small></label><input type="number" id="fdRecWeight" min="1" step="1" placeholder="0"></div>
+        <div class="fd-f"><label>Servings <small>optional</small></label><input type="number" id="fdRecServings" min="1" step="1" value="1"></div>
+      </div>
+      <div class="fd-note">Cooking loses water, not calories — the final weight is usually less than the sum of raw ingredients. That's why this is separate from "grams in".</div>
+      <div class="fd-btns"><button class="fd-b pri" id="fdRecSave">Save &amp; log 1 serving</button></div>
     </div>
   </div>
 </div>
@@ -513,6 +552,67 @@ function snap(food,qty){
   return n;
 }
 function dayObj(dk){if(!_db.days[dk])_db.days[dk]={entries:[]};return _db.days[dk];}
+// ── Weekly Verdict ──────────────────────────────────────────────────────────
+// Real intake vs real weight change beats any formula: it self-corrects for
+// whatever the formula got wrong about YOUR metabolism. 1kg body mass ≈ 7700 kcal
+// (a standard approximation — ignores water/glycogen swings, which is why we
+// require several days of data and say so rather than pretending precision).
+function renderVerdict(){
+  const el=$('fdVerdict');if(!el)return;
+  const days=[];for(let i=0;i<7;i++)days.push(dkOffset(today(),-i));
+  const withFood=days.filter(dk=>((_db.days[dk]||{}).entries||[]).length>0);
+  if(withFood.length<4){
+    el.className='fd-verdict';
+    el.innerHTML='<div class="vhead">📊 Not enough data yet</div>Log at least 4 days this week and this card will tell you whether to raise, hold, or lower your calories — based on what actually happened to your weight, not a formula\'s guess.';
+    return;
+  }
+  const avgKcal=withFood.reduce((s,dk)=>s+(dayTotals(dk).kcal||0),0)/withFood.length;
+
+  const ws=(healthRow&&Array.isArray(healthRow.po_coach_weights)?healthRow.po_coach_weights:[]).slice()
+    .filter(w=>w&&w.dateKey&&isFinite(parseFloat(w.kg)))
+    .sort((a,b)=>a.dateKey.localeCompare(b.dateKey));
+  const cutoff=dkOffset(today(),-10);
+  const recent=ws.filter(w=>w.dateKey>=cutoff);
+  if(recent.length<2){
+    el.className='fd-verdict';
+    el.innerHTML='<div class="vhead">⚖️ Need more weigh-ins</div>You\'re averaging <b>'+Math.round(avgKcal)+' kcal/day</b> this week. Log a couple more weigh-ins on Health, spread a few days apart, and this card will tell you whether that\'s actually working.';
+    return;
+  }
+  const first=recent[0],last=recent[recent.length-1];
+  const spanDays=Math.max(1,(new Date(last.dateKey)-new Date(first.dateKey))/864e5);
+  const deltaKg=parseFloat(last.kg)-parseFloat(first.kg);
+  const weeklyDeltaKg=deltaKg*(7/spanDays);
+  const impliedSurplus=weeklyDeltaKg*7700/7;               // kcal/day this intake is ABOVE true maintenance
+  const trueTDEE=Math.round(avgKcal-impliedSurplus);
+
+  const goalRate=(_db.profile&&_db.profile.goalRate!=null)?parseFloat(_db.profile.goalRate):0.25;
+  const gap=goalRate-weeklyDeltaKg;                          // +ve = gaining slower than planned
+
+  let cls,head,body,adjust=0;   // adjust: signed kcal/day change to suggest+apply
+  if(Math.abs(gap)<=0.08){
+    cls='hold';head='✅ On track — hold steady';
+    body='You moved <b>'+(weeklyDeltaKg>=0?'+':'')+weeklyDeltaKg.toFixed(2)+' kg</b> over the last '+Math.round(spanDays)+' days on <b>'+Math.round(avgKcal)+' kcal/day</b>. That matches your goal. Your real maintenance looks like about <b>'+trueTDEE+' kcal</b> — keep eating what you\'re eating.';
+  }else if(gap>0){
+    adjust=Math.round(gap*7700/7/25)*25;
+    cls='up';head='📈 Raise calories';
+    body='You\'re gaining <b>'+weeklyDeltaKg.toFixed(2)+' kg/week</b> — slower than your <b>'+goalRate.toFixed(2)+' kg/week</b> goal — while averaging <b>'+Math.round(avgKcal)+' kcal</b>. Your real maintenance is running closer to <b>'+trueTDEE+' kcal</b> than the estimate. Add about <b>+'+adjust+' kcal/day</b> and re-check next week.';
+  }else{
+    adjust=Math.round(gap*7700/7/25)*25;   // gap is negative here, so this is negative too
+    cls='down';head='📉 Ease off calories';
+    body='You\'re gaining <b>'+weeklyDeltaKg.toFixed(2)+' kg/week</b> — faster than your <b>'+goalRate.toFixed(2)+' kg/week</b> goal — on <b>'+Math.round(avgKcal)+' kcal</b>. That\'s more fat gain than muscle can keep up with. Try <b>'+adjust+' kcal/day</b>.';
+  }
+  el.className='fd-verdict '+cls;
+  el.innerHTML='<div class="vhead">'+head+'</div>'+body
+    +(adjust?'<div class="fd-vactions"><button class="fd-vbtn" id="fdVApply">Apply to targets</button></div>':'');
+  const applyBtn=document.getElementById('fdVApply');
+  if(applyBtn)applyBtn.addEventListener('click',()=>{
+    const cur=targets();
+    _db.custom={kcal:Math.max(1200,Math.round((cur.kcal||trueTDEE)+adjust)),
+      protein_g:cur.protein_g,carbs_g:null,fat_g:null,_at:Date.now()};
+    save();
+  });
+}
+
 function dayTotals(dk){
   const t={};
   ((_db.days[dk]||{}).entries||[]).forEach(e=>{
@@ -639,6 +739,7 @@ function render(){
   $('fdGroups').querySelectorAll('.fd-gadd').forEach(b=>b.addEventListener('click',()=>openAdd(b.dataset.g)));
   $('fdGroups').querySelectorAll('.fd-entry').forEach(el=>el.addEventListener('click',()=>openEntry(+el.dataset.i)));
 
+  renderVerdict();
   $('fdWeek').innerHTML=Array.from({length:7},(_,i)=>{
     const d=dkOffset(today(),i-6),tt=dayTotals(d),k=Math.round(tt.kcal||0);
     const h=t.kcal?Math.min(100,k/t.kcal*100):(k?40:2);
@@ -661,6 +762,9 @@ function openAdd(g){
   addGroup=g;
   $('fdAddTitle').textContent='Add to '+(GROUPS.find(x=>x[0]===g)||[,, 'Diary'])[2];
   renderLib('');$('fdLibSearch').value='';renderMeals();
+  recipeIngs=[];recipeWeightTouched=false;
+  $('fdRecName').value='';$('fdRecSearch').value='';$('fdRecWeight').value='';$('fdRecServings').value='1';
+  renderRecipeIngs();renderRecipeSearch('');
   showTab('lib');$('fdAddM').classList.add('show');
 }
 function showTab(t){
@@ -668,6 +772,7 @@ function showTab(t){
   $('fdTabLib').style.display=t==='lib'?'':'none';
   $('fdTabMeals').style.display=t==='meals'?'':'none';
   $('fdTabQuick').style.display=t==='quick'?'':'none';
+  $('fdTabRecipe').style.display=t==='recipe'?'':'none';
 }
 document.querySelectorAll('#fdAddM .fd-tab').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.t)));
 $('fdAddM').addEventListener('click',e=>{if(e.target.id==='fdAddM')$('fdAddM').classList.remove('show');});
@@ -728,6 +833,79 @@ $('fdQAdd').addEventListener('click',()=>{
   addEntry(viewDate,addGroup,food,unit==='g'?qty:qty,'quick');
   ['fdQName','fdQKcal','fdQP','fdQC','fdQF'].forEach(i=>$(i).value='');
   $('fdQAmt').value=1;
+  $('fdAddM').classList.remove('show');
+});
+
+/* ── recipe builder ── */
+let recipeIngs=[],recipeWeightTouched=false;
+function renderRecipeSearch(q){
+  const ql=q.trim().toLowerCase();
+  const list=(ql?_db.library.filter(f=>f.name.toLowerCase().includes(ql)):_db.library.slice(0,12));
+  $('fdRecResults').innerHTML=list.slice(0,12).map(f=>
+    '<button class="fd-pick" data-f="'+f.id+'"><span class="pn">'+esc(f.name)
+    +'<small>'+Math.round(f.nutrients.kcal||0)+' kcal per '+(f.kind==='per100'?'100g':'serving')+'</small></span><span class="pk">+</span></button>').join('')
+    ||'<div class="fd-note">No foods yet — quick-add or search a food first, then build the recipe from it.</div>';
+  $('fdRecResults').querySelectorAll('.fd-pick').forEach(b=>b.addEventListener('click',()=>{
+    const f=foodById(b.dataset.f);if(!f)return;
+    recipeIngs.push({foodId:f.id,name:f.name,g:f.kind==='per100'?100:(f.per||1)});
+    renderRecipeIngs();
+  }));
+}
+$('fdRecSearch').addEventListener('input',e=>renderRecipeSearch(e.target.value));
+function recipeTotals(){
+  const t={};
+  recipeIngs.forEach(ing=>{
+    const f=foodById(ing.foodId);if(!f)return;
+    const n=snap(f,ing.g);
+    Object.keys(n).forEach(k=>{t[k]=(t[k]||0)+n[k];});
+  });
+  return t;
+}
+function renderRecipeIngs(){
+  $('fdRecIngList').innerHTML=recipeIngs.map((ing,i)=>
+    '<div class="fd-ing" data-i="'+i+'"><span class="fd-ing-nm">'+esc(ing.name)+'</span>'
+    +'<input type="number" class="fd-ing-g" min="0" step="5" value="'+ing.g+'" data-gi="'+i+'">'
+    +'<button class="fd-ing-x" data-xi="'+i+'" aria-label="Remove">×</button></div>').join('');
+  $('fdRecIngList').querySelectorAll('[data-gi]').forEach(inp=>inp.addEventListener('input',e=>{
+    recipeIngs[+e.target.dataset.gi].g=Math.max(0,parseFloat(e.target.value)||0);
+    if(!recipeWeightTouched)autofillCookedWeight();
+    renderRecipeTotals();
+  }));
+  $('fdRecIngList').querySelectorAll('[data-xi]').forEach(b=>b.addEventListener('click',()=>{
+    recipeIngs.splice(+b.dataset.xi,1);renderRecipeIngs();
+    if(!recipeWeightTouched)autofillCookedWeight();
+    renderRecipeTotals();
+  }));
+  if(!recipeWeightTouched)autofillCookedWeight();
+  renderRecipeTotals();
+}
+function autofillCookedWeight(){
+  const sum=recipeIngs.reduce((s,i)=>s+i.g,0);
+  $('fdRecWeight').value=sum||'';
+}
+$('fdRecWeight').addEventListener('input',()=>{recipeWeightTouched=true;});
+function renderRecipeTotals(){
+  const t=recipeTotals();
+  $('fdRecTotals').textContent=recipeIngs.length
+    ?('Total so far: '+Math.round(t.kcal||0)+' kcal · '+Math.round(t.protein_g||0)+'g P · '
+      +Math.round(t.carbs_g||0)+'g C · '+Math.round(t.fat_g||0)+'g F')
+    :'Add ingredients from your library above.';
+}
+$('fdRecSave').addEventListener('click',()=>{
+  const name=($('fdRecName').value||'').trim();
+  const weight=parseFloat($('fdRecWeight').value)||0;
+  const servings=Math.max(1,parseInt($('fdRecServings').value,10)||1);
+  if(!name){$('fdRecName').focus();return;}
+  if(!recipeIngs.length){alert('Add at least one ingredient.');return;}
+  if(!weight){$('fdRecWeight').focus();return;}
+  const t=recipeTotals();
+  const per100={};
+  Object.keys(t).forEach(k=>{per100[k]=t[k]/weight*100;});
+  const food={id:rid('f'),name:name,kind:'per100',per:100,unit:'g',nutrients:per100,
+    recipe:{ingredients:recipeIngs.map(i=>({foodId:i.foodId,g:i.g})),cookedWeightG:weight,servings:servings},
+    src:'recipe',updatedAt:Date.now()};
+  _db.library.push(food);
+  addEntry(viewDate,addGroup,food,weight/servings,'recipe');   // logs 1 serving immediately
   $('fdAddM').classList.remove('show');
 });
 
