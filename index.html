@@ -75,81 +75,22 @@ body::after{
   position:relative;z-index:1;
 }
 
-/* Ticker */
-.ticker-row{margin-bottom:14px;position:relative;z-index:1;}
-.goal-ticker{
-  display:flex;flex-direction:row;align-items:center;gap:10px;padding:7px 12px;
-  border-radius:12px;
-  background-image:
-    linear-gradient(180deg,rgba(0,0,0,0.42) 0%,rgba(0,0,0,0.30) 100%),
-    repeating-linear-gradient(0deg,rgba(255,255,255,0.025) 0,rgba(255,255,255,0.025) 1px,transparent 1px,transparent 3px);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,0.04);
-  position:relative;overflow:hidden;
-}
-.goal-ticker::after{
-  content:'';position:absolute;top:0;left:-40%;width:30%;height:100%;
-  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.04),transparent);
-  animation:ticker-sweep 8s ease-in-out infinite;pointer-events:none;
-}
-@keyframes ticker-sweep{0%{left:-40%;}100%{left:110%;}}
-.goal-ticker-led{display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.goal-ticker-led-dot{
-  width:7px;height:7px;border-radius:50%;background:#6BE3A4;
-  box-shadow:0 0 8px rgba(107,227,164,0.7);animation:led-pulse 1.6s ease-in-out infinite;
-}
-@keyframes led-pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.45;transform:scale(0.85);}}
-.goal-ticker-label{
-  font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
-  font-size:9.5px;font-weight:800;letter-spacing:0.18em;color:var(--text-tertiary);flex-shrink:0;
-}
-.goal-ticker-stage{flex:1;overflow:hidden;}
-.goal-ticker-row{
-  display:flex;flex-direction:row;align-items:center;gap:8px;
-  font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
-  font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums;
-  color:var(--text-primary);white-space:nowrap;overflow:hidden;
-}
-.goal-ticker-status{width:18px;flex-shrink:0;text-align:center;}
-.goal-ticker-status[data-status="done"]{color:var(--success);}
-.goal-ticker-status[data-status="pending"]{color:var(--text-tertiary);}
-.goal-ticker-status[data-status="empty"]{color:var(--text-tertiary);}
-.goal-ticker-text{flex:1;overflow:hidden;text-overflow:ellipsis;}
-.goal-ticker-meta{
-  font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
-  font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;
-  letter-spacing:0.04em;color:var(--text-secondary);
-  padding:3px 8px;border-radius:999px;background:rgba(255,255,255,0.04);flex-shrink:0;
-}
-
-/* Command Bar */
-.cmd-bar{
-  display:flex;flex-wrap:wrap;gap:6px;
-  margin-bottom:14px;position:relative;z-index:1;
-}
-.cmd-chip{
-  display:inline-flex;align-items:center;gap:5px;
-  padding:5px 10px;border-radius:8px;
-  background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);
-  font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
-  font-size:11px;font-weight:600;color:var(--text-tertiary);
-  letter-spacing:0.04em;
-}
-.cmd-chip:empty{display:none;}
-
-/* Do Now Card */
+/* Do Now Card — hero: biggest, first thing on the page */
 .do-now-card{
-  background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);
-  border-radius:14px;padding:14px 18px;
-  margin-bottom:14px;position:relative;z-index:1;
-  display:flex;align-items:center;gap:14px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--accent,#F2C063) 14%,rgba(255,255,255,0.04)) 0%,rgba(255,255,255,0.04) 100%);
+  border:1px solid color-mix(in srgb,var(--accent,#F2C063) 34%,rgba(255,255,255,0.07));
+  border-radius:18px;padding:20px 20px 22px;
+  margin-bottom:16px;position:relative;z-index:1;
+  display:flex;flex-direction:column;gap:6px;
+  box-shadow:0 14px 36px rgba(0,0,0,0.4);
 }
 .do-now-label{
   font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
-  font-size:9.5px;font-weight:800;letter-spacing:0.18em;
-  text-transform:uppercase;color:var(--text-tertiary);flex-shrink:0;
+  font-size:10.5px;font-weight:800;letter-spacing:0.18em;
+  text-transform:uppercase;color:color-mix(in srgb,var(--accent,#F2C063) 75%,var(--text-tertiary));
 }
 .do-now-text{
-  font-size:13px;font-weight:600;color:var(--text-primary);flex:1;
+  font-size:19px;font-weight:700;color:var(--text-primary);line-height:1.28;
 }
 
 /* Dash Grid */
@@ -164,6 +105,7 @@ body::after{
   transition:background 0.15s;
 }
 .dash-mini-card:hover{background:rgba(255,255,255,0.07);}
+.dash-mini-card.dm-empty{display:none;}
 .dm-eyebrow{
   font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
   font-size:9px;font-weight:800;letter-spacing:0.18em;
@@ -187,9 +129,9 @@ body::after{
 /* Day Ring */
 .day-ring-card{
   display:flex;align-items:center;justify-content:center;gap:26px;flex-wrap:wrap;
-  background:rgba(255,255,255,0.04);border-radius:16px;padding:20px 22px;
+  background:rgba(255,255,255,0.04);border-radius:16px;padding:32px 22px 20px;
   backdrop-filter:blur(24px) saturate(1.2);-webkit-backdrop-filter:blur(24px) saturate(1.2);
-  box-shadow:0 12px 40px rgba(0,0,0,0.45);margin-bottom:20px;
+  box-shadow:0 12px 40px rgba(0,0,0,0.45);margin-bottom:16px;
   position:relative;z-index:1;
 }
 .day-ring-svg-wrap{width:168px;height:168px;position:relative;flex-shrink:0;}
@@ -208,7 +150,28 @@ body::after{
 .day-ring-status{font-size:14px;font-weight:700;color:var(--text-primary);}
 .day-ring-remaining{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12px;color:var(--text-secondary);}
 .day-ring-hours{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11px;color:var(--text-tertiary);}
+.day-ring-goals{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12px;font-weight:700;color:var(--text-primary);}
 #ringFill{transition:stroke-dashoffset 0.7s cubic-bezier(0.22,1,0.36,1),stroke 0.7s cubic-bezier(0.22,1,0.36,1);}
+/* Streak badge now lives pinned to the progress card's corner instead of the
+   to-do card header — one merged progress indicator instead of three. */
+.day-ring-card .gm-streak{position:absolute;top:10px;left:14px;padding:4px 9px;font-size:10px;gap:4px;}
+.day-ring-card .gm-streak:not(.gm-streak-active){display:none;}
+.day-ring-card .gm-streak-icon{font-size:11px;}
+
+/* "More" — everything that isn't Do Now / progress / today's list, one tap away */
+.home-more-toggle{
+  display:flex;align-items:center;justify-content:center;gap:7px;width:100%;
+  padding:12px 14px;margin:4px 0 20px;border:1px dashed rgba(255,255,255,0.14);
+  border-radius:12px;background:none;color:var(--text-tertiary);
+  font-family:inherit;font-size:12px;font-weight:700;letter-spacing:0.08em;
+  text-transform:uppercase;cursor:pointer;transition:color 0.2s,border-color 0.2s;
+  position:relative;z-index:1;
+}
+.home-more-toggle:hover{color:var(--text-primary);border-color:rgba(255,255,255,0.28);}
+.home-more-chevron{font-size:13px;transition:transform 0.2s;}
+.home-more-toggle[aria-expanded="true"] .home-more-chevron{transform:rotate(180deg);}
+.home-more{display:flex;flex-direction:column;gap:20px;position:relative;z-index:1;}
+.home-more[hidden]{display:none;}
 
 /* Section */
 .section{position:relative;z-index:1;}
@@ -313,7 +276,10 @@ body::after{
 }
 @media(max-width:480px){
   .goal-input-wrap input[type="text"]{flex:1 1 100%;}
-  .goal-input-wrap .gm-add-btn,.goal-input-wrap .gm-polish-btn{flex:1 1 0;min-width:0;}
+  /* Both buttons keep their natural (small) size on row 2 instead of one
+     growing to fill the row — growth here is what pushed the icon-only
+     Polish button past the right edge on a 390px phone. */
+  .goal-input-wrap .gm-add-btn,.goal-input-wrap .gm-polish-btn{flex:0 0 auto;}
 }
 .goal-input-wrap input[type="text"]::placeholder{color:var(--text-tertiary);}
 .goal-input-wrap input[type="text"]:focus{border-color:rgba(255,255,255,0.25);}
@@ -325,13 +291,14 @@ body::after{
   transition:transform 0.15s,filter 0.15s;white-space:nowrap;
 }
 .gm-add-btn:hover{transform:translateY(-1px);filter:brightness(1.05);}
+/* Secondary action — icon-only and visually quiet so it never competes with Add */
 .gm-polish-btn{
-  padding:11px 20px;border-radius:12px;background:rgba(255,255,255,0.04);
-  color:var(--text-primary);font-weight:700;font-size:13px;
-  border:1px solid rgba(255,255,255,0.10);cursor:pointer;font-family:inherit;
-  transition:transform 0.15s,background 0.2s;white-space:nowrap;
+  padding:11px 13px;border-radius:12px;background:transparent;
+  color:var(--text-tertiary);font-weight:700;font-size:14px;
+  border:1px solid rgba(255,255,255,0.07);cursor:pointer;font-family:inherit;
+  transition:transform 0.15s,background 0.2s,color 0.2s;white-space:nowrap;
 }
-.gm-polish-btn:hover{transform:translateY(-1px);background:rgba(255,255,255,0.07);}
+.gm-polish-btn:hover{transform:translateY(-1px);background:rgba(255,255,255,0.07);color:var(--text-primary);}
 .gm-status-line{font-size:11px;color:var(--text-tertiary);min-height:16px;margin-top:6px;}
 .gm-card-tomorrow .gm-progress-row{display:none;}
 .gm-tomorrow-sub{font-size:12px;color:var(--text-tertiary);margin-top:4px;}
@@ -363,10 +330,6 @@ body::after{
 
 @media(max-width:480px){
   .dash-title{font-size:22px;}
-  .goal-ticker{padding:9px 12px;}
-  .goal-ticker-label{font-size:9px;letter-spacing:0.14em;}
-  .goal-ticker-row{font-size:12px;}
-  .goal-ticker-meta{font-size:10px;padding:2px 7px;}
   .day-ring-svg-wrap{width:144px;height:144px;}
   .day-ring-svg-wrap svg{width:144px;height:144px;}
   .day-ring-percent{font-size:32px;}
@@ -705,16 +668,17 @@ body{
 </div>
 
 <h1 class="dash-title">My Dashboard</h1>
-<button type="button" id="homeStructBtn" aria-label="Choose dashboard structure">🧩 Structure</button>
 
 <style id="home-structure-css">
 /* ===== Home structure (layout arrangement) ===== */
+/* Lives inside the collapsed "More" panel now (was a floating fixed button on
+   the home screen) — it still gets a permanent Settings home in a later pass. */
 #homeStructBtn{
-  position:fixed; left:14px; bottom:calc(76px + env(safe-area-inset-bottom)); z-index:44;
+  display:inline-flex; align-items:center; gap:6px;
   background:var(--bg-card,rgba(255,255,255,0.06)); border:1px solid var(--border,rgba(255,255,255,0.14));
   color:var(--text-secondary,#cfcfcf); font-family:inherit; font-size:12px; font-weight:700;
   padding:9px 13px; border-radius:20px; cursor:pointer; -webkit-tap-highlight-color:transparent;
-  backdrop-filter:blur(10px); box-shadow:0 6px 18px -8px rgba(0,0,0,0.6); }
+  box-shadow:0 6px 18px -8px rgba(0,0,0,0.6); }
 #homeStructBtn:active{ transform:scale(0.96); }
 
 /* the collected wrapper — cards get uniform spacing via gap */
@@ -818,7 +782,7 @@ html[data-theme="light"] .hs-modal{ background:#fff; }
     var body=document.body;
     var wrap=document.createElement('div'); wrap.id='homeStruct';
     var skip=/bg-wash|install-card|modal|topbar|bottombar|coach-fab|nav-more|buddy|skin-|xp-|homeStruct|home-structure/i;
-    var keepAbove=['dash-title','ticker-row','cmd-bar'];
+    var keepAbove=['dash-title','do-now-card','day-ring-card','todo-fold-section','home-more-toggle','home-more'];
     var kids=Array.prototype.slice.call(body.children), anchor=null;
     kids.forEach(function(el){
       var tag=el.tagName;
@@ -890,33 +854,20 @@ html[data-theme="light"] .hs-modal{ background:#fff; }
 })();
 </script>
 
-<div class="ticker-row">
-  <div class="goal-ticker" id="goalTicker" aria-live="polite" aria-atomic="true">
-    <div class="goal-ticker-led"><span class="goal-ticker-led-dot"></span></div>
-    <div class="goal-ticker-label">GOALS</div>
-    <div class="goal-ticker-stage" id="goalTickerStage">
-      <div class="goal-ticker-row" id="goalTickerContent">
-        <span class="goal-ticker-status" id="goalTickerStatus" data-status="empty">—</span>
-        <span class="goal-ticker-text" id="goalTickerText">No goals set for today</span>
-      </div>
-    </div>
-    <div class="goal-ticker-meta" id="goalTickerMeta">0/0</div>
-  </div>
-</div>
-
-<div class="cmd-bar" id="cmdBar">
-  <span class="cmd-chip" id="cmdMeals"></span>
-  <span class="cmd-chip" id="cmdGym"></span>
-  <span class="cmd-chip" id="cmdSchool"></span>
-  <span class="cmd-chip" id="cmdWater"></span>
-</div>
-
+<!-- HERO: the one thing to do next. First on the page, biggest, one tap. -->
 <div class="do-now-card" id="doNowCard">
   <div class="do-now-label">DO THIS NOW</div>
   <div class="do-now-text" id="doNowText">Loading…</div>
 </div>
 
+<!-- Merged progress indicator: day-elapsed ring + today's goal count + streak,
+     replacing three separate widgets (day ring, goal ticker, streak chip). -->
 <div class="day-ring-card">
+  <div class="gm-streak" id="gmStreak">
+    <span class="gm-streak-icon">⚡</span>
+    <span class="gm-streak-num" id="gmStreakNum">0</span>
+    <span class="gm-streak-label">day streak</span>
+  </div>
   <button class="day-ring-gear" id="dayRingGear" aria-label="Edit schedule">⚙</button>
   <div class="day-ring-svg-wrap">
     <svg viewBox="0 0 120 120" width="168" height="168">
@@ -942,6 +893,7 @@ html[data-theme="light"] .hs-modal{ background:#fff; }
     <div class="day-ring-status" id="ringStatus">😴 Still sleeping</div>
     <div class="day-ring-remaining" id="ringRemaining">—</div>
     <div class="day-ring-hours" id="ringHours">8:00 AM – 12:00 AM</div>
+    <div class="day-ring-goals" id="ringGoals"></div>
   </div>
 </div>
 
@@ -1007,6 +959,45 @@ html[data-theme="light"] .gem-cell-name{ color:rgba(0,0,0,0.7); }
 .gem-close{ margin-top:18px; width:100%; border:none; border-radius:12px; background:rgba(255,255,255,0.08); color:#fff; font-weight:700; font-size:14px; padding:12px; cursor:pointer; font-family:inherit; }
 html[data-theme="light"] .gem-close{ background:rgba(0,0,0,0.06); color:#151515; }
 </style>
+
+<div class="section todo-fold-section">
+  <div class="section-title">To Do List</div>
+
+  <div class="gm-yesterday-notice" id="gmYesterdayNotice" style="display:none">
+    <span class="gm-yesterday-icon">↩</span>
+    <span class="gm-yesterday-text" id="gmYesterdayText"></span>
+  </div>
+
+  <div class="gm-card" id="todayCard">
+    <div class="gm-card-header">
+      <div>
+        <div class="gm-eyebrow" id="todayLabel">Today — …</div>
+        <div class="gm-progress-row">
+          <span class="gm-progress-num" id="gmProgressNum">0</span>
+          <span class="gm-progress-total" id="gmProgressTotal">/ 0</span>
+          <span class="gm-progress-label" id="gmProgressLabel">no goals yet</span>
+        </div>
+      </div>
+    </div>
+    <div class="gm-bar" id="gmBar"></div>
+    <ul class="gm-list" id="goalList"></ul>
+    <div class="empty-state" id="emptyState">No goals for today yet — add one below.</div>
+    <button class="gm-push-btn" id="gmPushBtn">Push remaining to tomorrow →</button>
+    <div class="goal-input-wrap">
+      <input type="text" id="goalInput" placeholder="Add a goal for today…">
+      <button class="gm-add-btn" id="goalAddBtn">+ Add</button>
+      <button class="gm-polish-btn" id="goalPolishBtn" title="Polish wording" aria-label="Polish wording">✨</button>
+    </div>
+    <div class="gm-status-line" id="polishStatus"></div>
+  </div>
+</div>
+
+<!-- Everything below is one tap away instead of competing with the fold above. -->
+<button type="button" class="home-more-toggle" id="homeMoreToggle" aria-expanded="false" aria-controls="homeMore">
+  <span id="homeMoreLabel">More</span><span class="home-more-chevron">⌄</span>
+</button>
+
+<div class="home-more" id="homeMore" hidden>
 
 <div class="section" id="gemSection">
   <div class="section-title">Your Gem</div>
@@ -1098,6 +1089,11 @@ html[data-theme="light"] .coach-body b{ color:rgba(0,0,0,0.9); }
     <div class="dm-value" id="dmWeightVal">—</div>
     <div class="dm-sub" id="dmWeightSub"></div>
   </a>
+  <a href="health.html" class="dash-mini-card" id="dmWater">
+    <div class="dm-eyebrow">WATER</div>
+    <div class="dm-value" id="dmWaterVal">—</div>
+    <div class="dm-sub" id="dmWaterSub"></div>
+  </a>
   <a href="summary.html" class="dash-mini-card" id="dmSummary">
     <div class="dm-eyebrow">MONTHLY</div>
     <div class="dm-value">📊</div>
@@ -1111,41 +1107,7 @@ html[data-theme="light"] .coach-body b{ color:rgba(0,0,0,0.9); }
 </div>
 
 <div class="section">
-  <div class="section-title">To Do List</div>
-
-  <div class="gm-yesterday-notice" id="gmYesterdayNotice" style="display:none">
-    <span class="gm-yesterday-icon">↩</span>
-    <span class="gm-yesterday-text" id="gmYesterdayText"></span>
-  </div>
-
-  <div class="gm-card" id="todayCard">
-    <div class="gm-card-header">
-      <div>
-        <div class="gm-eyebrow" id="todayLabel">Today — …</div>
-        <div class="gm-progress-row">
-          <span class="gm-progress-num" id="gmProgressNum">0</span>
-          <span class="gm-progress-total" id="gmProgressTotal">/ 0</span>
-          <span class="gm-progress-label" id="gmProgressLabel">no goals yet</span>
-        </div>
-      </div>
-      <div class="gm-streak" id="gmStreak">
-        <span class="gm-streak-icon">⚡</span>
-        <span class="gm-streak-num" id="gmStreakNum">0</span>
-        <span class="gm-streak-label">day streak</span>
-      </div>
-    </div>
-    <div class="gm-bar" id="gmBar"></div>
-    <ul class="gm-list" id="goalList"></ul>
-    <div class="empty-state" id="emptyState">No goals for today yet — add one below.</div>
-    <button class="gm-push-btn" id="gmPushBtn">Push remaining to tomorrow →</button>
-    <div class="goal-input-wrap">
-      <input type="text" id="goalInput" placeholder="Add a goal for today…">
-      <button class="gm-add-btn" id="goalAddBtn">+ Add</button>
-      <button class="gm-polish-btn" id="goalPolishBtn">✨ Polish</button>
-    </div>
-    <div class="gm-status-line" id="polishStatus"></div>
-  </div>
-
+  <div class="section-title">Plan Tomorrow</div>
   <div class="gm-card gm-card-tomorrow" id="tomorrowCard">
     <div class="gm-card-header">
       <div>
@@ -1159,13 +1121,13 @@ html[data-theme="light"] .coach-body b{ color:rgba(0,0,0,0.9); }
     <div class="goal-input-wrap">
       <input type="text" id="tomorrowInput" placeholder="Add a goal for tomorrow…">
       <button class="gm-add-btn" id="tomorrowAddBtn">+ Add</button>
-      <button class="gm-polish-btn" id="tomorrowPolishBtn">✨ Polish</button>
+      <button class="gm-polish-btn" id="tomorrowPolishBtn" title="Polish wording" aria-label="Polish wording">✨</button>
     </div>
     <div class="gm-status-line" id="tomorrowStatus"></div>
   </div>
 </div>
 
-<div class="section" style="margin-top:20px;">
+<div class="section">
   <div class="section-title">Reminders</div>
   <div class="rm-card">
     <div class="rm-card-header">
@@ -1190,6 +1152,25 @@ html[data-theme="light"] .coach-body b{ color:rgba(0,0,0,0.9); }
     </div>
   </div>
 </div>
+
+<div class="section">
+  <div class="section-title">Layout</div>
+  <button type="button" id="homeStructBtn" aria-label="Choose dashboard structure">🧩 Structure</button>
+</div>
+
+</div><!-- /#homeMore -->
+
+<script>
+(function(){
+  var btn=document.getElementById('homeMoreToggle'), panel=document.getElementById('homeMore');
+  if(!btn||!panel) return;
+  btn.addEventListener('click', function(){
+    var opening=panel.hasAttribute('hidden');
+    if(opening) panel.removeAttribute('hidden'); else panel.setAttribute('hidden','');
+    btn.setAttribute('aria-expanded', opening?'true':'false');
+  });
+})();
+</script>
 
 <!-- Reminder add/edit modal -->
 <div class="rm-modal-bg" id="rmModalBg">
@@ -1477,32 +1458,18 @@ document.getElementById('scheduleSaveBtn').addEventListener('click', () => {
   updateDayBar();
 });
 
-// Ticker
-function updateTicker(){
+// Merged progress indicator — goals done/total, folded into the day ring
+// instead of a separate ticker (it was a pure duplicate of the to-do count).
+function updateRingGoals(){
+  const el=document.getElementById('ringGoals');
+  if(!el) return;
   const goals=storeGet(`goals:${getActiveDateString()}`)||[];
-  const total=goals.length;
-  const done=goals.filter(g=>g.done).length;
-  document.getElementById('goalTickerMeta').textContent=total?`${done}/${total}`:'0/0';
-  const statusEl=document.getElementById('goalTickerStatus');
-  const textEl=document.getElementById('goalTickerText');
-  if(!statusEl||!textEl) return;
-  const pending=goals.filter(g=>!g.done);
-  const queued=goals.filter(g=>g.queued&&!g.done);
-  if(total===0){
-    statusEl.dataset.status='empty';statusEl.textContent='—';
-    textEl.textContent='No goals set for today — add one to get rolling.';
-  } else if(done===total){
-    statusEl.dataset.status='done';statusEl.textContent='✓';
-    textEl.textContent='All done — great work!';
-  } else if(queued.length){
-    statusEl.dataset.status='pending';statusEl.textContent='⚡';
-    textEl.textContent=queued[0].text;
-  } else if(pending.length){
-    statusEl.dataset.status='pending';statusEl.textContent='○';
-    textEl.textContent=pending[0].text;
-  }
+  const total=goals.length,done=goals.filter(g=>g.done).length;
+  if(!total){ el.textContent=''; el.style.display='none'; return; }
+  el.style.display='';
+  el.textContent=done===total?`✓ ${done}/${total} goals done`:`${done}/${total} goals today`;
 }
-window.addEventListener('goals-changed',()=>{updateTicker();});
+window.addEventListener('goals-changed',()=>{updateRingGoals();updateDoNow();});
 
 // Render
 function renderTodayHeader(){
@@ -1737,68 +1704,6 @@ makeAddHandlers(
   document.getElementById('tomorrowStatus'),loadTomorrow
 );
 
-// Command Bar
-function updateCmdBar(){
-  const today=getActiveDateString();
-  const mealEl=document.getElementById('cmdMeals');
-  if(mealEl){
-    try{
-      const tpl=JSON.parse(localStorage.getItem('dashboard:mealPrep:v1:template'))||[];
-      const days=JSON.parse(localStorage.getItem('dashboard:mealPrep:v1:daily'))||{};
-      const dayLog=days[today]||{};
-      const eaten=tpl.filter(m=>dayLog[m.id]&&dayLog[m.id].eaten).length;
-      if(tpl.length) mealEl.textContent=`🍽 ${eaten}/${tpl.length} meals`;
-      else mealEl.textContent='';
-    }catch{mealEl.textContent='';}
-  }
-  const gymEl=document.getElementById('cmdGym');
-  if(gymEl){
-    try{
-      const activeDay=JSON.parse(localStorage.getItem('dashboard:gym:v1:activeDay'));
-      const tpl=JSON.parse(localStorage.getItem('dashboard:gym:v1:template'))||[];
-      const day=tpl.find(d=>d.id===activeDay);
-      if(day) gymEl.textContent=`💪 ${day.name}`;
-      else gymEl.textContent='';
-    }catch{gymEl.textContent='';}
-  }
-  const schoolEl=document.getElementById('cmdSchool');
-  if(schoolEl){
-    try{
-      const assigns=JSON.parse(localStorage.getItem('dashboard:school:v1:assignments'))||[];
-      const tests=JSON.parse(localStorage.getItem('dashboard:school:v1:tests'))||[];
-      const todaySoon=new Date();todaySoon.setDate(todaySoon.getDate()+7);
-      const urgent=assigns.filter(a=>a.status!=='Done'&&a.dueDate&&a.dueDate<=today).length;
-      const soon=assigns.filter(a=>{if(a.status==='Done'||!a.dueDate)return false;const d=new Date(a.dueDate);return d>new Date(today)&&d<=todaySoon;}).length;
-      const testCount=tests.filter(t=>t.testDate&&t.testDate>=today&&new Date(t.testDate)<=todaySoon).length;
-      const parts=[];
-      if(urgent) parts.push(urgent+' due');
-      if(soon) parts.push(soon+' soon');
-      if(testCount) parts.push(testCount+' test'+(testCount>1?'s':''));
-      if(parts.length) schoolEl.textContent='📚 '+parts.join(' · ');
-      else schoolEl.textContent='';
-    }catch{schoolEl.textContent='';}
-  }
-  const waterEl=document.getElementById('cmdWater');
-  if(waterEl){
-    try{
-      const ws=JSON.parse(localStorage.getItem('po_water_v1'))||{};
-      const done=(ws.logs||{})[today]||0;
-      const profile=ws.profile||{weightKg:75};
-      const wKg=ws.weightUnit==='lb'?(profile.weightKg||0)/2.20462:(profile.weightKg||0);
-      const totalMl=wKg*35;
-      if(ws._mlV2){
-        const tot=Math.max(1,Math.round(totalMl));
-        waterEl.textContent=done?`💧 ${(done/1000).toFixed(1)}/${(tot/1000).toFixed(1)}L`:'';
-      } else {
-        let unitVol=ws.unit==='glass'?(ws.glassMl||250):ws.unit==='ml'?1:ws.unit==='oz'?30:(ws.bottleMl||500);
-        const total=Math.max(1,Math.ceil(totalMl/unitVol));
-        if(done||total) waterEl.textContent=`💧 ${done}/${total}`;
-        else waterEl.textContent='';
-      }
-    }catch{waterEl.textContent='';}
-  }
-}
-
 // Do This Now
 function updateDoNow(){
   const el=document.getElementById('doNowText');
@@ -1846,48 +1751,51 @@ function updateDoNow(){
 }
 
 // Dash Grid
+// Each tile hides itself (via .dm-empty) when its feature has no data at all,
+// instead of showing a "0/0"/placeholder fallback — real zero-progress ("0/3
+// meals") still counts as data and stays visible.
+function dmTile(id,empty){ const el=document.getElementById(id); if(el) el.classList.toggle('dm-empty',!!empty); }
 function updateDashGrid(){
   const today=getActiveDateString();
   try{
     const tpl=JSON.parse(localStorage.getItem('dashboard:mealPrep:v1:template'))||[];
-    const days=JSON.parse(localStorage.getItem('dashboard:mealPrep:v1:daily'))||{};
-    const dayLog=days[today]||{};
-    const eaten=tpl.filter(m=>dayLog[m.id]&&dayLog[m.id].eaten).length;
-    const kcal=tpl.reduce((sum,m)=>{const l=dayLog[m.id]||{};return l.eaten?sum+(parseInt(l.kcal)||parseInt(m.kcal)||0):sum;},0);
     if(tpl.length){
+      const days=JSON.parse(localStorage.getItem('dashboard:mealPrep:v1:daily'))||{};
+      const dayLog=days[today]||{};
+      const eaten=tpl.filter(m=>dayLog[m.id]&&dayLog[m.id].eaten).length;
+      const kcal=tpl.reduce((sum,m)=>{const l=dayLog[m.id]||{};return l.eaten?sum+(parseInt(l.kcal)||parseInt(m.kcal)||0):sum;},0);
       document.getElementById('dmMealsVal').textContent=`${eaten}/${tpl.length}`;
       document.getElementById('dmMealsSub').textContent=kcal?`${kcal} kcal`:'meals eaten';
-    } else {
-      document.getElementById('dmMealsVal').textContent='—';
-      document.getElementById('dmMealsSub').textContent='No meals set';
-    }
-  }catch{document.getElementById('dmMealsVal').textContent='—';document.getElementById('dmMealsSub').textContent='';}
+      dmTile('dmMeals',false);
+    } else dmTile('dmMeals',true);
+  }catch{dmTile('dmMeals',true);}
   try{
     const activeDay=JSON.parse(localStorage.getItem('dashboard:gym:v1:activeDay'));
     const tpl=JSON.parse(localStorage.getItem('dashboard:gym:v1:template'))||[];
-    const logs=JSON.parse(localStorage.getItem('dashboard:gym:v1:logs'))||{};
     const day=tpl.find(d=>d.id===activeDay);
     if(day){
+      const logs=JSON.parse(localStorage.getItem('dashboard:gym:v1:logs'))||{};
       const dayLog=logs[today]||{};
       const logged=day.exercises?day.exercises.filter(ex=>dayLog[ex.id]&&Object.keys(dayLog[ex.id]).some(k=>k.startsWith('set'))).length:0;
       const total=day.exercises?day.exercises.length:0;
       document.getElementById('dmGymVal').textContent=day.name;
       document.getElementById('dmGymSub').textContent=total?`${logged}/${total} logged`:'';
-    } else {
-      document.getElementById('dmGymVal').textContent='—';
-      document.getElementById('dmGymSub').textContent='No day set';
-    }
-  }catch{document.getElementById('dmGymVal').textContent='—';document.getElementById('dmGymSub').textContent='';}
+      dmTile('dmGym',false);
+    } else dmTile('dmGym',true);
+  }catch{dmTile('dmGym',true);}
   try{
     const assigns=JSON.parse(localStorage.getItem('dashboard:school:v1:assignments'))||[];
     const tests=JSON.parse(localStorage.getItem('dashboard:school:v1:tests'))||[];
-    const urgent=assigns.filter(a=>a.status!=='Done'&&a.dueDate&&a.dueDate<=today).length;
-    const testsSoon=tests.filter(t=>{if(!t.testDate)return false;const d=new Date(t.testDate);const td=new Date(today);const w=new Date(today);w.setDate(w.getDate()+7);return d>=td&&d<=w;}).length;
-    if(urgent){document.getElementById('dmSchoolVal').textContent=urgent+' due';document.getElementById('dmSchoolSub').textContent=testsSoon?testsSoon+' test'+(testsSoon>1?'s':'')+' soon':'check assignments';}
-    else if(testsSoon){document.getElementById('dmSchoolVal').textContent=testsSoon+' test'+(testsSoon>1?'s':'');document.getElementById('dmSchoolSub').textContent='this week';}
-    else if(assigns.length||tests.length){document.getElementById('dmSchoolVal').textContent='✓';document.getElementById('dmSchoolSub').textContent='Nothing urgent';}
-    else{document.getElementById('dmSchoolVal').textContent='No tasks';document.getElementById('dmSchoolSub').textContent='Add school work →';}
-  }catch{document.getElementById('dmSchoolVal').textContent='No tasks';document.getElementById('dmSchoolSub').textContent='Add school work →';}
+    if(!assigns.length&&!tests.length){ dmTile('dmSchool',true); }
+    else{
+      dmTile('dmSchool',false);
+      const urgent=assigns.filter(a=>a.status!=='Done'&&a.dueDate&&a.dueDate<=today).length;
+      const testsSoon=tests.filter(t=>{if(!t.testDate)return false;const d=new Date(t.testDate);const td=new Date(today);const w=new Date(today);w.setDate(w.getDate()+7);return d>=td&&d<=w;}).length;
+      if(urgent){document.getElementById('dmSchoolVal').textContent=urgent+' due';document.getElementById('dmSchoolSub').textContent=testsSoon?testsSoon+' test'+(testsSoon>1?'s':'')+' soon':'check assignments';}
+      else if(testsSoon){document.getElementById('dmSchoolVal').textContent=testsSoon+' test'+(testsSoon>1?'s':'');document.getElementById('dmSchoolSub').textContent='this week';}
+      else{document.getElementById('dmSchoolVal').textContent='✓';document.getElementById('dmSchoolSub').textContent='Nothing urgent';}
+    }
+  }catch{dmTile('dmSchool',true);}
   try{
     const weights=JSON.parse(localStorage.getItem('po_coach_weights'))||[];
     if(weights.length){
@@ -1905,11 +1813,31 @@ function updateDashGrid(){
       } else {
         document.getElementById('dmWeightSub').textContent=latest.date===today?'logged today':'last: '+latest.date;
       }
-    } else {
-      document.getElementById('dmWeightVal').textContent='Not logged';
-      document.getElementById('dmWeightSub').textContent='Add weight in Gym →';
+      dmTile('dmWeight',false);
+    } else dmTile('dmWeight',true);
+  }catch{dmTile('dmWeight',true);}
+  // Water — merged in from the removed cmdBar chip, same po_water_v1 source.
+  try{
+    const wsRaw=localStorage.getItem('po_water_v1');
+    if(!wsRaw){ dmTile('dmWater',true); }
+    else{
+      const ws=JSON.parse(wsRaw)||{};
+      const done=(ws.logs||{})[today]||0;
+      const profile=ws.profile||{weightKg:75};
+      const wKg=ws.weightUnit==='lb'?(profile.weightKg||0)/2.20462:(profile.weightKg||0);
+      const totalMl=wKg*35;
+      if(ws._mlV2){
+        const tot=Math.max(1,Math.round(totalMl));
+        document.getElementById('dmWaterVal').textContent=`${(done/1000).toFixed(1)}/${(tot/1000).toFixed(1)}L`;
+      } else {
+        const unitVol=ws.unit==='glass'?(ws.glassMl||250):ws.unit==='ml'?1:ws.unit==='oz'?30:(ws.bottleMl||500);
+        const total=Math.max(1,Math.ceil(totalMl/unitVol));
+        document.getElementById('dmWaterVal').textContent=`${done}/${total}`;
+      }
+      document.getElementById('dmWaterSub').textContent='today';
+      dmTile('dmWater',false);
     }
-  }catch{document.getElementById('dmWeightVal').textContent='Not logged';document.getElementById('dmWeightSub').textContent='Add weight in Gym →';}
+  }catch{dmTile('dmWater',true);}
 }
 
 // ── Mood Tracker ────────────────────────────────────────────────────────────
@@ -2107,18 +2035,17 @@ setInterval(updateDayBar,60*1000);
   const ms=new Date(now.getFullYear(),now.getMonth(),now.getDate()+1,0,0,0)-now;
   setTimeout(()=>{
     runRollover();runStreakCheck();
-    loadToday();loadTomorrow();renderStreak();updateTicker();
+    loadToday();loadTomorrow();renderStreak();updateRingGoals();
     scheduleNextMidnight();
   },ms);
 })();
-updateTicker();
-updateCmdBar();
+updateRingGoals();
 updateDoNow();
 updateDashGrid();
 renderMood();
 window.addEventListener('resize', renderMoodChart);
-window.addEventListener('storage',()=>{ updateCmdBar(); updateDoNow(); updateDashGrid(); });
-window.addEventListener('focus',()=>{ updateCmdBar(); updateDoNow(); updateDashGrid(); });
+window.addEventListener('storage',()=>{ updateRingGoals(); updateDoNow(); updateDashGrid(); });
+window.addEventListener('focus',()=>{ updateRingGoals(); updateDoNow(); updateDashGrid(); });
 
 // ── Supabase sync — dashboard page ─────────────────────────────────────────────────────────────
 // Supabase IS the source of truth. _db is an in-memory mirror of it.
