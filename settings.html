@@ -405,6 +405,15 @@
     <div class="st-sub">Customize your dashboard</div>
   </div>
 
+  <!-- NEW DESIGN (v3) -->
+  <div class="st-group">
+    <div class="st-group-label">New design</div>
+    <div class="st-body" style="padding:16px;display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:14px;line-height:1.45;opacity:.85">A simpler dashboard: Today, Gym, School and Food. It uses the same data, and you can switch back from its Settings any time.</div>
+      <button id="tryV3" type="button" style="align-self:flex-start;min-height:44px;padding:0 18px;border:none;border-radius:999px;background:var(--accent);color:#fff;font:600 15px/1 inherit;font-family:inherit;cursor:pointer">Try the new design</button>
+    </div>
+  </div>
+
   <!-- THEME STYLE / SKIN -->
   <div class="st-group">
     <div class="st-group-label" data-nav="Theme">Theme Style</div>
@@ -1470,6 +1479,18 @@ document.addEventListener('DOMContentLoaded', initAiAccess);
   }
   render();
 })();
+</script>
+<script>
+// Switch to the new (v3) design: flag it in settings, sync, then open it.
+document.getElementById('tryV3').addEventListener('click', async function () {
+  this.disabled = true; this.textContent = 'Switching…';
+  try {
+    const s = load(); s.ui = 'v3'; s._pushAt = Date.now();
+    localStorage.setItem(SK, JSON.stringify(s));
+    await Promise.race([autoSync(), new Promise(r => setTimeout(r, 1800))]);
+  } catch (e) {}
+  location.href = '/v3/';
+});
 </script>
 </body>
 </html>
