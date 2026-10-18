@@ -1,0 +1,636 @@
+{
+ "pages": [
+  {
+   "file": "transport.html",
+   "purpose": "School commute planner: tells you when to leave home (walk, bus 74, direct train Rosh HaAyin North to Herzliya, walk to school), with bus and train timetables, ntfy push alerts and commute settings. Despite the brief, it does NOT fetch live train times. The train timetable is hardcoded (TRAIN_DEP_DEFAULTS, 'Verified June 2026'). A live proxy exists in api/train-times.js, but no page calls it.",
+   "sizeKB": 28.8,
+   "screensOfScrollOnPhone": "Morning view about 5 screens: the 41-row train list alone is about 2.5 screens, and filled-in bus times add more. Afternoon view about 2 screens. The one useful answer, the 'Leave home by' number, sits in the first screen. Everything below it is reference lists, editors and settings.",
+   "designNotes": "Uses its own mini design system, separate from the rest of the app. The blue accent is hard-coded as rgba(96,165,250,...) in about 10 places, so skins and accent only partly apply. Section labels are monospace, uppercase, with a '≡' glyph. There is no light-theme support and no pre-flash theme script, and topbar's global '.section' polish doesn't apply because the page uses '.card'. The 36px 'Leave home by' hero with its countdown is the most useful and eye-catching element in the whole slice. Below it the page gets dense and repetitive: two mini columns show the next 4 bus and train times, then full lists repeat the same times. Past rows stay on screen at 38% opacity, so before 07:00 you scroll past nothing, and in the afternoon you scroll past about 25 dead rows. Timetables are edited by typing comma-separated HH:MM into a monospace text field, which is a developer tool rather than a consumer one. English and Hebrew stop names are mixed. The duplicate alert buttons ('Alert me' in the hero, plus 'Alert for next bus' in the Notifications card) do the same thing.",
+   "features": [
+    {
+     "name": "'Leave home by' journey planner (hero)",
+     "whatItDoes": "Works backwards from the school start time: subtracts the walk to school, picks the latest direct train arriving in time (+22 min), subtracts the station buffer and bus ride, picks the latest typed Bus 74 departure, then subtracts the walk to the stop. It shows the leave time, a live countdown ('in 12 min'), and the bus, train and arrival times. Re-renders every 60 s.",
+     "manualInputs": "None per day once set up. For the bus leg to be exact, the owner must first type every Bus 74 morning departure (empty by default). Without them it falls back to 'bus must leave by' arithmetic. Tap 7:40 or 8:00 when the school start changes.",
+     "frictionScore": 1,
+     "valueReturned": "A single actionable number each school morning: when to walk out the door. This is the clearest 'track, give info, save time' feature in the slice. Weak spots: after the time passes it shows 'time passed' for the rest of the day with no switch to tomorrow, it ignores weekends and Fridays, it uses no live delay data, and you must open a separate page to see it.",
+     "valueScore": 4,
+     "suggestedVerdict": "core",
+     "automationPotential": "High. (1) Feed it live departures and delays from the existing /api/train-times (verify the default station IDs from=2300 and to=8600 match Rosh HaAyin North and Herzliya). (2) Set the school start once per weekday instead of tapping a toggle. (3) Surface it as a card on the home screen that appears only on school mornings, and switch to 'tomorrow' after the time passes. (4) Have the server cron send a push 10 min before the leave time, so the owner never has to open the page.",
+     "dataKeys": "localStorage dashboard:transport:v1 → {schoolTime, walkToBus, busJourney, stationBuffer, walkToSchool, busTimes, trainTimes, returnBusTimes, returnTrainTimes}. NOT synced to Supabase (no uid:transport row), so PC and phone don't share it.",
+     "overlapsWith": "Mini departure columns and full schedule lists on the same page; ntfy alerts card"
+    },
+    {
+     "name": "School start time toggle (7:40 / 8:00)",
+     "whatItDoes": "Two buttons set the school start time, which drives the planner.",
+     "manualInputs": "A tap whenever the day's start time differs, potentially daily.",
+     "frictionScore": 1,
+     "valueReturned": "Correct leave time on days with a different start time.",
+     "valueScore": 3,
+     "suggestedVerdict": "automate",
+     "automationPotential": "Set the start time once per weekday (Sun–Thu) and pick it automatically. school.html has no lesson-time data to derive it from, so this needs a one-time weekday setting.",
+     "dataKeys": "dashboard:transport:v1.schoolTime"
+    },
+    {
+     "name": "Direction toggle (To School / Back Home)",
+     "whatItDoes": "Switches between the morning view (planner, bus and train schedules) and the afternoon view (return train and return bus lists).",
+     "manualInputs": "A tap each time; the page always opens on 'To School', even at 15:00.",
+     "frictionScore": 1,
+     "valueReturned": "Navigation only.",
+     "valueScore": 1,
+     "suggestedVerdict": "automate",
+     "automationPotential": "Pick the direction from the clock: before about noon, to school; after, home.",
+     "dataKeys": "none (in-memory _dir)"
+    },
+    {
+     "name": "Mini next-departures columns (Bus 74 / Train)",
+     "whatItDoes": "Two columns under the hero, each showing the next 4 departures with a 'now' / '12m' / '1h5m' badge.",
+     "manualInputs": "none (train data hardcoded; the bus column is empty unless times were typed)",
+     "frictionScore": 0,
+     "valueReturned": "Quick view of backup options if you miss the planned bus or train.",
+     "valueScore": 2,
+     "suggestedVerdict": "merge",
+     "automationPotential": "Fold into the hero as a single line, e.g. 'next: 06:49 · 07:19 · 07:34'.",
+     "dataKeys": "dashboard:transport:v1.busTimes, .trainTimes",
+     "overlapsWith": "Bus 74 schedule list and train schedule list (same times, shown twice)"
+    },
+    {
+     "name": "Bus 74 morning schedule list + comma-separated editor",
+     "whatItDoes": "Lists every typed Bus 74 departure from stop 37557, with past, next and soon badges. 'Edit' opens a text field for comma-separated HH:MM times.",
+     "manualInputs": "A one-time typing chore: every morning departure as 'HH:MM,HH:MM,...'. Repeat whenever the bus operator changes the timetable. Empty by default, so the list says 'Add your bus times below'.",
+     "frictionScore": 3,
+     "valueReturned": "Makes the planner's bus leg exact. As a standalone list it is reference data nobody needs to scroll.",
+     "valueScore": 2,
+     "suggestedVerdict": "automate",
+     "automationPotential": "Israeli public-transport GTFS and SIRI real-time data (MOT and Open Bus Stride APIs) can return line 74 arrivals at stop 37557. A serverless proxy like train-times.js would remove all typing and add live ETAs.",
+     "dataKeys": "dashboard:transport:v1.busTimes",
+     "overlapsWith": "Mini bus column"
+    },
+    {
+     "name": "Train schedule list (41 rows) + editor + 'Restore defaults'",
+     "whatItDoes": "Shows the whole day's direct-train timetable with arrival (+22 min) and past, next and soon badges. The default timetable is hard-coded (TRAIN_DEP_DEFAULTS, labelled June 2026). The editor and reset button let you retype it.",
+     "manualInputs": "None at first, but the owner must manually retype all 41 times whenever Israel Railways changes the seasonal timetable (the hint says to check rail.co.il).",
+     "frictionScore": 2,
+     "valueReturned": "Reference only. The planner already picks the right train, so 41 rows (about 2.5 phone screens) are mostly scroll cost. The timetable is about 4 months old as of Oct 2026, and the page gives no warning when it goes stale.",
+     "valueScore": 1,
+     "suggestedVerdict": "automate",
+     "automationPotential": "Replace it with live data from the existing /api/train-times (which also returns platform, delay and transfers). Show only the next 3 trains, and delete the editor.",
+     "dataKeys": "dashboard:transport:v1.trainTimes (auto-seeded from TRAIN_DEP_DEFAULTS on first visit)",
+     "overlapsWith": "Mini train column, hero"
+    },
+    {
+     "name": "Return train list (Herzliya → Rosh HaAyin North)",
+     "whatItDoes": "Afternoon view: lists typed return-train departure times with badges.",
+     "manualInputs": "Type all afternoon train times as a comma-separated list; empty by default.",
+     "frictionScore": 3,
+     "valueReturned": "Nothing until the owner types the times. If filled in, it shows when the next train home leaves.",
+     "valueScore": 1,
+     "suggestedVerdict": "automate",
+     "automationPotential": "Call /api/train-times with from and to swapped. Then a single line, 'next train home 14:21 (on time)', replaces the whole list and editor.",
+     "dataKeys": "dashboard:transport:v1.returnTrainTimes"
+    },
+    {
+     "name": "Return bus list (station → home)",
+     "whatItDoes": "Afternoon view: lists typed bus times from the train station to home.",
+     "manualInputs": "Type all afternoon bus times; empty by default.",
+     "frictionScore": 3,
+     "valueReturned": "Nothing unless typed.",
+     "valueScore": 1,
+     "suggestedVerdict": "automate",
+     "automationPotential": "Same GTFS/SIRI proxy as the morning bus; better still, chain it automatically to the chosen return train's arrival.",
+     "dataKeys": "dashboard:transport:v1.returnBusTimes"
+    },
+    {
+     "name": "ntfy bus alerts (hero 'Alert me', 'Alert for next bus', 'Schedule all today')",
+     "whatItDoes": "Posts a delayed push to ntfy.sh straight from the browser, timed 15 min before the next typed Bus 74 departure (or before every remaining bus today).",
+     "manualInputs": "A tap every day to arm it. It also needs a one-time ntfy topic entered on the HOME page's Reminders section (device-only localStorage) and typed bus times. Otherwise it shows 'No upcoming buses' or an alert box.",
+     "frictionScore": 3,
+     "valueReturned": "A reminder to leave. But you have to open the page to arm it, which defeats the purpose of a reminder. It is keyed to the bus rather than to the computed leave time, and it hard-codes the text 'Bus 74'.",
+     "valueScore": 2,
+     "suggestedVerdict": "automate",
+     "automationPotential": "The server cron (api/cron-reminders.js already runs every minute) should push 'Leave in 10 min, train 06:49 is on time' automatically on school days. Note: the NTFY_TOPIC env var is missing on Vercel, so the server push path is broken today.",
+     "dataKeys": "localStorage dashboard:ntfy:topic (set in index.html Reminders; not synced)",
+     "overlapsWith": "Home-page Reminders/ntfy section in index.html; two duplicate 'alert next bus' buttons on this page"
+    },
+    {
+     "name": "Commute settings card (walk to bus / bus ride / station buffer / walk to school + Save)",
+     "whatItDoes": "Four number inputs, in minutes, that feed the planner arithmetic.",
+     "manualInputs": "Once (defaults 5/10/5/10).",
+     "frictionScore": 1,
+     "valueReturned": "Accuracy of the leave time. Set-and-forget, yet it permanently takes up a card at the bottom of the page.",
+     "valueScore": 2,
+     "suggestedVerdict": "hide-behind-detail",
+     "automationPotential": "Keep the defaults. Move the inputs behind a gear icon or into a one-time setup step.",
+     "dataKeys": "dashboard:transport:v1.walkToBus, busJourney, stationBuffer, walkToSchool",
+     "overlapsWith": "Settings page sprawl (a second settings area outside settings.html)"
+    },
+    {
+     "name": "Live train-times API (api/train-times.js), built but unused",
+     "whatItDoes": "A serverless proxy to rail.co.il GetRoutes that returns the next 6 trains with departure, arrival, platform, delay and transfers (cached 90 s). It also supports ?stations=1 for station IDs.",
+     "manualInputs": "none",
+     "frictionScore": 0,
+     "valueReturned": "Currently nothing: no page calls it. It is the missing piece that would make transport truly zero-input and live.",
+     "valueScore": 0,
+     "suggestedVerdict": "automate",
+     "automationPotential": "Wire it into the hero and drop the hardcoded timetable. Verify the station IDs and that the rail.co.il endpoint still answers (it may need the newer API host or key).",
+     "dataKeys": "none (stateless)"
+    },
+    {
+     "name": "Date header",
+     "whatItDoes": "Shows e.g. 'Sunday, Oct 18' under the title.",
+     "manualInputs": "none",
+     "frictionScore": 0,
+     "valueReturned": "Trivial context.",
+     "valueScore": 1,
+     "suggestedVerdict": "cut",
+     "automationPotential": "n/a"
+    }
+   ]
+  },
+  {
+   "file": "friends.html",
+   "purpose": "A social layer built entirely on the XP/level gamification. It covers profile creation, a leaderboard with podium, 1v1 'duels', a friends list and requests, an activity feed, and 👋 nudges. Data comes from the Supabase tables profiles, friendships, nudges and activity.",
+   "sizeKB": 42.8,
+   "screensOfScrollOnPhone": "About 1.5–2 screens: the me-card takes about 0.6 of a screen, then tabs, podium and rows. Modals for friend detail and duels.",
+   "designNotes": "The most visually polished page in this slice. Accent-tinted color-mix gradients, a glowing XP bar, a gold-tinted 1st place on a 3-place podium, presence dots, and smooth press animations. It supports light theme and has a pre-flash script. It's dense, though: a 5-tile stat grid, a 4-tab bar, a 3-way segmented control, standing callouts and a countdown are all stacked before any friend appears. Every number on it (XP, level, streak, badges) is a game meta-metric of how much you logged, not a real-life outcome. So the visual effort goes into making the logging chore look competitive.",
+   "features": [
+    {
+     "name": "Profile create/edit modal",
+     "whatItDoes": "Pick one of 16 emoji avatars, a display name, and a unique username (locked after creation). It upserts to the profiles table along with level, XP, weekly XP, streak and skin.",
+     "manualInputs": "Once: name + username + avatar tap.",
+     "frictionScore": 1,
+     "valueReturned": "Lets friends find you. No personal insight.",
+     "valueScore": 1,
+     "suggestedVerdict": "hide-behind-detail",
+     "automationPotential": "Could default the name from settings.name and the username from the email.",
+     "dataKeys": "Supabase profiles (id, username, display_name, avatar, level, xp, xp_week, streak, skin, updated_at); localStorage friend_profile"
+    },
+    {
+     "name": "Me card (level bar + Rank / Total XP / This week / Streak / Badges tiles)",
+     "whatItDoes": "Shows your level progress and 5 stat tiles computed from the local XP store.",
+     "manualInputs": "none (XP accrues from logging elsewhere)",
+     "frictionScore": 0,
+     "valueReturned": "How much you've logged, expressed as points. It tells you nothing about your health, school or money. It reinforces the 'feed the app to earn points' loop the owner says felt like a duty.",
+     "valueScore": 1,
+     "suggestedVerdict": "cut",
+     "automationPotential": "n/a. If any gamification survives, a single streak indicator on home is enough.",
+     "dataKeys": "localStorage dashboard:xp:v1 {total, log[], curStreak, badges{}} (synced via topbar to uid:xp)",
+     "overlapsWith": "topbar XP/level system; skin unlocks in settings (level-gated)"
+    },
+    {
+     "name": "Leaderboard (All-time / This week / Streak) with podium, standing callout and weekly-reset countdown",
+     "whatItDoes": "Ranks you against accepted friends by XP, weekly XP or streak. Shows the top 3 as a podium, the rest as rows, and messages like 'just N XP behind @x, overtake them!'.",
+     "manualInputs": "Taps to switch mode; no data entry.",
+     "frictionScore": 0,
+     "valueReturned": "Social motivation, but only if friends actively use the app (CLAUDE.md says it is built for one user). It rewards logging volume, the exact pressure the owner says made the app a duty.",
+     "valueScore": 1,
+     "suggestedVerdict": "cut",
+     "automationPotential": "n/a",
+     "dataKeys": "Supabase profiles, friendships",
+     "overlapsWith": "Me card, duel modal"
+    },
+    {
+     "name": "Friend detail modal",
+     "whatItDoes": "Tap a friend to see presence (online if active in the last 5 min), level bar, total and weekly XP, streak, and theme, with Duel and Nudge buttons.",
+     "manualInputs": "Tap",
+     "frictionScore": 0,
+     "valueReturned": "Curiosity only.",
+     "valueScore": 1,
+     "suggestedVerdict": "cut",
+     "dataKeys": "Supabase profiles"
+    },
+    {
+     "name": "Head-to-head duel modal",
+     "whatItDoes": "Split bars comparing you and a friend on total XP, weekly XP and streak, with crowns and a 'You lead 2–1' summary.",
+     "manualInputs": "Tap",
+     "frictionScore": 0,
+     "valueReturned": "Gamified comparison of logging volume; no real insight.",
+     "valueScore": 0,
+     "suggestedVerdict": "cut",
+     "dataKeys": "Supabase profiles",
+     "overlapsWith": "Leaderboard"
+    },
+    {
+     "name": "Friends tab (add by username, list, remove)",
+     "whatItDoes": "Search by exact username to send a request. Lists accepted friends with level, streak and presence, plus duel, nudge and remove buttons.",
+     "manualInputs": "Occasional: type a username to add.",
+     "frictionScore": 1,
+     "valueReturned": "Social graph maintenance.",
+     "valueScore": 1,
+     "suggestedVerdict": "hide-behind-detail",
+     "dataKeys": "Supabase friendships (requester, addressee, status)"
+    },
+    {
+     "name": "Requests tab (incoming accept/decline, sent pending)",
+     "whatItDoes": "Manage pending friendship rows. A red pill on the tab shows the incoming count.",
+     "manualInputs": "Occasional taps",
+     "frictionScore": 1,
+     "valueReturned": "Admin of the social graph.",
+     "valueScore": 1,
+     "suggestedVerdict": "hide-behind-detail",
+     "dataKeys": "Supabase friendships"
+    },
+    {
+     "name": "Activity feed",
+     "whatItDoes": "The last 40 activity rows for you and your friends (level-ups, badges, written by topbar's XP system), with relative times.",
+     "manualInputs": "none",
+     "frictionScore": 0,
+     "valueReturned": "A log of game events, not of life progress.",
+     "valueScore": 0,
+     "suggestedVerdict": "cut",
+     "dataKeys": "Supabase activity (user_id, kind, text, created_at)"
+    },
+    {
+     "name": "Nudges (send 👋 / receive toast)",
+     "whatItDoes": "Inserts a nudge row. Received nudges show as a toast and are then deleted, but only when you open the Friends page.",
+     "manualInputs": "Tap to send",
+     "frictionScore": 0,
+     "valueReturned": "Minimal. Received nudges are invisible unless you happen to visit this page, so they can't pull you back in.",
+     "valueScore": 1,
+     "suggestedVerdict": "cut",
+     "automationPotential": "If social stays, deliver nudges as real push notifications.",
+     "dataKeys": "Supabase nudges (from_id, to_id, emoji)"
+    }
+   ]
+  },
+  {
+   "file": "coach.html",
+   "purpose": "AI coach chat. It reads the user's app_state rows (health, po-coach gym, habits, dashboard home, settings), sends a pruned context to /api/coach (Anthropic or OpenRouter), and can propose plan changes through 6 tools (nutrition targets, replace or add meal, edit or add gym exercise, water setup). Each change is applied only after an Apply/Skip card. It is reached by the floating 🧠 button that topbar injects on every page.",
+   "sizeKB": 22.3,
+   "screensOfScrollOnPhone": "1 screen at start (title, explainer, 4 chips, welcome bubble); grows with the chat.",
+   "designNotes": "Clean, minimal chat UI: big title, rounded bubbles, accent-tinted user bubbles, pill-shaped quick-question chips, and a fixed input bar above the bottom nav. It is hard-coded dark (no light theme and no pre-flash script, though topbar sets the accent). Replies render with textContent, so any markdown the model emits (**bold**, bullet syntax) appears raw. The page itself is calm and uncluttered, but it is pull-only: a blank chat page waiting for the user to think of a question.",
+   "features": [
+    {
+     "name": "Quick-question chips (Review my week / Am I on track? / Check my training / What do I eat today?)",
+     "whatItDoes": "One tap sends a preset question, and the coach answers from your data.",
+     "manualInputs": "One tap, on demand.",
+     "frictionScore": 0,
+     "valueReturned": "Exactly the 'give me info' output the owner wants: synthesis in under 180 words, with no number-crunching by the user. It depends on the underlying data being logged, and the owner stopped logging.",
+     "valueScore": 4,
+     "suggestedVerdict": "core",
+     "automationPotential": "Turn 'Review my week' and 'What do I eat today' into an automatic daily or weekly brief, generated by cron or on first open and shown as one card on the home screen. Then the insight arrives without visiting a chat page.",
+     "dataKeys": "Reads Supabase app_state uid:health, uid:po-coach, uid:habits, uid:dashboard, uid:settings",
+     "overlapsWith": "Any 'insight' or summary cards on index, summary.html and trends.html"
+    },
+    {
+     "name": "Free-text chat",
+     "whatItDoes": "Ask anything. On every send it fetches all of the user's app_state rows, builds a context capped at 26 KB, and runs a tool-use loop (up to 6 rounds).",
+     "manualInputs": "Typing a question, on demand.",
+     "frictionScore": 2,
+     "valueReturned": "Flexible answers. It can replace a lot of scroll-and-find across pages.",
+     "valueScore": 3,
+     "suggestedVerdict": "core",
+     "automationPotential": "Voice input; answers shown on home.",
+     "dataKeys": "localStorage dashboard:coach:chat:v1 (last 30 messages; device-only, not synced)"
+    },
+    {
+     "name": "Proposed-change cards (Apply / Skip) → writes to the plan",
+     "whatItDoes": "Model tool calls are shown as human-readable diffs. Apply patches the cloud row merge-safely: food (custom targets, library, meals), po-coach (dashboard:gym:v1:template exercises), or health (po_water_v1 profile and sizes).",
+     "manualInputs": "One tap per proposed change.",
+     "frictionScore": 1,
+     "valueReturned": "Saves manual editing of meal plans and gym templates. A real time-saver.",
+     "valueScore": 4,
+     "suggestedVerdict": "core",
+     "dataKeys": "Writes uid:food {custom, library[], meals[]}, uid:po-coach['dashboard:gym:v1:template'], uid:health.po_water_v1"
+    },
+    {
+     "name": "Context builder (what the coach can see)",
+     "whatItDoes": "Collects body-weight log, nutrition, water (7 d), sleep (14 d), gym plan and 14-day logs, habits and the home row.",
+     "manualInputs": "none",
+     "frictionScore": 0,
+     "valueReturned": "Determines answer quality. BUG: nutrition context is read from LEGACY health-row keys (dashboard:mealPrep:v1:template/daily/settings/coach). But food.html now logs to the separate uid:food row (food.days, custom, profile), which the coach never reads. So 'What do I eat today, based on what I've already logged?' can't see food.html logs, even though the coach WRITES targets and meals into uid:food. It also has no school, finance, steps or transport context.",
+     "valueScore": 2,
+     "suggestedVerdict": "automate",
+     "automationPotential": "Read uid:food (days, custom, profile) instead of the legacy mealPrep keys. Add steps and usage from the APIs. This is what lets it act as the single insight layer.",
+     "dataKeys": "uid:health (po_coach_weights, dashboard:mealPrep:v1:*, po_water_v1, dashboard:sleep:v1), uid:po-coach (dashboard:gym:v1:template, dashboard:gym:v1:logs), uid:habits, uid:dashboard, uid:settings"
+    },
+    {
+     "name": "New chat / chat history",
+     "whatItDoes": "Keeps the last 30 bubbles locally; 'New chat' clears them and the API conversation.",
+     "manualInputs": "Tap",
+     "frictionScore": 0,
+     "valueReturned": "Minor continuity.",
+     "valueScore": 1,
+     "suggestedVerdict": "hide-behind-detail",
+     "dataKeys": "dashboard:coach:chat:v1"
+    },
+    {
+     "name": "Floating 🧠 coach button (topbar) + server-side AI allowlist",
+     "whatItDoes": "A FAB on every page except finance links here. /api/coach verifies the Supabase token against the admin allowlist ('ai:allowlist').",
+     "manualInputs": "none",
+     "frictionScore": 0,
+     "valueReturned": "Always-available entry point; protects the paid key.",
+     "valueScore": 2,
+     "suggestedVerdict": "core",
+     "dataKeys": "app_state key 'ai:allowlist' {allowed:{uid:true}}",
+     "overlapsWith": "Floating Buddy chat companion widget in topbar (a second floating chat-like thing)"
+    }
+   ]
+  },
+  {
+   "file": "onboarding.html",
+   "purpose": "A 14-step first-run wizard (also previewable from Settings) that sets name, page visibility, Simplified ('Kids') mode, starter habits, accent and theme, and the eye-break reminder, then sets setupDone. Shown only to new or empty accounts. The owner went through it long ago.",
+   "sizeKB": 38.7,
+   "screensOfScrollOnPhone": "14 full-screen slides at about 1 screen each: about 15 taps plus a 1.3-second hold-to-agree to finish.",
+   "designNotes": "The best-looking design in this slice and a good reference for the redesign. Each slide does one thing: 31px heavy headline, generous spacing, thin accent progress bar, slide-up animation, mini phone mockups with colored progress rows, gradient text, and a satisfying hold-to-sign ring. It is focused and calm: no clutter, one decision per screen. But the content sells the 'more is better / log everything' philosophy the owner now rejects. Examples: 'Everything you're tracking, in one place', 'This year is about 1,100 meals… nobody remembers that', and a signed 'Contract' promising 'I'll log it even when it's bad'.",
+   "features": [
+    {
+     "name": "Intro slides ×3 (all-in-one, it remembers, coach can change it)",
+     "whatItDoes": "Marketing slides with phone mockups.",
+     "manualInputs": "3 taps (or skip on the first 5 steps)",
+     "frictionScore": 1,
+     "valueReturned": "None for the owner. They pitch breadth, which is the problem.",
+     "valueScore": 0,
+     "suggestedVerdict": "cut",
+     "dataKeys": "none"
+    },
+    {
+     "name": "Name step",
+     "whatItDoes": "First name, used to greet you on the home page.",
+     "manualInputs": "Once: type name",
+     "frictionScore": 1,
+     "valueReturned": "Personal greeting.",
+     "valueScore": 2,
+     "suggestedVerdict": "core",
+     "dataKeys": "dashboard:settings:v1.name (synced uid:settings)",
+     "overlapsWith": "Settings > Personal > Your Name"
+    },
+    {
+     "name": "'Glad you're here' hello slide",
+     "whatItDoes": "Filler with floating emoji.",
+     "manualInputs": "1 tap",
+     "frictionScore": 1,
+     "valueReturned": "None",
+     "valueScore": 0,
+     "suggestedVerdict": "cut"
+    },
+    {
+     "name": "Chronotype question (Early bird / Night owl / Flexible / Low energy)",
+     "whatItDoes": "Saves settings.chrono. The UI promises 'new habits get slotted into the part of the day you're actually awake for'.",
+     "manualInputs": "Once: 1 choice (required)",
+     "frictionScore": 1,
+     "valueReturned": "None. settings.chrono is never read by any page, and starter habits keep fixed time slots. It's a dead input.",
+     "valueScore": 0,
+     "suggestedVerdict": "cut",
+     "dataKeys": "dashboard:settings:v1.chrono (unused)"
+    },
+    {
+     "name": "Goal question (muscle / lean / school / habits / organise)",
+     "whatItDoes": "Saves settings.goal and pre-enables pages for that goal (GOAL_PAGES).",
+     "manualInputs": "Once: 1 choice (required)",
+     "frictionScore": 1,
+     "valueReturned": "Small. It only pre-selects pages; settings.goal is not read anywhere else (health.html's goal is a separate key).",
+     "valueScore": 1,
+     "suggestedVerdict": "merge",
+     "automationPotential": "Merge into the pages step.",
+     "dataKeys": "dashboard:settings:v1.goal (effectively unused)"
+    },
+    {
+     "name": "'Honest bit' truth slide",
+     "whatItDoes": "Goal-specific text, e.g. 'This year is roughly 1,100 meals… So don't rely on remembering'.",
+     "manualInputs": "1 tap",
+     "frictionScore": 1,
+     "valueReturned": "Guilt and motivation framing that pushes toward logging everything.",
+     "valueScore": 0,
+     "suggestedVerdict": "cut"
+    },
+    {
+     "name": "Pages picker + Everything / Simplified mode",
+     "whatItDoes": "Toggle 9 optional pages (Health is forced on). Simplified hides Projects, Finance and Trends. New accounts start with all optional pages OFF until the goal turns some on.",
+     "manualInputs": "Once: taps",
+     "frictionScore": 1,
+     "valueReturned": "The one step aligned with 'less is better': it decides what exists in the nav.",
+     "valueScore": 3,
+     "suggestedVerdict": "core",
+     "dataKeys": "dashboard:settings:v1.pages {key:false}, .mode ('kid'|'adult')",
+     "overlapsWith": "Settings > Pages & Kids Mode (which lacks Food)"
+    },
+    {
+     "name": "Starter habits chips (8 presets)",
+     "whatItDoes": "Seeds the chosen habits into habits:list. It merges and never wipes existing habits.",
+     "manualInputs": "Once: taps (optional)",
+     "frictionScore": 1,
+     "valueReturned": "Quick start for the habits page.",
+     "valueScore": 2,
+     "suggestedVerdict": "hide-behind-detail",
+     "dataKeys": "Supabase uid:habits['habits:list'] [{id,name,icon,color,when}]"
+    },
+    {
+     "name": "Design step (8 accents + Dark/Light)",
+     "whatItDoes": "Live preview of the accent and theme.",
+     "manualInputs": "Once: taps",
+     "frictionScore": 1,
+     "valueReturned": "Cosmetic.",
+     "valueScore": 1,
+     "suggestedVerdict": "merge",
+     "automationPotential": "Follow the system dark/light setting; ship one designed accent.",
+     "dataKeys": "dashboard:settings:v1.accent, .theme",
+     "overlapsWith": "Settings > Appearance"
+    },
+    {
+     "name": "Notifications step (Habit reminders / Eye breaks / Water & streaks)",
+     "whatItDoes": "Three switches; switching one on asks for browser notification permission.",
+     "manualInputs": "Once: taps",
+     "frictionScore": 1,
+     "valueReturned": "Only Eye breaks is persisted (dashboard:eyes:v1.on). The Habit and Water/streak switches are never saved, so they are dead toggles.",
+     "valueScore": 1,
+     "suggestedVerdict": "cut",
+     "dataKeys": "localStorage dashboard:eyes:v1.on"
+    },
+    {
+     "name": "'Contract' hold-to-agree",
+     "whatItDoes": "Lists commitments ('I'll log it even when it's bad', 'I won't quit over one broken streak'). Hold for 1.3 s to sign.",
+     "manualInputs": "Once: 1.3 s press",
+     "frictionScore": 1,
+     "valueReturned": "Literally frames the app as an obligation, the 'duty' feeling the owner cites as a reason they quit.",
+     "valueScore": 0,
+     "suggestedVerdict": "cut"
+    },
+    {
+     "name": "Done summary + save",
+     "whatItDoes": "'N pages, N habits, and a coach that can see all of it.' It writes uid:settings (setupDone:true), seeds the habits, and redirects home. Preview mode saves nothing.",
+     "manualInputs": "1 tap",
+     "frictionScore": 0,
+     "valueReturned": "Completes setup.",
+     "valueScore": 1,
+     "suggestedVerdict": "merge",
+     "dataKeys": "dashboard:settings:v1.setupDone (login.html sends empty-settings accounts here)"
+    }
+   ]
+  },
+  {
+   "file": "settings.html",
+   "purpose": "Central settings: visual theming (skins, surface materials, home styles, theme, accent, card radius, text size), floating buddy, bottom-nav customization, personal prefs, health goals, page visibility and Kids Mode, export, admin AI allowlist, maintenance and danger actions. It auto-syncs dashboard:settings:v1 to uid:settings 1.5 s after any change.",
+   "sizeKB": 64.8,
+   "screensOfScrollOnPhone": "About 5 screens: 6 skin cards, an 11-tile surface grid, a 6-tile home grid, 5 appearance rows, nav, 3 personal rows, 2 goal rows, tour + Kids + 9 page toggles, export, 6 About rows, and a Save button.",
+   "designNotes": "An iOS-style grouped list: uppercase group labels, rounded bodies, icon-led rows, pills and steppers. Neat but long, and the first 3 groups (about 2 screens) are all look-and-feel pickers. Anime skin cards have glow and shine gradients, and 4 of 6 are padlocked behind XP levels (3/6/10/15). Settings sprawl in numbers: about 27 adjustable settings plus 7 action rows, i.e. 34 controls. The look alone has 7 independent dimensions: 6 skins × 11 surfaces × 6 home styles × 2 themes × 8 accents × 3 card radii × 3 text sizes = 57,024 combinations, backed by about 160 data-ui, data-home and data-skin rule references in topbar.js. Design effort was spread across endless variants instead of one great look, which directly explains 'I didn't get the design I want'. The 'Save Settings' button is redundant with auto-sync. Copy mixes device-only and synced settings, which confuses.",
+   "features": [
+    {
+     "name": "Theme Style skins (Default + 5 anime skins, level-locked, splash animation)",
+     "whatItDoes": "Re-themes every page: accent pair, font, background, nav emoji. A cinematic splash plays on switch. Bluelock, Solo Leveling, Jujutsu and Demon Slayer need levels 3, 6, 10 and 15.",
+     "manualInputs": "Occasional taps",
+     "frictionScore": 1,
+     "valueReturned": "Novelty. It ties looks to XP grinding.",
+     "valueScore": 1,
+     "suggestedVerdict": "cut",
+     "automationPotential": "Replace with one deliberately designed look.",
+     "dataKeys": "dashboard:settings:v1.skin (also published to profiles.skin)",
+     "overlapsWith": "Surface Style, Dashboard Style, Accent, Friends (shows friends' theme)"
+    },
+    {
+     "name": "Surface Style (11 materials: skeuo, neo, glass, clay, minimal, maximal, brutal, liquid glass, bento, spatial)",
+     "whatItDoes": "Restyles every card and surface via data-ui CSS in topbar.js.",
+     "manualInputs": "Occasional taps",
+     "frictionScore": 1,
+     "valueReturned": "Experimentation, not a finished design.",
+     "valueScore": 1,
+     "suggestedVerdict": "cut",
+     "dataKeys": "dashboard:settings:v1.uiStyle",
+     "overlapsWith": "Skins, Dashboard Style, Card Style"
+    },
+    {
+     "name": "Dashboard (home) Style (Classic / Cinematic / Neon / Aurora / Ember / Mono)",
+     "whatItDoes": "Changes the home page look via data-home CSS (about 81 references in topbar.js).",
+     "manualInputs": "Occasional taps",
+     "frictionScore": 1,
+     "valueReturned": "Shows the owner was hunting for a home design they liked. Six half-designs instead of one good one.",
+     "valueScore": 1,
+     "suggestedVerdict": "cut",
+     "automationPotential": "Pick the best direction (Cinematic or Mono, the minimal ones, fit 'less is better') and make it the only design.",
+     "dataKeys": "dashboard:settings:v1.home",
+     "overlapsWith": "Skins, Surface Style"
+    },
+    {
+     "name": "Appearance: Theme dark/light, Accent (8), Card Style (3), Text Size (3)",
+     "whatItDoes": "Sets CSS vars --accent, --card-radius and --base-font. Card radius only hits topbar's .section and card classes. Text size sets body font-size, but nearly every page hard-codes px sizes, so it barely does anything.",
+     "manualInputs": "Once",
+     "frictionScore": 1,
+     "valueReturned": "Theme and accent matter a little. Card style and text size are near no-ops.",
+     "valueScore": 1,
+     "suggestedVerdict": "merge",
+     "automationPotential": "Follow the system dark/light setting via prefers-color-scheme. Drop card style and text size.",
+     "dataKeys": "dashboard:settings:v1.theme, .accent, .cardStyle, .fontSize"
+    },
+    {
+     "name": "Floating Buddy on/off",
+     "whatItDoes": "Shows or hides topbar's floating companion and chat buddy widget.",
+     "manualInputs": "Once",
+     "frictionScore": 0,
+     "valueReturned": "Removes a distraction when off.",
+     "valueScore": 1,
+     "suggestedVerdict": "cut",
+     "automationPotential": "Cut the buddy widget itself. It duplicates the 🧠 coach FAB as a second floating thing.",
+     "dataKeys": "dashboard:settings:v1.buddy",
+     "overlapsWith": "Coach FAB"
+    },
+    {
+     "name": "Navigation bar customization (on/off, 3–7 slots, pinned tabs, preview)",
+     "whatItDoes": "Device-only bottom-bar layout; unpinned tabs go under 'More'.",
+     "manualInputs": "Once per device",
+     "frictionScore": 2,
+     "valueReturned": "Some value while there are 10+ pages. With fewer pages it becomes unnecessary. Its picker lists only 8 tabs (missing Food and Friends, which topbar ALL_TABS has).",
+     "valueScore": 1,
+     "suggestedVerdict": "cut",
+     "automationPotential": "With 3–5 pages, a fixed nav needs no customization.",
+     "dataKeys": "localStorage dashboard:nav:v1 {navCustom, navCount, navPinned} (device-only; legacy copies in settings.navCustom/navCount/navPinned)"
+    },
+    {
+     "name": "Personal: Your Name, Currency (₪ $ € £), Week Starts (Sun/Mon)",
+     "whatItDoes": "Saves to settings.",
+     "manualInputs": "Once",
+     "frictionScore": 1,
+     "valueReturned": "Name is used for the home greeting and the coach. Currency is DEAD: finance.html uses its own savings currency field. Week Starts is DEAD: no page reads settings.weekStart, and gym uses a hard-coded Sunday week.",
+     "valueScore": 1,
+     "suggestedVerdict": "cut",
+     "automationPotential": "Keep Name only; delete Currency and Week Starts.",
+     "dataKeys": "dashboard:settings:v1.name, .currency (unused), .weekStart (unused)",
+     "overlapsWith": "Onboarding name step"
+    },
+    {
+     "name": "Health Goals: Daily Water (cups), Sleep Goal (hrs)",
+     "whatItDoes": "Steppers.",
+     "manualInputs": "Once",
+     "frictionScore": 1,
+     "valueReturned": "Daily Water is DEAD: settings.waterGoal is read nowhere, and health computes its water target from the po_water_v1 profile. Sleep Goal only sets the goal line on health's sleep chart.",
+     "valueScore": 1,
+     "suggestedVerdict": "cut",
+     "automationPotential": "Derive targets in place (water from body weight is already done); keep sleep goal next to the sleep card.",
+     "dataKeys": "dashboard:settings:v1.waterGoal (unused), .sleepGoal (health.html sleep chart)"
+    },
+    {
+     "name": "Pages & Kids Mode (setup-tour preview, Kids toggle, 9 page toggles)",
+     "whatItDoes": "Hides pages from the nav and blocks opening them. Kids Mode force-hides Finance, Projects and Trends.",
+     "manualInputs": "Occasional taps",
+     "frictionScore": 1,
+     "valueReturned": "The most useful control here for a 'less is more' reset. BUG: the list has no Food toggle (topbar HIDEABLE_PAGES and onboarding both include food), so Food can't be hidden from Settings.",
+     "valueScore": 3,
+     "suggestedVerdict": "core",
+     "automationPotential": "After the redesign, cut most pages outright rather than leaving them toggleable.",
+     "dataKeys": "dashboard:settings:v1.pages {fitness,school,habits,transport,friends,projects,finance,trends,food:false}, .mode",
+     "overlapsWith": "Onboarding pages step"
+    },
+    {
+     "name": "Export My Data (JSON)",
+     "whatItDoes": "Downloads all localStorage plus every uid:* app_state row as a dated JSON backup.",
+     "manualInputs": "Tap when wanted",
+     "frictionScore": 0,
+     "valueReturned": "A safety net. Essential before any big redesign or migration.",
+     "valueScore": 3,
+     "suggestedVerdict": "hide-behind-detail",
+     "dataKeys": "reads all localStorage + app_state uid:%"
+    },
+    {
+     "name": "AI Access allowlist (admin-only)",
+     "whatItDoes": "Visible only to the owner's email. Lists every account found in app_state and profiles, with a toggle for coach access, enforced server-side.",
+     "manualInputs": "Rare taps",
+     "frictionScore": 0,
+     "valueReturned": "Protects the paid API key.",
+     "valueScore": 2,
+     "suggestedVerdict": "hide-behind-detail",
+     "dataKeys": "app_state key 'ai:allowlist' {allowed:{}}"
+    },
+    {
+     "name": "Tabbed pages (TRY IT, experimental)",
+     "whatItDoes": "Splits Health into Today, Body, Food and Rest tabs instead of one long scroll.",
+     "manualInputs": "Toggle once",
+     "frictionScore": 0,
+     "valueReturned": "Partial fix for health's scroll length. Shows the owner already felt the long-scroll pain.",
+     "valueScore": 2,
+     "suggestedVerdict": "merge",
+     "automationPotential": "Make the redesigned layout the default rather than an option.",
+     "dataKeys": "dashboard:settings:v1.pageTabs"
+    },
+    {
+     "name": "Force Update (unregister SW + clear caches)",
+     "whatItDoes": "Clears stale PWA caches and reloads index.html?fresh=…",
+     "manualInputs": "Rare tap",
+     "frictionScore": 0,
+     "valueReturned": "A maintenance escape hatch for iOS PWA cache staleness.",
+     "valueScore": 2,
+     "suggestedVerdict": "hide-behind-detail",
+     "dataKeys": "none (Cache Storage, SW)"
+    },
+    {
+     "name": "Danger rows: Reset All Settings, Clear All My Data, Log Out",
+     "whatItDoes": "Reset writes {} to settings (synced). Clear deletes every uid:% app_state row, server reminders and all localStorage, then signs out. Log Out signs out.",
+     "manualInputs": "Rare, confirmed",
+     "frictionScore": 0,
+     "valueReturned": "Account hygiene.",
+     "valueScore": 1,
+     "suggestedVerdict": "hide-behind-detail",
+     "dataKeys": "dashboard:settings:v1; app_state uid:%"
+    },
+    {
+     "name": "Save Settings button + Version label",
+     "whatItDoes": "Manual upsert of uid:settings, which auto-sync already does 1.5 s after every change. Shows the version.",
+     "manualInputs": "Unnecessary tap",
+     "frictionScore": 1,
+     "valueReturned": "Nothing beyond auto-sync; it implies changes aren't saved without it.",
+     "valueScore": 0,
+     "suggestedVerdict": "cut",
+     "dataKeys": "uid:settings"
+    }
+   ]
+  }
+ ],
+ "crossCuttingObservations": "1) TRANSPORT IS THE BEST FEATURE IN THIS SLICE, BUT IT IS NOT ACTUALLY LIVE AND IT IS IN THE WRONG PLACE. The 'Leave home by HH:MM' hero is the exact 'tell me, save me time' feature the owner wants. But: (a) /api/train-times.js, a working live rail.co.il proxy returning delay and platform, is called by nothing. The page instead uses a hard-coded 'June 2026' timetable that the owner has to retype by hand each season. (b) Bus 74, return-train and return-bus times all start EMPTY and must be typed as comma-separated HH:MM strings. (c) dashboard:transport:v1 is localStorage-only, so it never syncs between PC and phone, which breaks the owner's own 'sync everything' rule. (d) There is no weekend, Friday or 'tomorrow' awareness, and after the leave time it just says 'time passed'. (e) The answer lives on its own page, about 5 screens long, when it should be one line on the home screen plus an automatic push. The server cron exists, but NTFY_TOPIC is unset on Vercel; the in-page alerts must be armed by hand every day using a topic configured on a different page. Redesign target: one home card shown on school mornings, e.g. 'Leave 06:29 · train 06:49 on time · next 07:19'. Delete the 4 timetable editors and the 41-row list.\n\n2) SETTINGS SPRAWL IS MEASURABLE. settings.html has about 27 adjustable settings plus 7 action rows (34 controls in 11 groups, about 5 phone screens). transport.html adds another 8 (4 commute minutes and 4 timetable editors). The look alone has 7 independent dimensions: 6 skins × 11 surface materials × 6 home styles × 2 themes × 8 accents × 3 card radii × 3 text sizes = 57,024 combinations, with about 160 data-ui, data-home and data-skin rule references in topbar.js. This is the root of 'I didn't get the design I want': effort went into variants, not one great design. Recommendation: ship ONE designed look, follow the system dark/light setting, and maybe keep the accent.\n\nDEAD settings to delete:\n- Currency (finance uses its own field)\n- Week Starts (read nowhere)\n- Daily Water (health derives water from po_water_v1)\n- Card Style and Text Size (pages hard-code px, so near no-ops)\n- The redundant Save button (auto-sync already runs)\n\nOnboarding has dead inputs too: chronotype (settings.chrono is read nowhere) and the Habit and Water/streak notification toggles (never saved). Three different page lists have drifted apart:\n- onboarding PAGES has 10 pages, including food\n- settings PM_PAGES has 9, with no food, so Food can't be hidden from Settings\n- the settings NAV_TABS picker has 8, with no food or friends\n- topbar ALL_TABS has 10\n\n3) GAMIFICATION TURNS LOGGING INTO A DUTY. friends.html, the skin padlocks (levels 3/6/10/15), the activity feed, duels, streak callouts and the onboarding 'Contract' ('I'll log it even when it's bad… I won't quit over one broken streak') all reward how MUCH you log rather than what you learn. That is precisely the 'felt like a duty' complaint. friends.html is visually the most polished page, but every number on it is a meta-metric. Recommend cutting Friends, level-gated skins and the contract. Keep at most one quiet streak.\n\n4) THE COACH IS THE RIGHT 'GIVE ME INFO' ENGINE, BUT IT IS PULL-ONLY AND PARTLY BLIND. Its chips ('Review my week', 'What do I eat today?') and Apply/Skip plan edits genuinely save time. But you have to go to a chat page and ask. Bug: buildContext reads nutrition from legacy health-row keys (dashboard:mealPrep:v1:*), while food.html now logs to uid:food (days, custom, profile). So the coach can't see food.html logs, even though applyAction WRITES targets and meals into uid:food. It also gets no steps, school or transport context. Redesign opportunity: generate a short automatic daily or weekly brief and show it on home, replacing many manual-analysis cards. That fixes 'scroll and find and add numbers'.\n\n5) ONBOARDING HAS THE BEST VISUAL LANGUAGE AND THE WRONG MESSAGE. One idea per screen, 31px headlines, lots of space, a thin accent progress bar and smooth slide-ins: this calm, focused style is the best reference for the 'eye-pulling' redesign. But its copy sells 'Everything you're tracking, in one place' and 'nobody remembers 1,100 meals', i.e. log everything. It runs only once and the owner is past it, so cut it to about 3 steps later (name, pick what you care about, done).\n\n6) DESIGN INCONSISTENCY. Each page in this slice has its own design system:\n- transport hard-codes a blue rgba accent and monospace '≡' headers, and has no light theme or pre-flash script\n- coach is hard-coded dark and shows raw markdown\n- friends uses color-mix gradients and has light-theme support\n- settings uses iOS grouped lists\n- onboarding has its own token set (--ac, --ink)\n\nA redesign should introduce one shared token and component set, in topbar.js or a shared CSS file.\n\n7) DATA KEYS TO PRESERVE. These are device-only and should become synced during the rebuild:\n- dashboard:transport:v1: schoolTime, walkToBus, busJourney, stationBuffer, walkToSchool, busTimes, trainTimes, returnBusTimes, returnTrainTimes\n- dashboard:ntfy:topic\n- dashboard:coach:chat:v1\n- dashboard:nav:v1\n- dashboard:eyes:v1\n\nThese are synced:\n- dashboard:settings:v1 ↔ uid:settings: name, theme, accent, skin, uiStyle, home, cardStyle, fontSize, buddy, currency, weekStart, waterGoal, sleepGoal, pages{}, mode, pageTabs, chrono, goal, setupDone\n- dashboard:xp:v1 ↔ uid:xp\n- Coach writes: uid:food, uid:po-coach['dashboard:gym:v1:template'], uid:health.po_water_v1\n- Supabase tables: profiles, friendships, nudges, activity\n- app_state key 'ai:allowlist'\n\nTake a JSON export (Settings > Export) before removing anything."
+}

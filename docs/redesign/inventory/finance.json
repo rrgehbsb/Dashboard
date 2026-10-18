@@ -1,0 +1,182 @@
+{
+ "pages": [
+  {
+   "file": "C:/Users/tomay/Desktop/Dashboard/dashboard/finance.html",
+   "sizeKB": 173.7,
+   "purpose": "A separate money app inside the dashboard. It has its own Back button and a 6-tab bottom bar: Net Worth, Subs, Orders, Wishlist, Budget and Savings. It tracks asset balances, recurring subscriptions, purchases in transit, a wishlist, monthly category budgets with an expense log, and savings goals. All of it syncs to Supabase app_state row '<uid>:finance'. By size: about 52KB of CSS, 21KB of HTML and 94KB of JS.",
+   "screensOfScrollOnPhone": "About 9-10 phone screens across the 6 tabs. Net Worth is about 3 screens: header plus chart is about 1, the donut and legend about 0.6, the activity log about 0.3, and the 4 account cards with their add rows about 1. Subs is about 1.5-2, because the add form alone stacks 8 full-width controls (about 420px). Orders is about 1.5 (6 stacked controls plus cards). Wishlist is about 1-1.5. Budget is about 1-1.5 and grows without limit, since every expense of the month is listed under its category. Savings is about 1. In the screenshot, the whole first phone screen shows one number (CHF 0), a flat grey chart and half of an empty donut.",
+   "designNotes": "The background is near-black (#0A0A0B) with a faint orange radial wash and a 3px dot-noise overlay. The 'glass' cards have transparent borders (--border: transparent) and only a 4% white fill, so they barely separate from the background, and the whole page reads as grey-on-black with little contrast or color.\n\nLabels are tiny uppercase monospace eyebrows (9.5-11px, 0.16-0.18em tracking): ALL-TIME, ALLOCATION, 1% =, SNAPSHOTS, ITEMS ON THE WAY. Every section title gets a hard-coded ⚡ prefix and hairline rules. This 'Nasdaq terminal' mono look sits next to emoji tab icons (📊🔁📦🎯💰🏦), emoji account labels (🏦📈🪙💼) and a 📅 emoji before each date field, so the style is mixed.\n\nEach tab looks different:\n- Subs: purple-to-orange gradient card.\n- Wishlist: 'premium' hero card with a % bar.\n- Orders: category-colored cards with pills.\n- Budget: no section title at all; a canvas bar chart with 9px system-ui labels and a ₪ symbol; a floating + button with a green glow (rgba(29,158,117)) that clashes with the orange accent (#E07658).\n- Savings: left-border colored cards and a raw 'Currency symbol:' text box.\n\nInput forms take more space than information. On phones the composers stack into full-width 48px fields, so Subs shows 8 controls (name, amount, currency, period, date, from-account, auto-deduct toggle, add) before the list.\n\nThe page skips topbar.js chrome (isFinancePage). It has no global nav, no coach button and no skin/theme engine, so it looks like a different app from the rest of the dashboard and ignores the theme the user picked.\n\nSix tabs at 390px width leave about 57px per tab for 10px letter-spaced labels like 'NET WORTH'. The screenshot predates Budget and Savings and shows only 4 tabs.\n\nThe empty state is weak: a large flat grey area chart and an empty ring take the first screen.\n\nWhat works:\n- The 34px bold net-worth number.\n- The glowing line chart that turns green when up and red when down.\n- Inline amount edit accepts '+500' / '-200' deltas, a real time-saver.\n- A live 'X% of your net worth' preview while typing an order cost.\n- The red pulsing renewal ticker when a charge is 5 days away or less.",
+   "features": [
+    {
+     "name": "Finance bottom tab bar (6 tabs) + Back button",
+     "whatItDoes": "A page-local fixed bottom nav that switches between the 6 sections (setActiveTab hides the others with [hidden]). It replaces the global dashboard nav. The last tab is remembered.",
+     "manualInputs": "A tap per section switch. Seeing everything takes 6 taps.",
+     "frictionScore": 2,
+     "valueReturned": "Gets you around, but splits a small amount of money info across 6 screens. Nothing summarizes all of them.",
+     "valueScore": 1,
+     "suggestedVerdict": "merge",
+     "dataKeys": "localStorage 'finance_active_tab' (not in the synced set)",
+     "overlapsWith": "Global bottom nav in topbar.js, which is suppressed on this page",
+     "automationPotential": "Collapse to one scrolling overview (net worth, upcoming charges, goals) with detail sheets. Then no tab bar is needed."
+    },
+    {
+     "name": "Renewal ticker",
+     "whatItDoes": "A strip at the top of every tab. Every 5s it rotates through the subscriptions in order of next renewal ('Netflix CHF 15 in 3d'), rolling past dates forward by the period. It pulses red when the shown renewal is 5 days away or less. It re-renders on a 1.5s setInterval.",
+     "manualInputs": "None. It is derived from subs.",
+     "frictionScore": 0,
+     "valueReturned": "A heads-up on what is about to be charged. This is the most 'gives me info without effort' piece on the page.",
+     "valueScore": 3,
+     "suggestedVerdict": "merge",
+     "dataKeys": "Reads 'subs'. 'financeTicker' is in the sync whitelist but never written.",
+     "overlapsWith": "Per-row renewal line and urgent flash in Subs",
+     "automationPotential": "Already automatic, but only visible after opening finance.html. Move it to a 'Next charge' line on the home page. Also add push reminders through the existing api/cron-reminders.js, which reads no finance data today."
+    },
+    {
+     "name": "Net worth total + display currency",
+     "whatItDoes": "Large total of all asset accounts plus a small per-category breakdown line. A select switches the display between CHF, USD, EUR and GBP, using live FX from open.er-api.com. Values are stored in CHF.",
+     "manualInputs": "The currency is picked once. The total depends on the account balances being typed in (see asset accounts).",
+     "frictionScore": 0,
+     "valueReturned": "The single most meaningful number on the page.",
+     "valueScore": 4,
+     "suggestedVerdict": "core",
+     "dataKeys": "'nw_currency' (display currency); total derived from nw:bank / nw:stocks / nw:crypto / nw:other",
+     "overlapsWith": "Donut center total, the wishlist/orders '% of NW' denominators",
+     "automationPotential": "FX is already automatic. Show this number (plus its monthly change) on the home page so the owner never has to open Finance to see it."
+    },
+    {
+     "name": "Net worth history chart + stats (1% =, all-time high/low, snapshot count)",
+     "whatItDoes": "An SVG smoothed area chart of net worth snapshots with an all-time delta badge (% or absolute). A snapshot is pushed on any render where the total changed, up to 500. The x-axis is the snapshot index, not time. Below the chart: what 1% of net worth is, the high and low, and the snapshot count.",
+     "manualInputs": "None directly. The data only exists because balances were typed in. The first snapshot is usually CHF 0, so the chart mostly charts the act of entering accounts and every deduction.",
+     "frictionScore": 0,
+     "valueReturned": "Low as built. Adding a new account shows up as 'growth'. Gaps of months look the same as gaps of minutes. 'Snapshots: 14' tells the owner nothing.",
+     "valueScore": 2,
+     "suggestedVerdict": "automate",
+     "dataKeys": "'nw:history' [{t, v (CHF)}]",
+     "overlapsWith": "Activity log (both are change history)",
+     "automationPotential": "Keep one snapshot per month (or per week), plot it on a real time axis, and leave out the initial zero and account-creation jumps. Show 'this month +CHF X' instead of the snapshot count. The 1% stat could become a hover/detail."
+    },
+    {
+     "name": "Allocation donut",
+     "whatItDoes": "A donut with one slice per individual account, colored by category, with a legend of % per slice. It also adds annualized subscription cost as a red 'Subs/yr' slice in the same pie.",
+     "manualInputs": "None",
+     "frictionScore": 0,
+     "valueReturned": "Where the money sits. Putting a yearly expense into an asset allocation pie distorts every percentage. With 1-3 accounts it is mostly a big ring for a few numbers.",
+     "valueScore": 2,
+     "suggestedVerdict": "hide-behind-detail",
+     "dataKeys": "Reads nw:* and 'subs'",
+     "overlapsWith": "Per-category totals on the account cards, headline breakdown line",
+     "automationPotential": "Fully derived already. A single horizontal stacked bar under the headline would show the same thing in about 30px instead of about 330px."
+    },
+    {
+     "name": "Recent activity log",
+     "whatItDoes": "Lists every add, edit and delete on asset accounts (including sub auto-deducts and order deductions) with a signed delta, category color and date. Capped at 50 and shown 3 rows at a time in a scroll box.",
+     "manualInputs": "None",
+     "frictionScore": 0,
+     "valueReturned": "An audit trail of the owner's own edits. Rarely something they would come back to look at.",
+     "valueScore": 1,
+     "suggestedVerdict": "hide-behind-detail",
+     "dataKeys": "'nw:activity' [{ts, cat, name, delta (CHF), kind: add|edit|delete}]",
+     "overlapsWith": "Net worth history chart",
+     "automationPotential": "Automatic. Keep it as a 'History' sheet behind the net worth number."
+    },
+    {
+     "name": "Asset accounts (Bank / Stocks-Investments / Crypto / Other)",
+     "whatItDoes": "Four cards, each with a name + amount quick-add row and a list of accounts. Tap a name to rename. Tap an amount to edit; it accepts a new total or '+500'/'-200' deltas. × deletes. Entry is in the display currency and stored as CHF.",
+     "manualInputs": "Setup: a name and an amount for each account. Ongoing: tap and re-type a balance every time it changes. Bank is weekly/monthly. Stocks and crypto change daily, and there is no price feed, so the figure goes stale unless re-typed constantly. Four separate add rows, about 1 screen of scroll, sit below the charts.",
+     "frictionScore": 3,
+     "valueReturned": "The backbone of the page: every other tab's '% of net worth' depends on it. It is only as accurate as the last manual update.",
+     "valueScore": 4,
+     "suggestedVerdict": "core",
+     "dataKeys": "'nw:bank', 'nw:stocks', 'nw:crypto', 'nw:other': each an array of {name, amount (CHF)}. Accounts are referenced by NAME from subs.fromAccount, incoming_orders.fromAccount and deductedFrom.name, so renaming breaks those links.",
+     "overlapsWith": "Savings goals 'current amount' (the same money typed twice)",
+     "automationPotential": "Crypto and stocks: store quantity plus ticker and price them through a small api/ proxy (for example CoinGecko or a quote API), so those balances update themselves. Bank: replace the four always-open add rows with one monthly 'Update balances' sheet listing every account with its last value prefilled (delta syntax kept) and a 'last updated 23 days ago' nudge on home. Keep a single 'add account' action hidden until needed."
+    },
+    {
+     "name": "Subscriptions (monthly burn)",
+     "whatItDoes": "A list of recurring charges. Each shows its monthly-equivalent cost (yearly /12, weekly ×4.345), the original billed currency and period, the next renewal ('in 3d', red flash at 5 days or less), the linked account pill, an auto-deduct pill, an edit button that opens an 8-field inline form, and delete with a confirm. The header shows monthly burn, about-yearly cost and the count.",
+     "manualInputs": "Once per subscription: name, amount, currency, period, renewal date, from-account, auto-deduct toggle, then Add. That is 7 inputs, all stacked full-width on a phone. After that, nearly zero maintenance, because renewal dates roll forward automatically.",
+     "frictionScore": 2,
+     "valueReturned": "Real insight for little ongoing effort: total monthly and yearly burn, and what is about to charge. This is the best value-to-effort feature on the page.",
+     "valueScore": 4,
+     "suggestedVerdict": "core",
+     "dataKeys": "'subs' [{name, amount (CHF), period: monthly|yearly|weekly, renewal 'YYYY-MM-DD', entered_amount, entered_currency, fromCat, fromAccount, autoDeduct, lastDeductedAt}]",
+     "overlapsWith": "Renewal ticker, the 'Subs/yr' donut slice, budget expenses (a sub charge is also spending)",
+     "automationPotential": "Make adding faster: name plus amount only, with the period defaulting to monthly, the renewal defaulting to today+1 period and currency/account in an 'advanced' fold. Common services could be suggested with typical prices. Send push reminders the day before renewal through the existing cron. Show monthly burn on home."
+    },
+    {
+     "name": "Subscription auto-deduct",
+     "whatItDoes": "Each time subs render, it checks every sub with autoDeduct on and a linked account. For each renewal date that has passed and not been deducted (tracked by lastDeductedAt), it subtracts the amount from that account, logs it to activity and rolls the renewal forward.",
+     "manualInputs": "Pick a from-account and flip the toggle, once per sub. A row pill toggles it later; if no account is linked it shows an alert.",
+     "frictionScore": 1,
+     "valueReturned": "Keeps the bank balance roughly right between manual updates. It runs only when finance.html is opened. It conflicts with re-typing the real bank balance: if the owner types the true balance and an auto-deduct then fires, the charge is counted twice.",
+     "valueScore": 2,
+     "suggestedVerdict": "hide-behind-detail",
+     "dataKeys": "'subs'.autoDeduct / lastDeductedAt / fromCat / fromAccount; writes nw:<cat> and nw:activity",
+     "overlapsWith": "Order 'Deduct from net worth', manual balance edits",
+     "automationPotential": "If bank balances move to a monthly 'update balances' routine, drop this or make it implicit. Either way, take the toggle pills off every row and the toggle off the add form."
+    },
+    {
+     "name": "Incoming orders",
+     "whatItDoes": "Logs purchases in transit. Cards are sorted by arrival date, with 'late / today / tomorrow / in Nd', a pill showing % of net worth (green under 5%, amber under 25%, red above), and a '− Deduct from net worth' chooser listing every account with 'not enough' warnings. After a deduction the % is frozen and Undo appears. × removes the card. The add card shows a live preview: 'CHF X from Revolut · 2.3% of your CHF Y net worth'.",
+     "manualInputs": "Per order: item name, cost, currency, from-account and arrival date, then Add (5 inputs, stacked on phone). Later: tap Deduct, pick an account (and confirm if funds are short), and tap × manually once it arrives. There is no 'arrived' state and no tracking number.",
+     "frictionScore": 3,
+     "valueReturned": "The '% of net worth' framing is a nice idea, but it describes money already spent. There is no delivery tracking, so the 'on the way' list is only as good as the owner's memory.",
+     "valueScore": 2,
+     "suggestedVerdict": "cut",
+     "dataKeys": "'incoming_orders' [{id, name, amount (CHF), entered_amount, entered_currency, fromCat, fromAccount, date, ts, deductedAt, pctAtDeduction, deductedFrom:{cat,name}}]",
+     "overlapsWith": "Budget 'Add expense' (both log one-off spending), wishlist (both show cost as % of NW), sub auto-deduct (both subtract from an account)",
+     "automationPotential": "Hard to automate without carrier APIs. If kept at all, fold it into a single 'spent' log, or show the % of net worth as a one-line hint when adding a goal or wishlist item."
+    },
+    {
+     "name": "Wishlist",
+     "whatItDoes": "A list of wanted items, sorted largest first. Each shows its cost, entered currency and date added, plus a bar showing % of net worth (green, amber or red). The hero card shows the wishlist total and that total as % of net worth. × removes an item with no confirm. A computed 'months to save' value (monthsToSave) is never displayed.",
+     "manualInputs": "Per item: name, cost, currency (3 inputs). After that, none.",
+     "frictionScore": 1,
+     "valueReturned": "A cost-vs-wealth sanity check ('the iPhone is 4.1% of what I own'). It tells the owner nothing about when they can afford it or whether they are progressing.",
+     "valueScore": 2,
+     "suggestedVerdict": "merge",
+     "dataKeys": "'wishlist' [{name, amount (CHF), ts, entered_amount, entered_currency}]",
+     "overlapsWith": "Savings goals (the wishlist empty-state text literally says 'Add anything you're saving for'), orders",
+     "automationPotential": "Merge with savings goals into one 'Goals' list. Progress comes from a linked account, or from net worth growth since the goal was created, instead of a typed 'current' amount. Show the unused monthsToSave as 'about N months at your current savings rate', using the monthly net worth snapshots."
+    },
+    {
+     "name": "Budget (monthly category budgets + expense log)",
+     "whatItDoes": "Shows this month only. Five default categories (Food, Going Out, Transport, Clothes, Other) plus custom ones, each with spent / budget, a progress bar (amber at 80% or more, red when over), 'X left' or 'X over', and every expense of the month itemized below with a × delete. A canvas bar chart shows spent vs a dashed budget outline per category, with a total row and '% of monthly budget used'. A floating + opens the Add Expense modal (amount, category, optional note, date defaulting to today). The 'Edit budgets' modal holds one number per category plus 'add custom category'. The currency is hard-coded to ₪ and never converted.",
+     "manualInputs": "Setup: 5+ budget numbers, once and then monthly if they change. Daily: every single purchase means tapping +, typing the amount, picking a category, optionally a note, and saving. That is 1-3 times a day, every day, or the numbers are wrong. It shows no previous months, even though 365 days of data are kept.",
+     "frictionScore": 5,
+     "valueReturned": "Only valuable if every expense is logged. One missed day makes the bars meaningless. It is fully disconnected from net worth, uses a different currency (₪ vs CHF) and does not reduce any account balance. This is exactly the 'duty' the owner describes.",
+     "valueScore": 2,
+     "suggestedVerdict": "automate",
+     "dataKeys": "'dashboard:budget:v1' {budgets:{food,goingOut,transport,clothes,other,<custom>: number}, spending:[{id:'s_<ts>', date:'YYYY-MM-DD', category, amount, note}] (pruned to 365 days), customCats:[...]}",
+     "overlapsWith": "Incoming orders, subscriptions (recurring spend is not counted here), savings goals",
+     "automationPotential": "Pick one:\n(a) An iOS Shortcuts 'Transaction' (Wallet/Apple Pay) automation that POSTs amount and merchant to a new api/ endpoint, the same bridge pattern as api/steps.js. Spending then logs itself and the page just shows 'spent this month vs budget'.\n(b) Replace the expense log with one 'spent this month' number, derived monthly from the drop in bank balance minus subscriptions.\n(c) Cut it.\nIf manual entry stays, make it a 1-screen keypad with category chips (2 taps plus the amount)."
+    },
+    {
+     "name": "Savings goals",
+     "whatItDoes": "Goal cards with an emoji icon, name, %, colored progress bar, 'current / target', 'N days left' or 'overdue', and 'X to go' or 'Goal reached'. Tapping a card opens an edit modal: icon, name, target, current, deadline, plus an empty color-picker container (savColorPicker is never populated; the color is auto-assigned). A free-text 'Currency symbol' box defaults to ₪ and is not tied to net worth currencies or FX.",
+     "manualInputs": "Per goal: icon, name, target, current and deadline (5 fields). Ongoing: every time money is set aside, open the goal and re-type 'current'. The figure is never linked to an actual account.",
+     "frictionScore": 3,
+     "valueReturned": "Progress bars are motivating, but 'current' is a hand-typed copy of money already tracked in the asset accounts. It goes stale and double-counts.",
+     "valueScore": 2,
+     "suggestedVerdict": "merge",
+     "dataKeys": "'dashboard:savings:v1' {goals:[{id:'g_<ts>', icon, name, target, current, deadline, color}], currency:'₪'}",
+     "overlapsWith": "Wishlist (same intent), asset accounts (current amount), budget",
+     "automationPotential": "Merge with the wishlist. Let a goal point at an account (for example a 'Savings' bank account), or allocate a share of net worth, so progress updates when balances update. Use the net worth currency and FX instead of a typed symbol."
+    },
+    {
+     "name": "Finance cross-device sync layer",
+     "whatItDoes": "Patches Storage.prototype getItem, setItem and removeItem so finance keys are mirrored into Supabase app_state '<uid>:finance'. Pushes are debounced to 500ms and merge with the cloud copy. It polls every 5s and on focus or visibility change, and calls location.reload() when remote data differs (skipped while an input is focused or a modal is open).",
+     "manualInputs": "None",
+     "frictionScore": 0,
+     "valueReturned": "Phone and PC show the same data. However, a background change can reload the page under the user every 5s poll.",
+     "valueScore": 3,
+     "suggestedVerdict": "core",
+     "dataKeys": "Synced set: 'dashboard:budget:v1', 'dashboard:savings:v1', 'subs', 'wishlist', 'incoming_orders', 'nw_currency', 'financeTicker', and every 'nw:*' key (nw:bank, nw:stocks, nw:crypto, nw:other, nw:history, nw:activity), plus '_pushAt'. Supabase row key '<uid>:finance'.",
+     "overlapsWith": "Per-page sync recipes on gym/health pages",
+     "automationPotential": "Keep it, and keep every key name when redesigning. Prefer re-rendering in place over location.reload() so a sync can't jolt the screen."
+    }
+   ]
+  }
+ ],
+ "crossCuttingObservations": "How much typing finance.html needs:\n- To set it up as designed: about 2 inputs per account (name and amount), 7 per subscription, 5+ budget numbers, and 5 fields per savings goal. A realistic setup with 5 accounts, 6 subs and 2 goals is about 70 inputs.\n- To keep it accurate:\n  - Re-type each account balance when it changes. Stocks and crypto drift daily with no price feed.\n  - Log every purchase in Budget: 1-3 times a day, about 4 taps plus a number each time.\n  - Re-type a goal's 'current' amount after every deposit.\n  - Run the 5-field add-and-deduct flow for every online order.\n- Done properly, that is roughly 10-25 manual number entries a week. Budget alone is about 70% of it. Subscriptions are the only section that is enter-once-and-forget.\n\n1) Finance is an island. topbar.js skips this page (isFinancePage): no global nav, no coach button, no skin/theme, so the page ignores the theme the owner picked. Home, summary, trends, coach and cron-reminders read no finance data at all; the only link in is a 📊 button in the home topbar. Every insight (net worth, monthly burn, next charge) shows up only when the owner opens Finance and taps the right one of 6 tabs. Putting one home tile ('Net worth CHF X, +Y this month · next charge: Spotify in 2d') plus push reminders before renewals would deliver most of the value with zero effort.\n\n2) Three currency systems that never meet:\n- Net worth, subs, orders and wishlist store CHF with live FX across CHF, USD, EUR and GBP.\n- Budget hard-codes ₪.\n- Savings uses a free-typed symbol, default ₪, with no conversion.\nThe owner seems to live in Israel (transport.html is Israel Railways) but net worth is CHF-based. Nothing can be summed or compared across tabs. A redesign needs one base currency, probably chosen in settings.\n\n3) Heavy overlap:\n- Outgoing money appears four ways: subscriptions, incoming orders, budget expenses and deducting from accounts. Only some of them touch net worth.\n- 'Money I want' appears twice: wishlist and savings goals.\n- 'Money I have' is typed twice: account balances and goal 'current'.\nThese collapse naturally into three things: Accounts (what I have), Recurring (what leaves automatically) and Goals (what I'm saving for).\n\n4) The history chart measures typing, not time. Snapshots are taken on every change and plotted by index, starting from CHF 0, so adding an account looks like 'growth'. Monthly, time-based snapshots would turn it into a real trend plus a 'this month' delta.\n\n5) Automation paths that fit the existing stack (the api/ serverless pattern):\n- Crypto and stock prices through a proxy endpoint: quantity × price makes those balances self-updating.\n- An iOS Shortcuts Wallet 'Transaction' automation POSTing to a new api/ endpoint, mirroring api/steps.js, could log spending with no typing.\n- api/cron-reminders.js could send 'Netflix renews tomorrow' pushes. Note that NTFY_TOPIC is not set on Vercel yet, which would block those pushes.\n- A monthly 'update balances' prompt replaces always-visible add forms.\n\n6) Design: the visual voice is fragmented. There is a mono 'terminal' eyebrow style, emoji icons everywhere, a ⚡ on every title, invisible card borders, and a different card style per tab: gradient subs, 'premium' wishlist hero, category-colored orders, canvas budget bars, left-border savings cards. Add forms take more room on screen than the information does. One consistent card system with a clear big-number hierarchy, color used for meaning (up/down, due-soon), and forms moved into bottom sheets would make it feel lighter and more 'eye-pulling'.\n\n7) Cleanup and safety for a redesign:\n- Dead code and dead UI: the savColorPicker container is never filled, monthsToSave is computed but never shown, _prevRenderAll and the .section-reorder CSS are unused, and the add buttons are wired three ways for 'bulletproofing'.\n- The ticker re-renders every 1.5s forever, and sync polls every 5s with a full page reload when data changes.\n- Wishlist delete has no confirm while subs delete does.\n- Accounts are linked to subs and orders by NAME, so renaming an account silently breaks auto-deduct and the deduction records.\n- Preserve these keys and shapes: nw:bank, nw:stocks, nw:crypto, nw:other ([{name, amount CHF}]), nw:history, nw:activity, nw_currency, subs, incoming_orders, wishlist, dashboard:budget:v1, dashboard:savings:v1, finance_active_tab (local only). Also the Supabase row '<uid>:finance'.\n\nRecommended direction for this page:\n- One scrolling screen, no tabs.\n- Top: the net worth number with a monthly sparkline.\n- Middle: 'Coming up', the next 3 subscription charges plus monthly burn.\n- Bottom: Goals, the wishlist and savings merged, with progress derived from accounts.\n- Account balances, history, allocation and activity sit behind a tap.\n- Cut Orders.\n- Cut Budget, or automate it through Wallet transactions.\n- Surface the headline numbers on home."
+}

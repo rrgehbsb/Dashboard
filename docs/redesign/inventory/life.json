@@ -1,0 +1,310 @@
+{
+ "pages": [
+  {
+   "file": "C:/Users/tomay/Desktop/Dashboard/dashboard/habits.html",
+   "purpose": "Daily habit checklist with streaks. Each habit is simple (done/not done) or counted (e.g. 30 of 120 minutes). Below the list it shows the same completion history three ways: a week strip, a month calendar, and an 84-day grid per habit.",
+   "sizeKB": 54,
+   "screensOfScrollOnPhone": "About 2–2.5 screens with 5 habits and about 3 with 8. Only the first screen (week strip plus today's list) is what you need each day; everything below it is stats.",
+   "designNotes": "This is the most modern and best-looking page in my slice. Colour shows state: an undone row is a dark card faintly tinted with the habit's colour, and a done row fills solid with it. Counted habits fill like a progress bar. Perfect days in the week strip are joined by a line, which is a nice idea. Tapping a counted habit opens a bottom sheet with a big ring and −/+ buttons, which is also well made. What weakens it: (1) the old mono uppercase '≡ TODAY / ≡ RECORDS / ≡ HISTORY' section labels used across the app; (2) every row carries a faint ✎ pencil at 0.35 opacity plus the 🔥 count plus the circle button, so rows are busy; (3) history is shown three times over (week strip, month calendar, 84-day per-habit grids of 10px cells, too small to tap reliably on a phone and needing a sideways scroll), plus 4 stat tiles. The page is about 60% looking back and 40% doing today. (4) Grouping by time of day adds a header with a ⌃ collapse control even when a group has one habit. Nothing on the page reacts to the current time; the Morning group still shows at 22:00.",
+   "features": [
+    {
+     "name": "Week strip",
+     "whatItDoes": "7 day dots (last 6 days plus today). Each dot is a conic ring filled by how much of that day's habits were done (partial progress counts). A full day is a solid dot, consecutive full days are joined by a line, and today is outlined.",
+     "manualInputs": "none",
+     "frictionScore": 0,
+     "valueReturned": "Shows in about half a second whether this week is going well. It is the most eye-catching thing on the page and needs no input.",
+     "valueScore": 3,
+     "suggestedVerdict": "core",
+     "dataKeys": "reads habits:log, habits:list (app_state row <uid>:habits; local mirror dashboard:sync:habits:v1)",
+     "overlapsWith": "Month calendar and the 84-day History grid on the same page, and the 'Records → Current streak' tile",
+     "automationPotential": "Already automatic. It could move to the home page as the single habit widget."
+    },
+    {
+     "name": "Today list grouped by time of day",
+     "whatItDoes": "One coloured row per habit, grouped under Morning / Afternoon / Evening / Night / Anytime. Tapping a simple habit toggles it done. Tapping a counted habit opens the detail sheet. Each group header shows done/total and collapses on tap.",
+     "manualInputs": "1 tap per simple habit per day (N taps daily). Counted habits need the sheet flow (see below). Collapsing groups is optional.",
+     "frictionScore": 2,
+     "valueReturned": "A satisfying check-off and a streak count. Everything is self-reported, so the page only knows what you tell it every day. That is the 'duty' feeling the owner describes.",
+     "valueScore": 3,
+     "suggestedVerdict": "core",
+     "dataKeys": "habits:list [{id,name,icon,color,when,at,target,unit}], habits:log {YYYY-MM-DD:{habitId:true|number}}; collapsed groups in localStorage 'habits:collapsed' (device-only)",
+     "overlapsWith": "index.html coach card ('3/5 habits done') and the daily score on home both recompute from the same log. Default 'Sleep' overlaps Health's sleep tracking; 'Study' overlaps School's (dead) Pomodoro; onboarding preset 'Walk 30 min' overlaps Health's Steps.",
+     "automationPotential": "High. Walk/steps habits could be auto-ticked from /api/steps (the iOS Shortcut already pushes steps). 'No phone in bed' and 'Read' (Kindle/Books open) could be ticked from /api/usage app open/close pings. Sleep and Wake-on-time could come from Health sleep entries. Study could come from a focus timer. The list could also show only the current time slot's habits by default instead of every group."
+    },
+    {
+     "name": "Streak badge per habit (🔥 N)",
+     "whatItDoes": "Consecutive days the habit hit its target, counting back from today (up to 365).",
+     "manualInputs": "none",
+     "frictionScore": 0,
+     "valueReturned": "A small motivation hook.",
+     "valueScore": 3,
+     "suggestedVerdict": "core",
+     "dataKeys": "derived from habits:log",
+     "overlapsWith": "Records 'Current streak' tile (which just takes the max of these) and the streak shown in the detail sheet"
+    },
+    {
+     "name": "Counted-habit detail sheet",
+     "whatItDoes": "A bottom sheet with a big progress ring, the current value and unit, −/+ step buttons (step is 1, 5 or 10 depending on the target size), Reset, and Complete (sets the value to the target and closes).",
+     "manualInputs": "Daily per counted habit: open the sheet, tap + several times (e.g. 120 min with step 10 = 12 taps) or tap Complete, then close.",
+     "frictionScore": 3,
+     "valueReturned": "Partial progress is visible. But typing in minutes or pages by hand is exactly the 'add a lot of numbers' chore the owner complained about.",
+     "valueScore": 2,
+     "suggestedVerdict": "automate",
+     "dataKeys": "writes numeric values into habits:log[date][habitId]",
+     "overlapsWith": "Health water counter (the code comments say Water was already removed as a habit for this reason)",
+     "automationPotential": "Minutes could come from a focus timer, steps from /api/steps, screen-free time from /api/usage. If it stays manual, a single 'Done' tap is enough; drop the stepper."
+    },
+    {
+     "name": "New / Edit habit modal",
+     "whatItDoes": "One modal for both creating and editing: emoji, name, a When chip (5 slots) OR an exact time, Goal (target number) and unit, a choice of 12 colours, and Delete.",
+     "manualInputs": "Once per habit (about 6 fields). The exact 'at' time changes nothing except which group the habit sorts into; no reminder is wired to it (api/cron-reminders.js has no habit logic).",
+     "frictionScore": 2,
+     "valueReturned": "Setup only. The exact-time field looks like a reminder but isn't one.",
+     "valueScore": 2,
+     "suggestedVerdict": "hide-behind-detail",
+     "dataKeys": "writes habits:list",
+     "overlapsWith": "onboarding.html seedHabits() (8 STARTER_HABITS presets written straight into habits:list)",
+     "automationPotential": "Colour could be auto-assigned (nextColor() already does this) and the When slot inferred from the name. The 'at' field could either drive a push reminder through cron-reminders or be removed."
+    },
+    {
+     "name": "XP on completion",
+     "whatItDoes": "The first time a habit reaches its target on a day, it calls window.dashAddXpDaily(15, 'Completed a habit 🔥').",
+     "manualInputs": "none (side effect)",
+     "frictionScore": 0,
+     "valueReturned": "Gamification points that live elsewhere; nothing on this page shows them.",
+     "valueScore": 1,
+     "suggestedVerdict": "cut",
+     "dataKeys": "XP store via topbar.js",
+     "overlapsWith": "XP calls in food, gym, health, index goals and mood"
+    },
+    {
+     "name": "Records tiles (4)",
+     "whatItDoes": "Current streak (best across habits), Best streak (last 365 days), Completed · 30d (count), Success rate (done ÷ habits × 30 days).",
+     "manualInputs": "none",
+     "frictionScore": 0,
+     "valueReturned": "Low. Two of the four tiles describe the same 30-day number. The success rate also counts days before a habit existed, so a newly added habit drags the rate down, which can feel discouraging.",
+     "valueScore": 2,
+     "suggestedVerdict": "merge",
+     "dataKeys": "derived from habits:log, habits:list",
+     "overlapsWith": "Week strip, streak badges, trends.html 'habits lift your mood' insight, summary.html habitsPct"
+    },
+    {
+     "name": "Month calendar",
+     "whatItDoes": "A month grid with ‹ › navigation. Each day is a progress ring; perfect days are filled and joined within a row.",
+     "manualInputs": "Optional ‹ › taps (read-only, no editing)",
+     "frictionScore": 0,
+     "valueReturned": "A nice-looking month overview, but it is the week strip again at a larger scale.",
+     "valueScore": 2,
+     "suggestedVerdict": "hide-behind-detail",
+     "dataKeys": "derived from habits:log",
+     "overlapsWith": "Week strip and History grid"
+    },
+    {
+     "name": "History: 84-day grid per habit",
+     "whatItDoes": "A GitHub-style row of 84 tiny cells per habit in the habit's colour. It auto-scrolls to today, and tapping a cell toggles that day, which is the only way to backfill missed days.",
+     "manualInputs": "Occasional taps to backfill past days on 10px targets with a sideways scroll",
+     "frictionScore": 2,
+     "valueReturned": "Backfilling is genuinely useful (forgot to log yesterday), but this is a fiddly place to do it. A bug: it treats any truthy value as done, so a counted habit at 5/120 shows as a full cell here but as partial everywhere else.",
+     "valueScore": 2,
+     "suggestedVerdict": "merge",
+     "dataKeys": "reads/writes habits:log",
+     "overlapsWith": "Month calendar and week strip",
+     "automationPotential": "Move backfill into the per-habit detail sheet (tap a day in that habit's own mini-calendar). Drop the page-level grid."
+    },
+    {
+     "name": "Default habits (Study, Sleep, Read)",
+     "whatItDoes": "Shown when habits:list was never saved",
+     "manualInputs": "none until the user edits",
+     "frictionScore": 1,
+     "valueReturned": "Starter content, but Sleep is already tracked on Health, so it is double logging",
+     "valueScore": 1,
+     "suggestedVerdict": "automate",
+     "dataKeys": "DEFAULT_HABITS constant (not persisted until edited)",
+     "overlapsWith": "Health sleep; School Pomodoro (Study)",
+     "automationPotential": "Derive Sleep from Health and Study from a focus timer, or ship with no defaults."
+    }
+   ]
+  },
+  {
+   "file": "C:/Users/tomay/Desktop/Dashboard/dashboard/school.html",
+   "purpose": "School 'command center' for assignments, tests/exams, grades with weighted averages, subject management, and a Pomodoro study timer. The Pomodoro has no code behind it and does not work.",
+   "sizeKB": 82,
+   "screensOfScrollOnPhone": "About 4–5 screens. It opens on a header card, then 5 stat chips wrapping to 2 rows. Next comes the dead Pomodoro block, roughly one full phone screen on its own: an empty 140×160 plant box, a 25:00 clock, buttons, a week-bars card and a today list. Below that come Today's Focus, Assignments, Tests and Grades. Last, the Subjects manager is open by default with 26 subject chips.",
+   "designNotes": "This is the oldest and most dated of the three pages: dashboard chrome from roughly 2024 in a 'SCHOOL / COMMAND CENTER' style, mono uppercase micro-labels (9–11px), and dim grey on black. Rows are chip soup. An assignment row shows subject chip + title + type badge + due label + priority dot + status badge + ✎, which is 7 elements that wrap to 2–3 lines on a phone. A test row shows subject chip + name + date + 5 stars + study-status badge + importance chip + ✎. The forms are full-screen on phones and long: Assignment has 8 fields, Test has 10, Grade has 8. That makes 26 inputs just to keep this page fed, which matches 'add a lot of numbers'. The broken Pomodoro sits in the second-most-valuable spot on the page, so the first impression is an empty widget whose buttons do nothing. The most useful content, Today's Focus, only appears after about 1.5 screens. The 5 stat chips, the header summary sentence and Today's Focus all repeat the same 'what's due' information. There is no inline 'done' checkbox (a .sc-inline-done-btn style exists but is never used), so finishing homework takes 4 interactions.",
+   "features": [
+    {
+     "name": "Header card + summary sentence",
+     "whatItDoes": "'School / COMMAND CENTER', today's date, and a generated line such as '2 overdue · 1 due today · 1 test this week · 6 grades tracked' or 'All caught up!'",
+     "manualInputs": "none",
+     "frictionScore": 0,
+     "valueReturned": "The single most useful line on the page, but it sits inside a large card",
+     "valueScore": 3,
+     "suggestedVerdict": "core",
+     "dataKeys": "reads dashboard:school:v1:assignments, :tests, :grades",
+     "overlapsWith": "Stats row, Today's Focus, the home dmSchool mini card, home 'Do This Now'",
+     "automationPotential": "Already automatic. It could become the only school line on the home page."
+    },
+    {
+     "name": "Stats row (5 chips)",
+     "whatItDoes": "Due Today, Due Soon (7d), Tests This Week, Done Today, Avg (overall grade %, prefixed ~ when only some subjects are weighted)",
+     "manualInputs": "none",
+     "frictionScore": 0,
+     "valueReturned": "Mostly a restatement of the summary sentence and focus list. 'Done Today' only counts if you changed a status today through the modal. 'Avg' is the one number that isn't shown elsewhere.",
+     "valueScore": 2,
+     "suggestedVerdict": "merge",
+     "dataKeys": "derived from assignments/tests/grades",
+     "overlapsWith": "Header summary, Today's Focus, Grades accordion"
+    },
+    {
+     "name": "Pomodoro timer + study log (BROKEN)",
+     "whatItDoes": "HTML and CSS only. It shows a plant-growth area with rarity tiers, a 25:00 arc clock, a Focus/Break label, a 'Studying:' subject select, Start/Pause/Reset/Skip Break buttons, 'THIS WEEK' bars, a 'TODAY'S STUDY' list and a 'Total today' row. No JavaScript in the repo defines pomoStart/pomoPause/pomoReset/pomoSkip or renders the plant, select or bars. Tapping Start throws a ReferenceError and nothing happens.",
+     "manualInputs": "Taps that do nothing",
+     "frictionScore": 3,
+     "valueReturned": "None. Taking up a whole screen with a non-working widget actively hurts trust in the app.",
+     "valueScore": 0,
+     "suggestedVerdict": "cut",
+     "dataKeys": "Legacy 'dashboard:pomodoro:v1' {log:[...]} may still exist inside the <uid>:school cloud row (summary.html line 516 reads it). The current school sync only syncs keys starting 'dashboard:school:v1:', so it is no longer written. Preserve it if you rebuild.",
+     "overlapsWith": "habits.html 'Study' habit (counted minutes), summary.html study stats",
+     "automationPotential": "If rebuilt, it should be a single 'Start focus' button. Finished sessions would auto-log minutes into the Study habit and the subject's study time, so the owner never types study minutes."
+    },
+    {
+     "name": "Today's Focus",
+     "whatItDoes": "Up to 5 items sorted by urgency: overdue assignments, those due today/tomorrow/within 7d, and tests within 7d, each with a coloured urgency pill",
+     "manualInputs": "none (depends on assignments/tests being entered)",
+     "frictionScore": 0,
+     "valueReturned": "Real 'what do I do now' guidance, the best thing on the page. It is read-only, though; you can't tap an item to complete or open it.",
+     "valueScore": 4,
+     "suggestedVerdict": "core",
+     "dataKeys": "derived from dashboard:school:v1:assignments, :tests",
+     "overlapsWith": "home 'Do This Now' (index.html updateDoNow) and the home dmSchool card, which compute nearly the same thing",
+     "automationPotential": "Already automatic. It could be the home page's school widget, with tap-to-complete added."
+    },
+    {
+     "name": "Assignments list + filters",
+     "whatItDoes": "All assignments sorted by computed priority, then due date. A subject dropdown filter and All/Active/Done buttons; the default is 'All', so completed work stays in the list forever. Each row has 7 elements, and ✎ opens the edit modal.",
+     "manualInputs": "Add (per assignment, several times a week): + Add Assignment → full-screen modal → Subject select (26 options), Title, Type (11 options), Due date, Priority, Status, Est. minutes, Notes → Save. Mark done: ✎ → change Status select → Save (no inline checkbox).",
+     "frictionScore": 4,
+     "valueReturned": "Due-date tracking is genuinely useful. Est. minutes and Notes are saved but never shown anywhere. Type is just a label. Priority defaults to Auto anyway.",
+     "valueScore": 3,
+     "suggestedVerdict": "core",
+     "dataKeys": "dashboard:school:v1:assignments [{id,subjectId,title,type,dueDate,priority,status,estimatedMin,notes,createdAt,updatedAt,completedAt}] in app_state row <uid>:school",
+     "overlapsWith": "projects.html tasks, home daily goals (goals:<date>), home reminders with a manual 'school' category, Today's Focus",
+     "automationPotential": "Make it a one-line quick add ('math hw fri'): parse the date, and infer the subject from keywords or the last-used subject. Priority is already auto. Add tap-to-complete, auto-hide done items after a day, and auto push reminders for due-tomorrow items via cron-reminders, so they don't need typing as separate reminders."
+    },
+    {
+     "name": "Tests & Exams list",
+     "whatItDoes": "All tests sorted by date (past ones stay as 'Past (date)'). Each row shows confidence stars, a study-status badge and an importance chip. ✎ opens the modal.",
+     "manualInputs": "Per test: 10-field full-screen modal (Subject, Name, Date, Topics, Study status of 5, Confidence 1–5 stars, Importance, Grade after test, Grade weight, Notes). Keeping status and confidence current means reopening the modal repeatedly.",
+     "frictionScore": 4,
+     "valueReturned": "Knowing test dates is high value. The rest is upkeep: 'Grade after test' and 'Grade weight' are stored on the test but never displayed and never feed the Grades average, so you'd enter the grade twice. Topics and notes are never shown in the list.",
+     "valueScore": 3,
+     "suggestedVerdict": "merge",
+     "dataKeys": "dashboard:school:v1:tests [{id,subjectId,name,testDate,topics,studyStatus,confidence,importance,grade,gradeWeight,notes,createdAt,updatedAt}]",
+     "overlapsWith": "Grades section (test grade entered twice), Assignments (a test is just a dated item), Today's Focus",
+     "automationPotential": "Merge into one 'Upcoming' list with assignments, with just name + date + subject. Show a countdown automatically. When the date passes, prompt once for the score, which becomes a Grade entry. Send automatic reminder pushes at 3 days and 1 day before."
+    },
+    {
+     "name": "Grades accordion",
+     "whatItDoes": "One row per subject that has grades, showing weighted (or unweighted) average and count. Tap to expand and list each entry (score/max, %, weight) with ✎.",
+     "manualInputs": "Per grade (a few times a month): 8-field modal (Subject, Name, Type of 8, Score, Out of, Date, Weight, Notes)",
+     "frictionScore": 3,
+     "valueReturned": "Per-subject averages and the overall average are real information the owner can't easily get elsewhere",
+     "valueScore": 3,
+     "suggestedVerdict": "hide-behind-detail",
+     "dataKeys": "dashboard:school:v1:grades [{id,subjectId,name,type,gradeValue,maxGrade,date,weight,notes,createdAt,updatedAt}]",
+     "overlapsWith": "Stats 'Avg' chip, test 'Grade after test' field",
+     "automationPotential": "Pre-fill a grade from a just-passed test. Default Out of to 100 and Date to today (already done). Drop the Type and Notes fields."
+    },
+    {
+     "name": "Subjects manager",
+     "whatItDoes": "A collapsible panel, open by default, listing 26 seeded subjects (Math…Bible, Civics, Robotics, Theater, Homeroom, Other) as chips with ✎ and ×. It also has + Add Subject (name and 12 colours) and 'Restore all defaults'.",
+     "manualInputs": "Setup only (rename, recolour, delete unused subjects), but it is visible every visit",
+     "frictionScore": 1,
+     "valueReturned": "Almost none day-to-day. It mostly adds scroll and makes every Subject dropdown 26 items long.",
+     "valueScore": 1,
+     "suggestedVerdict": "hide-behind-detail",
+     "dataKeys": "dashboard:school:v1:subjects [{id,name,color,hidden}] (the 'hidden' flag exists but has no UI)",
+     "overlapsWith": "Settings page (natural home for setup)",
+     "automationPotential": "Start with no subjects and create one automatically the first time a name is typed in quick-add. Collapse by default, or move to Settings."
+    },
+    {
+     "name": "Delete confirm modal",
+     "whatItDoes": "A generic 'Are you sure? This cannot be undone' dialog for assignments, tests, grades and subjects",
+     "manualInputs": "1 extra tap per delete",
+     "frictionScore": 1,
+     "valueReturned": "Safety",
+     "valueScore": 2,
+     "suggestedVerdict": "core",
+     "dataKeys": "none",
+     "overlapsWith": "projects.html uses native confirm() for projects and no confirm at all for tasks",
+     "automationPotential": "Replace with an undo toast (faster, same safety)"
+    }
+   ]
+  },
+  {
+   "file": "C:/Users/tomay/Desktop/Dashboard/dashboard/projects.html",
+   "purpose": "A minimal Trello-style board: several projects, each with To Do / In Progress / Done columns of plain-text tasks",
+   "sizeKB": 30,
+   "screensOfScrollOnPhone": "About 1.5–2 screens with 10 tasks. On phones the 3 columns stack vertically, so 'Done' sits at the bottom and grows forever.",
+   "designNotes": "Clean but generic and lifeless. It has a gradient 'Projects' title, a sideways-scrolling pill switcher, a project header with emoji, and three stacked columns on a phone. Task cards are text plus tiny ← → ✕ buttons; moving a card is tap-arrow, not drag. Tasks carry no metadata (no due date, no link to School or Today), so the board never feeds anything back to the owner; it is a static list. A small sync-status dot in the corner is the only feedback. The visual language (gradient title, 3px dot texture) differs from both habits.html and school.html. It works and is cheap, but it gives no information back and doesn't pull anyone in.",
+   "features": [
+    {
+     "name": "Project switcher pills",
+     "whatItDoes": "Sideways pills for each project (the active one tinted with its colour) plus '+ New'",
+     "manualInputs": "1 tap to switch",
+     "frictionScore": 1,
+     "valueReturned": "Navigation only",
+     "valueScore": 2,
+     "suggestedVerdict": "merge",
+     "dataKeys": "projects:list (app_state row <uid>:projects; local mirror localStorage 'pj_db')",
+     "overlapsWith": "School subject filter as a similar 'bucket' concept"
+    },
+    {
+     "name": "New project modal / inline header edit",
+     "whatItDoes": "The modal asks for icon (emoji), name and 1 of 5 colours. In the header, ✎ switches to inline icon/name inputs plus ✓ and 'Delete Project' (native confirm()). The modal's 'edit' mode is never called (dead path).",
+     "manualInputs": "Once per project",
+     "frictionScore": 1,
+     "valueReturned": "Setup",
+     "valueScore": 1,
+     "suggestedVerdict": "hide-behind-detail",
+     "dataKeys": "projects:list[].{id,name,icon,color}",
+     "overlapsWith": "Two different edit UIs for the same fields"
+    },
+    {
+     "name": "Kanban board (To Do / In Progress / Done)",
+     "whatItDoes": "Per-column task cards with ← → to move between columns and ✕ to delete (no confirm, no undo). Each column has a quick-add input at its foot (type + Enter).",
+     "manualInputs": "Type each task, then 1–2 arrow taps per status change. Done tasks are never archived.",
+     "frictionScore": 2,
+     "valueReturned": "A place to dump to-dos, but nothing surfaces them elsewhere: no dates, no reminders, not on the home page. Out of sight, out of mind, so it adds a page without giving information back.",
+     "valueScore": 2,
+     "suggestedVerdict": "merge",
+     "dataKeys": "projects:list[].tasks [{id,text,status:'todo'|'inprogress'|'done'}]",
+     "overlapsWith": "Home daily goals (goals:<date>, including 'queued' goals that feed Do This Now), school assignments, home reminders",
+     "automationPotential": "Fold into one unified to-do / 'Next up' list with school assignments and home goals: an optional project tag instead of a separate page, In Progress dropped (todo/done is enough), done items auto-hidden."
+    },
+    {
+     "name": "Empty state",
+     "whatItDoes": "'No projects yet' with a Create button",
+     "manualInputs": "none",
+     "frictionScore": 0,
+     "valueReturned": "Onboarding",
+     "valueScore": 1,
+     "suggestedVerdict": "core",
+     "dataKeys": "none"
+    },
+    {
+     "name": "Sync dot + sync engine",
+     "whatItDoes": "A corner dot that pulses while syncing and turns red on error. Realtime channel plus 5s polling.",
+     "manualInputs": "none",
+     "frictionScore": 0,
+     "valueReturned": "Reassurance, but the engine breaks the owner's own sync rules: every push overwrites the whole cloud row with local _db (no cloud merge first, no getSession() before the push), and the first pull replaces local state wholesale, which can drop unpushed edits made offline",
+     "valueScore": 1,
+     "suggestedVerdict": "cut",
+     "dataKeys": "pj_db (local), <uid>:projects row",
+     "overlapsWith": "Every other page has its own copy of the sync code"
+    }
+   ]
+  }
+ ],
+ "crossCuttingObservations": "1) Three pages, three design languages, and none of them feels like 'my app'. habits.html is modern: colour fills the row when done, a bottom sheet, a progress ring. school.html is the old 'COMMAND CENTER' style: mono 9–11px uppercase labels and rows crowded with chips. projects.html is a generic gradient-title kanban. The shared tics (≡ mono section titles, dim grey on near-black #050506, dot-texture overlay) make everything look like an admin panel rather than something you want to open. If the redesign keeps one existing look, it should be the habits row (colour = state, one tap).\n\n2) Most of the friction is data entry, and school.html is the worst. Feeding it takes 26 form fields across 3 full-screen modals (Assignment 8, Test 10, Grade 8). Several of those fields are saved and never shown: assignment estimatedMin and notes, test topics, and test grade/gradeWeight. The test grade is not even fed into the Grades average, so the owner would enter it twice. Marking homework done takes ✎ → Status dropdown → Done → Save; there is no checkbox. This is literally the 'add a lot of numbers' complaint.\n\n3) Dead or misleading UI that damages trust:\n- The School Pomodoro (about one phone screen, second block on the page) has HTML and CSS but no JavaScript anywhere in the repo. Start/Pause/Reset/Skip call undefined functions, and the plant and subject select are empty.\n- The habit 'exact time' field is not connected to any reminder (api/cron-reminders.js has no habit or school logic).\n- projects.html has an unreachable modal 'edit' mode.\n- school.html has an unused .sc-inline-done-btn style.\n- The habits History grid marks partially-done counted habits as full.\n- The habits 'Success rate' counts days before a habit existed.\n\n4) The same information is shown many times:\n- School 'what's due' appears 5 times: header sentence, 5 stat chips, Today's Focus, plus index.html's dmSchool mini card and 'Do This Now'.\n- Habit history appears 4 ways: week strip, month calendar, 84-day grids, Records tiles.\n- To-dos live in 4 places: projects tasks, school assignments, home daily goals (goals:<date>), and home reminders with a manual 'school' category.\n\nA redesign can collapse these into one 'Today' surface: a habit strip with one tap each, a 'Next up' list combining assignments, tests and tasks with one-line quick add and tap-to-complete, and one school line. Grades, calendars and subject setup become drill-downs.\n\n5) Automation the repo can already support:\n- /api/steps (iOS Shortcut push) can auto-complete walk/steps habits.\n- /api/usage (app open/close pings) can auto-complete 'No phone in bed', 'Read' (Books/Kindle opened) or screen-limit habits.\n- Health sleep entries can auto-complete Sleep and Wake-on-time.\n- A working one-button focus timer could log Study minutes into the counted Study habit, removing the −/+ stepper chore.\n- cron-reminders could derive pushes from assignment due dates and test dates (needs NTFY_TOPIC set), so school reminders don't need typing.\n- The subject can be inferred from quick-add text, and new subjects created on first use instead of seeding 26.\n\n6) Data keys to preserve in any redesign:\n- Habits: app_state row '<uid>:habits' → 'habits:list' [{id,name,icon,color,when,at,target,unit}] and 'habits:log' {YYYY-MM-DD:{habitId:true|number}}; local mirror 'dashboard:sync:habits:v1'; device pref 'habits:collapsed'. Read by index.html (coach card and daily score, which count any truthy value as done), trends.html, summary.html, coach.html; onboarding.html seedHabits() writes it.\n- School: row '<uid>:school' → 'dashboard:school:v1:subjects', ':assignments', ':tests', ':grades', plus legacy 'dashboard:pomodoro:v1' (read by summary.html; not synced by the current school code, and school's keepalive flush() posts only _dbS with merge-duplicates, which likely replaces the whole data column and can drop it).\n- Projects: row '<uid>:projects' → 'projects:list' [{id,name,icon,color,tasks:[{id,text,status}]}]; local 'pj_db'.\n\n7) Likely bug, not yet checked in the live app: school.html replaces localStorage.getItem/setItem so that 'dashboard:school:v1:*' keys live only in an in-memory object (_dbS) and never reach real localStorage. index.html's dmSchool card and updateDoNow() read those keys straight from real localStorage. Unless something else writes them, the home page's school info would be stale or empty, which would explain School feeling invisible from the home page. Per the owner's rule, confirm this in the live app at phone and desktop widths before acting.\n\n8) Sync-recipe violations: projects.html overwrites the whole cloud row with no merge and no getSession() before pushing. School and habits keepalive flushes POST with the anon key as Bearer, which probably fails RLS silently. These matter if Projects is kept or merged.\n\n9) Where the content sits: on every page in this slice, what to do today sits on the first screen at best (habits) or after about 1.5 screens (school). Everything that looks back (stats, calendars, grids, grade lists, subject managers) fills the remaining 60–80% of the scroll. The owner's goals (give info, save time and space, be eye-catching) point to flipping that: today's actions and one smart sentence first, with history on demand."
+}

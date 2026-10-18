@@ -1,0 +1,368 @@
+{
+ "pages": [
+  {
+   "file": "index.html",
+   "purpose": "Home screen. It is meant to be the daily landing page: a 'Do this now' prompt, an awake-time ring, today's to-do list, and a collapsed 'More' panel holding the gem/XP card, rule-based coach, mood, mini stat tiles, Plan Tomorrow, Reminders and a Layout picker. topbar.js adds the top bar (Lv/XP, water + quick-add, finance, settings), the bottom nav, a floating buddy, a floating AI-coach button, a left-edge 'On this page' tab, and collapse/reorder arrows on every section header.",
+   "sizeKB": 134.8,
+   "screensOfScrollOnPhone": "I rendered it at 390x844 with Playwright and seeded data. Document height is 1238–1327px with More collapsed (about 1.6 screens) and 3143–3397px with More expanded (about 4 screens). Positions: Mood card at y≈1937 (about 2.3 screens down), Plan Tomorrow at y≈2416 (about 2.9), Reminders at y≈2849 (about 3.4). On the iPhone, add about 47px of top safe area to all of these. The usable area ends at y≈778, where the fixed bottom nav starts.",
+   "designNotes": "Above the fold (390x844, seeded with 3 goals): on the first open of the day an XP toast ('Daily check-in +20 XP' or 'Achievement: First Steps') covers the top bar for a few seconds. Below that, in order: a 41px 'My Dashboard' title that carries no information; the DO THIS NOW card (87–112px); and the day-ring card, which stacks vertically on a phone and takes 280–300px. That ring is the largest element on the screen and it only shows what share of your awake day has passed, i.e. a clock. Then come the To Do List header with ↑ ↓ ▾ controls and the '1 / 3 COMPLETE' header. The first goal row starts at about y≈770, under the bottom nav, so no goal can be checked without scrolling. The add-goal input is at y≈907 (empty) or y≈996 (3 goals), well below the fold. The floating buddy (y≈642) and 🧠 coach button (y≈712) sit on the right edge over the to-do card, exactly where each row's ⚡ button is. A purple left-edge 'On this page' tab (y≈389) overlaps the ring card. The bottom nav squeezes 10 tabs into 370px, about 37px each with 9px labels ('Transp…'). Visual language: near-black (#060608) background with a faint accent wash, and every card in the same translucent glass, so there is no hierarchy and nothing pulls the eye. Section titles are 9–10.5px uppercase monospace in low-contrast grey (#76746E), and the title uses gradient text. Three styles fight each other: terminal-like monospace eyebrows, glassmorphism, and cartoon/emoji gamification (star Lv badge, floating gem, buddy disc, 🧠 FAB, emoji nav). The old screenshots (screenshot_home.png, ss_home.png, Jun 9) show a wall of zeros: '0/0' water, 'No goals set for today', '0 DAY STREAK', '0 / 0 NO GOALS YET'. The only color is a pink ring glow, and the '✨ Polish' button runs off the right edge of the input row. What works and is worth keeping: the sunrise-to-dusk gradient on the ring stroke, the accent left border on Do Now, the dark base palette, and hiding tiles that have no data.",
+   "features": [
+    {
+     "name": "Top bar: water pill + one-tap '+' (topbar.js)",
+     "whatItDoes": "A sticky header with a version label, a ⭐ Lv/XP mini-bar, the water count (e.g. 0/0 or 0.0/2.5L) linking to health.html#water, a '+' that logs one drink, a 📊 finance shortcut and a ⚙️ settings link.",
+     "manualInputs": "1 tap on '+' per drink, several times a day. Nothing else is required.",
+     "frictionScore": 1,
+     "valueReturned": "The only true one-tap log on the home screen, with today's water progress always visible.",
+     "valueScore": 4,
+     "suggestedVerdict": "core",
+     "dataKeys": "po_water_v1 (logs, profile.weightKg, _mlV2, unit) in the health row; dashboard:xp:v1 / uid:xp",
+     "overlapsWith": "WATER mini tile (dmWater), the coach water line and gem 'shine' all repeat water. The Lv pill duplicates the Gem card and the buddy's Lv pip.",
+     "automationPotential": "The goal is already derived from body weight. The Lv/XP pill and version label could go, leaving room for a steps count from /api/steps."
+    },
+    {
+     "name": "XP / level system and toasts (topbar.js)",
+     "whatItDoes": "Awards XP for opening the app, checking goals (+10, +50 for clearing all), logging mood (+10) and so on. Shows a toast that covers the top bar, and a Lv badge with a progress bar. Streak freezes can be bought with XP.",
+     "manualInputs": "None directly. The toasts fire as a side effect.",
+     "frictionScore": 1,
+     "valueReturned": "Gamification only. Leveling up gives no information and saves no time, and the owner said the app felt like a duty, which points rewards are designed to create.",
+     "valueScore": 1,
+     "suggestedVerdict": "cut",
+     "dataKeys": "dashboard:xp:v1 (synced to uid:xp, max-merge)",
+     "overlapsWith": "Gem card, buddy Lv pip, topbar Lv pill, streak freeze",
+     "automationPotential": "n/a. If any motivation is kept, it should be a single subtle streak, not three level displays."
+    },
+    {
+     "name": "'My Dashboard' title",
+     "whatItDoes": "A static 31px gradient H1.",
+     "manualInputs": "none",
+     "frictionScore": 0,
+     "valueReturned": "Nothing. It takes about 57px of prime space above the fold.",
+     "valueScore": 0,
+     "suggestedVerdict": "cut",
+     "dataKeys": "none",
+     "overlapsWith": "",
+     "automationPotential": "Replace with a greeting plus date and a one-line auto status, e.g. 'Sun 18 Oct · 2 tasks · next train 15:42'."
+    },
+    {
+     "name": "DO THIS NOW hero card",
+     "whatItDoes": "A rule chain that picks one line in this order: overdue school assignment, assignment due today, test within 3 days, ⚡-queued goal, 'Eat X — first meal not logged' (after 10am), 'Log today's <split> workout' (after 2pm), 'Plan tomorrow before bed' (after 8pm), first pending goal, or 'No urgent items — keep the streak 🔥'. Display only, not tappable.",
+     "manualInputs": "none (derived)",
+     "frictionScore": 0,
+     "valueReturned": "In principle it is the best idea on the page: one next action. In practice it reads school data from localStorage, so after months away any old assignment that was never marked Done headlines forever as '<title> — overdue!'. My seeded render showed 'History essay — overdue!' from a June due date. Half its rules are reminders to log data, so it nags instead of informing. It also can't be tapped to act.",
+     "valueScore": 3,
+     "suggestedVerdict": "automate",
+     "dataKeys": "reads dashboard:school:v1:assignments, dashboard:school:v1:tests, goals:<today>, dashboard:mealPrep:v1:template/daily, dashboard:gym:v1:logs/activeDay/template, goals:<tomorrow>",
+     "overlapsWith": "Duplicates the first to-do row and the Coach card's '<n> goals left'.",
+     "automationPotential": "Keep it as the one smart line, but ignore items overdue by more than ~7 days, drop the 'go log X' rules, make it tappable (check off or open), and feed it from cloud rows instead of per-device localStorage. It could also show the next train (/api/train-times) or the next test."
+    },
+    {
+     "name": "Day ring (awake-time %) + schedule modal",
+     "whatItDoes": "A 168px SVG ring showing the share of the awake day elapsed (wake to bedtime), with a phase label (MORNING/MIDDAY/…), clock, a generic motivational line ('Afternoon — push it'), hours left, the wake/sleep range and a 'x/y goals today' line. A ⚙ button opens a wake/bedtime time picker.",
+     "manualInputs": "Set wake and sleep times once in the ⚙ modal.",
+     "frictionScore": 0.5,
+     "valueReturned": "Very little. It is a clock with a percentage, yet it takes about 300px, the largest block above the fold. The goal count is the only personal data on it and repeats the to-do header.",
+     "valueScore": 1,
+     "suggestedVerdict": "cut",
+     "dataKeys": "day_schedule {wake,sleep} (synced, uid:dashboard)",
+     "overlapsWith": "Goal count is repeated in the to-do header, Coach and gem shine. The clock is already in the phone status bar.",
+     "automationPotential": "If it stays at all, make it a thin 4px day-progress line under the header. Wake time could be inferred from sleep data or the first steps or usage event."
+    },
+    {
+     "name": "Goal streak chip",
+     "whatItDoes": "'⚡ N day streak' pinned on the ring card, shown only when N>0. Counts consecutive days with every goal done, and a streak freeze can absorb a miss.",
+     "manualInputs": "none (derived from goals)",
+     "frictionScore": 0,
+     "valueReturned": "Probably always 0, and so hidden. From reading the source (not verified in the live app): runRollover() deletes every past goals:<date> key on load before runStreakCheck() reads those keys, so the streak never increments. The old screenshots show '0 DAY STREAK'.",
+     "valueScore": 0.5,
+     "suggestedVerdict": "merge",
+     "dataKeys": "goal_streak_v1 {count,lastProcessedDate,frozen[]} (synced)",
+     "overlapsWith": "Coach streak line, XP streak freezes",
+     "automationPotential": "Compute it from a kept goal history (store a daily done/total summary before rollover) or from any-activity days. Show it as one small number in the header."
+    },
+    {
+     "name": "To-do list (today)",
+     "whatItDoes": "Today's goals with a segmented progress bar and an 'x / y complete' counter. Per row: an invisible drag handle, a checkbox, tap-to-edit text, a ⚡ 'queue' toggle that pins the row first and feeds Do Now, and an × delete that is invisible on a phone (opacity 0, shown only on hover). Shows 5 rows, then 'Show N more'. Also has a 'Push remaining to tomorrow' button with a confirm() dialog, a 'N tasks not finished yesterday' notice, and an automatic midnight rollover that carries unfinished goals forward.",
+     "manualInputs": "Typing each goal: about 1 scroll, tap the field, type, tap Add. 1 tap per check-off, but the first row starts at y≈770 under the nav, so even checking a goal usually needs a scroll first.",
+     "frictionScore": 3,
+     "valueReturned": "This is the one genuinely useful daily tool on the page.",
+     "valueScore": 4,
+     "suggestedVerdict": "core",
+     "dataKeys": "goals:YYYY-MM-DD → [{text,done,doneAt,undoneAt,queued,carriedFrom}] (synced in uid:dashboard row; local mirror dashboard:sync:v1)",
+     "overlapsWith": "Plan Tomorrow (a second copy of the same list UI), Do Now, ring goal count, Coach goals line",
+     "automationPotential": "Put the input at the top of the card and move the list above the fold. Make delete a swipe or visible button. Keep a daily done/total history before rollover. Also likely bug from source (unverified): doPush merges the cloud row into local data, so past-day keys deleted by rollover come back from the cloud and are re-processed on the next load. A carried task that was deleted or pushed to tomorrow could keep reappearing ('zombie' tasks)."
+    },
+    {
+     "name": "✨ Polish (AI rewording) buttons",
+     "whatItDoes": "Meant to send the typed goal to Claude to rewrite it as an action item.",
+     "manualInputs": "1 tap after typing",
+     "frictionScore": 1,
+     "valueReturned": "None. ANTHROPIC_API_KEY is hard-coded to '' (index.html line 1225), so every tap just adds the text as typed and shows 'Polish needs an Anthropic API key'. It is a dead button on the primary input, on both the today and tomorrow inputs.",
+     "valueScore": 0,
+     "suggestedVerdict": "cut",
+     "dataKeys": "none",
+     "overlapsWith": "AI coach (api/coach.js already has the Anthropic key server-side)",
+     "automationPotential": "If wanted, route it through /api/coach. Otherwise remove it."
+    },
+    {
+     "name": "'More' fold toggle",
+     "whatItDoes": "A dashed 'MORE ⌄' button that reveals everything below the to-do list. It resets to collapsed on every page load.",
+     "manualInputs": "1 tap on every visit to reach mood, tiles, tomorrow and reminders.",
+     "frictionScore": 2,
+     "valueReturned": "It hides clutter, but the hidden things include the glanceable info the owner wants (tiles, coach) and the fastest log (mood).",
+     "valueScore": 1,
+     "suggestedVerdict": "cut",
+     "dataKeys": "none (not persisted)",
+     "overlapsWith": "Structure picker, section collapse arrows, secnav tab: all are ways of hiding or rearranging the same clutter",
+     "automationPotential": "Fix the content instead: keep only about 4 blocks on home and send the rest to detail pages."
+    },
+    {
+     "name": "Your Gem card + gem modal",
+     "whatItDoes": "An animated floating SVG gem tied to XP level (Quartz → Diamond across 7 tiers). It 'shines' by today's activity percentage and opens a collection modal.",
+     "manualInputs": "none",
+     "frictionScore": 0,
+     "valueReturned": "Decoration. It is the third view of the same XP level.",
+     "valueScore": 0.5,
+     "suggestedVerdict": "cut",
+     "dataKeys": "reads dashboard:xp:v1, goals:<today>, dashboard:sync:habits:v1, dashboard:sync:health:v1 (po_water_v1), dashboard:mood:v1",
+     "overlapsWith": "Topbar Lv pill, buddy Lv pip, XP modal",
+     "automationPotential": "n/a"
+    },
+    {
+     "name": "Coach card (rule-based insights)",
+     "whatItDoes": "Up to 4 auto lines ranked by priority: goals left, streak, 'No mood logged today', water status, weight change, habits x/y, today's split or rest day, and gym sessions this week. The headline says 'A few things worth a look' or 'You're on top of it'.",
+     "manualInputs": "none",
+     "frictionScore": 0,
+     "valueReturned": "Medium, and this is the kind of thing the owner asked for ('track and give info'). But most lines are reminders to log ('No water tracked — start logging…', 'No mood logged today — two seconds…'). The weight line never fires: it reads health['dashboard:weight:v1'] as an array, but that is an {entries} object and weights have moved to po_coach_weights. Health and habits data come from per-device localStorage mirrors that only refresh when those pages are opened on this device. It sits about 1.3 screens down inside More.",
+     "valueScore": 2.5,
+     "suggestedVerdict": "merge",
+     "dataKeys": "reads goals:<today>, goal_streak_v1, dashboard:mood:v1, dashboard:sync:health:v1 (po_water_v1, dashboard:weight:v1), dashboard:sync:habits:v1 (habits:list, habits:log), po_coach_v1 (splitRotation, splitAnchor, logs)",
+     "overlapsWith": "Do Now, buddy chat, 🧠 AI coach FAB, trends insights, mini tiles",
+     "automationPotential": "Merge with Do Now and the trends insights into a single 'Today' insight line or strip at the top. Replace 'please log' lines with facts (steps from /api/steps, screen time from /api/usage, gym split, next train). Read all uid:% rows in one query, as trends.html does."
+    },
+    {
+     "name": "Mood tracker",
+     "whatItDoes": "Five emoji buttons (Rough to Great); tapping the same one again clears it. An optional note textarea autosaves after 2s, plus 7-day colored dots with tooltips and a 14-day canvas line chart.",
+     "manualInputs": "Daily: tap More, scroll about 2 screens past the Gem and Coach cards, tap an emoji (2 taps + about 2 scrolls). The note is optional.",
+     "frictionScore": 3,
+     "valueReturned": "Mood is the anchor of every trends.html correlation, so it is the most valuable single tap in the app, but it is buried. The inline chart repeats trends.html.",
+     "valueScore": 3,
+     "suggestedVerdict": "core",
+     "dataKeys": "dashboard:mood:v1 {entries:[{date,score,note}]} (synced, uid:dashboard). logMood() keeps only the last 90 days, so summary and trends lose older history.",
+     "overlapsWith": "Trends mood chart and stats, summary Mood card, Coach 'No mood logged' line",
+     "automationPotential": "Move it to a 5-emoji row near the top of home (1 tap, no scroll). Drop the inline chart and history dots. Remove the 90-day pruning so long-term trends work."
+    },
+    {
+     "name": "Mini stat tiles (Meals, Gym, School, Weight, Water, Monthly, Trends)",
+     "whatItDoes": "A 2-column grid of glanceable tiles that link to other pages. Each tile hides itself when there is no data. Monthly and Trends are emoji link tiles to summary.html and trends.html, which are the only entry points to those pages.",
+     "manualInputs": "none (read-only); tap to navigate",
+     "frictionScore": 0.5,
+     "valueReturned": "Exactly the 'give me info at a glance' the owner wants, but it sits inside More, about 1.8 screens down. Bugs, from source and partly confirmed in my headless render: the WEIGHT tile is always hidden once there are 2+ weigh-ins. po_coach_weights entries are {dateKey, weight} but the code sorts by .date, which throws, and the catch hides the tile. It also links to gym.html, though weight now lives on health. All tiles read other pages' localStorage, so on the phone they are stale unless those pages were opened there recently.",
+     "valueScore": 2.5,
+     "suggestedVerdict": "automate",
+     "dataKeys": "reads dashboard:mealPrep:v1:template/daily, dashboard:gym:v1:activeDay/template/logs, dashboard:school:v1:assignments/tests, po_coach_weights, po_water_v1",
+     "overlapsWith": "Topbar water pill, Coach lines, Do Now",
+     "automationPotential": "Promote 3–4 tiles to a stat strip right under the header (e.g. steps, water, weight 7d delta, next test or next train). Fill them from one Supabase pull of all rows. Add steps (/api/steps) and screen time (/api/usage), which are captured passively but never shown on home."
+    },
+    {
+     "name": "Plan Tomorrow list",
+     "whatItDoes": "A second goal list for tomorrow, with its own input, Add and ✨ buttons. Rows are read-only until midnight ('activates at midnight'), with an 'N planned' count.",
+     "manualInputs": "Evening: tap More, scroll about 2.9 screens, type each item, tap Add.",
+     "frictionScore": 3,
+     "valueReturned": "Low to medium. It is useful for evening planning, but it duplicates the today list UI and sits at the very bottom.",
+     "valueScore": 1.5,
+     "suggestedVerdict": "merge",
+     "dataKeys": "goals:<tomorrow date> (same synced store)",
+     "overlapsWith": "To-do list, 'Push remaining to tomorrow', Do Now 'Plan tomorrow before bed'",
+     "automationPotential": "One list with a Today/Tomorrow toggle or a 'tomorrow' chip on the input. Carry-over already handles most planning."
+    },
+    {
+     "name": "Reminders card (list + add modal + ntfy controls)",
+     "whatItDoes": "A list of timed reminders, each with time, title, category chip, enable toggle, ✎ edit and × delete. The add/edit modal has title, message, category, time, enabled and repeat-daily. Below the list is an ntfy topic field (pre-filled with a hard-coded 'tomay-dash-67xk') with Save, 'Send test' and 'Schedule today' buttons. There are three delivery paths: server cron via /api/sync-reminders, client-side ntfy 'At' scheduling posted on every daily load, and an in-page Notification check every 30s.",
+     "manualInputs": "Set up once per reminder (6 fields). The topic field is plumbing.",
+     "frictionScore": 2,
+     "valueReturned": "Push reminders could genuinely save effort, but setup plumbing (topic, test, schedule) on the home screen is clutter. Overlapping delivery paths risk duplicate pings, and per the setup notes NTFY_TOPIC is unset on Vercel, so server push is likely broken.",
+     "valueScore": 2,
+     "suggestedVerdict": "hide-behind-detail",
+     "dataKeys": "dashboard:reminders:v1 (localStorage, synced via /api/sync-reminders + /api/get-reminders); dashboard:ntfy:topic; dashboard:ntfy:scheduled; dashboard:reminders:sent:v1",
+     "overlapsWith": "settings.html (natural home), push_subscriptions / api/subscribe",
+     "automationPotential": "Move to Settings. Keep one delivery path (server cron). Auto-suggest reminders from data, e.g. a water nudge only if under target by 3pm."
+    },
+    {
+     "name": "Layout / Structure picker",
+     "whatItDoes": "A modal with 4 home layouts: Classic, Compact, Grid, Bento. By its own description, 'On a phone every option stays a clean single column'. Only Compact changes anything on the phone, and only spacing.",
+     "manualInputs": "Optional, once",
+     "frictionScore": 0.5,
+     "valueReturned": "Essentially nothing on the iPhone. It adds complexity and DOM-shuffling code (buildStruct).",
+     "valueScore": 0,
+     "suggestedVerdict": "cut",
+     "dataKeys": "dashboard:settings:v1 → homeStructure (synced to uid:settings)",
+     "overlapsWith": "Section ↑↓ reorder, More fold, secnav tab",
+     "automationPotential": "n/a. Ship one good layout."
+    },
+    {
+     "name": "Section collapse/reorder arrows + 'On this page' edge tab (topbar.js)",
+     "whatItDoes": "Puts ↑ ↓ ▾ controls on every .section-title to collapse or reorder sections per device. A purple 22x66px tab fixed on the left edge opens a drawer listing the sections on the page.",
+     "manualInputs": "optional",
+     "frictionScore": 1,
+     "valueReturned": "None for the owner's goals. The controls add visual noise to every header and the edge tab overlaps content. They exist only because the page is too long.",
+     "valueScore": 0.5,
+     "suggestedVerdict": "cut",
+     "dataKeys": "dashboard:sections:v1 (per page: order, collapsed)",
+     "overlapsWith": "Structure picker, More fold",
+     "automationPotential": "n/a"
+    },
+    {
+     "name": "Floating buddy (Nova) + 🧠 AI coach button",
+     "whatItDoes": "Two floating discs stacked bottom-right. The buddy is draggable, shows a Lv pip, pops ambient bubbles and opens a rule-based chat panel. The 🧠 FAB (hard-coded in index.html) opens coach.html, the real AI coach.",
+     "manualInputs": "none (optional taps)",
+     "frictionScore": 1,
+     "valueReturned": "The AI coach can answer questions, but the buddy duplicates it with canned replies. Both cover the right edge of the to-do rows, where the ⚡ and × buttons are.",
+     "valueScore": 1.5,
+     "suggestedVerdict": "merge",
+     "dataKeys": "settings.buddy ('off' hides it); buddy memory keys in topbar.js",
+     "overlapsWith": "Coach card, coach.html",
+     "automationPotential": "Keep a single entry point to the AI coach, in the header or as one FAB, and drop the buddy by default."
+    },
+    {
+     "name": "Bottom nav (topbar.js)",
+     "whatItDoes": "A fixed tab bar. With no customization it shows every enabled page: 10 tabs (Main, Health, Food, Fitness, School, Habits, Transport, Projects, Friends, Settings) in 370px.",
+     "manualInputs": "none",
+     "frictionScore": 1,
+     "valueReturned": "Navigation, but tabs about 37px wide with 9px labels are hard to hit and show the sprawl on every screen.",
+     "valueScore": 2,
+     "suggestedVerdict": "core",
+     "dataKeys": "dashboard:nav:v1 (device-only: navCustom, navPinned, navCount); settings.pages",
+     "overlapsWith": "Settings gear in the top bar duplicates the Settings tab. Finance is only in the top bar.",
+     "automationPotential": "Default to 4–5 tabs (Home, Health, Fitness, School, More…)."
+    },
+    {
+     "name": "Install-to-home-screen card",
+     "whatItDoes": "A dismissible hint that only shows in a non-standalone browser.",
+     "manualInputs": "1 tap to dismiss, once",
+     "frictionScore": 0,
+     "valueReturned": "Irrelevant on the installed PWA.",
+     "valueScore": 0.5,
+     "suggestedVerdict": "hide-behind-detail",
+     "dataKeys": "install_dismissed",
+     "overlapsWith": "",
+     "automationPotential": "Fine as is."
+    },
+    {
+     "name": "uid:dashboard sync engine",
+     "whatItDoes": "Mirrors the four synced keys to Supabase. Pushes after 500ms debounce (merging with the cloud row), polls every 5s, pulls on visibility change, and flushes with keepalive on pagehide.",
+     "manualInputs": "none",
+     "frictionScore": 0,
+     "valueReturned": "Cross-device data. Invisible.",
+     "valueScore": 3,
+     "suggestedVerdict": "core",
+     "dataKeys": "app_state key '<uid>:dashboard' containing goals:*, goal_streak_v1, day_schedule, dashboard:mood:v1, _pushAt; local mirror dashboard:sync:v1 (_localAt); _dashUid",
+     "overlapsWith": "Each page has its own copy of this engine",
+     "automationPotential": "For the redesign, home should do one pull of all uid:% rows (as trends.html does) so tiles and insights stop depending on per-device mirrors. Because the merge never deletes keys, rollover deletions are resurrected from the cloud."
+    }
+   ]
+  },
+  {
+   "file": "summary.html",
+   "purpose": "'Your Month in Review'. Month picker, 8 stat cards (Sleep, Weight, Workouts, Habits, Study, Mood, Meals, Tasks) and auto-generated Highlights sentences. It fetches the health, habits, school, po-coach and dashboard rows from Supabase. The only way in is the MONTHLY tile inside the home page's More panel.",
+   "sizeKB": 29.6,
+   "screensOfScrollOnPhone": "Estimated from CSS, because the headless render redirects to login without a session. Below 480px the grid is a single column of 8 cards at about 135px each, plus the header and highlights: roughly 1600–1800px, or about 2–2.3 screens.",
+   "designNotes": "It has its own stylesheet with its own accent (green #1D9E75), which clashes with the purple accent used elsewhere. The header is a 32px gradient title plus a month stepper. On a phone you get 8 near-identical cards in one column, each with a 4px colored left bar, a 16px emoji, a 36px value, a mono uppercase label and a sub-line in very low-contrast #4D4B47 text. When data is missing, which source analysis suggests is about half the cards, it is a tall stack of big '—' marks with 'no data found'. There are no charts and no comparison with the previous month. Highlights is a plain bulleted list. Clean but flat and repetitive, and nothing on it pulls the eye.",
+   "features": [
+    {
+     "name": "Month navigator",
+     "whatItDoes": "‹ June 2026 › stepper that recomputes all stats for the chosen month.",
+     "manualInputs": "Optional taps",
+     "frictionScore": 0.5,
+     "valueReturned": "Lets you look back at a month.",
+     "valueScore": 1.5,
+     "suggestedVerdict": "merge",
+     "dataKeys": "none",
+     "overlapsWith": "trends.html time ranges",
+     "automationPotential": "Becomes a Week/Month toggle on a single insights page."
+    },
+    {
+     "name": "8 monthly stat cards",
+     "whatItDoes": "Sleep (average hours, nights logged), Weight (start→end delta), Workouts (session count), Habits (% plus top habit), Study (pomodoro hours, top subject), Mood (average + emoji), Meals (days with a meal eaten), Tasks (completed).",
+     "manualInputs": "none (derived)",
+     "frictionScore": 0,
+     "valueReturned": "Low, because several cards are broken against the current data shapes (from source, not verified live). Weight reads legacy dashboard:weight:v1.entries, but weights now live in po_coach_weights {dateKey, weight}, so new weigh-ins are missing. Workouts uses a heuristic that looks for a dated array in the po-coach row and probably finds none, giving '— no data found'. Study reads dashboard:pomodoro:v1, which no page writes, so it always shows 0.0h. Tasks reads dashboard:tasks:v1, which nothing writes, and past goals:* days are deleted by rollover anyway, so it always shows '—'. Habits % is inflated: habits:log only stores completed entries, so the denominator counts only done items. Counted habits whose value isn't true or 1 are ignored, and 'Top habit' shows the habit id (e.g. 'study'), not its name. Mood history is capped at 90 days by home's pruning. Sleep and Meals look correct.",
+     "valueScore": 1.5,
+     "suggestedVerdict": "merge",
+     "dataKeys": "reads uid:health (dashboard:sleep:v1.entries, dashboard:weight:v1.entries, dashboard:mealPrep:v1:daily), uid:habits (habits:log), uid:school (dashboard:pomodoro:v1, non-existent), uid:po-coach (any array), uid:dashboard (dashboard:mood:v1, dashboard:tasks:v1, non-existent)",
+     "overlapsWith": "trends.html (mood, sleep, weight), home Coach card, mini tiles",
+     "automationPotential": "Fully automatic already. It needs correct sources: po_coach_weights; gym sessions from dashboard:gym:v1:logs date keys or po_coach_v1.logs set dates; habit names from habits:list; a daily goal-completion history kept before rollover. Fold it into trends as 'This month' with a vs-last-month delta per metric."
+    },
+    {
+     "name": "Highlights list",
+     "whatItDoes": "Up to about 9 template sentences such as 'Best habit streak: N days of X', 'Slept 8h+ on N nights', 'Lost 1.2 kg this month', 'Great mood month'.",
+     "manualInputs": "none",
+     "frictionScore": 0,
+     "valueReturned": "Medium in concept. Plain-language wins are the kind of payoff that makes logging feel worth it. It inherits the broken inputs above and is only reachable through two hidden taps.",
+     "valueScore": 2,
+     "suggestedVerdict": "merge",
+     "dataKeys": "derived from the stats above",
+     "overlapsWith": "trends.html Insights, home Coach",
+     "automationPotential": "Merge into one insights feed. Surface the best one on home weekly, e.g. a Sunday recap card or push."
+    }
+   ]
+  },
+  {
+   "file": "trends.html",
+   "purpose": "'Trends & Insights'. A correlation-style insights page: mood vs sleep, habits and water, best and worst weekday, 30-day weight trend, last-7-day averages, and 21–60 day line charts. It loads every app_state row for the user in one query. The only way in is the TRENDS tile inside the home page's More panel.",
+   "sizeKB": 15.9,
+   "screensOfScrollOnPhone": "Header about 130px, then 0–5 insight cards (about 90px each), a 2-stat row (about 75px) and up to 3 chart cards (about 170px each). That is roughly 1–1.8 screens with data. With little data it is a single empty-state block.",
+   "designNotes": "The simplest and cleanest page in my slice: theme-aware CSS vars, accent highlights on numbers, a readable 15px insight headline with a 12.5px explanation and a correlation tag chip ('Clear link · mood/sleep'), and honest empty-state copy. Weaknesses: the charts are bare canvas lines with only min/max labels and first/last dates and don't redraw on resize; there is a redundant '← Back' link above a 30px gradient H1; the 2-up stat row is sparse; and it is visually identical to the other glass cards, with no standout hero insight. This is the best content in the app for the owner's 'give me info' goal, but it is two hidden taps deep and starves without daily mood logs.",
+   "features": [
+    {
+     "name": "Insight cards (correlations)",
+     "whatItDoes": "Mood vs sleep (7h+ vs less, with a Pearson-based 'Strong/Clear/Slight link' tag), mood vs habits (any habit done vs none), mood vs water, best and worst weekday for mood, and 30-day weight change. Each needs at least 3 days in each comparison bucket (7+ mood days for weekdays).",
+     "manualInputs": "None on the page. They depend on daily mood taps plus sleep, habits and water logs elsewhere.",
+     "frictionScore": 0,
+     "valueReturned": "The most meaningful 'give me info' output in the app, telling you what actually affects how you feel, but it only appears with steady mood logging, which is buried on home. The water insight uses c>=4 as 'hydrated', but water logs are now in ml (_mlV2), so any day with water logged counts as hydrated and the comparison means little.",
+     "valueScore": 3.5,
+     "suggestedVerdict": "core",
+     "dataKeys": "merged from all uid:% rows: dashboard:mood:v1, dashboard:sleep:v1, po_coach_weights, po_water_v1.logs, habits:log",
+     "overlapsWith": "summary Highlights, home Coach card, home mood chart",
+     "automationPotential": "Show the strongest current insight on home, rotating daily. Add passive inputs (steps from /api/steps, screen time from /api/usage, gym days from logs) so insights don't depend only on manual mood. Fix the water threshold (ml vs target)."
+    },
+    {
+     "name": "Last 7 days stats",
+     "whatItDoes": "Two tiles: average mood and average sleep over the last 7 days.",
+     "manualInputs": "none",
+     "frictionScore": 0,
+     "valueReturned": "Small quick read.",
+     "valueScore": 2,
+     "suggestedVerdict": "merge",
+     "dataKeys": "dashboard:mood:v1, dashboard:sleep:v1",
+     "overlapsWith": "summary Sleep/Mood cards, home mini tiles",
+     "automationPotential": "Belongs in a home stat strip as week averages with up/down arrows."
+    },
+    {
+     "name": "Over-time charts (mood 21d, sleep 21d, weight 60d)",
+     "whatItDoes": "Canvas area and line charts in the theme accent, with min/max labels and first/last dates.",
+     "manualInputs": "none",
+     "frictionScore": 0,
+     "valueReturned": "A visual trend, which is moderately useful for weight. The mood chart duplicates the 14-day chart on home.",
+     "valueScore": 2.5,
+     "suggestedVerdict": "core",
+     "dataKeys": "dashboard:mood:v1, dashboard:sleep:v1, po_coach_weights",
+     "overlapsWith": "Home mood chart, health.html weight and sleep charts",
+     "automationPotential": "Replace with sparklines on the home stat strip and keep full charts here. Add target and average reference lines and redraw on resize."
+    },
+    {
+     "name": "One-query data load",
+     "whatItDoes": "Selects every app_state row where key LIKE '<uid>:%' and Object.assigns them into one dictionary.",
+     "manualInputs": "none",
+     "frictionScore": 0,
+     "valueReturned": "A fresh cross-device view without needing to visit the other pages first. Home does not do this.",
+     "valueScore": 3,
+     "suggestedVerdict": "core",
+     "dataKeys": "all <uid>:* rows",
+     "overlapsWith": "Home reads stale per-device localStorage mirrors instead",
+     "automationPotential": "Reuse this pattern for the redesigned home. Watch for key collisions when merging rows (last row wins)."
+    }
+   ]
+  }
+ ],
+ "crossCuttingObservations": "1. The fold is spent on the wrong things. On a 390x844 iPhone, everything visible above the fixed bottom nav (y≈778) is a 57px title, the Do Now line and a 300px clock ring. The first goal row is under the nav, and the add-goal input is at y≈907–996.\nTaps and scrolls to log the common things:\n- Water: 1 tap on the top-bar '+' (the only frictionless log).\n- Add a to-do: about 1 scroll, tap the field, type, tap Add.\n- Check off a goal: about 1 scroll, then 1 tap.\n- Mood: tap 'More', scroll about 2.3 screens past the Gem and Coach cards, tap an emoji. More re-collapses on every visit.\n- Plan tomorrow: tap More and scroll about 2.9 screens.\n- Weight, meals, gym, sleep: cannot be logged from home at all. The tiles that link to them are themselves inside More.\nWith More open the page is about 4 screens long.\n\n2. The app asks more than it tells. Do Now, the Coach card, the 'not finished yesterday' notice, gem 'shine', XP toasts and streaks mostly prompt you to log ('No water tracked', 'No mood logged today', 'Log today's workout', 'Eat X — first meal not logged'). Do Now can headline a months-old assignment as '— overdue!' forever. This matches the owner's 'it felt like a duty'. Meanwhile passive data the system already captures (steps via /api/steps, screen time via /api/usage, train times via /api/train-times, gym split rotation) is never shown on home.\n\n3. Massive duplication on one screen:\n- XP level is shown 3 times: top-bar Lv, Gem card, buddy pip.\n- Today's goal count 4 times: ring, to-do header, Coach, gem shine.\n- Water 3 times: top-bar pill, WATER tile, Coach line.\n- 3 'coach' concepts: Coach card, buddy chat, 🧠 AI FAB.\n- 2 to-do lists: Today and Plan Tomorrow, plus 'Push remaining to tomorrow'.\n- 4 layout-meta mechanisms: Structure picker (no effect on the phone), section ↑↓▾ arrows, the 'On this page' edge tab, and the More fold.\n- 2 review pages: summary and trends.\n- 3 reminder delivery paths: server cron, client ntfy 'At' scheduling, in-page Notification.\nThe bottom nav crams 10 tabs into 370px.\n\n4. Broken or dead things found in the source. Per the owner's 'verify in the real app' rule, these should be confirmed live before fixing. I partly confirmed the weight tile in a headless render.\n- (a) Home WEIGHT tile is hidden whenever there are 2+ weigh-ins: it sorts po_coach_weights by .date, but the entries use dateKey.\n- (b) ✨ Polish is dead: ANTHROPIC_API_KEY is '' in index.html.\n- (c) The goal streak can never increment, because runRollover() deletes past goals:<date> keys before runStreakCheck() reads them.\n- (d) Rollover deletions come back from the cloud, because doPush merges the cloud row first. Carried-over tasks may reappear.\n- (e) The Coach weight insight never fires: it reads dashboard:weight:v1 as an array.\n- (f) summary.html: Weight reads the legacy key; Study (dashboard:pomodoro:v1) and Tasks (dashboard:tasks:v1) read keys nothing writes; Workouts uses a heuristic that probably finds nothing; Habits % is inflated and shows ids instead of names.\n- (g) trends water insight treats ml as glasses (>=4).\n- (h) logMood prunes mood history to 90 days, starving monthly and trend views.\n- (i) Home tiles and Coach read other pages' localStorage mirrors, which are stale on a device where those pages weren't recently opened. trends.html's single query of all '<uid>:%' rows is the pattern to copy.\n- (j) Server push needs NTFY_TOPIC, which is unset on Vercel.\n\n5. Design: one undifferentiated glass card style, 9–10.5px grey monospace uppercase labels, a gradient title, and a mix of terminal, glassmorphism and cartoon/emoji styles. The old screenshots are walls of zeros and empty states, and the old Polish button overflows the card. Nothing is personal, colorful or rewarding at a glance. summary.html even uses a different accent color (green) from the rest of the app.\n\n6. Suggested direction for the home redesign, in about 1 screen with no 'More':\n- (1) A compact header: greeting, date and one auto status line (next train, next test, or the top insight).\n- (2) A glanceable stat strip of 3–4 auto-filled numbers with sparklines: steps, water, weight 7-day delta, sleep or mood average.\n- (3) A one-tap quick-log row: water '+', 5 mood emojis inline, optional weight.\n- (4) Today's to-do with the input at the top, swipe to delete, and a tomorrow toggle.\n- (5) One rotating insight from a merged trends + summary 'Insights' page.\nCut: the ring, gem, buddy, structure picker, section arrows and edge tab, the XP toasts and Lv pill, and Polish.\nMove to Settings: Reminders.\nMerge: summary into trends.\n\n7. Data to preserve in any redesign:\n- uid:dashboard row: goals:YYYY-MM-DD [{text,done,doneAt,queued,carriedFrom}], goal_streak_v1, day_schedule, dashboard:mood:v1 {entries:[{date,score,note}]}.\n- Local mirror: dashboard:sync:v1.\n- Reminders: dashboard:reminders:v1, plus server copy via /api/sync-reminders, dashboard:ntfy:topic, dashboard:ntfy:scheduled, dashboard:reminders:sent:v1.\n- dashboard:settings:v1 (homeStructure, buddy, pages), dashboard:nav:v1, dashboard:sections:v1.\n- dashboard:xp:v1 / uid:xp.\n- Data read from other rows: po_coach_weights {dateKey,weight}, po_water_v1, dashboard:sleep:v1, habits:list/habits:log, dashboard:mealPrep:v1:*, dashboard:gym:v1:*, po_coach_v1, dashboard:school:v1:*.\n\nRender artifacts from this audit, all in the scratchpad:\n- C:/Users/tomay/AppData/Local/Temp/claude/c--Users-tomay-Desktop-Dashboard/f5d0d841-92c9-4997-95f2-6a94ddb48301/scratchpad/home_seeded_fold.png\n- C:/Users/tomay/AppData/Local/Temp/claude/c--Users-tomay-Desktop-Dashboard/f5d0d841-92c9-4997-95f2-6a94ddb48301/scratchpad/home_seeded_full.png\n- C:/Users/tomay/AppData/Local/Temp/claude/c--Users-tomay-Desktop-Dashboard/f5d0d841-92c9-4997-95f2-6a94ddb48301/scratchpad/home_empty_fold.png\n- C:/Users/tomay/AppData/Local/Temp/claude/c--Users-tomay-Desktop-Dashboard/f5d0d841-92c9-4997-95f2-6a94ddb48301/scratchpad/home_empty_full.png"
+}
