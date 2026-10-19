@@ -16,7 +16,10 @@ function fail(res, status, code, error) {
 }
 
 module.exports = async function handler(req, res) {
-  const SB_URL = String(process.env.SUPABASE_URL || '').trim().replace(/\/+$/, '');
+  // Use only the origin: the env value in Vercel carries an extra path ("/rest/v1"),
+  // which doubled every request path (PGRST125 "Invalid path").
+  let SB_URL = String(process.env.SUPABASE_URL || '').trim();
+  try { SB_URL = new URL(SB_URL).origin; } catch (e) { SB_URL = SB_URL.replace(/\/+$/, ''); }
   const SB_KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
   if (!SB_URL || !SB_KEY) return fail(res, 500, 'config', 'The server is missing its settings. Try again later.');
 
