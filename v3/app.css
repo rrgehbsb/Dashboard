@@ -603,3 +603,14 @@ a.tile { color:var(--ink); }
 .commute .note { opacity:.95; }
 .hw .t-ic svg { stroke:currentColor; width:22px; height:22px; }
 .preview:empty { display:none; }
+
+/* ---------- v3 Food additions ---------- */
+.head-actions { display:flex; align-items:center; gap:6px; }
+.parsed .it { align-items:center; }
+.parsed .it .mini { margin-right:-6px; }
+.parsed .it.skip { opacity:.45; }
+.parsed .it.skip span:first-child { text-decoration:line-through; }
+.hint-s { font-size:13px; color:var(--ink-2); }
+.entry small { color:var(--ink-3); font-weight:600; margin-left:4px; }
+.qa-grid.two { grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
+#food-sum .link { margin-top:6px; padding:0; }

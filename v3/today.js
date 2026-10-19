@@ -108,12 +108,13 @@ function gymInfo() {
 }
 function foodInfo() {
   const days = food.get('days') || {}, day = days[D.todayKey()];
-  const entries = (day && day.entries) || [];
+  const entries = ((day && day.entries) || []).filter(e => e && !e.deleted);
   if (!entries.length) return null;
-  const kcal = Math.round(entries.reduce((s, e) => s + (+((e.nutrients || {}).kcal) || 0), 0));
-  const p = Math.round(entries.reduce((s, e) => s + (+((e.nutrients || {}).protein_g) || 0), 0));
-  const custom = food.get('custom') || {};
-  return { kcal: kcal, protein: p, target: +custom.kcal || null, pTarget: +custom.protein_g || null };
+  const nut = e => e.n || e.nutrients || {};
+  const kcal = Math.round(entries.reduce((s, e) => s + (+nut(e).kcal || 0), 0));
+  const p = Math.round(entries.reduce((s, e) => s + (+nut(e).protein_g || 0), 0));
+  const custom = food.get('custom') || {}, worked = D.readJSON('dash3:food:targets') || {};
+  return { kcal: kcal, protein: p, target: +custom.kcal || +worked.kcal || null, pTarget: +custom.protein_g || +worked.protein_g || null };
 }
 
 /* ---------- header ---------- */

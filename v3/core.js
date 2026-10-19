@@ -7,7 +7,7 @@
 (function () {
 'use strict';
 
-const VERSION = '2.8.4';
+const VERSION = '2.8.5';
 const SB_URL = 'https://mtuoqwbrujxutofhyahb.supabase.co';
 const SB_KEY = 'sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
 const DEMO = /[?&]demo\b/.test(location.search);
@@ -406,7 +406,7 @@ SHEETS.settings = () => {
 
 /* ================= Nav ================= */
 // Pages that exist in the new design. The others still open the classic page.
-const LIVE_PAGES = ['today', 'gym', 'school'];
+const LIVE_PAGES = ['today', 'gym', 'school', 'food'];
 const TABS = [['today', 'Today', 'sun', '/v3/'], ['gym', 'Gym', 'gym', '/gym.html'], ['school', 'School', 'school', '/school.html'], ['food', 'Food', 'food', '/food.html']];
 const pageHref = key => { const t = TABS.find(x => x[0] === key); if (!t) return '/v3/'; return LIVE_PAGES.indexOf(key) >= 0 ? '/v3/' + (key === 'today' ? '' : key + '.html') : t[3]; };
 function renderNav(current) {

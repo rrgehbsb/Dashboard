@@ -131,8 +131,9 @@ async function aiEstimate(req, res) {
   if (!isAdmin) {
     let allowed = false;
     try {
+      const SVC = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim() || SB_ANON; // server key: the allowlist row is not public
       const alr = await fetch(SB_URL + '/rest/v1/app_state?key=eq.ai%3Aallowlist&select=data', {
-        headers: { apikey: SB_ANON, Authorization: 'Bearer ' + SB_ANON },
+        headers: { apikey: SVC, Authorization: 'Bearer ' + SVC },
       });
       const rows = await alr.json();
       const list = (rows && rows[0] && rows[0].data && rows[0].data.allowed) || {};
