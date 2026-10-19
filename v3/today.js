@@ -83,8 +83,8 @@ const subjName = id => { const s = sch('subjects').find(x => x.id === id); retur
 const dayWord = d => d === 0 ? 'Today' : d === 1 ? 'Tomorrow' : D.DOW_L[D.dayAt(d).getDay()];
 function schoolSoon(maxDays) {
   const out = [];
-  sch('assignments').forEach(a => { if (a.status === 'Done') return; const d = D.daysFrom(a.dueDate); if (d == null || d < 0 || d > maxDays) return; out.push({ kind: 'hw', title: a.title, subj: subjName(a.subjectId), d: d }); });
-  sch('tests').forEach(t => { const d = D.daysFrom(t.testDate); if (d == null || d < 0 || d > maxDays) return; out.push({ kind: 'test', title: t.name, subj: subjName(t.subjectId), d: d }); });
+  sch('assignments').forEach(a => { if (!a || a.deleted || a.status === 'Done') return; const d = D.daysFrom(a.dueDate); if (d == null || d < 0 || d > maxDays) return; out.push({ kind: 'hw', title: a.title, subj: subjName(a.subjectId), d: d }); });
+  sch('tests').forEach(t => { if (!t || t.deleted) return; const d = D.daysFrom(t.testDate); if (d == null || d < 0 || d > maxDays) return; out.push({ kind: 'test', title: t.name, subj: subjName(t.subjectId), d: d }); });
   return out.sort((a, b) => a.d - b.d || (a.kind === 'test' ? -1 : 1));
 }
 const isSetKey = k => /^set\d+/.test(k);
@@ -131,6 +131,21 @@ function renderWater() { $('#water-slot-today').innerHTML = D.waterChip('today')
 /* ---------- hero + tiles ---------- */
 function heroModel() {
   const n = D.nowMin();
+  // The trip to school comes first while it matters: leaving soon, or heading home.
+  const CM = window.COMMUTE, cc = CM && CM.rail() ? CM.cfg(school) : null, ph = cc ? CM.phase(cc) : null;
+  if (ph && ph.kind === 'morning' && ph.pick && ph.mins != null && ph.mins <= 120 && ph.mins >= -15) {
+    const late = !ph.pick.ok;
+    return { area: ph.mins <= 5 || late ? 'amber' : 'school', href: D.pageHref('school'), eyebrow: 'To school',
+      big: ph.mins > 0 ? '<span class="lead">Leave in</span><span class="n">' + D.numEl('hero-min', ph.mins) + '</span><span class="u">min</span>' : '<span class="t">Leave now</span>',
+      sub: CM.hhmm(ph.pick.leave) + ' · ' + CM.hhmm(ph.pick.train) + ' train' + (late ? ' · arrives ' + (-ph.pick.spare) + ' min late' : '') + ' <span class="tag">Timetable</span>',
+      bar: D.clamp(ph.mins / 30, 0, 1), label: 'Leave in ' + ph.mins + ' minutes' };
+  }
+  if (ph && ph.kind === 'after' && ph.pick) {
+    return { area: ph.mins <= 5 && ph.mins >= 0 ? 'amber' : 'school', href: D.pageHref('school'), eyebrow: 'Going home',
+      big: '<span class="lead">Train home</span><span class="n">' + CM.hhmm(ph.pick.train) + '</span>',
+      sub: 'Leave school by ' + CM.hhmm(ph.pick.leave) + (ph.mins > 0 ? ' · in ' + ph.mins + ' min' : ' · now') + ' <span class="tag">Timetable</span>',
+      bar: D.clamp(ph.mins / 30, 0, 1), label: 'Train home ' + CM.hhmm(ph.pick.train) };
+  }
   const soon = schoolSoon(2);
   const test = soon.find(x => x.kind === 'test');
   if (test) return { area: 'school', href: D.pageHref('school'), eyebrow: 'Coming up', big: '<span class="t">' + esc(test.title) + '</span>', sub: dayWord(test.d) + (test.subj ? ' · ' + esc(test.subj) : ''), label: test.title + ', ' + dayWord(test.d) };
@@ -138,6 +153,10 @@ function heroModel() {
   if (due.length) return { area: 'school', href: D.pageHref('school'), eyebrow: 'Due ' + dayWord(due[0].d).toLowerCase(), big: '<span class="t">' + esc(due[0].title) + '</span>', sub: (due[0].subj ? esc(due[0].subj) : 'School') + (due.length > 1 ? ' · ' + (due.length - 1) + ' more' : ''), label: due[0].title + ' due ' + dayWord(due[0].d) };
   if (n >= 19 * 60) {
     const tm = list(tomorrowK()).filter(g => !g.done);
+    if (ph && ph.kind === 'next' && ph.off === 1 && ph.m && ph.m.best) {
+      return { area: 'school', href: D.pageHref('school'), eyebrow: 'Tomorrow · ' + D.dShort(D.dayAt(1)), big: '<span class="lead">Leave</span><span class="n">' + CM.hhmm(ph.m.best.leave) + '</span>',
+        sub: CM.hhmm(ph.m.best.train) + ' train' + (tm.length ? ' · ' + tm.length + ' on your list' : ''), label: 'Tomorrow, leave ' + CM.hhmm(ph.m.best.leave) };
+    }
     return { area: 'todo', href: '#todo', eyebrow: 'Tomorrow · ' + D.dShort(D.dayAt(1)), big: tm.length ? '<span class="n">' + D.numEl('hero-tm', tm.length) + '</span><span class="u">planned</span>' : '<span class="t">Nothing planned yet</span>', sub: tm.length ? esc(tm[0].text) + (tm.length > 1 ? ' · and ' + (tm.length - 1) + ' more' : '') : 'Flip the list below to Tomorrow to add things', label: 'Tomorrow' };
   }
   const items = list(todayK()).filter(g => !g.later && !isOld(g));
@@ -318,6 +337,7 @@ $('#todo-form').addEventListener('submit', e => {
 let rolled = false, lastDay = D.todayKey();
 dash.on(() => { if (!rolled) { rolled = true; rollover(); } renderTodo(); renderHeroTiles(); });
 [school, gym, food].forEach(r => r.on(renderHeroTiles));
+if (window.COMMUTE) window.COMMUTE.loadRail().then(renderHeroTiles);
 D.settings.on(renderHeader);
 D.onWater(() => { renderWater(); if (D.sheetKind() === 'water') D.renderSheet(); });
 window.addEventListener('dash:name', renderHeader);

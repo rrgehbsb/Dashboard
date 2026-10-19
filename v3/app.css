@@ -578,3 +578,28 @@ a.tile { color:var(--ink); }
 .mini-sp { width:40px; flex:none; }
 .add-btn.gymbg { background:var(--gym); color:var(--on-gym); }
 .stack > .btn.ghost.block { min-height:52px; }
+
+/* ---------- v3 School additions ---------- */
+.page-head .icon-btn { align-self:flex-start; }
+.hw .body { display:flex; flex-direction:column; align-items:flex-start; text-align:left; gap:1px; padding:8px 0; min-height:44px; justify-content:center; }
+.hw .body .nm { display:block; }
+.hw .body .sub { display:flex; }
+.hw.is-done .body .nm { color:var(--ink-3); text-decoration:line-through; text-decoration-thickness:2px; }
+.hw .t-ic { color:var(--school-ink); }
+.hw.test-row .t-ic { width:48px; height:48px; display:grid; place-items:center; }
+.due.late { background:var(--surface-2); color:var(--ink-3); }
+.fold-line .ok.sch { background:var(--school-soft); color:var(--school-ink); }
+.btn-text.sch { color:var(--school-ink); }
+.add-btn.schbg { background:var(--school); color:var(--on-school); }
+.sdot { width:14px; height:14px; border-radius:999px; flex:none; }
+.grow { flex:1; min-width:0; }
+.day-block + .day-block { box-shadow:0 -1px 0 var(--line); }
+.set-row.sub { min-height:48px; padding-left:14px; }
+.set-row.sub .lbl { font-weight:500; color:var(--ink-2); }
+.set-row .mini { margin-left:2px; }
+.date-in { height:44px; border:0; border-radius:12px; background:var(--surface-2); padding:0 10px; font:inherit; font-size:15px; color:var(--ink); }
+.commute.setup-c .big.sm { font-size:30px; line-height:1.1; }
+.alt.solid { background:var(--hf); color:var(--hb); align-self:flex-start; padding:0 18px; }
+.commute .note { opacity:.95; }
+.hw .t-ic svg { stroke:currentColor; width:22px; height:22px; }
+.preview:empty { display:none; }
