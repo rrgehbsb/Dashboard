@@ -108,10 +108,9 @@ select cron.schedule('dash-notify', '* * * * *', $job$
     timeout_milliseconds := 20000
   );
 $job$);
--- forget old "already sent" entries and the scheduler's own call log every night
+-- forget old "already sent" entries every night
 select cron.schedule('dash-notify-clean', '17 3 * * *', $job$
   delete from public.notify_log where at < now() - interval '3 days';
-  delete from net._http_response where created < now() - interval '1 day';
 $job$);
 
 -- Done. Reload the app: Settings → Friends → Notifications → Turn on.
