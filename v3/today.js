@@ -1,5 +1,7 @@
 /* Dashboard v3 — Today screen. Reads/writes the SAME data as the classic pages:
-   uid:dashboard  goals:YYYY-MM-DD = [{text, done, queued?, carriedFrom?, later?}]
+   uid:dashboard  goals:YYYY-MM-DD = [{text, done, queued?, carriedFrom?, later?, rep?}]
+                  (a task for a later date simply lives in that day's list)
+                  repeats = [{id, text, every:'day'|'school'|'week', wd, from, added:[dk…], at, deleted?}]
    uid:school     dashboard:school:v1:{subjects,assignments,tests}   (read)
    uid:po-coach   dashboard:gym:v1:{template,logs}                  (read)
    uid:food       days[YYYY-MM-DD].entries[].nutrients.kcal, custom.kcal (read) */
@@ -8,7 +10,22 @@
 const D = window.DASH, $ = D.$, esc = D.esc, ic = D.ic, TT = window.TIMETABLE;
 
 /* ---------- rows ---------- */
-const dash = D.Row('dashboard');
+// Repeating tasks merge entry by entry (newest change wins; the days they were already
+// put on the list are combined), so two devices never duplicate or lose one.
+function mergeRepeats(a, b) {
+  if (!Array.isArray(a)) return Array.isArray(b) ? b : [];
+  if (!Array.isArray(b)) return a;
+  const m = new Map();
+  a.concat(b).forEach(r => {
+    if (!r || !r.id) return;
+    const c = m.get(r.id);
+    if (!c) { m.set(r.id, r); return; }
+    const newer = (r.at || 0) >= (c.at || 0) ? r : c;
+    m.set(r.id, Object.assign({}, newer, { added: Array.from(new Set((c.added || []).concat(r.added || []))).sort().slice(-21) }));
+  });
+  return Array.from(m.values());
+}
+const dash = D.Row('dashboard', { merge: { repeats: mergeRepeats } });
 const school = D.Row('school', { readOnly: true });
 window.TODAY_SCHOOL_ROW = school; // social.js shares the trip from here too
 const gym = D.Row('po-coach', { readOnly: true });
@@ -50,6 +67,61 @@ const list = k => { const a = dash.get(k); return Array.isArray(a) ? a : []; };
 const isOld = g => g.carriedFrom && !g.later && (D.daysFrom(g.carriedFrom) || 0) < -7;
 const save = (k, arr) => { dash.set(k, arr); };
 
+const keyOf = dk => 'goals:' + dk;
+const offOf = k => D.daysFrom(k.slice(6));
+// "Today" / "Tomorrow" / "Fri" (this week) / "Fri 23 Oct"
+function dayLabel(dk) { const d = D.daysFrom(dk); return d === 0 ? 'Today' : d === 1 ? 'Tomorrow' : d > 1 && d <= 6 ? D.DOW_L[D.parseDk(dk).getDay()] : D.dShort(D.parseDk(dk)); }
+
+/* A date typed at the end of a task: "buy charger fri", "dentist 25/10", "call gran
+   tomorrow", "essay next week", "renew card in 10 days". Shown before adding, and it
+   can be switched off with ×, so "watch Friday" stays a plain task if you want. */
+const WDAY = { sun: 0, sunday: 0, mon: 1, monday: 1, tue: 2, tues: 2, tuesday: 2, wed: 3, weds: 3, wednesday: 3, thu: 4, thur: 4, thurs: 4, thursday: 4, fri: 5, friday: 5, sat: 6, saturday: 6 };
+function parseWhen(raw) {
+  const words = String(raw || '').trim().split(/\s+/);
+  if (words.length < 2) return null;
+  const w = i => (words[words.length - i] || '').toLowerCase().replace(/[,.!]+$/, '');
+  const todayWd = D.dayAt(0).getDay();
+  let off = null, n = 1, m;
+  if (/^(today|tonight)$/.test(w(1))) off = 0;
+  else if (/^(tomorrow|tmrw|tmr|tomo)$/.test(w(1))) off = 1;
+  else if (WDAY[w(1)] != null) off = ((WDAY[w(1)] - todayWd) + 7) % 7 || 7;
+  else if ((m = w(1).match(/^(\d{1,2})[./](\d{1,2})(?:[./](\d{2}|\d{4}))?$/))) {
+    const now = D.dayAt(0), y = m[3] ? (m[3].length === 2 ? 2000 + +m[3] : +m[3]) : now.getFullYear();
+    let d = new Date(y, +m[2] - 1, +m[1], 12);
+    if (d.getDate() !== +m[1] || d.getMonth() !== +m[2] - 1) return null; // 31/2 and the like
+    if (!m[3] && d < now) d = new Date(y + 1, +m[2] - 1, +m[1], 12);
+    off = Math.round((d - now) / 864e5);
+  } else if (w(1) === 'week' && w(2) === 'next') { off = (7 - todayWd) || 7; n = 2; }
+  else if (/^days?$/.test(w(1)) && /^\d{1,3}$/.test(w(2)) && w(3) === 'in') { off = +w(2); n = 3; }
+  if (off == null || off < 0 || off > 366) return null;
+  if (n === 1 && words.length > 2 && /^(on|next|this|by)$/.test(w(2))) n = 2;
+  const text = words.slice(0, words.length - n).join(' ').trim();
+  return text ? { text, dk: D.dk(D.dayAt(off)) } : null;
+}
+
+// Repeating tasks: not a calendar, just "this task comes back on these days". They're put
+// on today's and tomorrow's lists (once per day, never twice).
+const reps = () => list('repeats').filter(r => r && !r.deleted);
+const repLabel = r => r.every === 'day' ? 'every day' : r.every === 'school' ? 'school days' : 'every ' + D.DOW[r.wd];
+const repDue = (r, d) => r.every === 'day' || (r.every === 'school' ? d.getDay() <= 4 : d.getDay() === r.wd);
+function placeRepeats() {
+  const all = list('repeats'); if (!all.length) return;
+  const out = all.map(r => Object.assign({}, r));
+  let touched = false;
+  [0, 1].forEach(off => {
+    const d = D.dayAt(off), dk = D.dk(d), k = keyOf(dk);
+    let arr = null;
+    out.forEach(r => {
+      if (!r || !r.id || r.deleted || (r.added || []).indexOf(dk) >= 0 || (r.from && dk < r.from) || !repDue(r, d)) return;
+      arr = arr || list(k).slice();
+      if (!arr.some(g => g && g.text === r.text)) arr.push({ text: r.text, done: false, rep: r.id });
+      r.added = (r.added || []).concat([dk]).sort().slice(-21); touched = true;
+    });
+    if (arr) save(k, arr);
+  });
+  if (touched) save('repeats', out);
+}
+
 // Move unfinished tasks from past days onto today. Past days are emptied ([]),
 // not deleted — a deleted key comes straight back from the cloud on the next
 // merge, which is what kept resurrecting old tasks in the classic home page.
@@ -66,6 +138,7 @@ function rollover() {
       const n = { text: g.text, done: false, carriedFrom: g.carriedFrom || k.slice(6) };
       if (g.queued) n.queued = true;
       if (g.later) n.later = true;
+      if (g.rep) n.rep = g.rep;
       today.push(n); have.add(g.text);
     });
     save(k, []); changed = true;
@@ -220,7 +293,10 @@ function renderHeroTiles() {
 /* ---------- to-do card ---------- */
 const CHECK = '<span class="box"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12.5l4 4L18 8"/></svg></span>';
 function row(g, i, k) {
-  const meta = g.carriedFrom && !isOld(g) ? '<span class="task-meta"><span class="chip-s carry">' + ic('repeat', 'xs') + 'from ' + D.DOW[D.parseDk(g.carriedFrom).getDay()] + '</span></span>' : '';
+  const r = g.rep && reps().find(x => x.id === g.rep);
+  const chips = (g.carriedFrom && !isOld(g) ? '<span class="chip-s carry">' + ic('arrow', 'xs') + 'from ' + D.DOW[D.parseDk(g.carriedFrom).getDay()] + '</span>' : '') +
+    (r ? '<span class="chip-s rpt">' + ic('repeat', 'xs') + esc(repLabel(r)) + '</span>' : '');
+  const meta = chips ? '<span class="task-meta">' + chips + '</span>' : '';
   return '<li class="task' + (g.done ? ' is-done' : '') + (S.enter === k + '#' + i ? ' enter' : '') + '" id="task-' + i + '" data-i="' + i + '" data-lp="task-menu">' +
     '<button class="check" id="check-' + i + '" data-act="task-toggle" data-i="' + i + '" aria-pressed="' + !!g.done + '" aria-label="' + (g.done ? 'Done' : 'Not done') + ': ' + esc(g.text) + '">' + CHECK + '</button>' +
     '<div class="task-text">' + (g.queued ? '<span class="pin-ic" title="Pinned">' + ic('pin', 'xs') + '<span class="sr">Pinned. </span></span>' : '') + '<span class="tt">' + esc(g.text) + '</span>' + meta + '</div>' +
@@ -255,6 +331,18 @@ function renderTodo() {
     if (later.length) {
       ex += '<button class="fold-line" id="later-toggle" data-act="toggle-later" aria-expanded="' + S.showLater + '"><span class="ok">' + ic('clock', 'xs') + '</span>Later · ' + later.length + ic('chev-r', 'sm chev') + '</button>';
       if (S.showLater) ex += '<ul class="tasks">' + later.map(([g, i]) => row(g, i, k)).join('') + '</ul>';
+    }
+    // tasks for later dates: one line until you open it (this is a to-do list, not a calendar)
+    const tk = D.dk(D.dayAt(1));
+    const ups = Object.keys(dash.data).filter(x => x.indexOf('goals:') === 0 && x.slice(6) > tk).sort()
+      .map(x => [x, list(x).map((g, j) => [g, j]).filter(([g]) => g && !g.done)]).filter(x => x[1].length);
+    const nUp = ups.reduce((a, x) => a + x[1].length, 0);
+    if (nUp) {
+      const first = ups[0];
+      ex += '<button class="fold-line" id="up-toggle" data-act="toggle-up" aria-expanded="' + !!S.showUp + '"><span class="ok up">' + ic('cal', 'xs') + '</span><span class="up-sum">Coming up · ' + nUp +
+        (S.showUp ? '' : '<small>' + esc(dayLabel(first[0].slice(6))) + ': ' + esc(first[1][0][0].text) + '</small>') + '</span>' + ic('chev-r', 'sm chev') + '</button>';
+      if (S.showUp) ex += '<div class="up-list">' + ups.map(([x, items]) => '<p class="up-day">' + esc(dayLabel(x.slice(6))) + '</p><ul class="tasks">' + items.map(([g, j]) =>
+        '<li class="task up-task"><button class="up-row" id="up-' + x.slice(6) + '-' + j + '" data-act="up-menu" data-k="' + x + '" data-i="' + j + '"><span class="up-dot" aria-hidden="true"></span><span class="tt">' + esc(g.text) + '</span>' + ic('chev-r', 'sm') + '</button></li>').join('') + '</ul>').join('') + '</div>';
     }
     const old = idx.filter(([g]) => !g.done && isOld(g));
     if (old.length) ex += '<div class="older"><p><strong>' + old.length + ' older ' + D.plural(old.length, 'task', 'tasks') + '</strong> from before</p><button class="btn-text" id="older-review" data-act="older-review">Review</button></div>';
@@ -291,9 +379,50 @@ D.SHEETS.task = a => {
       '<button class="menu-item" id="tm-pin" data-act="task-pin" data-i="' + a.i + '">' + ic('pin') + (g.queued ? 'Unpin' : 'Pin to top') + '</button>' +
       (g.later ? '<button class="menu-item" id="tm-now" data-act="task-now" data-i="' + a.i + '">' + ic('up') + 'Bring back to today</button>' : '') +
       '<button class="menu-item" id="tm-move" data-act="task-move" data-i="' + a.i + '">' + ic('arrow') + 'Move to ' + other + '</button>' +
+      dateItem('tm-date', 'Move to a date…', k.slice(6)) +
+      '<button class="menu-item" id="tm-rep" data-act="sheet" data-sheet="repeat" data-k="' + k + '" data-i="' + a.i + '">' + ic('repeat') + (g.rep && reps().some(r => r.id === g.rep) ? 'Repeats ' + esc(repLabel(reps().find(r => r.id === g.rep))) : 'Repeat…') + '</button>' +
       '<button class="menu-item" id="tm-del" data-act="task-del" data-i="' + a.i + '">' + ic('trash') + 'Delete</button></div>'
   };
 };
+// a menu row with the phone's own date picker inside it
+const dateItem = (id, label, cur) => '<label class="menu-item date-item" for="' + id + '">' + ic('cal') + label + '<input type="date" id="' + id + '" min="' + D.todayKey() + '" value="' + esc(cur || '') + '"></label>';
+// a task for a later date (from the "Coming up" list)
+D.SHEETS.uptask = a => {
+  const g = list(a.k)[+a.i];
+  if (!g) return { title: 'Task', body: '' };
+  return {
+    title: g.text,
+    body: '<p class="sheet-note">On your list ' + (D.daysFrom(a.k.slice(6)) <= 6 ? 'on ' : '') + esc(dayLabel(a.k.slice(6))) + '.</p><div class="menu-list">' +
+      '<button class="menu-item" id="ut-today" data-act="up-today">' + ic('up') + 'Do it today</button>' +
+      dateItem('ut-date', 'Change the date…', a.k.slice(6)) +
+      '<button class="menu-item" id="ut-del" data-act="up-del">' + ic('trash') + 'Delete</button></div>'
+  };
+};
+// "this task comes back": every day, school days (Sun–Thu), or one weekday
+D.SHEETS.repeat = a => {
+  const g = list(a.k)[+a.i];
+  if (!g) return { title: 'Repeat', body: '' };
+  const r = g.rep && reps().find(x => x.id === g.rep), wd = D.parseDk(a.k.slice(6)).getDay();
+  const opt = (every, label) => '<button class="menu-item" data-act="rep-set" data-every="' + every + '" aria-pressed="' + !!(r && r.every === every && (every !== 'week' || r.wd === wd)) + '">' + label + '</button>';
+  return {
+    title: 'Repeat · ' + g.text,
+    body: '<p class="sheet-note">It comes back on your list on those days. Not a calendar: no times, and it won’t pile up. If it’s still on your list, it isn’t added twice.</p>' +
+      '<div class="menu-list rep-opts">' + opt('day', 'Every day') + opt('school', 'School days (Sun–Thu)') + opt('week', 'Every ' + D.DOW_L[wd]) + '</div>' +
+      (r ? '<button class="btn ghost block" id="rep-stop" data-act="rep-stop">Stop repeating</button>' : '')
+  };
+};
+function moveTo(fromK, i, dk, quiet) {
+  const a = list(fromK).slice(), g = a.splice(i, 1)[0];
+  if (!g || !dk) return;
+  const toK = keyOf(dk), b = list(toK).slice(), moved = Object.assign({}, g, { done: false });
+  delete moved.later; delete moved.carriedFrom;
+  b.push(moved);
+  save(fromK, a); save(toK, b); D.closeSheet(); renderTodo(); renderHeroTiles();
+  const off = D.daysFrom(dk), label = off === 0 ? 'today' : off === 1 ? 'tomorrow' : dayLabel(dk);
+  if (!quiet) D.toast('Moved to ' + label, () => {
+    save(toK, list(toK).filter(x => x !== moved)); const back = list(fromK).slice(); back.splice(i, 0, g); save(fromK, back); renderTodo(); renderHeroTiles();
+  });
+}
 D.SHEETS.older = () => {
   const old = list(todayK()).filter(g => !g.done && isOld(g));
   return {
@@ -325,6 +454,32 @@ Object.assign(D.ACT, {
     save(k, arr); D.closeSheet(); renderTodo(); renderHeroTiles();
     D.toast('Deleted “' + g.text + '”', () => { const a = list(k).slice(); a.splice(i, 0, g); save(k, a); renderTodo(); renderHeroTiles(); });
   },
+  'toggle-up': () => { S.showUp = !S.showUp; renderTodo(); },
+  'up-menu': el => D.openSheet('uptask', { k: el.dataset.k, i: el.dataset.i }),
+  'up-today': () => { const a = D.sheetArg(); moveTo(a.k, +a.i, D.todayKey()); },
+  'up-del': () => {
+    const a = D.sheetArg(), arr = list(a.k).slice(), g = arr.splice(+a.i, 1)[0]; if (!g) return;
+    save(a.k, arr); D.closeSheet(); renderTodo();
+    D.toast('Deleted “' + g.text + '”', () => { const b = list(a.k).slice(); b.splice(+a.i, 0, g); save(a.k, b); renderTodo(); });
+  },
+  'todo-date': () => { const inp = $('#todo-date-in'); try { if (inp.showPicker) inp.showPicker(); else inp.click(); } catch (e) { inp.click(); } },
+  'when-clear': () => { S.when = null; S.noParse = $('#todo-input').value; renderWhen(); $('#todo-input').focus(); },
+  'rep-set': el => {
+    const a = D.sheetArg(), arr = list(a.k).slice(), g = arr[+a.i]; if (!g) return;
+    const wd = D.parseDk(a.k.slice(6)).getDay(), all = list('repeats').slice(), now = Date.now();
+    let r = g.rep && all.find(x => x.id === g.rep && !x.deleted);
+    if (r) { r = Object.assign({}, r, { every: el.dataset.every, wd, at: now }); all[all.findIndex(x => x.id === r.id)] = r; }
+    else { r = { id: now.toString(36) + Math.random().toString(36).slice(2, 6), text: g.text, every: el.dataset.every, wd, from: a.k.slice(6), added: [a.k.slice(6)], at: now }; all.push(r); arr[+a.i] = Object.assign({}, g, { rep: r.id }); save(a.k, arr); }
+    save('repeats', all); placeRepeats();
+    D.closeSheet(); renderTodo();
+    D.toast('Repeats ' + repLabel(r));
+  },
+  'rep-stop': () => {
+    const a = D.sheetArg(), arr = list(a.k).slice(), g = arr[+a.i]; if (!g || !g.rep) return;
+    save('repeats', list('repeats').map(x => x.id === g.rep ? Object.assign({}, x, { deleted: true, at: Date.now() }) : x));
+    const c = Object.assign({}, g); delete c.rep; arr[+a.i] = c; save(a.k, arr);
+    D.closeSheet(); renderTodo(); D.toast('Won’t repeat any more. This one stays on your list.');
+  },
   'older-review': () => D.openSheet('older'),
   'older-keep': () => {
     const k = todayK(), before = list(k), arr = before.map(g => (!g.done && isOld(g)) ? Object.assign({}, g, { later: true }) : g);
@@ -341,21 +496,51 @@ Object.assign(D.ACT, {
 });
 D.LP['task-menu'] = el => D.openSheet('task', { i: el.dataset.i });
 
+// What you're about to add: for which day? (the date button wins over a typed date)
+function whenFor(v) {
+  if (S.when) return { text: v, dk: S.when, picked: true };
+  if (S.noParse === v) return null;
+  return parseWhen(v);
+}
+function renderWhen() {
+  const el = $('#todo-when'), v = $('#todo-input').value.trim(), w = v || S.when ? whenFor(v) : null;
+  const plain = w && ((S.day === 'today' && w.dk === D.todayKey()) || (S.day === 'tomorrow' && w.dk === D.dk(D.dayAt(1))));
+  if (!w || plain) { el.hidden = true; el.innerHTML = ''; return; }
+  el.hidden = false;
+  el.innerHTML = '<span class="when-chip">' + ic('cal', 'xs') + 'For ' + esc(dayLabel(w.dk)) + (D.daysFrom(w.dk) > 6 ? '' : ' · ' + esc(D.dShort(D.parseDk(w.dk)))) + '</span>' +
+    (w.text && !w.picked && w.text !== v ? '<span class="when-text">“' + esc(w.text) + '”</span>' : '') +
+    '<button type="button" class="when-x" data-act="when-clear" aria-label="No date">' + ic('x', 'xs') + '</button>';
+}
+// the date pickers inside the task menus
+document.addEventListener('change', e => {
+  const id = e.target && e.target.id, a = D.sheetArg();
+  if (!e.target.value || !a) return;
+  if (id === 'tm-date') moveTo(listKey(), +a.i, e.target.value);
+  if (id === 'ut-date') moveTo(a.k, +a.i, e.target.value);
+});
+$('#todo-input').addEventListener('input', () => { if (S.noParse && S.noParse !== $('#todo-input').value) S.noParse = null; renderWhen(); });
+$('#todo-date-in').addEventListener('change', e => { S.when = e.target.value || null; S.noParse = null; renderWhen(); $('#todo-input').focus(); });
 $('#todo-form').addEventListener('submit', e => {
   e.preventDefault();
   const inp = $('#todo-input'), v = inp.value.trim();
   if (!v) return;
-  const k = listKey(), arr = list(k).slice();
-  arr.push({ text: v, done: false });
+  const w = whenFor(v), text = w ? w.text : v;
+  const k = w ? keyOf(w.dk) : listKey(), arr = list(k).slice();
+  arr.push({ text, done: false });
   save(k, arr);
-  S.enter = k + '#' + (arr.length - 1);
-  inp.value = ''; inp.focus();
-  renderTodo(); S.enter = null; renderHeroTiles();
+  S.when = null; S.noParse = null; $('#todo-date-in').value = '';
+  inp.value = ''; inp.focus(); renderWhen();
+  if (k === listKey()) { S.enter = k + '#' + (arr.length - 1); renderTodo(); S.enter = null; }
+  else {
+    renderTodo();
+    D.toast('Added for ' + dayLabel(w.dk), () => { save(k, list(k).filter((x, j) => j !== arr.length - 1)); renderTodo(); renderHeroTiles(); });
+  }
+  renderHeroTiles();
 });
 
 /* ---------- boot ---------- */
 let rolled = false, lastDay = D.todayKey();
-dash.on(() => { if (!rolled) { rolled = true; rollover(); } renderTodo(); renderHeroTiles(); });
+dash.on(() => { if (!rolled) { rolled = true; rollover(); placeRepeats(); } renderTodo(); renderHeroTiles(); });
 [school, gym, food].forEach(r => r.on(renderHeroTiles));
 if (TT) {
   // the trip follows the class timetable (first lesson, last lesson, cancelled hours)
@@ -379,7 +564,7 @@ D.settings.on(renderHeader);
 D.onWater(() => { renderWater(); if (D.sheetKind() === 'water') D.renderSheet(); });
 window.addEventListener('dash:name', renderHeader);
 setInterval(() => {
-  if (D.todayKey() !== lastDay) { lastDay = D.todayKey(); rolled = false; rollover(); rolled = true; renderAll(); }
+  if (D.todayKey() !== lastDay) { lastDay = D.todayKey(); rolled = false; rollover(); placeRepeats(); rolled = true; renderAll(); }
   else { renderHeader(); renderHeroTiles(); }
 }, 60000);
 

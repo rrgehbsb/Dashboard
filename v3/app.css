@@ -861,3 +861,29 @@ button.tt-note:active { transform:scale(.99); }
 .warn-dot { color:#C2410C; font-weight:700; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .warn-dot { color:#FFB067; } }
 :root[data-theme="dark"] .warn-dot { color:#FFB067; }
+
+/* ---------- To-do: tasks for a date, repeating tasks ---------- */
+.add-row .date-btn { width:40px; height:44px; border-radius:999px; display:grid; place-items:center; color:var(--ink-3); flex:none; }
+.add-row .date-btn:active { background:var(--surface); }
+.date-hidden { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
+.add-row { position:relative; }
+.todo-when { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:-4px 2px 0; font-size:14px; }
+.when-chip { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; background:var(--todo-soft); color:var(--todo-ink); font-weight:700; }
+.when-text { color:var(--ink-3); font-weight:500; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.when-x { width:32px; height:32px; border-radius:999px; display:grid; place-items:center; color:var(--ink-3); margin-left:auto; }
+.chip-s.rpt { background:var(--todo-soft); color:var(--todo-ink); }
+
+.fold-line .ok.up { background:var(--todo-soft); color:var(--todo-ink); }
+.up-sum { display:flex; flex-direction:column; align-items:flex-start; min-width:0; text-align:left; }
+.up-sum small { font-size:13px; font-weight:500; color:var(--ink-3); max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.up-list { display:flex; flex-direction:column; gap:2px; padding-left:4px; }
+.up-day { font-size:13px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-3); margin:8px 0 0 6px; }
+.up-task { min-height:48px; }
+.up-dot { width:8px; height:8px; border-radius:999px; background:var(--todo); margin:0 12px 0 16px; flex:none; }
+.date-item { position:relative; cursor:pointer; }
+.date-item input[type=date] { margin-left:auto; border:0; background:transparent; font:inherit; font-size:15px; color:var(--ink-3); max-width:150px; }
+.rep-opts .menu-item[aria-pressed="true"] { background:var(--todo-soft); color:var(--todo-ink); font-weight:700; }
+.rep-opts .menu-item[aria-pressed="true"]::after { content:"✓"; margin-left:auto; font-weight:800; }
+.up-row { display:flex; align-items:center; gap:0; width:100%; min-height:48px; text-align:left; font-size:17px; font-weight:500; color:var(--ink); padding-right:4px; }
+.up-row .tt { flex:1; min-width:0; overflow-wrap:anywhere; }
+.up-row svg { color:var(--ink-3); flex:none; }
