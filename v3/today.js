@@ -133,9 +133,9 @@ function heroModel() {
   const n = D.nowMin();
   const soon = schoolSoon(2);
   const test = soon.find(x => x.kind === 'test');
-  if (test) return { area: 'school', href: '/school.html', eyebrow: 'Coming up', big: '<span class="t">' + esc(test.title) + '</span>', sub: dayWord(test.d) + (test.subj ? ' · ' + esc(test.subj) : ''), label: test.title + ', ' + dayWord(test.d) };
+  if (test) return { area: 'school', href: D.pageHref('school'), eyebrow: 'Coming up', big: '<span class="t">' + esc(test.title) + '</span>', sub: dayWord(test.d) + (test.subj ? ' · ' + esc(test.subj) : ''), label: test.title + ', ' + dayWord(test.d) };
   const due = soon.filter(x => x.kind === 'hw' && x.d <= 1);
-  if (due.length) return { area: 'school', href: '/school.html', eyebrow: 'Due ' + dayWord(due[0].d).toLowerCase(), big: '<span class="t">' + esc(due[0].title) + '</span>', sub: (due[0].subj ? esc(due[0].subj) : 'School') + (due.length > 1 ? ' · ' + (due.length - 1) + ' more' : ''), label: due[0].title + ' due ' + dayWord(due[0].d) };
+  if (due.length) return { area: 'school', href: D.pageHref('school'), eyebrow: 'Due ' + dayWord(due[0].d).toLowerCase(), big: '<span class="t">' + esc(due[0].title) + '</span>', sub: (due[0].subj ? esc(due[0].subj) : 'School') + (due.length > 1 ? ' · ' + (due.length - 1) + ' more' : ''), label: due[0].title + ' due ' + dayWord(due[0].d) };
   if (n >= 19 * 60) {
     const tm = list(tomorrowK()).filter(g => !g.done);
     return { area: 'todo', href: '#todo', eyebrow: 'Tomorrow · ' + D.dShort(D.dayAt(1)), big: tm.length ? '<span class="n">' + D.numEl('hero-tm', tm.length) + '</span><span class="u">planned</span>' : '<span class="t">Nothing planned yet</span>', sub: tm.length ? esc(tm[0].text) + (tm.length > 1 ? ' · and ' + (tm.length - 1) + ' more' : '') : 'Flip the list below to Tomorrow to add things', label: 'Tomorrow' };
@@ -150,16 +150,16 @@ function tileModels(heroArea) {
   const out = [];
   const g = gymInfo();
   out.push(g ? (g.doneToday
-    ? { area: 'gym', href: '/gym.html', label: 'Gym', p: g.week / g.perWeek, val: 'Done', sub: esc(g.doneToday) + ' · ' + g.week + ' this week' }
-    : { area: 'gym', href: '/gym.html', label: 'Gym', p: g.week / g.perWeek, val: esc(g.next), sub: g.week ? 'Up next · ' + g.week + ' this week' : 'Up next' })
-    : { area: 'gym', href: '/gym.html', label: 'Gym', p: 0, val: 'No plan', sub: 'Set one up in Gym' });
+    ? { area: 'gym', href: D.pageHref('gym'), label: 'Gym', p: g.week / g.perWeek, val: 'Done', sub: esc(g.doneToday) + ' · ' + g.week + ' this week' }
+    : { area: 'gym', href: D.pageHref('gym'), label: 'Gym', p: g.week / g.perWeek, val: esc(g.next), sub: g.week ? 'Up next · ' + g.week + ' this week' : 'Up next' })
+    : { area: 'gym', href: D.pageHref('gym'), label: 'Gym', p: 0, val: 'No plan', sub: 'Set one up in Gym' });
   if (heroArea !== 'school') {
     const w = schoolSoon(7);
-    out.push(w.length ? { area: 'school', href: '/school.html', label: 'School', p: 0, val: D.numEl('tile-school', w.length) + '<small>due</small>', sub: esc(w[0].title) + ' · ' + D.DOW[D.dayAt(w[0].d).getDay()] }
-      : { area: 'school', href: '/school.html', label: 'School', p: 1, val: 'All clear', sub: 'Nothing due this week' });
+    out.push(w.length ? { area: 'school', href: D.pageHref('school'), label: 'School', p: 0, val: D.numEl('tile-school', w.length) + '<small>due</small>', sub: esc(w[0].title) + ' · ' + D.DOW[D.dayAt(w[0].d).getDay()] }
+      : { area: 'school', href: D.pageHref('school'), label: 'School', p: 1, val: 'All clear', sub: 'Nothing due this week' });
   }
   const f = foodInfo();
-  if (f) out.push({ area: 'food', href: '/food.html', label: 'Food', p: f.target ? f.kcal / f.target : 0, val: D.numEl('tile-food', f.kcal) + '<small>kcal</small>',
+  if (f) out.push({ area: 'food', href: D.pageHref('food'), label: 'Food', p: f.target ? f.kcal / f.target : 0, val: D.numEl('tile-food', f.kcal) + '<small>kcal</small>',
     sub: f.target ? (f.kcal <= f.target ? D.fmtN(f.target - f.kcal) + ' left' : D.fmtN(f.kcal - f.target) + ' over plan') + (f.pTarget && f.protein < f.pTarget ? ' · ' + (f.pTarget - f.protein) + ' g protein to go' : '') : 'logged today' });
   return out;
 }

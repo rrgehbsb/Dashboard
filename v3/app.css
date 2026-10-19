@@ -561,3 +561,20 @@ a.tile { color:var(--ink); }
 /* task dividers: straight hairline that starts after the check circle */
 .task + .task { box-shadow:none; }
 .task + .task::before { content:""; position:absolute; left:52px; right:8px; top:0; height:1px; background:var(--line); }
+
+/* ---------- v3 Gym additions ---------- */
+.gym-title { font-size:56px; line-height:.95; font-weight:800; letter-spacing:-.03em; }
+.ex-last .rx { display:inline-flex; align-items:center; font-size:13px; font-weight:700; padding:1px 8px; border-radius:999px; margin-left:4px; white-space:nowrap; background:var(--surface-2); color:var(--ink-2); }
+.ex-last .rx-up, .ex-last .rx-beat { background:var(--gym-soft); color:var(--gym-ink); }
+.ex-last .rx-back { background:var(--school-soft); color:var(--school-ink); }
+.setup { display:flex; flex-direction:column; gap:12px; }
+.btn svg.i { width:20px; height:20px; }
+.summary .btn.ghost { background:color-mix(in srgb, var(--on-gym) 12%, transparent); color:var(--on-gym); align-self:flex-start; }
+.plan-row { gap:8px; padding:0 8px 0 12px; }
+.plan-name { flex:1; min-width:0; height:44px; border:0; background:transparent; font:inherit; font-weight:600; font-size:17px; color:var(--ink); border-radius:10px; padding:0 6px; }
+.plan-name:focus-visible { outline:2px solid var(--focus); }
+.mini { width:40px; height:40px; border-radius:999px; display:grid; place-items:center; color:var(--ink-2); flex:none; }
+.mini:active { background:var(--line); }
+.mini-sp { width:40px; flex:none; }
+.add-btn.gymbg { background:var(--gym); color:var(--on-gym); }
+.stack > .btn.ghost.block { min-height:52px; }

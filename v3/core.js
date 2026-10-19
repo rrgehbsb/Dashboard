@@ -7,7 +7,7 @@
 (function () {
 'use strict';
 
-const VERSION = '2.8.2';
+const VERSION = '2.8.3';
 const SB_URL = 'https://mtuoqwbrujxutofhyahb.supabase.co';
 const SB_KEY = 'sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
 const DEMO = /[?&]demo\b/.test(location.search);
@@ -112,15 +112,24 @@ function Row(area, opt) {
       if (res.error) throw res.error;
       const cloud = (res.data && res.data.data && typeof res.data.data === 'object') ? res.data.data : {};
       const out = Object.assign({}, cloud);
-      keys.forEach(k => { out[k] = r.data[k]; });
+      // keys holding growing collections merge entry-level (opt.merge[k]); local wins ties
+      keys.forEach(k => { out[k] = (opt.merge && opt.merge[k]) ? opt.merge[k](cloud[k], r.data[k]) : r.data[k]; });
       const at = Date.now();
       out._pushAt = at;
       const up = await sb().from('app_state').upsert({ key: key(), data: out, updated_at: new Date().toISOString() }, { onConflict: 'key' });
       if (up.error) throw up.error;
-      keys.forEach(k => { if (gen[k] === snap[k]) dirty.delete(k); });
+      keys.forEach(k => {
+        if (gen[k] !== snap[k]) return;
+        dirty.delete(k);
+        // merged keys: keep what the cloud now holds (includes the other device's entries)
+        if (opt.merge && opt.merge[k]) r.data[k] = out[k];
+      });
       r.lastRemoteAt = at;
       // adopt keys other devices changed meanwhile (overlay, never wipe)
-      Object.keys(cloud).forEach(k => { if (k !== '_pushAt' && k !== '_localAt' && !dirty.has(k) && keys.indexOf(k) < 0) r.data[k] = cloud[k]; });
+      Object.keys(cloud).forEach(k => {
+        if (k === '_pushAt' || k === '_localAt' || dirty.has(k) || keys.indexOf(k) >= 0) return;
+        r.data[k] = (opt.merge && opt.merge[k]) ? opt.merge[k](r.data[k], cloud[k]) : cloud[k];
+      });
       mirror();
       if (opt.afterPush) { try { opt.afterPush(at); } catch (e) {} }
     } catch (e) {
@@ -148,7 +157,7 @@ function Row(area, opt) {
       if (!force && !first && at === r.lastRemoteAt) return;
       if (r.pending()) return;
       r.lastRemoteAt = at;
-      Object.keys(data).forEach(k => { if (k !== '_pushAt' && k !== '_localAt') r.data[k] = data[k]; });
+      Object.keys(data).forEach(k => { if (k !== '_pushAt' && k !== '_localAt') r.data[k] = (opt.merge && opt.merge[k]) ? opt.merge[k](r.data[k], data[k]) : data[k]; });
       mirror();
       if (opt.onRemote) { try { opt.onRemote(data); } catch (e) {} }
       emit('remote');
@@ -396,13 +405,15 @@ SHEETS.settings = () => {
 };
 
 /* ================= Nav ================= */
+// Pages that exist in the new design. The others still open the classic page.
+const LIVE_PAGES = ['today', 'gym'];
 const TABS = [['today', 'Today', 'sun', '/v3/'], ['gym', 'Gym', 'gym', '/gym.html'], ['school', 'School', 'school', '/school.html'], ['food', 'Food', 'food', '/food.html']];
+const pageHref = key => { const t = TABS.find(x => x[0] === key); if (!t) return '/v3/'; return LIVE_PAGES.indexOf(key) >= 0 ? '/v3/' + (key === 'today' ? '' : key + '.html') : t[3]; };
 function renderNav(current) {
   const el = $('#tabs');
   if (!el) return;
   el.innerHTML = '<div class="tabs-in">' + TABS.map(t => {
-    const live = (window.DASH_V3_PAGES || ['today']).indexOf(t[0]) >= 0;
-    const href = live ? '/v3/' + (t[0] === 'today' ? '' : t[0] + '.html') : t[3];
+    const href = pageHref(t[0]);
     return '<a class="tab" id="tab-' + t[0] + '" data-view="' + t[0] + '" href="' + href + '"' + (t[0] === current ? ' aria-current="page"' : '') + '><span class="tab-ic">' + ic(t[2]) + '</span>' + t[1] + '</a>';
   }).join('') + '</div>';
 }
@@ -411,6 +422,7 @@ function renderNav(current) {
 const ACT = {
   undo: () => { const u = toastUndo; hideToast(); if (u) u(); },
   'sheet-close': () => closeSheet(),
+  sheet: el => openSheet(el.dataset.sheet, Object.assign({}, el.dataset)),
   settings: () => openSheet('settings'),
   'water-add': () => { addWater(1); const w = waterProgress(); toast('Added a bottle · ' + (w.ml ? litres(w.done) + ' L' : w.done) + ' today', () => addWater(-1)); },
   'water-undo': () => { addWater(-1); renderSheet(); },
@@ -494,6 +506,7 @@ window.DASH = {
   Row, settings, userName, theme, setTheme,
   waterProgress, waterChip, addWater, onWater: f => waterSubs.push(f),
   ring, numEl, animate, toast, hideToast, SHEETS, openSheet, renderSheet, closeSheet,
-  sheetArg: () => sheetArg, sheetKind: () => sheetKind, ACT, LP, boot
+  sheetArg: () => sheetArg, sheetKind: () => sheetKind, ACT, LP, boot,
+  sb, fresh, uid: () => uid, pageHref
 };
 })();

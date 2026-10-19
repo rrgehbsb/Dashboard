@@ -7,7 +7,7 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.8.2';
+const DASHBOARD_VERSION = '2.8.3';
 
 // Signed-in user's access token, read synchronously from the Supabase session in
 // localStorage. Used by the last-chance "keepalive" saves on page close: the
