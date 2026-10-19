@@ -16,8 +16,8 @@ function fail(res, status, code, error) {
 }
 
 module.exports = async function handler(req, res) {
-  const SB_URL = process.env.SUPABASE_URL;
-  const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const SB_URL = String(process.env.SUPABASE_URL || '').trim().replace(/\/+$/, '');
+  const SB_KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
   if (!SB_URL || !SB_KEY) return fail(res, 500, 'config', 'The server is missing its settings. Try again later.');
 
   // GET = daily keep-alive (Vercel cron in vercel.json). Supabase's free plan pauses
@@ -27,7 +27,14 @@ module.exports = async function handler(req, res) {
   if (req.method === 'GET') {
     try {
       const r = await fetch(`${SB_URL}/rest/v1/app_state?select=key&limit=1`, { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } });
-      return res.status(r.ok ? 200 : 502).json({ ok: r.ok, status: r.status, at: new Date().toISOString() });
+      const out = { ok: r.ok, status: r.status, at: new Date().toISOString() };
+      // Non-secret hints for diagnosing a misconfigured server (never the key itself).
+      if (!r.ok) {
+        out.host = SB_URL.replace(/^https?:\/\//, '').split('/')[0];
+        out.keyType = SB_KEY.startsWith('eyJ') ? 'jwt' : SB_KEY.startsWith('sb_secret_') ? 'sb_secret' : SB_KEY.startsWith('sb_publishable_') ? 'publishable' : 'other';
+        out.detail = (await r.text().catch(() => '')).slice(0, 160);
+      }
+      return res.status(r.ok ? 200 : 502).json(out);
     } catch (e) {
       return res.status(502).json({ ok: false, error: String((e && e.message) || e) });
     }
