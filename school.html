@@ -1895,7 +1895,7 @@ document.addEventListener('DOMContentLoaded',scRenderAll);
     if(!_sb||(!hasPendingPush&&!pushTimer)) return;
     const data={};Object.keys(_dbS).forEach(k=>{data[k]=_dbS[k];});data._pushAt=Date.now();
     try{fetch(SB_URL+'/rest/v1/app_state',{method:'POST',keepalive:true,
-      headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Prefer':'resolution=merge-duplicates'},
+      headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+((window.__sbToken && window.__sbToken()) || SB_KEY),'Prefer':'resolution=merge-duplicates'},
       body:JSON.stringify({key:APP_KEY,data,updated_at:new Date().toISOString()})
     });}catch{}
   }

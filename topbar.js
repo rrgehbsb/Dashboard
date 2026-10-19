@@ -7,7 +7,25 @@
 // Main/Health/Fitness bottom tabs. Skips chrome on finance.html
 // and inside iframes (so the water tracker can embed cleanly).
 // =============================================================
-const DASHBOARD_VERSION = '2.8.1';
+const DASHBOARD_VERSION = '2.8.2';
+
+// Signed-in user's access token, read synchronously from the Supabase session in
+// localStorage. Used by the last-chance "keepalive" saves on page close: the
+// database only accepts writes from the signed-in owner of a row (RLS).
+window.__sbToken = window.__sbToken || function () {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!/^sb-.*-auth-token$/.test(k)) continue;
+      let v = localStorage.getItem(k);
+      if (v && v.slice(0, 7) === 'base64-') { try { v = decodeURIComponent(escape(atob(v.slice(7)))); } catch (e) { v = atob(v.slice(7)); } }
+      const s = JSON.parse(v);
+      const t = s && (s.access_token || (s.currentSession && s.currentSession.access_token));
+      if (t) return t;
+    }
+  } catch (e) {}
+  return null;
+};
 
 // Auto-update: when a new service worker takes control (new deploy), reload once
 // so the installed app always runs the latest code instead of a stale cached

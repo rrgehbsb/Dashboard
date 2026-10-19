@@ -7,7 +7,7 @@
 (function () {
 'use strict';
 
-const VERSION = '2.8.1';
+const VERSION = '2.8.2';
 const SB_URL = 'https://mtuoqwbrujxutofhyahb.supabase.co';
 const SB_KEY = 'sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
 const DEMO = /[?&]demo\b/.test(location.search);
@@ -43,6 +43,24 @@ const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMin
 const hhmm = m => { m = ((Math.round(m) % 1440) + 1440) % 1440; return pad(Math.floor(m / 60)) + ':' + pad(m % 60); };
 
 /* ================= Supabase + session ================= */
+// Signed-in user's access token, read synchronously from the Supabase session in
+// localStorage. Used by the last-chance "keepalive" saves on page close: the
+// database only accepts writes from the signed-in owner of a row (RLS).
+window.__sbToken = window.__sbToken || function () {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!/^sb-.*-auth-token$/.test(k)) continue;
+      let v = localStorage.getItem(k);
+      if (v && v.slice(0, 7) === 'base64-') { try { v = decodeURIComponent(escape(atob(v.slice(7)))); } catch (e) { v = atob(v.slice(7)); } }
+      const s = JSON.parse(v);
+      const t = s && (s.access_token || (s.currentSession && s.currentSession.access_token));
+      if (t) return t;
+    }
+  } catch (e) {}
+  return null;
+};
+
 let _sb = null, uid = null;
 function sb() { if (!_sb) _sb = window.supabase.createClient(SB_URL, SB_KEY); return _sb; }
 function waitSupabase() { return new Promise(res => { (function w() { window.supabase ? res() : setTimeout(w, 40); })(); }); }
@@ -144,7 +162,7 @@ function Row(area, opt) {
     try {
       fetch(SB_URL + '/rest/v1/app_state', {
         method: 'POST', keepalive: true,
-        headers: { 'Content-Type': 'application/json', apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, Prefer: 'resolution=merge-duplicates' },
+        headers: { 'Content-Type': 'application/json', apikey: SB_KEY, Authorization: 'Bearer ' + (window.__sbToken() || SB_KEY), Prefer: 'resolution=merge-duplicates' },
         body: JSON.stringify({ key: key(), data: out, updated_at: new Date().toISOString() })
       });
     } catch (e) {}

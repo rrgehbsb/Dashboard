@@ -1305,7 +1305,7 @@ function flushWithKeepalive() {
       headers: {
         'Content-Type': 'application/json',
         'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Authorization': `Bearer ${(window.__sbToken && window.__sbToken()) || SUPABASE_KEY}`,
         'Prefer': 'resolution=merge-duplicates'
       },
       body: JSON.stringify({key: APP_KEY, data, updated_at: new Date().toISOString()})
