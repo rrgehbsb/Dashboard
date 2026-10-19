@@ -9,14 +9,15 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Dashboard">
 <link rel="manifest" href="/manifest.json">
-<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3">
+<link rel="icon" href="/icon.svg?v=3" type="image/svg+xml">
 <title>Sign in · Dashboard</title>
 <script>(function(){try{var r=JSON.parse(localStorage.getItem('dash3:row:settings')||'null')||{};var t=r.v3Theme;if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <script src="/v3/vendor/supabase-2.116.0.js"></script>
 <script>(function(){var s=window.supabase;if(s&&s.createClient&&!s.__oneClient){s.__oneClient=true;var o=s.createClient.bind(s),c={};s.createClient=function(u,k,op){var q=String(u)+"|"+String(k);return c[q]||(c[q]=o(u,k,op));};}})();</script>
 <link rel="preload" href="/v3/fonts/BricolageGrotesque-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/v3/fonts/Onest-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/v3/app.css?v=2.8.9">
+<link rel="stylesheet" href="/v3/app.css?v=2.9.0">
 <style>
 /* Login: one bright brand block + one white working card. Top-aligned on phones so the
    keyboard never covers the button; two columns from 900px. */
@@ -29,7 +30,7 @@
   padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 24px);
 }
 .brand { background:var(--todo); color:var(--on-todo); border-radius:var(--r-xl); padding:22px 22px 24px; display:flex; flex-direction:column; gap:14px; }
-.brand .mark { width:48px; height:48px; border-radius:16px; background:color-mix(in srgb, var(--on-todo) 18%, transparent); display:grid; place-items:center; }
+.brand .logo { width:56px; height:56px; border-radius:15px; box-shadow:0 4px 14px rgba(0,0,0,.18); display:block; }
 .brand .mark svg { width:28px; height:28px; fill:none; stroke:currentColor; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round; }
 .brand h1 { font-size:38px; line-height:1; font-weight:800; letter-spacing:-.02em; }
 .brand p { font-size:16px; font-weight:500; opacity:.92; max-width:30ch; }
@@ -69,7 +70,7 @@
 <body>
 <main class="auth">
   <section class="brand" aria-label="Dashboard">
-    <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+    <img class="logo" src="/icon.svg?v=3" width="56" height="56" alt="">
     <h1>Dashboard</h1>
     <p>Your day at a glance: what to do, when to leave, what’s next.</p>
     <div class="areas" aria-hidden="true"><span class="a-todo">To-do</span><span class="a-gym">Gym</span><span class="a-school">School</span><span class="a-food">Food</span></div>
