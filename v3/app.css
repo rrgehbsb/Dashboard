@@ -670,3 +670,23 @@ a.tile { color:var(--ink); }
 .pick[aria-pressed="true"] { background:var(--school); color:var(--on-school); border-color:var(--school); }
 .pick[aria-pressed="true"]::before { content:"✓"; margin-right:6px; font-weight:800; }
 .pick[aria-pressed="false"] { background:transparent; color:var(--ink-3); border:2px dashed var(--line); }
+
+/* ---------- School: what kind of item (homework / assignment / test / quiz) ---------- */
+.ty { display:inline-flex; align-items:center; gap:4px; font-size:12px; font-weight:800; letter-spacing:.02em; padding:2px 8px; border-radius:999px; margin-right:6px; white-space:nowrap; }
+.ty svg { width:12px; height:12px; }
+.ty-homework { background:var(--school-soft); color:var(--school-ink); }
+.ty-assignment { background:var(--todo-soft); color:var(--todo-ink); }
+.ty-test { background:#E5384F; color:#fff; }
+.ty-quiz { background:var(--amber); color:var(--on-amber); }
+.upnext-head { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+.seg.sm button { min-height:36px; padding:0 11px; font-size:13px; }
+.kinds { display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:6px; }
+.kind { min-height:40px; border-radius:12px; font-weight:700; font-size:13px; background:var(--surface-2); color:var(--ink-2); border:2px solid transparent; }
+.kind[aria-checked="true"].k-homework { background:var(--school-soft); color:var(--school-ink); border-color:var(--school); }
+.kind[aria-checked="true"].k-assignment { background:var(--todo-soft); color:var(--todo-ink); border-color:var(--todo); }
+.kind[aria-checked="true"].k-test { background:#E5384F; color:#fff; border-color:#E5384F; }
+.kind[aria-checked="true"].k-quiz { background:var(--amber); color:var(--on-amber); border-color:var(--amber); }
+.hw .sub .ty + * { margin-left:0; }
+/* one look for "selected" everywhere: blue with a check */
+.pick[aria-checked="true"] { background:var(--school); color:var(--on-school); }
+.pick[aria-checked="true"]::before { content:"✓"; margin-right:6px; font-weight:800; }

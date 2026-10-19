@@ -129,7 +129,7 @@ D.SHEETS.tripinfo = () => {
     body: problemsHtml() + '<div class="info-list">' +
       row('Live', 'The bus or train is being tracked by GPS right now. The time is when it will really get there.') +
       row('Scheduled', 'It hasn’t started its route yet, so the time comes from the official timetable.') +
-      row('Late or early', 'Shown when it’s 2 minutes or more off. Within a minute counts as on time. Your leave time moves with your bus.') +
+      row('Late or early', '“in 2 min” and the clock time are when it will really arrive. Any delay is already counted in. “15 min late” only tells you how far behind its timetable it is (shown when it’s 2 minutes or more). Your leave time moves with your bus.') +
       row('Orange card', 'Leave within 5 minutes, or your bus is late enough that you might miss the train.') +
       row('In Herzliya', 'The app picks the fastest way each time: walking to the main entrance (about 14 min), bus 33/34 to the New High School entrance, or another bus to Kanyon Shivat HaKochavim and a 2-minute walk to the main entrance. Nothing to set.') +
       row('Entrances', 'New High School (תיכון חדש): on Sderot Shivat HaKochavim, by the 33/34 stop. Main entrance (הנדסאים): the gate just past Kanyon Shivat HaKochavim. The card tells you which one you’ll use.') +
@@ -168,7 +168,9 @@ function busRows(code, lines, max) {
   if (!rows.length) return '<p class="sheet-note">No buses expected right now.</p>';
   return '<div class="board">' + rows.map(r => {
     const mins = r.eta - now, st = !r.v.live ? '<span class="st-b">Scheduled</span>' : r.delay == null ? '<span class="st-b ok"><i></i>Live</span>' : badge({ live: true, delay: r.delay });
-    return '<div class="bd-row"><span class="ln-pill">' + esc(r.v.line) + '</span><div class="bd-main"><b>' + (mins <= 0 ? 'Now' : mins + ' min') + '</b><span>' + C.hhmm(r.eta) + ' · to ' + bdi(r.v.dest || r.v.destEn) + '</span></div>' + st + '</div>';
+    // The minutes and the clock time are when it really arrives: any delay is already counted in.
+    const vs2 = r.delay != null && r.v.live && Math.abs(r.delay) >= 2 ? ' · timetable said ' + C.hhmm(r.sched) : '';
+    return '<div class="bd-row"><span class="ln-pill">' + esc(r.v.line) + '</span><div class="bd-main"><b>' + (mins <= 0 ? 'Arriving now' : 'in ' + mins + ' min') + '</b><span>Arrives ' + C.hhmm(r.eta) + vs2 + ' · to ' + bdi(r.v.dest || r.v.destEn) + '</span></div>' + st + '</div>';
   }).join('') + '</div>';
 }
 function trainRows(station, dir, max) {
@@ -177,7 +179,8 @@ function trainRows(station, dir, max) {
   if (!list.length) return '<p class="sheet-note">No more trains today.</p>';
   return '<div class="board">' + list.map(t => {
     const l = C.liveTrain(station, t.dep, t.no), when = l && l.live ? l.eta : t.dep, mins = when - now;
-    return '<div class="bd-row"><span class="ln-pill train">' + ic('train', 'xs') + '</span><div class="bd-main"><b>' + C.hhmm(t.dep) + (l && l.live && Math.abs(l.delay) >= 1 ? ' → ' + C.hhmm(l.eta) : '') + '</b><span>Train ' + esc(t.no) + ' · ' + (mins <= 0 ? 'now' : 'in ' + mins + ' min') + ' · arrives ' + C.hhmm(t.arr + (l && l.live ? Math.max(0, l.delay) : 0)) + '</span></div>' + badge(l) + '</div>';
+    const moved = l && l.live && Math.abs(l.delay) >= 2;
+    return '<div class="bd-row"><span class="ln-pill train">' + ic('train', 'xs') + '</span><div class="bd-main"><b>' + (mins <= 0 ? 'Leaving now' : 'in ' + mins + ' min') + '</b><span>Leaves ' + C.hhmm(when) + (moved ? ' · timetable said ' + C.hhmm(t.dep) : '') + ' · train ' + esc(t.no) + ' · arrives ' + C.hhmm(t.arr + (l && l.live ? Math.max(0, l.delay) : 0)) + '</span></div>' + badge(l) + '</div>';
   }).join('') + '</div>';
 }
 D.SHEETS.live = () => {

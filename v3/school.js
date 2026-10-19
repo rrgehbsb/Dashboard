@@ -70,7 +70,7 @@ function patch(k, id, fields) { const cur = arr(k).find(x => x && x.id === id); 
 function items() {
   const out = [];
   live(K.as).forEach(a => out.push({ kind: 'hw', id: a.id, title: a.title || 'Untitled', subjectId: a.subjectId, type: a.type || 'Homework', date: a.dueDate || null, done: a.status === 'Done', doneAt: a.completedAt || null }));
-  live(K.te).forEach(t => out.push({ kind: 'test', id: t.id, title: t.name || 'Test', subjectId: t.subjectId, type: 'Test', date: t.testDate || null }));
+  live(K.te).forEach(t => out.push({ kind: 'test', id: t.id, title: t.name || 'Test', subjectId: t.subjectId, type: t.type === 'Quiz' || /quiz|בוחן/i.test(t.name || '') ? 'Quiz' : 'Test', date: t.testDate || null }));
   out.forEach(x => { x.d = D.daysFrom(x.date); });
   return out;
 }
@@ -96,24 +96,32 @@ function dueLabel(d) {
 }
 
 /* ---------- state ---------- */
-const S = { showDone: false, folding: {}, pick: null, pickBack: null, enter: null };
+const S = { showDone: false, folding: {}, pick: null, pickBack: null, enter: null, filter: 'all', qkind: null };
 
 /* ---------- trip card: drawn by trip.js ---------- */
 function renderCommute() { if (window.TRIPUI) window.TRIPUI.render(); }
 
 /* ---------- up next ---------- */
 const CHECK = '<span class="box"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12.5l4 4L18 8"/></svg></span>';
+// Every item says plainly what it is, so a test never hides among homework.
+// Kinds: Homework · Assignment (project, essay, worksheet…) · Test · Quiz
+const KINDS = ['Homework', 'Assignment', 'Test', 'Quiz'];
+const kindOf = x => x.kind === 'test' ? (x.type === 'Quiz' ? 'Quiz' : 'Test') : (!x.type || x.type === 'Homework' ? 'Homework' : 'Assignment');
+function typeChip(x) {
+  const k = kindOf(x), sub = k === 'Assignment' && x.type && x.type !== 'Assignment' ? x.type : k;
+  return '<span class="ty ty-' + k.toLowerCase() + '">' + (k === 'Test' || k === 'Quiz' ? ic('info', 'xs') : '') + esc(sub) + '</span>';
+}
 function hwRow(x) {
   const late = x.d != null && x.d < 0;
   return '<li class="hw' + (x.done ? ' is-done' : '') + (S.enter === x.id ? ' enter' : '') + '" id="hw-' + x.id + '">' +
     '<button class="check" id="hwc-' + x.id + '" data-act="hw-toggle" data-id="' + x.id + '" aria-pressed="' + !!x.done + '" aria-label="' + (x.done ? 'Done' : 'Mark done') + ': ' + esc(x.title) + '">' + CHECK + '</button>' +
-    '<button class="body" data-act="sheet" data-sheet="item" data-kind="hw" data-id="' + x.id + '"><span class="nm">' + esc(x.title) + '</span><span class="sub">' + esc(subjName(x.subjectId) || 'No subject') + (x.type && x.type !== 'Homework' ? ' · ' + esc(x.type) : '') + '</span></button>' +
+    '<button class="body" data-act="sheet" data-sheet="item" data-kind="hw" data-id="' + x.id + '"><span class="nm">' + esc(x.title) + '</span><span class="sub">' + typeChip(x) + esc(subjName(x.subjectId) || 'No subject') + '</span></button>' +
     '<span class="due' + (x.d != null && x.d >= 0 && x.d <= 1 ? ' soon' : late ? ' late' : '') + '">' + dueLabel(x.d) + '</span></li>';
 }
 function testRow(x) {
   const past = x.d != null && x.d < 0;
   return '<li class="hw test-row' + (S.enter === x.id ? ' enter' : '') + '" id="hw-' + x.id + '"><span class="check t-ic" aria-hidden="true">' + ic(past ? 'check' : 'clock', 'sm') + '</span>' +
-    '<button class="body" data-act="sheet" data-sheet="item" data-kind="test" data-id="' + x.id + '"><span class="nm">' + esc(x.title) + '</span><span class="sub"><span class="test">TEST</span>' + esc(subjName(x.subjectId) || '') + '</span></button>' +
+    '<button class="body" data-act="sheet" data-sheet="item" data-kind="test" data-id="' + x.id + '"><span class="nm">' + esc(x.title) + '</span><span class="sub">' + typeChip(x) + esc(subjName(x.subjectId) || '') + '</span></button>' +
     (past ? '<button class="score-chip" id="score-' + x.id + '" data-act="sheet" data-sheet="score" data-id="' + x.id + '">+ score</button>' : '<span class="due' + (x.d != null && x.d <= 2 ? ' soon' : '') + '">' + dueLabel(x.d) + '</span>') + '</li>';
 }
 function classify() {
@@ -125,14 +133,17 @@ function classify() {
   const old = all.filter(x => x.kind === 'hw' && !x.done && x.d != null && x.d < -14);
   return { all, open, scoreable, done, old };
 }
+const passes = x => S.filter === 'all' || (S.filter === 'tests' ? x.kind === 'test' : x.kind === 'hw');
 function renderUpNext() {
   const c = classify();
   const week = c.open.filter(x => x.d != null && x.d >= 0 && x.d <= 7);
-  const test = week.find(x => x.kind === 'test');
+  const tests = week.filter(x => x.kind === 'test'), test = tests[0];
   $('#upnext-sum').innerHTML = (test ? '<b>' + esc(test.title.split('·')[0].trim()) + ' ' + (test.d === 0 ? 'today' : test.d === 1 ? 'tomorrow' : dayName(test.d)) + '.</b> ' : '') +
-    (week.length ? week.length + ' ' + D.plural(week.length, 'thing', 'things') + ' this week.' : 'Nothing due this week.');
-  $('#hw-list').innerHTML = (c.open.map(x => x.kind === 'test' ? testRow(x) : hwRow(x)).join('') + c.scoreable.map(testRow).join('')) ||
-    '<li class="empty">Nothing coming up. Add homework or a test above.</li>';
+    (week.length ? (tests.length ? tests.length + ' ' + D.plural(tests.length, 'test', 'tests') + ' and ' : '') + (week.length - tests.length) + ' homework or ' + D.plural(week.length - tests.length, 'assignment', 'assignments') + ' this week.' : 'Nothing due this week.');
+  $('#un-filter').innerHTML = [['all', 'All'], ['hw', 'Homework'], ['tests', 'Tests']].map(o => '<button role="tab" id="unf-' + o[0] + '" data-act="un-filter" data-v="' + o[0] + '" aria-selected="' + (S.filter === o[0]) + '">' + o[1] + '</button>').join('');
+  const rows = c.open.filter(passes).map(x => x.kind === 'test' ? testRow(x) : hwRow(x)).join('') + c.scoreable.filter(passes).map(testRow).join('');
+  $('#hw-list').innerHTML = rows ||
+    '<li class="empty">' + (S.filter === 'tests' ? 'No tests coming up.' : S.filter === 'hw' ? 'No homework coming up.' : 'Nothing coming up. Add homework or a test above.') + '</li>';
   S.enter = null;
   let ex = '';
   if (c.done.length) {
@@ -192,21 +203,37 @@ function parseQuick(text) {
     : (extra ? (type || 'Homework') + ' ' + extra : (sname ? sname + ' ' + (type || 'Homework').toLowerCase() : (type || 'Homework')));
   return { subj, newSubj, kind: isTest ? 'test' : 'hw', type: isTest ? 'Test' : (type || 'Homework'), off, title };
 }
+// What you're adding: the button you picked wins; otherwise what you typed ("test", "quiz", "project"…).
+function withKind(p, v) {
+  p = p || { subj: null, newSubj: null, kind: 'hw', type: 'Homework', off: null, title: D.cap(v) };
+  const typed = p.kind === 'test' ? (/quiz|bochan|בוחן/i.test(v) ? 'Quiz' : 'Test') : (p.type && p.type !== 'Homework' ? 'Assignment' : 'Homework');
+  const k = S.qkind || typed;
+  if (k === 'Test' || k === 'Quiz') {
+    if (p.kind !== 'test') p.title = (p.subj ? p.subj.name + ' ' : p.newSubj ? p.newSubj + ' ' : '') + k.toLowerCase();
+    p.kind = 'test'; p.type = k;
+  } else {
+    if (p.kind === 'test') p.title = (p.subj ? p.subj.name + ' ' : '') + k.toLowerCase();
+    p.kind = 'hw'; p.type = k === 'Assignment' ? (p.type && p.type !== 'Homework' && p.type !== 'Test' ? p.type : 'Assignment') : 'Homework';
+  }
+  p.k = k;
+  return p;
+}
 function renderPreview() {
   const v = $('#hw-input').value.trim(), el = $('#hw-preview');
+  const p = v ? withKind(parseQuick(v), v) : null;
+  const eff = S.qkind || (p ? p.k : 'Homework');
+  $('#hw-kinds').innerHTML = KINDS.map(k => '<button type="button" class="kind k-' + k.toLowerCase() + '" id="qk-' + k + '" role="radio" data-act="q-kind" data-v="' + k + '" aria-checked="' + (eff === k) + '">' + k + '</button>').join('');
   if (!v) { el.innerHTML = ''; return; }
-  const p = parseQuick(v);
-  el.innerHTML = p ? '<span>Will add</span><span class="pc">' + ic(p.kind === 'test' ? 'clock' : 'school', 'xs') + esc((p.subj ? p.subj.name : p.newSubj || 'No subject')) + ' · ' + (p.kind === 'test' ? 'Test' : esc(p.type)) + ' · ' + (p.off == null ? 'No date' : esc(dueLabel(p.off))) + '</span>' + (p.newSubj ? '<span>new subject</span>' : '')
-    : '<span>Try a subject, a type and a day, like “bio test tue”</span>';
+  el.innerHTML = '<span>Will add</span><span class="pc">' + typeChip(p) + esc((p.subj ? p.subj.name : p.newSubj || 'No subject')) + ' · ' + (p.off == null ? 'No date' : esc(dueLabel(p.off))) + '</span>' + (p.newSubj ? '<span>new subject</span>' : '');
 }
 function addQuick(v) {
-  const p = parseQuick(v) || { subj: null, newSubj: null, kind: 'hw', type: 'Homework', off: null, title: D.cap(v) };
+  const p = withKind(parseQuick(v), v);
   ensureSubjectsSaved();
   let subjectId = p.subj ? p.subj.id : '';
   if (p.newSubj) { const s = upsert(K.subj, { id: newId(), name: p.newSubj, color: COLORS[live(K.subj).length % COLORS.length], hidden: false }); subjectId = s.id; }
   const date = p.off == null ? null : D.dk(D.dayAt(p.off));
   const item = p.kind === 'test'
-    ? upsert(K.te, { id: newId(), subjectId, name: p.title, testDate: date, studyStatus: 'Not started', importance: 'Normal' })
+    ? upsert(K.te, { id: newId(), subjectId, name: p.title, type: p.type, testDate: date, studyStatus: 'Not started', importance: 'Normal' })
     : upsert(K.as, { id: newId(), subjectId, title: p.title, type: p.type, dueDate: date, priority: 'Auto', status: 'Not started' });
   S.enter = item.id;
   render();
@@ -229,18 +256,22 @@ function toggleHw(id) {
 }
 
 /* ---------- sheets ---------- */
-const ASSIGN_TYPES = ['Homework', 'Project', 'Worksheet', 'Reading', 'Study', 'Presentation', 'Essay', 'Lab'];
+const ASSIGN_TYPES = ['Assignment', 'Project', 'Worksheet', 'Reading', 'Study', 'Presentation', 'Essay', 'Lab'];
 D.SHEETS.item = a => {
   const isTest = a.kind === 'test', src = (isTest ? live(K.te) : live(K.as)).find(x => x.id === a.id);
   if (!src) return { title: 'Item', body: '<p class="sheet-note">This item was removed.</p>' };
-  if (!a.f) a.f = { title: isTest ? src.name : src.title, subjectId: src.subjectId || '', date: (isTest ? src.testDate : src.dueDate) || '', type: src.type || 'Homework' };
+  if (!a.f) {
+    const t = isTest ? (src.type === 'Quiz' || /quiz|בוחן/i.test(src.name || '') ? 'Quiz' : 'Test') : (src.type || 'Homework');
+    a.f = { title: isTest ? src.name : src.title, subjectId: src.subjectId || '', date: (isTest ? src.testDate : src.dueDate) || '', type: t, kind: isTest ? t : (t === 'Homework' ? 'Homework' : 'Assignment') };
+  }
   const f = a.f;
   return {
-    title: isTest ? 'Test' : 'Homework',
-    body: '<label class="field-label" for="it-title">' + (isTest ? 'What' : 'Title') + '</label><input class="text-in" id="it-title" value="' + esc(f.title) + '" maxlength="80" autocomplete="off">' +
+    title: f.kind,
+    body: '<p class="field-label">What is it?</p><div class="kinds" role="radiogroup" aria-label="Kind">' + KINDS.map(k => '<button class="kind k-' + k.toLowerCase() + '" id="ik-' + k + '" role="radio" data-act="it-kind" data-v="' + k + '" aria-checked="' + (f.kind === k) + '">' + k + '</button>').join('') + '</div>' +
+      '<label class="field-label" for="it-title">Title</label><input class="text-in" id="it-title" value="' + esc(f.title) + '" maxlength="80" autocomplete="off">' +
       '<p class="field-label">Subject</p><div class="pick-row" role="radiogroup" aria-label="Subject">' + subjects().map(s => '<button class="pick" id="isub-' + esc(s.id) + '" role="radio" data-act="it-subj" data-v="' + esc(s.id) + '" aria-checked="' + (f.subjectId === s.id) + '">' + esc(s.name) + '</button>').join('') + '</div>' +
-      '<label class="field-label" for="it-date">' + (isTest ? 'Date' : 'Due') + '</label><input class="text-in" id="it-date" type="date" value="' + esc(f.date) + '">' +
-      (isTest ? '' : '<p class="field-label">Type</p><div class="pick-row" role="radiogroup" aria-label="Type">' + ASSIGN_TYPES.map(t => '<button class="pick" id="ity-' + t + '" role="radio" data-act="it-type" data-v="' + t + '" aria-checked="' + (f.type === t) + '">' + t + '</button>').join('') + '</div>') +
+      '<label class="field-label" for="it-date">' + (f.kind === 'Test' || f.kind === 'Quiz' ? 'Date' : 'Due') + '</label><input class="text-in" id="it-date" type="date" value="' + esc(f.date) + '">' +
+      (f.kind === 'Assignment' ? '<p class="field-label">Type of assignment</p><div class="pick-row" role="radiogroup" aria-label="Type">' + ASSIGN_TYPES.map(t => '<button class="pick" id="ity-' + t + '" role="radio" data-act="it-type" data-v="' + t + '" aria-checked="' + (f.type === t) + '">' + t + '</button>').join('') + '</div>' : '') +
       '<div class="sheet-actions"><button class="btn ghost" id="it-del" data-act="it-del">Remove</button><button class="btn school" id="it-save" data-act="it-save">Save</button></div>'
   };
 };
@@ -299,10 +330,21 @@ Object.assign(D.ACT, {
     const a = D.sheetArg(), f = a.f;
     if (!f.title.trim()) { D.toast('Add a title first'); return; }
     ensureSubjectsSaved();
-    if (a.kind === 'test') patch(K.te, a.id, { name: f.title.trim(), subjectId: f.subjectId, testDate: f.date || null });
-    else patch(K.as, a.id, { title: f.title.trim(), subjectId: f.subjectId, dueDate: f.date || null, type: f.type });
-    D.closeSheet(); render(); D.toast('Saved');
+    const toTest = f.kind === 'Test' || f.kind === 'Quiz', wasTest = a.kind === 'test';
+    if (toTest === wasTest) {
+      if (wasTest) patch(K.te, a.id, { name: f.title.trim(), subjectId: f.subjectId, testDate: f.date || null, type: f.kind });
+      else patch(K.as, a.id, { title: f.title.trim(), subjectId: f.subjectId, dueDate: f.date || null, type: f.kind === 'Homework' ? 'Homework' : (f.type === 'Homework' ? 'Assignment' : f.type) });
+    } else {
+      // homework ↔ test live in different lists: move it (the old copy is marked deleted)
+      patch(wasTest ? K.te : K.as, a.id, { deleted: true });
+      if (toTest) upsert(K.te, { id: newId(), subjectId: f.subjectId, name: f.title.trim(), type: f.kind, testDate: f.date || null, studyStatus: 'Not started', importance: 'Normal' });
+      else upsert(K.as, { id: newId(), subjectId: f.subjectId, title: f.title.trim(), type: f.kind === 'Homework' ? 'Homework' : 'Assignment', dueDate: f.date || null, priority: 'Auto', status: 'Not started' });
+    }
+    D.closeSheet(); render(); D.toast('Saved · ' + f.kind);
   },
+  'it-kind': el => { syncItem(); const f = D.sheetArg().f; f.kind = el.dataset.v; if (f.kind === 'Assignment' && (f.type === 'Homework' || f.type === 'Test' || f.type === 'Quiz')) f.type = 'Assignment'; D.renderSheet(); },
+  'un-filter': el => { S.filter = el.dataset.v; renderUpNext(); },
+  'q-kind': el => { S.qkind = S.qkind === el.dataset.v ? null : el.dataset.v; renderPreview(); },
   'it-del': () => {
     const a = D.sheetArg(), k = a.kind === 'test' ? K.te : K.as;
     patch(k, a.id, { deleted: true }); D.closeSheet(); render();
@@ -341,7 +383,7 @@ $('#hw-input').addEventListener('input', renderPreview);
 $('#hw-form').addEventListener('submit', e => {
   e.preventDefault();
   const inp = $('#hw-input'), v = inp.value.trim(); if (!v) return;
-  addQuick(v); inp.value = ''; renderPreview();
+  addQuick(v); inp.value = ''; S.qkind = null; renderPreview();
 });
 
 /* ---------- boot ---------- */
@@ -349,5 +391,6 @@ school.on(() => { if (!D.sheetKind()) render(); });
 C.load().then(() => renderCommute());
 setInterval(() => { if (!D.sheetKind()) renderCommute(); }, 30000);
 render();
+renderPreview();
 D.boot('school');
 })();
