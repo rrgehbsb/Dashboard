@@ -930,3 +930,25 @@ button.tt-note:active { transform:scale(.99); }
 .tour-row .grow small { font-size:13px; font-weight:500; color:var(--ink-3); margin-top:2px; }
 .tour-ic { width:34px; height:34px; border-radius:11px; display:grid; place-items:center; flex:none; color:#fff;
   background:linear-gradient(135deg, var(--todo), var(--school) 55%, var(--water)); box-shadow:0 4px 12px -4px color-mix(in srgb, var(--todo) 70%, transparent); }
+
+/* ---------- loading: the shape of what's coming ---------- */
+.skel { display:flex; flex-direction:column; gap:10px; padding:6px 0 2px; }
+.skel i { display:block; height:14px; border-radius:8px; background:var(--surface-2); position:relative; overflow:hidden; }
+.skel i.big { height:42px; width:62%; border-radius:12px; margin-bottom:4px; }
+.skel i::after { content:""; position:absolute; inset:0; transform:translateX(-100%); background:linear-gradient(90deg, transparent, color-mix(in srgb, var(--surface) 70%, transparent), transparent); animation:skel 1.4s ease-in-out infinite; }
+.commute .skel i { background:color-mix(in srgb, var(--hf) 16%, transparent); }
+.commute .skel i::after { background:linear-gradient(90deg, transparent, color-mix(in srgb, var(--hf) 22%, transparent), transparent); }
+[dir="rtl"] .skel i::after { animation-direction:reverse; }
+@keyframes skel { to { transform:translateX(100%); } }
+
+/* ---------- moving between pages: a soft crossfade, the tab bar stays put ---------- */
+@view-transition { navigation:auto; }
+.tabs { view-transition-name:tabs; }
+::view-transition-old(root) { animation:vtOut .16s ease-in both; }
+::view-transition-new(root) { animation:vtIn .28s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes vtOut { to { opacity:0; } }
+@keyframes vtIn { from { opacity:0; transform:translateY(10px); } }
+@media (prefers-reduced-motion: reduce) {
+  @view-transition { navigation:none; }
+  .skel i::after { animation:none; }
+}

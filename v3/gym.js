@@ -339,6 +339,7 @@ function tapPill(exId, key) {
   const wasAll = cells(ex).every(x => String(el[cellKey(x)] || '').trim());
   const p = ghostFor(ex, c, el, prescription(ex, prevSession(ex, sk), sk));
   writeCell(ex, day, c, fillText(ex, p.w, p.r));
+  D.buzz();
   S.pop = ex.id + ':' + key;
   afterLog(ex, day, wasAll);
 }
@@ -440,7 +441,7 @@ D.SHEETS.weigh = a => {
   if (a.w === undefined) { a.w = null; loadWeight(a); }
   return {
     title: 'Weigh-in',
-    body: a.w == null && !a.loaded ? '<p class="sheet-note">Loading your last weigh-in…</p>'
+    body: a.w == null && !a.loaded ? D.skel('Loading your last weigh-in…', ['big', 60])
       : '<div class="stepper"><button class="step-btn" id="weigh-m" data-act="weigh-step" data-d="-1" aria-label="Less">−</button><span class="val"><span class="num">' + trim(a.w == null ? 70 : a.w) +
         '</span><small>kg</small></span><button class="step-btn" id="weigh-p" data-act="weigh-step" data-d="1" aria-label="More">+</button></div>' +
         '<div class="pick-row">' + ['-1', '-0.5', '+0.5', '+1'].map(v => '<button class="pick" id="wq' + v.replace(/[^\d]/g, '') + (v[0] === '-' ? 'm' : 'p') + '" data-act="weigh-quick" data-v="' + v + '">' + v + '</button>').join('') + '</div>' +

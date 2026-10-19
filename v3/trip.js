@@ -61,7 +61,7 @@ function render() {
       '<button class="alt solid" id="commute-setup" data-act="trip-open">Set up my trip</button></section>';
     return;
   }
-  if (!C.rail()) { slot.innerHTML = '<section class="commute" id="commute"><div class="row1"><span class="lbl">Your trip</span><span class="tools">' + gear + '</span></div><p class="note">Loading timetables…</p></section>'; return; }
+  if (!C.rail()) { slot.innerHTML = '<section class="commute" id="commute"><div class="row1"><span class="lbl">Your trip</span><span class="tools">' + gear + '</span></div>' + D.skel('Loading timetables…', ['big', 70, 45]) + '</section>'; return; }
   const ph = C.phase(c), L = c.legs, now = D.nowMin();
   maybeFetch(c, ph);
   let h = '', area = 'school';

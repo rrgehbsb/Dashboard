@@ -370,7 +370,7 @@ function toggle(i) {
   const fk = k + '#' + i;
   if (g.done) { arr[i] = Object.assign({}, g, { done: false }); delete S.folding[fk]; save(k, arr); renderTodo(); renderHeroTiles(); return; }
   arr[i] = Object.assign({}, g, { done: true });
-  S.folding[fk] = true;
+  S.folding[fk] = true; D.buzz();
   save(k, arr);
   const li = $('#task-' + i);
   if (li) { li.classList.add('is-done'); const b = $('#check-' + i); if (b) b.setAttribute('aria-pressed', 'true'); }

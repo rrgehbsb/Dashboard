@@ -83,7 +83,7 @@ function render() {
       T.load(s.cls).then(x => { S.loading = false; S.failed = !x || x.cls !== s.cls; render(); });
     }
     slot.innerHTML = '<section class="card tt" id="tt"><div class="tt-head"><h2 class="card-title">Timetable</h2></div>' +
-      (S.failed ? '<p class="sheet-note">Couldn’t reach the school website.</p><button class="btn ghost block" id="tt-retry" data-act="tt-retry">Try again</button>' : '<p class="sheet-note">Loading your timetable…</p>') + '</section>';
+      (S.failed ? '<p class="sheet-note">Couldn’t reach the school website.</p><button class="btn ghost block" id="tt-retry" data-act="tt-retry">Try again</button>' : D.skel('Loading your timetable…', [92, 80, 88, 72, 84])) + '</section>';
     return;
   }
   const today = D.todayKey(), nd = nextDay();
@@ -160,7 +160,7 @@ D.SHEETS.ttset = a => {
   return {
     title: 'Timetable',
     body: '<p class="group-title">Your class</p>' +
-      (a.list ? '<div class="pick-row cls-grid" role="radiogroup" aria-label="Class">' + a.list.map(c => '<button class="pick" id="cls-' + c.id + '" role="radio" data-act="tt-cls" data-v="' + c.id + '" aria-checked="' + (f.cls === c.id) + '">' + bdi(c.name) + '</button>').join('') + '</div>' : '<p class="sheet-note">Loading classes…</p>') +
+      (a.list ? '<div class="pick-row cls-grid" role="radiogroup" aria-label="Class">' + a.list.map(c => '<button class="pick" id="cls-' + c.id + '" role="radio" data-act="tt-cls" data-v="' + c.id + '" aria-checked="' + (f.cls === c.id) + '">' + bdi(c.name) + '</button>').join('') + '</div>' : D.skel('Loading classes…', [100, 100])) +
       (f.cls && groups.length ? '<p class="group-title">Your groups</p><p class="sheet-note">These subjects split into groups, each with its own teacher and sometimes its own hours. Pick your teacher for each one you take. Then the timetable shows only your lessons, and if your teacher isn’t in, it shows your group as cancelled.</p>' +
         '<div class="grp-list">' + groups.map(groupRow).join('') + '</div>' : '') +
       '<p class="group-title">Your trip</p>' +

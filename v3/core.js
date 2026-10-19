@@ -7,7 +7,7 @@
 (function () {
 'use strict';
 
-const VERSION = '2.9.13';
+const VERSION = '2.9.14';
 const SB_URL = 'https://mtuoqwbrujxutofhyahb.supabase.co';
 const SB_KEY = 'sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
 const DEMO = /[?&]demo\b/.test(location.search);
@@ -26,6 +26,10 @@ const fmtN = (n, dec) => Number(n).toLocaleString('en-US', { minimumFractionDigi
 const DIR_ICONS = { 'chev-r': 1, 'chev-l': 1, arrow: 1, go: 1, logout: 1 }; // mirrored right-to-left
 const ic = (n, cls) => '<svg class="i ' + (cls || '') + (DIR_ICONS[n] ? ' dir' : '') + '" aria-hidden="true"><use href="#i-' + n + '"/></svg>';
 const readJSON = k => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } };
+// While something loads, its shape (shimmering bars) instead of "Loading…". Bars: 'big', or a width in %.
+const skel = (label, bars) => '<div class="skel" role="status"><span class="sr">' + esc(label) + '</span>' + bars.map(b => '<i' + (b === 'big' ? ' class="big"' : ' style="width:' + b + '%"') + '></i>').join('') + '</div>';
+// a tiny tap you can feel when something is done (phones that allow it)
+const buzz = () => { try { if (navigator.vibrate && !reduced()) navigator.vibrate(8); } catch (e) {} };
 const writeJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 
 // language (i18n.js): Hebrew dates read "יום שני, 19 באוקטובר" / "יום ב׳ 26.10"
@@ -699,7 +703,7 @@ async function boot(page) {
 }
 
 window.DASH = {
-  VERSION, DEMO, $, $$, esc, pad, clamp, cap, plural, fmtN, ic, readJSON, writeJSON, reduced,
+  VERSION, DEMO, $, $, esc, pad, clamp, cap, plural, fmtN, ic, readJSON, writeJSON, reduced, skel, buzz,
   DOW, DOW_L, MON, dk, dayAt, todayKey, parseDk, daysFrom, dShort, dLong, nowMin, hhmm,
   Row, settings, userName, theme, setTheme,
   waterProgress, waterChip, addWater, onWater: f => waterSubs.push(f),

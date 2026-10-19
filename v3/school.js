@@ -302,7 +302,7 @@ function toggleHw(id) {
   const a = live(K.as).find(x => x.id === id); if (!a) return;
   if (a.status === 'Done') { patch(K.as, id, { status: 'Not started', completedAt: null }); render(); return; }
   patch(K.as, id, { status: 'Done', completedAt: stamp() });
-  S.folding[id] = true;
+  S.folding[id] = true; D.buzz();
   const li = $('#hw-' + id); if (li) li.classList.add('is-done');
   D.toast('Done · ' + a.title, () => { delete S.folding[id]; patch(K.as, id, { status: a.status || 'Not started', completedAt: null }); render(); });
   setTimeout(() => {
