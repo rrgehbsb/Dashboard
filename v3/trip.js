@@ -27,9 +27,10 @@ function statusRow(icon, title, where, time, b) {
 }
 
 // The option you tap is the one your friends see (when you share your trip).
-function shareChoice(dir, train) {
+function shareChoice(dir, leave) {
   const c = C.cfg(school), ph = c && C.rail() ? C.phase(c) : null, m = ph && (dir === 'to' ? ph.m : ph.a);
-  if (m && window.SOCIAL) window.SOCIAL.choose(m.dk, dir, train);
+  const o = m && m.opts.find(x => x.leave === leave);
+  if (o && window.SOCIAL) window.SOCIAL.choose(m.dk, dir, o.train, o.leave);
 }
 const entName = k => (C.SCHOOL[k] ? C.SCHOOL[k].name + ' (' + C.SCHOOL[k].he + ')' : 'school');
 const ttOn = () => { const T = window.TIMETABLE, s = T ? T.settings(school) : {}; return !!s.cls && s.trip !== false; };
@@ -55,26 +56,26 @@ function render() {
   if (ph.kind === 'off') {
     h = '<div class="row1"><span class="lbl">No school</span><span class="tools">' + liveBtn + gear + '</span></div><div><p class="big">Back ' + (ph.nextOff != null ? D.DOW_L[D.dayAt(ph.nextOff).getDay()] : 'soon') + '</p><p class="note">Trip paused until ' + D.dShort(D.parseDk(ph.until)) + '.</p></div>';
   } else if (ph.kind === 'morning') {
-    const m = ph.m, p = (S.pick != null && m.opts.find(o => o.train === S.pick)) || ph.pick;
+    const m = ph.m, p = (S.pick != null && m.opts.find(o => o.leave === S.pick)) || ph.pick;
     const lv = C.liveView(c, Object.assign({}, ph, { pick: p }), now) || { leave: p.leave, mins: p.leave - now };
     if (lv.miss || (p.ok && lv.mins <= 5)) area = 'amber';
     h = '<div class="row1"><span class="lbl">To school · ' + startLbl(m) + '</span><span class="tools">' + tag(lv) + liveBtn + gear + '</span></div>' +
       '<div><p class="big">Leave ' + C.hhmm(lv.leave) + '<small>' + (lv.mins > 0 ? 'in ' + lv.mins + ' min' : lv.mins === 0 ? 'now' : (-lv.mins) + ' min ago') + '</small></p>' +
       '<p class="note">' + (lv.miss ? 'Your bus is running late and may miss the ' + C.hhmm(p.train) + ' train. Check the next option below.' :
         (p.ok ? 'At school ' + C.hhmm(p.arrive) + ' · ' + p.spare + ' min to spare' : 'At school ' + C.hhmm(p.arrive) + ', ' + (-p.spare) + ' min late') + ' · ' + entName(p.ent)) + '</p></div>' +
-      outJourney(c, p, lv) + statusMorning(c, p, lv) + altsHtml(m.opts, p.train, 'alt-pick');
+      outJourney(c, p, lv) + statusMorning(c, p, lv) + hzHtml(c, m, p) + altsHtml(m.opts, p.leave, 'alt-pick');
   } else if (ph.kind === 'school' || ph.kind === 'after') {
-    const a = ph.a, p = (S.pickBack != null && a.opts.find(o => o.train === S.pickBack)) || ph.pick || a.best;
+    const a = ph.a, p = (S.pickBack != null && a.opts.find(o => o.leave === S.pickBack)) || ph.pick || a.best;
     if (p) {
       const lv = ph.kind === 'after' ? (C.liveView(c, Object.assign({}, ph, { pick: p }), now) || { leave: p.leave, mins: p.leave - now }) : { leave: p.leave, mins: null };
       h = '<div class="row1"><span class="lbl">Going home · ' + (a.auto ? 'last lesson ends ' : 'school ends ') + C.hhmm(a.end) + '</span><span class="tools">' + tag(lv) + liveBtn + gear + '</span></div>' +
         '<div><p class="big">' + C.hhmm(p.train) + '<small>train home</small></p><p class="note">Leave school by ' + C.hhmm(lv.leave) + (lv.mins != null ? (lv.mins > 0 ? ' · in ' + lv.mins + ' min' : ' · now') : '') + ' from the ' + entName(p.ent) + ' · home about ' + C.hhmm(p.home) + '</p></div>' +
-        backJourney(c, p, lv) + (ph.kind === 'after' ? statusAfter(c, p, lv) : '') + altsHtml(a.opts, p.train, 'alt-back');
+        backJourney(c, p, lv) + (ph.kind === 'after' ? statusAfter(c, p, lv) : '') + altsHtml(a.opts, p.leave, 'alt-back');
     } else h = '<div class="row1"><span class="lbl">Going home</span><span class="tools">' + liveBtn + gear + '</span></div><p class="note">No more trains home today.</p>';
   } else if (ph.kind === 'next' && ph.m && ph.m.best) {
     const m = ph.m, p = m.best, when = ph.off === 1 ? 'Tomorrow' : D.DOW_L[D.dayAt(ph.off).getDay()];
     h = '<div class="row1"><span class="lbl">' + when + ' · ' + startLbl(m) + '</span><span class="tools">' + tag(null) + liveBtn + gear + '</span></div>' +
-      '<div><p class="big">Leave ' + C.hhmm(p.leave) + '<small>' + (p.bus ? 'bus ' + esc(p.bus.line) + ' ' + C.hhmm(p.bus.at) : C.hhmm(p.train) + ' train') + '</small></p><p class="note">At school ' + C.hhmm(p.arrive) + ' · ' + p.spare + ' min to spare · ' + entName(p.ent) + '</p></div>' + outJourney(c, p, null);
+      '<div><p class="big">Leave ' + C.hhmm(p.leave) + '<small>' + (p.bus ? 'bus ' + esc(p.bus.line) + ' ' + C.hhmm(p.bus.at) : C.hhmm(p.train) + ' train') + '</small></p><p class="note">At school ' + C.hhmm(p.arrive) + ' · ' + p.spare + ' min to spare · ' + entName(p.ent) + '</p></div>' + outJourney(c, p, null) + hzHtml(c, m, p);
   } else {
     const hol = ttOn() && window.TIMETABLE.holidayOn(D.todayKey());
     h = '<div class="row1"><span class="lbl">' + (hol ? 'No school' : 'Your trip') + '</span><span class="tools">' + liveBtn + gear + '</span></div>' +
@@ -106,7 +107,7 @@ function statusMorning(c, p, lv) {
   const rows = [];
   if (p.bus) rows.push(statusRow('bus', 'Bus ' + esc(p.bus.line), bdi(C.stopName(c.home.stop)), etaText(lv && lv.bus, p.bus.at), badge(lv && lv.bus)));
   rows.push(statusRow('train', 'Train ' + esc(p.trainNo || ''), 'Rosh HaAyin North → Herzliya', etaText(lv && lv.train, p.train), badge(lv && lv.train)));
-  if (p.hz) rows.push(statusRow('bus', 'Bus ' + esc(p.hz.line), bdi(C.stopName(p.hz.from)) + ' → ' + bdi(C.stopName(p.hz.to)), etaText(lv && lv.hz, p.hz.at), badge(lv && lv.hz)));
+  if (p.hz) rows.push(statusRow('bus', 'Bus ' + esc(p.hz.line) + (p.hz.nick ? ' · ' + bdi(p.hz.nick) : ''), 'from ' + bdi(C.stopName(p.hz.from)), etaText(lv && lv.hz, p.hz.at), badge(lv && lv.hz)));
   return '<div class="st-list">' + rows.join('') + '</div>';
 }
 function statusAfter(c, p, lv) {
@@ -116,10 +117,31 @@ function statusAfter(c, p, lv) {
   if (p.bus) rows.push(statusRow('bus', 'Bus ' + esc(p.bus.line), bdi(C.stopName(p.bus.from)) + ' → home', C.hhmm(p.bus.at), badge(lv && lv.bus)));
   return '<div class="st-list">' + rows.join('') + '</div>';
 }
+// Herzliya, mornings: the two stops everyone uses (החדש, הליכה) first, then walking.
+// Tap one to use it today; your usual choice is in trip settings.
+function hzHtml(c, m, p) {
+  if (!p || p.trainArr == null) return '';
+  const opts = C.hzOptions(c, m.wd, p.trainArr), cur = p.hzKind;
+  const presets = opts.filter(o => o.kind !== 'foot').sort((a, b) => a.arrive - b.arrive), foot = opts.find(o => o.kind === 'foot');
+  const fastest = presets.length ? presets[0].kind : null;
+  const missing = C.HZ_STOPS.filter(P => !presets.some(o => o.kind === P.key));
+  const row = o => {
+    const isFoot = o.kind === 'foot';
+    return '<button class="hz-opt' + (isFoot ? ' foot' : '') + '" id="hz-' + o.kind + '" data-act="hz-pick" data-k="' + o.kind + '" data-dk="' + esc(m.dk) + '" aria-pressed="' + (o.kind === cur) + '">' +
+      (isFoot ? '<span class="nick foot">' + ic('walk', 'xs') + '</span>' : '<span class="nick">' + bdi(o.nick) + '</span>') +
+      '<span class="hz-main"><b>' + (isFoot ? 'Walk all the way' : 'Bus ' + esc(o.hz.line) + ' · ' + C.hhmm(o.hz.at)) + (o.kind === fastest ? ' <em>fastest</em>' : '') + '</b>' +
+      '<span>' + (isFoot ? entName('main') : 'from ' + bdi(C.stopName(o.hz.from))) + '</span></span>' +
+      '<span class="hz-t">' + C.hhmm(o.arrive) + '<small>at school</small></span></button>';
+  };
+  return '<div class="hz-block" role="group" aria-label="Recommended in Herzliya"><p class="hz-h">Recommended in Herzliya · train arrives ' + C.hhmm(p.trainArr) + '</p>' +
+    presets.map(row).join('') +
+    missing.map(P => '<div class="hz-opt off"><span class="nick">' + bdi(P.nick) + '</span><span class="hz-main"><b>No bus soon</b><span>' + bdi(C.stopName(P.code)) + '</span></span></div>').join('') +
+    (foot ? row(foot) : '') + '</div>';
+}
 function altsHtml(opts, cur, act) {
   const now = D.nowMin(), seen = new Set(), list = opts.filter(o => o.leave >= now - 1 && !seen.has(o.leave) && seen.add(o.leave)).slice(0, 4);
   if (list.length < 2) return '';
-  return '<div class="alts" role="group" aria-label="Other options">' + list.map(o => '<button class="alt" id="alt-' + o.train + '" data-act="' + act + '" data-t="' + o.train + '" aria-pressed="' + (o.train === cur) + '">' +
+  return '<div class="alts" role="group" aria-label="Other options">' + list.map(o => '<button class="alt" id="alt-' + o.leave + '" data-act="' + act + '" data-t="' + o.leave + '" aria-pressed="' + (o.leave === cur) + '">' +
     'Leave ' + C.hhmm(o.leave) + (o.ok === false ? ' · late' : '') + '</button>').join('') + '</div>';
 }
 
@@ -141,7 +163,7 @@ D.SHEETS.tripinfo = () => {
       row('Scheduled', 'It hasn’t started its route yet, so the time comes from the official timetable.') +
       row('Late or early', '“in 2 min” and the clock time are when it will really arrive. Any delay is already counted in. “15 min late” only tells you how far behind its timetable it is (shown when it’s 2 minutes or more). Your leave time moves with your bus.') +
       row('Orange card', 'Leave within 5 minutes, or your bus is late enough that you might miss the train.') +
-      row('In Herzliya', 'The app picks the fastest way each time: walking to the main entrance (about 14 min), bus 33/34 to the New High School entrance, or another bus to Kanyon Shivat HaKochavim and a 2-minute walk to the main entrance. Nothing to set.') +
+      row('In Herzliya', 'Every morning the card shows the two stops everyone gets off at, fastest first. <b>החדש</b> = ז\'בוטינסקי/הרב קוק, right by the New High School entrance (bus 34 and others). <b>הליכה</b> = בן ציון מיכאלי/יוסף נבו, one or two stops from the station, then a short walk to the main entrance. Tap one to use it today; pick your usual one in trip settings. Walking the whole way (about 15 min) is there too.') +
       row('Entrances', 'New High School (תיכון חדש): on Sderot Shivat HaKochavim, by the 33/34 stop. Main entrance (הנדסאים): the gate just past Kanyon Shivat HaKochavim. The card tells you which one you’ll use.') +
       row('Trains home', 'Trains to Rosh HaAyin start at Herzliya, so they only turn Live once they leave. They almost always leave on time.') +
       row('School times', 'Once you pick your class (Timetable on the School page), the trip follows your real day: on time for your first lesson, home after your last. The school posts changes around 20:00 the evening before, so a cancelled first lesson means a later bus. Until then it uses the weekly plan.') +
@@ -229,8 +251,8 @@ D.SHEETS.commute = () => {
       '<div class="menu-list">' + pickRow('pick-home', 'Your bus stop', home.stop, 'pick-home') + '</div>' +
       '<div>' + step('cl-walk1', 'Walk to your stop', f.legs.walk1, 'cs-leg', 'walk1') + step('cl-buffer', 'Time at the station', f.legs.buffer, 'cs-leg', 'buffer', 'Before the train leaves') +
       (home.stop ? '' : step('cl-bus1', 'Bus ride (estimate)', f.legs.bus1, 'cs-leg', 'bus1', 'Until you pick your stop')) + '</div>' +
-      '<p class="group-title">In Herzliya</p><p class="sheet-note">Same school for everyone, so this is automatic. Each time the app picks the fastest way from the station: walk to the main entrance, bus 33/34 to the New High School, or another bus to the mall and a short walk.</p>' +
-      '<div class="seg" role="radiogroup" aria-label="From Herzliya station">' + [['auto', 'Fastest way'], ['walk', 'Always walk']].map(o => '<button id="hz-' + o[0] + '" role="radio" data-act="hz-mode" data-v="' + o[0] + '" aria-checked="' + ((hz.mode === 'walk' ? 'walk' : 'auto') === o[0]) + '">' + o[1] + '</button>').join('') + '</div>' +
+      '<p class="group-title">In Herzliya</p><p class="sheet-note">Two stops, the ones everyone uses: <b>החדש</b> (ז\'בוטינסקי/הרב קוק, right by the New High School entrance) and <b>הליכה</b> (בן ציון מיכאלי/יוסף נבו, then a short walk to the main entrance). The trip card shows both every morning. Pick your usual one:</p>' +
+      '<div class="seg hz-seg" role="radiogroup" aria-label="Your usual way from Herzliya station">' + [['auto', 'Fastest'], ['chadash', 'החדש'], ['halicha', 'הליכה'], ['foot', 'Walk']].map(o => '<button id="hzp-' + o[0] + '" role="radio" data-act="hz-mode" data-v="' + o[0] + '" aria-checked="' + ((hz.prefer || (hz.mode === 'walk' ? 'foot' : 'auto')) === o[0]) + '">' + o[1] + '</button>').join('') + '</div>' +
       (ttOn() ? '<p class="group-title">School times</p><p class="sheet-note">Your trip follows your class timetable: it gets you there for your first lesson and plans the way home after your last, even when lessons are cancelled. The days below are only a backup for days the timetable can’t tell (like a school trip).</p><button class="btn ghost block" id="cs-tt" data-act="sheet" data-sheet="ttset">Timetable settings</button><p class="group-title">Backup school days</p>' : '<p class="group-title">School days</p>') +
       '<div>' + [0, 1, 2, 3, 4, 5, 6].map(wd => {
         const on = !!(f.days[wd] && f.days[wd].start);
@@ -302,6 +324,7 @@ const reopen = () => D.openSheet('commute', {});
 Object.assign(D.ACT, {
   'trip-open': () => { if (D.sheetKind() !== 'commute' && D.sheetKind() !== 'pick') S.trip = null; work(); D.openSheet('commute', {}); },
   'alt-pick': el => { S.pick = +el.dataset.t; render(); shareChoice('to', S.pick); },
+  'hz-pick': el => { C.setHzPick(el.dataset.dk, el.dataset.k); render(); if (window.SOCIAL && window.SOCIAL.refresh) window.SOCIAL.refresh(); },
   'alt-back': el => { S.pickBack = +el.dataset.t; render(); shareChoice('home', S.pickBack); },
   'board-refresh': () => { S.lastFetch = 0; refreshBoard(); D.toast('Refreshing live data'); },
   'home-line': el => { syncOff(); const f = work(), l = el.dataset.v, i = f.home.lines.indexOf(l); if (i >= 0) { if (f.home.lines.length > 1) f.home.lines.splice(i, 1); } else f.home.lines.push(l); D.renderSheet(); },
@@ -322,7 +345,7 @@ Object.assign(D.ACT, {
     navigator.geolocation.getCurrentPosition(pos => { a.near = [pos.coords.latitude, pos.coords.longitude]; if (D.sheetKind() === 'pick') D.renderSheet(); },
       () => D.toast('Couldn’t get your location. Search by street instead.'), { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
   },
-  'hz-mode': el => { syncOff(); work().hz.mode = el.dataset.v; D.renderSheet(); },
+  'hz-mode': el => { syncOff(); const hz = work().hz; hz.prefer = el.dataset.v; hz.mode = el.dataset.v === 'foot' ? 'walk' : 'auto'; D.renderSheet(); },
   'hz-line': el => {
     syncOff(); const f = work(), l = el.dataset.v;
     const all = Array.from(new Set(C.connections(f.hz.from, f.hz.to, null).map(x => x.r.line)));

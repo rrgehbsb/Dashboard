@@ -1,10 +1,10 @@
 // Dashboard Service Worker
 // Bump CACHE_VERSION on each deploy to force cache refresh
-const CACHE_VERSION = 'v2.9.4';
+const CACHE_VERSION = 'v2.9.5';
 const CACHE_NAME = `dashboard-${CACHE_VERSION}`;
 
 // Files to pre-cache on install
-const V3 = '?v=2.9.4';
+const V3 = '?v=2.9.5';
 const PRECACHE = [
   '/v3/',
   '/v3/app.css' + V3,
@@ -20,6 +20,7 @@ const PRECACHE = [
   '/v3/trip.js' + V3,
   '/v3/timetable.js' + V3,
   '/v3/ttui.js' + V3,
+  '/v3/photo.js' + V3,
   '/v3/social.js' + V3,
   '/v3/data/rail.json?v=20261019',
   '/v3/data/bus.json?v=20261019',
@@ -109,23 +110,28 @@ self.addEventListener('fetch', e => {
   e.respondWith(fetch(request).then(save).catch(() => caches.match(request)));
 });
 
-// ── Push notifications (Stage 2 — wired but not active yet) ──
+// ── Push notifications (sent by /api/notify) ─────────────────
+// A tag replaces the older notification about the same friend, so the lock screen
+// shows "Noa · at the station", not every step of her trip.
 self.addEventListener('push', e => {
-  try {
-    const data = e.data ? e.data.json() : {};
-    const title = data.title || 'Dashboard';
-    const options = {
-      body: data.body || '',
-      icon: '/icon.svg',
-      badge: '/icon.svg',
-      data: { url: data.url || '/' },
-    };
-    e.waitUntil(self.registration.showNotification(title, options));
-  } catch {}
+  let data = {};
+  try { data = e.data ? e.data.json() : {}; } catch (err) { data = { body: e.data ? e.data.text() : '' }; }
+  const options = {
+    body: data.body || '',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    data: { url: data.url || '/v3/' },
+  };
+  if (data.tag) { options.tag = data.tag; options.renotify = true; }
+  e.waitUntil(self.registration.showNotification(data.title || 'Dashboard', options));
 });
 
 self.addEventListener('notificationclick', e => {
   e.notification.close();
-  const url = (e.notification.data && e.notification.data.url) || '/';
-  e.waitUntil(clients.openWindow(url));
+  const url = new URL((e.notification.data && e.notification.data.url) || '/v3/', self.location.origin).href;
+  e.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    const open = list.find(c => c.url.startsWith(self.location.origin));
+    if (open) return open.focus().then(c => (c && c.navigate ? c.navigate(url) : c)).catch(() => clients.openWindow(url));
+    return clients.openWindow(url);
+  }));
 });

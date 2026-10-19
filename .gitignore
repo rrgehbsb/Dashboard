@@ -5,3 +5,6 @@ node_modules
 .vercel
 .env*
 package-lock.json
+
+# the paste-ready SQL with the real scheduler secret
+supabase/*.local.sql
