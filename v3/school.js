@@ -26,6 +26,7 @@ function mergeById(base, inc) {
   return out;
 }
 const school = D.Row('school', { merge: { [K.subj]: mergeById, [K.as]: mergeById, [K.te]: mergeById, [K.gr]: mergeById } });
+window.SCHOOL_ROW = school; // the trip card and its settings live in trip.js
 
 /* ---------- demo ---------- */
 if (D.DEMO) {
@@ -40,7 +41,7 @@ if (D.DEMO) {
   ];
   school.data[K.te] = [{ id: 't1', subjectId: 'bio', name: 'Bio test · chapters 4–5', testDate: day(2) }, { id: 't2', subjectId: 'phys', name: 'Physics quiz', testDate: day(-3) }];
   school.data[K.gr] = [{ id: 'g1', subjectId: 'math', type: 'Test', gradeValue: 91, maxGrade: 100 }, { id: 'g2', subjectId: 'bio', type: 'Test', gradeValue: 84, maxGrade: 100 }, { id: 'g3', subjectId: 'eng', type: 'Quiz', gradeValue: 88, maxGrade: 100 }];
-  school.data[C.KEY] = { setup: true, legs: { walk1: 3, bus1: 34, buffer: 5, wait2: 5, bus2: 3, walk2: 8 }, days: { 0: { start: '07:45', end: '14:00', by: '08:00' }, 1: { start: '08:00', end: '14:45', by: null }, 2: { start: '07:45', end: '13:30', by: '08:00' }, 3: { start: '08:00', end: '14:45', by: null }, 4: { start: '08:00', end: '13:00', by: null } }, offUntil: null };
+  school.data[C.KEY] = { setup: true, legs: { walk1: 3, bus1: 34, buffer: 5, wait2: 5, bus2: 3, walk2: 8 }, home: { lines: ['71', '72', '73', '74'], stop: '32645' }, hz: { mode: 'bus', from: '27102', to: '20378', lines: [], transfer: 4, walk: 5 }, days: { 0: { start: '07:45', end: '14:00', by: '08:00' }, 1: { start: '08:00', end: '14:45', by: null }, 2: { start: '07:45', end: '13:30', by: '08:00' }, 3: { start: '08:00', end: '14:45', by: null }, 4: { start: '08:00', end: '13:00', by: null } }, offUntil: null };
 }
 
 /* ---------- data access ---------- */
@@ -97,72 +98,8 @@ function dueLabel(d) {
 /* ---------- state ---------- */
 const S = { showDone: false, folding: {}, pick: null, pickBack: null, enter: null };
 
-/* ---------- commute card ---------- */
-function legHtml(icon, label, t, key) {
-  return '<div class="leg' + (key ? ' key' : '') + '"><span class="dot">' + ic(icon, 'sm') + '</span><span class="ln">' + label + '</span><span class="tm">' + C.hhmm(t) + '</span></div>';
-}
-function outJourney(p, L) {
-  const herzBus = p.trainArr + L.wait2;
-  return '<div class="journey" aria-label="Walk ' + L.walk1 + ' min, bus about ' + L.bus1 + ' min, train, bus ' + L.bus2 + ' min, walk ' + L.walk2 + ' min">' +
-    legHtml('walk', 'Walk', p.leave) + legHtml('bus', 'Bus', p.leave + L.walk1) + legHtml('train', 'Train', p.train, true) +
-    legHtml('bus', 'Bus', herzBus) + legHtml('walk', 'Walk', herzBus + L.bus2) + legHtml('flag', 'School', p.arrive, true) + '</div>';
-}
-function backJourney(p, L) {
-  return '<div class="journey" aria-label="Walk, bus, train, bus, walk home">' +
-    legHtml('walk', 'Walk', p.leave) + legHtml('bus', 'Bus', p.leave + L.walk2 + L.wait2) + legHtml('train', 'Train', p.train, true) +
-    legHtml('bus', 'Bus', p.trainArr + 5) + legHtml('walk', 'Walk', p.home - L.walk1) + legHtml('home', 'Home', p.home, true) + '</div>';
-}
-function altsHtml(opts, cur, act, lateOk) {
-  const now = D.nowMin(), list = [];
-  for (const o of opts) {
-    if (o.leave < now - 1) continue;
-    list.push(o);
-    if (list.length >= 3 || (lateOk && o.ok === false)) break;
-  }
-  if (list.length < 2) return '';
-  return '<div class="alts" role="group" aria-label="Other trains">' + list.map(o => '<button class="alt" id="alt-' + o.train + '" data-act="' + act + '" data-t="' + o.train + '" aria-pressed="' + (o.train === cur) + '">' +
-    C.hhmm(o.train) + (o.ok === false ? ' · late' : '') + '</button>').join('') + '</div>';
-}
-function renderCommute() {
-  const slot = $('#commute-slot'), c = C.cfg(school);
-  const tools = '<span class="tools"><span class="tt-tag">' + ic('clock', 'xs') + 'Timetable</span><button class="gear" id="commute-gear" data-act="sheet" data-sheet="commute" aria-label="Trip settings">' + ic('sliders', 'sm') + '</button></span>';
-  if (!c) {
-    slot.innerHTML = '<section class="commute setup-c" id="commute"><div class="row1"><span class="lbl">Your trip to school</span></div>' +
-      '<p class="big sm">When to leave, every school day</p><p class="note">Add your walk and bus times once. The app works out the train and tells you when to leave.</p>' +
-      '<button class="alt solid" id="commute-setup" data-act="sheet" data-sheet="commute">Set up my trip</button></section>';
-    return;
-  }
-  if (!C.rail()) { slot.innerHTML = '<section class="commute" id="commute"><div class="row1"><span class="lbl">Your trip</span>' + tools + '</div><p class="note">Loading train times…</p></section>'; return; }
-  const ph = C.phase(c), L = c.legs;
-  let h = '';
-  if (ph.kind === 'off') {
-    h = '<div class="row1"><span class="lbl">No school</span>' + tools + '</div><div><p class="big">Back ' + (ph.nextOff != null ? D.DOW_L[D.dayAt(ph.nextOff).getDay()] : 'soon') + '</p><p class="note">Trip paused until ' + D.dShort(D.parseDk(ph.until)) + '.</p></div>';
-  } else if (ph.kind === 'morning' && ph.pick) {
-    const m = ph.m, p = (S.pick != null && m.opts.find(o => o.train === S.pick)) || ph.pick, mins = p.leave - D.nowMin();
-    const amber = p.ok && mins <= 5;
-    h = '<div class="row1"><span class="lbl">To school · ' + (m.hasBy ? 'arrive by ' + C.hhmm(m.by) + ' (starts ' + C.hhmm(m.start) + ')' : 'starts ' + C.hhmm(m.start)) + '</span>' + tools + '</div>' +
-      '<div><p class="big">Leave ' + C.hhmm(p.leave) + '<small>' + (mins > 0 ? 'in ' + mins + ' min' : mins === 0 ? 'now' : (-mins) + ' min ago') + '</small></p>' +
-      '<p class="note">' + (p.ok ? 'Arrive ' + C.hhmm(p.arrive) + ' · ' + p.spare + ' min to spare' : 'Arrives ' + C.hhmm(p.arrive) + ', ' + (-p.spare) + ' min late') + '</p></div>' +
-      outJourney(p, L) + altsHtml(m.opts, p.train, 'alt-pick', true);
-    slot.innerHTML = '<section class="commute" id="commute" data-area="' + (amber ? 'amber' : 'school') + '" aria-label="Trip to school">' + h + '</section>';
-    return;
-  } else if (ph.kind === 'school' || ph.kind === 'after') {
-    const a = ph.a, p = (S.pickBack != null && a.opts.find(o => o.train === S.pickBack)) || ph.pick || a.best;
-    if (p) {
-      const mins = p.leave - D.nowMin();
-      h = '<div class="row1"><span class="lbl">Going home · school ends ' + C.hhmm(a.end) + '</span>' + tools + '</div>' +
-        '<div><p class="big">' + C.hhmm(p.train) + '<small>train home</small></p><p class="note">Leave school by ' + C.hhmm(p.leave) + (ph.kind === 'after' ? (mins > 0 ? ' · in ' + mins + ' min' : ' · now') : '') + ' · home about ' + C.hhmm(p.home) + '</p></div>' +
-        backJourney(p, L) + altsHtml(a.opts, p.train, 'alt-back', false);
-    } else h = '<div class="row1"><span class="lbl">Going home</span>' + tools + '</div><p class="note">No more trains home today in the timetable.</p>';
-  } else if (ph.kind === 'next' && ph.m && ph.m.best) {
-    const m = ph.m, p = m.best, when = ph.off === 1 ? 'Tomorrow' : D.DOW_L[D.dayAt(ph.off).getDay()];
-    h = '<div class="row1"><span class="lbl">' + when + ' · ' + (m.hasBy ? 'arrive by ' + C.hhmm(m.by) : 'starts ' + C.hhmm(m.start)) + '</span>' + tools + '</div>' +
-      '<div><p class="big">Leave ' + C.hhmm(p.leave) + '<small>' + C.hhmm(p.train) + ' train</small></p><p class="note">Arrive ' + C.hhmm(p.arrive) + ' · ' + p.spare + ' min to spare</p></div>' + outJourney(p, L);
-  } else {
-    h = '<div class="row1"><span class="lbl">Your trip</span>' + tools + '</div><p class="note">No school days set. Open the trip settings to add them.</p>';
-  }
-  slot.innerHTML = '<section class="commute" id="commute" aria-label="Trip">' + h + '</section>';
-}
+/* ---------- trip card: drawn by trip.js ---------- */
+function renderCommute() { if (window.TRIPUI) window.TRIPUI.render(); }
 
 /* ---------- up next ---------- */
 const CHECK = '<span class="box"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12.5l4 4L18 8"/></svg></span>';
@@ -341,7 +278,8 @@ D.SHEETS.old = () => {
 D.SHEETS.schoolmenu = () => ({
   title: 'School',
   body: '<div class="menu-list">' +
-    '<button class="menu-item" id="sm-trip" data-act="sheet" data-sheet="commute">' + ic('train') + 'Trip & school times</button>' +
+    '<button class="menu-item" id="sm-live" data-act="sheet" data-sheet="live">' + ic('clock') + 'Live buses & trains</button>' +
+    '<button class="menu-item" id="sm-trip" data-act="trip-open">' + ic('train') + 'Trip & school times</button>' +
     '<button class="menu-item" id="sm-grades" data-act="sheet" data-sheet="grades">' + ic('grid') + 'Grades</button>' +
     '<button class="menu-item" id="sm-subj" data-act="sheet" data-sheet="subjects">' + ic('edit') + 'Subjects</button></div>'
 });
@@ -351,32 +289,9 @@ D.SHEETS.subjects = () => ({
     '<button class="mini" id="sd-' + esc(s.id) + '" data-act="subj-hide" data-id="' + esc(s.id) + '" aria-label="Remove ' + esc(s.name) + '">' + ic('trash', 'xs') + '</button></div>').join('') + '</div>' +
     '<form class="add-row" id="subj-add-form" autocomplete="off"><label class="sr" for="subj-add-in">New subject</label><input id="subj-add-in" placeholder="Add a subject" maxlength="30"><button class="add-btn schbg" id="subj-add" type="submit" aria-label="Add subject">' + ic('plus') + '</button></form>'
 });
-const LEGS = [['walk1', 'Walk to your bus stop'], ['bus1', 'Bus to Rosh HaAyin North'], ['buffer', 'Time at the station'], ['wait2', 'Wait for the bus in Herzliya'], ['bus2', 'Bus in Herzliya'], ['walk2', 'Walk to school']];
-D.SHEETS.commute = a => {
-  if (!a.f) a.f = JSON.parse(JSON.stringify(C.cfg(school) || C.defaults()));
-  const f = a.f;
-  const tstep = (wd, k) => '<span class="mini-step"><button id="cs-' + wd + k + '-m" data-act="cs-time" data-wd="' + wd + '" data-k="' + k + '" data-d="-5" aria-label="Earlier">−</button><output>' + (f.days[wd][k] || '—') + '</output><button id="cs-' + wd + k + '-p" data-act="cs-time" data-wd="' + wd + '" data-k="' + k + '" data-d="5" aria-label="Later">+</button></span>';
-  return {
-    title: 'Trip & school times',
-    body: '<p class="group-title">Your route</p><div>' + LEGS.map(l => '<div class="set-row"><span class="lbl">' + l[1] + '</span><span class="mini-step"><button id="cl-' + l[0] + '-m" data-act="cs-leg" data-k="' + l[0] + '" data-d="-1" aria-label="Less: ' + l[1] + '">−</button><output>' + f.legs[l[0]] + ' min</output><button id="cl-' + l[0] + '-p" data-act="cs-leg" data-k="' + l[0] + '" data-d="1" aria-label="More: ' + l[1] + '">+</button></span></div>').join('') + '</div>' +
-      '<p class="sheet-note">Trains come from the real Rosh HaAyin North ↔ Herzliya timetable. Your bus is an estimate for now.</p>' +
-      '<p class="group-title">School days</p><div>' + [0, 1, 2, 3, 4, 5, 6].map(wd => {
-        const on = !!(f.days[wd] && f.days[wd].start);
-        return '<div class="day-block"><div class="set-row"><span class="lbl">' + D.DOW_L[wd] + '</span><span class="switch-hit"><button class="switch" id="cs-on-' + wd + '" role="switch" aria-checked="' + on + '" data-act="cs-day" data-wd="' + wd + '" aria-label="School on ' + D.DOW_L[wd] + '"></button></span></div>' +
-          (on ? '<div class="set-row sub"><span class="lbl">Starts</span>' + tstep(wd, 'start') + '</div><div class="set-row sub"><span class="lbl">Ends</span>' + tstep(wd, 'end') + '</div>' +
-            '<div class="set-row sub"><span class="lbl">I can arrive by<small>' + (f.days[wd].by ? 'Plans your trip to this time' : 'Off · plans to the start time') + '</small></span>' + (f.days[wd].by ? tstep(wd, 'by') + '<button class="mini" id="cs-' + wd + 'by-x" data-act="cs-by" data-wd="' + wd + '" aria-label="Turn off arrive-by">' + ic('x', 'xs') + '</button>' : '<button class="pick" id="cs-' + wd + 'by-on" data-act="cs-by" data-wd="' + wd + '">Set</button>') + '</div>' : '') + '</div>';
-      }).join('') + '</div>' +
-      '<p class="group-title">Holidays</p><div class="set-row"><span class="lbl">No school until<small>' + (f.offUntil ? 'Back on ' + D.dShort(D.parseDk(f.offUntil)) : 'For vacations and days off') + '</small></span><input class="date-in" id="cs-off" type="date" value="' + esc(f.offUntil || '') + '"></div>' +
-      '<button class="btn school block" id="cs-save" data-act="cs-save">Save</button>'
-  };
-};
-
-const addMin = (s, d) => C.hhmm(D.clamp(C.tm(s) + d, 5 * 60, 23 * 60));
 Object.assign(D.ACT, {
   'hw-toggle': el => toggleHw(el.dataset.id),
   'toggle-done': () => { S.showDone = !S.showDone; renderUpNext(); },
-  'alt-pick': el => { S.pick = +el.dataset.t; renderCommute(); },
-  'alt-back': el => { S.pickBack = +el.dataset.t; renderCommute(); },
   'it-subj': el => { syncItem(); D.sheetArg().f.subjectId = el.dataset.v; D.renderSheet(); },
   'it-type': el => { syncItem(); D.sheetArg().f.type = el.dataset.v; D.renderSheet(); },
   'it-save': () => {
@@ -412,20 +327,8 @@ Object.assign(D.ACT, {
   'old-done': () => { const old = classify().old; old.forEach(x => patch(K.as, x.id, { status: 'Done', completedAt: stamp() })); D.closeSheet(); render(); D.toast('Marked ' + old.length + ' done', () => { old.forEach(x => patch(K.as, x.id, { status: 'Not started', completedAt: null })); render(); }); },
   'old-del': () => { const old = classify().old; old.forEach(x => patch(K.as, x.id, { deleted: true })); D.closeSheet(); render(); D.toast('Removed ' + old.length, () => { old.forEach(x => patch(K.as, x.id, { deleted: false })); render(); }); },
   'subj-hide': el => { ensureSubjectsSaved(); patch(K.subj, el.dataset.id, { hidden: true }); D.renderSheet(); },
-  'cs-leg': el => { const f = D.sheetArg().f; f.legs[el.dataset.k] = D.clamp(f.legs[el.dataset.k] + (+el.dataset.d), 0, 120); D.renderSheet(); },
-  'cs-day': el => { syncOff(); const f = D.sheetArg().f, wd = el.dataset.wd; f.days[wd] = (f.days[wd] && f.days[wd].start) ? { start: null, end: null, by: null } : { start: '08:00', end: '14:00', by: null }; D.renderSheet(); },
-  'cs-time': el => { syncOff(); const d = D.sheetArg().f.days[el.dataset.wd], k = el.dataset.k; d[k] = addMin(d[k] || d.start || '08:00', +el.dataset.d); D.renderSheet(); },
-  'cs-by': el => { syncOff(); const d = D.sheetArg().f.days[el.dataset.wd]; d.by = d.by ? null : addMin(d.start, 15); D.renderSheet(); },
-  'cs-save': () => {
-    syncOff();
-    const f = Object.assign({}, D.sheetArg().f, { setup: true });
-    school.set(C.KEY, f); S.pick = null; S.pickBack = null;
-    D.closeSheet(); render(); D.toast('Trip saved');
-  }
 });
 function syncItem() { const a = D.sheetArg(); if (!a || !a.f) return; const t = $('#it-title'), d = $('#it-date'); if (t) a.f.title = t.value; if (d) a.f.date = d.value; }
-function syncOff() { const a = D.sheetArg(), i = $('#cs-off'); if (a && a.f && i) a.f.offUntil = i.value || null; }
-document.addEventListener('change', e => { if (e.target && e.target.id === 'cs-off') { syncOff(); D.renderSheet(); } });
 document.addEventListener('submit', e => {
   if (!e.target || e.target.id !== 'subj-add-form') return;
   e.preventDefault();
@@ -443,7 +346,7 @@ $('#hw-form').addEventListener('submit', e => {
 
 /* ---------- boot ---------- */
 school.on(() => { if (!D.sheetKind()) render(); });
-C.loadRail().then(() => renderCommute());
+C.load().then(() => renderCommute());
 setInterval(() => { if (!D.sheetKind()) renderCommute(); }, 30000);
 render();
 D.boot('school');

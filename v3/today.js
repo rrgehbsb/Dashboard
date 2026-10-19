@@ -34,7 +34,8 @@ if (D.DEMO) {
   school.data = {
     'dashboard:school:v1:subjects': [{ id: 's1', name: 'Biology' }, { id: 's2', name: 'Math' }, { id: 's3', name: 'English' }],
     'dashboard:school:v1:assignments': [{ id: 'a1', subjectId: 's2', title: 'Homework p.112', dueDate: D.dk(D.dayAt(4)), status: 'Todo' }, { id: 'a2', subjectId: 's3', title: 'Essay draft', dueDate: D.dk(D.dayAt(7)), status: 'Todo' }],
-    'dashboard:school:v1:tests': [{ id: 't1', subjectId: 's1', name: 'Bio test', testDate: D.dk(D.dayAt(2)) }]
+    'dashboard:school:v1:tests': [{ id: 't1', subjectId: 's1', name: 'Bio test', testDate: D.dk(D.dayAt(2)) }],
+    'dashboard:school:v1:commute': { setup: true, legs: { walk1: 3, bus1: 34, buffer: 5, wait2: 5, bus2: 3, walk2: 8 }, home: { lines: ['71', '72', '73', '74'], stop: '32645' }, hz: { mode: 'bus', from: '27102', to: '20378', lines: [], transfer: 4, walk: 5 }, days: { 0: { start: '07:45', end: '14:00', by: '08:00' }, 1: { start: '08:00', end: '14:45', by: null }, 2: { start: '07:45', end: '13:30', by: '08:00' }, 3: { start: '08:00', end: '14:45', by: null }, 4: { start: '08:00', end: '13:00', by: null } }, offUntil: null }
   };
   gym.data = {
     'dashboard:gym:v1:template': [{ id: 'd1', name: 'Push', exercises: [{ id: 'e1', name: 'Bench' }] }, { id: 'd2', name: 'Pull', exercises: [{ id: 'e2', name: 'Row' }] }, { id: 'd3', name: 'Legs', exercises: [{ id: 'e3', name: 'Squat' }] }],
@@ -145,17 +146,19 @@ function heroModel() {
   const n = D.nowMin();
   // The trip to school comes first while it matters: leaving soon, or heading home.
   const CM = window.COMMUTE, cc = CM && CM.rail() ? CM.cfg(school) : null, ph = cc ? CM.phase(cc) : null;
+  const lvw = ph && (ph.kind === 'morning' || ph.kind === 'after') ? CM.liveView(cc, ph) : null;
+  if (lvw) { ph.mins = lvw.mins; }
   if (ph && ph.kind === 'morning' && ph.pick && ph.mins != null && ph.mins <= 120 && ph.mins >= -15) {
-    const late = !ph.pick.ok;
+    const late = !ph.pick.ok || (lvw && lvw.miss);
     return { area: ph.mins <= 5 || late ? 'amber' : 'school', href: D.pageHref('school'), eyebrow: 'To school',
       big: ph.mins > 0 ? '<span class="lead">Leave in</span><span class="n">' + D.numEl('hero-min', ph.mins) + '</span><span class="u">min</span>' : '<span class="t">Leave now</span>',
-      sub: CM.hhmm(ph.pick.leave) + ' · ' + CM.hhmm(ph.pick.train) + ' train' + (late ? ' · arrives ' + (-ph.pick.spare) + ' min late' : '') + ' <span class="tag">Timetable</span>',
+      sub: (lvw && lvw.miss ? 'Bus is late · may miss the ' + CM.hhmm(ph.pick.train) + ' train' : CM.hhmm(lvw ? lvw.leave : ph.pick.leave) + ' · ' + (ph.pick.bus ? 'bus ' + esc(ph.pick.bus.line) + ' → ' : '') + CM.hhmm(ph.pick.train) + ' train' + (!ph.pick.ok ? ' · arrives ' + (-ph.pick.spare) + ' min late' : '')) + ' <span class="tag">' + (lvw && lvw.anyLive ? 'Live' : 'Timetable') + '</span>',
       bar: D.clamp(ph.mins / 30, 0, 1), label: 'Leave in ' + ph.mins + ' minutes' };
   }
   if (ph && ph.kind === 'after' && ph.pick) {
     return { area: ph.mins <= 5 && ph.mins >= 0 ? 'amber' : 'school', href: D.pageHref('school'), eyebrow: 'Going home',
       big: '<span class="lead">Train home</span><span class="n">' + CM.hhmm(ph.pick.train) + '</span>',
-      sub: 'Leave school by ' + CM.hhmm(ph.pick.leave) + (ph.mins > 0 ? ' · in ' + ph.mins + ' min' : ' · now') + ' <span class="tag">Timetable</span>',
+      sub: 'Leave school by ' + CM.hhmm(lvw ? lvw.leave : ph.pick.leave) + (ph.mins > 0 ? ' · in ' + ph.mins + ' min' : ' · now') + ' <span class="tag">' + (lvw && lvw.anyLive ? 'Live' : 'Timetable') + '</span>',
       bar: D.clamp(ph.mins / 30, 0, 1), label: 'Train home ' + CM.hhmm(ph.pick.train) };
   }
   const soon = schoolSoon(2);
@@ -351,7 +354,14 @@ $('#todo-form').addEventListener('submit', e => {
 let rolled = false, lastDay = D.todayKey();
 dash.on(() => { if (!rolled) { rolled = true; rollover(); } renderTodo(); renderHeroTiles(); });
 [school, gym, food].forEach(r => r.on(renderHeroTiles));
-if (window.COMMUTE) window.COMMUTE.loadRail().then(renderHeroTiles);
+if (window.COMMUTE) {
+  const CMx = window.COMMUTE;
+  // keep the trip card live while it matters (before leaving and on the way home)
+  const liveTick = () => { const c = CMx.rail() ? CMx.cfg(school) : null, p = c ? CMx.phase(c) : null; if (!document.hidden && p && (p.kind === 'morning' || p.kind === 'after')) CMx.fetchLive(CMx.watchStops(c, p)).then(renderHeroTiles); };
+  CMx.load().then(() => { renderHeroTiles(); liveTick(); });
+  setInterval(liveTick, 30000);
+  document.addEventListener('visibilitychange', liveTick);
+}
 D.settings.on(renderHeader);
 D.onWater(() => { renderWater(); if (D.sheetKind() === 'water') D.renderSheet(); });
 window.addEventListener('dash:name', renderHeader);
