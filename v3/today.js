@@ -93,18 +93,29 @@ function gymInfo() {
   if (!Array.isArray(tpl) || !tpl.length) return null;
   const has = (dayLogs, day) => !!dayLogs && (day.exercises || []).some(e => { const el = dayLogs[e.id]; return el && Object.keys(el).some(k => isSetKey(k) && String(el[k] || '').trim()); });
   const dates = Object.keys(logs).filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k)).sort().reverse();
-  let lastIdx = -1, doneToday = null;
+  let lastIdx = -1, doneToday = null, setsDone = 0, setsTotal = 0;
   for (const dt of dates) {
     const i = tpl.findIndex(day => has(logs[dt], day));
     if (i < 0) continue;
-    if (dt === D.todayKey()) doneToday = tpl[i].name;
+    if (dt === D.todayKey()) {
+      doneToday = tpl[i].name;
+      // count logged sets the same way the Gym page does (one-sided lifts log L and R)
+      (tpl[i].exercises || []).forEach(e => {
+        const el = logs[dt][e.id] || {}, n = Math.max(1, parseInt(e.sets, 10) || 3) * (e.unilateral ? 2 : 1);
+        setsTotal += n;
+        for (let s = 0; s < (parseInt(e.sets, 10) || 3); s++) {
+          if (String(el['set' + s] || '').trim()) setsDone++;
+          if (e.unilateral && String(el['set' + s + 'R'] || '').trim()) setsDone++;
+        }
+      });
+    }
     lastIdx = i;
     break;
   }
   const ws = D.dayAt(-D.dayAt(0).getDay());
   const week = dates.filter(dt => D.parseDk(dt) >= ws && tpl.some(day => has(logs[dt], day))).length;
   const next = tpl[(lastIdx + 1) % tpl.length];
-  return { next: next ? next.name : '', doneToday: doneToday, week: week, perWeek: Math.max(3, tpl.length) };
+  return { next: next ? next.name : '', doneToday: doneToday, finished: !!doneToday && setsDone >= setsTotal, setsDone, setsTotal, week: week, perWeek: Math.max(3, tpl.length) };
 }
 function foodInfo() {
   const days = food.get('days') || {}, day = days[D.todayKey()];
@@ -170,7 +181,9 @@ function tileModels(heroArea) {
   const out = [];
   const g = gymInfo();
   out.push(g ? (g.doneToday
-    ? { area: 'gym', href: D.pageHref('gym'), label: 'Gym', p: g.week / g.perWeek, val: 'Done', sub: esc(g.doneToday) + ' · ' + g.week + ' this week' }
+    ? (g.finished
+      ? { area: 'gym', href: D.pageHref('gym'), label: 'Gym', p: g.week / g.perWeek, val: 'Done', sub: esc(g.doneToday) + ' · ' + g.week + ' this week' }
+      : { area: 'gym', href: D.pageHref('gym'), label: 'Gym', p: g.setsTotal ? g.setsDone / g.setsTotal : 0, val: esc(g.doneToday), sub: g.setsDone + ' of ' + g.setsTotal + ' sets' })
     : { area: 'gym', href: D.pageHref('gym'), label: 'Gym', p: g.week / g.perWeek, val: esc(g.next), sub: g.week ? 'Up next · ' + g.week + ' this week' : 'Up next' })
     : { area: 'gym', href: D.pageHref('gym'), label: 'Gym', p: 0, val: 'No plan', sub: 'Set one up in Gym' });
   if (heroArea !== 'school') {
