@@ -7,7 +7,7 @@
 (function () {
 'use strict';
 
-const VERSION = '2.9.8';
+const VERSION = '2.9.9';
 const SB_URL = 'https://mtuoqwbrujxutofhyahb.supabase.co';
 const SB_KEY = 'sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
 const DEMO = /[?&]demo\b/.test(location.search);
@@ -504,7 +504,8 @@ SHEETS.water = () => {
 };
 
 let confirmLogout = false;
-SHEETS.settings = () => {
+SHEETS.settings = a => {
+  if (!a.checked) { a.checked = true; checkRecovery('settings'); }
   const t = theme(), nm = userName();
   // profile photo + friends come from social.js (when the page loads it)
   const S = window.SOCIAL, me = S && S.me(), photo = me && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(me.avatar || '') ? me.avatar : null;
@@ -517,7 +518,7 @@ SHEETS.settings = () => {
       '<p class="group-title">Appearance</p><div class="seg" role="radiogroup" aria-label="Appearance">' +
       [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']].map(o => '<button id="th-' + o[0] + '" role="radio" data-act="theme" data-v="' + o[0] + '" aria-checked="' + (t === o[0]) + '">' + o[1] + '</button>').join('') + '</div>' +
       '<p class="group-title">Account</p><div class="menu-list">' +
-      '<button class="menu-item" id="st-recovery" data-act="sheet" data-sheet="recovery">' + ic('pin') + 'Recovery code<span class="r">' + (recoveryAt ? 'Saved' : recoveryAt === null ? '<b class="warn-dot">Not set</b>' : '') + '</span></button>' +
+      '<button class="menu-item" id="st-recovery" data-act="sheet" data-sheet="recovery">' + ic('pin') + 'Recovery code<span class="r">' + (recoveryAt ? 'Saved' : recoveryAt === null && !recChecking ? '<b class="warn-dot">Not set</b>' : '…') + '</span></button>' +
       '<div class="menu-item static">' + ic('info') + 'About<span class="r">Version ' + VERSION + '</span></div>' +
       '<button class="menu-item" id="st-logout" data-act="logout">' + ic('logout') + 'Log out</button></div>' +
       (confirmLogout ? '<div class="confirm"><p>Log out on this device? Your data stays in your account.</p><div class="sheet-actions"><button class="btn ghost" id="lo-cancel" data-act="logout-cancel">Cancel</button><button class="btn primary" id="lo-yes" data-act="logout-yes">Log out</button></div></div>' : '')
@@ -525,6 +526,16 @@ SHEETS.settings = () => {
 };
 
 /* ================= Recovery code ================= */
+let recChecking = false;
+function checkRecovery(kind) {
+  if (DEMO || recChecking) return;
+  recChecking = true;
+  sb().auth.getUser().then(r => {
+    const u = r.data && r.data.user;
+    if (u) recoveryAt = ((u.app_metadata || {}).recovery || {}).at || null;
+    if (sheetKind === kind && !(sheetArg && sheetArg.code)) renderSheet();
+  }).catch(() => {}).finally(() => { recChecking = false; });
+}
 // Forgot your password? On the sign-in page, "Forgot password?" + this code sets a new
 // one. No email involved. The server keeps only a scrambled fingerprint of the code.
 SHEETS.recovery = a => {
@@ -535,15 +546,15 @@ SHEETS.recovery = a => {
       '<button class="btn ghost block" id="rc-copy" data-act="rc-copy">' + (a.copied ? 'Copied ✓' : 'Copy code') + '</button>' +
       '<button class="btn primary block" id="rc-done" data-act="sheet-close">I saved it</button>'
   };
-  // a code made on another phone shows up once the account is re-read
-  if (!a.checked && !DEMO) { a.checked = true; sb().auth.getUser().then(r => { const u = r.data && r.data.user; if (u) { recoveryAt = ((u.app_metadata || {}).recovery || {}).at || null; if (sheetKind === 'recovery' && !sheetArg.code) renderSheet(); } }).catch(() => {}); }
+  // a code made a moment ago (or on another phone) shows up once the account is re-read
+  if (!a.checked) { a.checked = true; checkRecovery('recovery'); }
   const when = recoveryAt ? new Date(recoveryAt) : null;
   return {
     title: 'Recovery code',
     body: '<p class="sheet-note">If you ever forget your password, this code lets you set a new one: on the sign-in page tap <b>Forgot password?</b>. No email needed. Each code works once.</p>' +
-      (when ? '<p class="sheet-note">You made your code on ' + esc(dLong(when)) + '. Lost it? Make a new one: the old one stops working.</p>' : '<p class="sheet-note warn">You don’t have a code yet. Make one so you can never get locked out.</p>') +
+      (recChecking && !when ? '<p class="sheet-note">Checking…</p>' : when ? '<p class="sheet-note">You made your code on ' + esc(dLong(when)) + '. Lost it? Make a new one: the old one stops working.</p>' : '<p class="sheet-note warn">You don’t have a code yet. Make one so you can never get locked out.</p>') +
       (a.err ? '<p class="problem">' + ic('info', 'xs') + '<span>' + esc(a.err) + '</span></p>' : '') +
-      '<button class="btn primary block" id="rc-new" data-act="rc-new"' + (a.busy ? ' disabled' : '') + '>' + (a.busy ? 'Making…' : when ? 'Make a new code' : 'Make my code') + '</button>'
+      '<button class="btn primary block" id="rc-new" data-act="rc-new"' + (a.busy || (recChecking && !when) ? ' disabled' : '') + '>' + (a.busy ? 'Making…' : when ? 'Make a new code' : 'Make my code') + '</button>'
   };
 };
 async function newRecoveryCode() {
