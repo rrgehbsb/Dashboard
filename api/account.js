@@ -16,11 +16,23 @@ function fail(res, status, code, error) {
 }
 
 module.exports = async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).end();
-
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!SB_URL || !SB_KEY) return fail(res, 500, 'config', 'The server is missing its settings. Try again later.');
+
+  // GET = daily keep-alive (Vercel cron in vercel.json). Supabase's free plan pauses
+  // a project after about a week without requests, which took the whole app
+  // offline. One tiny read a day prevents that. (Lives here because the Hobby plan
+  // allows only 12 functions.)
+  if (req.method === 'GET') {
+    try {
+      const r = await fetch(`${SB_URL}/rest/v1/app_state?select=key&limit=1`, { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } });
+      return res.status(r.ok ? 200 : 502).json({ ok: r.ok, status: r.status, at: new Date().toISOString() });
+    } catch (e) {
+      return res.status(502).json({ ok: false, error: String((e && e.message) || e) });
+    }
+  }
+  if (req.method !== 'POST') return res.status(405).end();
 
   const body = req.body || {};
   const action = body.action;
