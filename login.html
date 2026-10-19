@@ -1,297 +1,128 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <title>Login — Dashboard</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#EDF1F5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0D1116" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Dashboard">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<title>Sign in · Dashboard</title>
+<script>(function(){try{var r=JSON.parse(localStorage.getItem('dash3:row:settings')||'null')||{};var t=r.v3Theme;if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<script src="/v3/vendor/supabase-2.116.0.js"></script>
 <script>(function(){var s=window.supabase;if(s&&s.createClient&&!s.__oneClient){s.__oneClient=true;var o=s.createClient.bind(s),c={};s.createClient=function(u,k,op){var q=String(u)+"|"+String(k);return c[q]||(c[q]=o(u,k,op));};}})();</script>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
-      background: #0a0a0b;
-      color: #fafafa;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px 16px;
-    }
-    body::before {
-      content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
-      background: radial-gradient(70% 55% at 50% -10%, rgba(167,139,250,0.18), transparent 60%);
-    }
-    .wrap {
-      width: 100%;
-      max-width: 380px;
-      position: relative;
-      z-index: 1;
-    }
-    .logo {
-      text-align: center;
-      margin-bottom: 36px;
-    }
-    .logo-icon { font-size: 48px; margin-bottom: 10px; }
-    .logo-title {
-      font-size: 26px;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-      background: linear-gradient(135deg, #fafafa, rgba(255,255,255,0.5));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    .logo-sub {
-      font-size: 13px;
-      color: rgba(255,255,255,0.35);
-      margin-top: 4px;
-    }
-    .card {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 20px;
-      padding: 28px 24px 32px;
-    }
-    /* Tab toggle */
-    .tabs {
-      display: flex;
-      background: rgba(255,255,255,0.07);
-      border-radius: 10px;
-      padding: 3px;
-      margin-bottom: 24px;
-    }
-    .tab-btn {
-      flex: 1;
-      padding: 8px;
-      border: none;
-      border-radius: 7px;
-      font-size: 14px;
-      font-weight: 600;
-      font-family: inherit;
-      cursor: pointer;
-      background: transparent;
-      color: rgba(255,255,255,0.4);
-      transition: all 0.18s;
-    }
-    .tab-btn.active {
-      background: rgba(255,255,255,0.12);
-      color: #fafafa;
-    }
-    /* Form */
-    .field { margin-bottom: 14px; }
-    .field label {
-      display: block;
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: rgba(255,255,255,0.38);
-      margin-bottom: 6px;
-    }
-    .field input {
-      width: 100%;
-      background: rgba(255,255,255,0.07);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 10px;
-      padding: 12px 14px;
-      font-size: 16px; /* >=16px so iOS doesn't zoom into the field on focus */
-      color: #fafafa;
-      font-family: inherit;
-      outline: none;
-      transition: border-color 0.15s;
-      -webkit-appearance: none;
-    }
-    .field input:focus { border-color: rgba(167,139,250,0.6); }
-    .field input::placeholder { color: rgba(255,255,255,0.22); }
-    /* Submit */
-    .submit-btn {
-      width: 100%;
-      padding: 14px;
-      margin-top: 8px;
-      background: #a78bfa;
-      border: none;
-      border-radius: 12px;
-      color: #fff;
-      font-size: 15px;
-      font-weight: 700;
-      font-family: inherit;
-      cursor: pointer;
-      transition: opacity 0.15s, transform 0.1s;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .submit-btn:active { transform: scale(0.98); }
-    .submit-btn:disabled { opacity: 0.5; cursor: default; }
-    /* Messages */
-    .msg {
-      margin-top: 14px;
-      padding: 12px 14px;
-      border-radius: 10px;
-      font-size: 13px;
-      font-weight: 500;
-      display: none;
-      line-height: 1.4;
-    }
-    .msg.error { background: rgba(248,113,113,0.12); color: #f87171; border: 1px solid rgba(248,113,113,0.2); display: block; }
-    .msg.success { background: rgba(52,211,153,0.12); color: #34d399; border: 1px solid rgba(52,211,153,0.2); display: block; }
-    /* Check email state */
-    .check-email {
-      display: none;
-      text-align: center;
-      padding: 16px 0 8px;
-    }
-    .check-email-icon { font-size: 48px; margin-bottom: 12px; }
-    .check-email h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
-    .check-email p { font-size: 14px; color: rgba(255,255,255,0.45); line-height: 1.5; }
-    .back-link {
-      display: block;
-      text-align: center;
-      margin-top: 20px;
-      font-size: 13px;
-      color: rgba(255,255,255,0.35);
-      cursor: pointer;
-      text-decoration: underline;
-      text-underline-offset: 3px;
-    }
-    /* Loading overlay */
-    .loading {
-      display: none;
-      text-align: center;
-      padding: 8px 0;
-      font-size: 13px;
-      color: rgba(255,255,255,0.4);
-    }
-    .spinner {
-      display: inline-block;
-      width: 16px; height: 16px;
-      border: 2px solid rgba(255,255,255,0.15);
-      border-top-color: #a78bfa;
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-      vertical-align: middle;
-      margin-right: 6px;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-  </style>
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+<link rel="preload" href="/v3/fonts/BricolageGrotesque-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/v3/fonts/Onest-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/v3/app.css?v=2.8.1">
+<style>
+/* Login: one bright brand block + one white working card. Top-aligned on phones so the
+   keyboard never covers the button; two columns from 900px. */
+.auth {
+  min-height:100vh; min-height:100dvh; display:flex; flex-direction:column; gap:16px;
+  max-width:440px; margin:0 auto;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+  padding-top:calc(env(safe-area-inset-top, 0px) + 20px);
+  padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 24px);
+}
+.brand { background:var(--todo); color:var(--on-todo); border-radius:var(--r-xl); padding:22px 22px 24px; display:flex; flex-direction:column; gap:14px; }
+.brand .mark { width:48px; height:48px; border-radius:16px; background:color-mix(in srgb, var(--on-todo) 18%, transparent); display:grid; place-items:center; }
+.brand .mark svg { width:28px; height:28px; fill:none; stroke:currentColor; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round; }
+.brand h1 { font-size:38px; line-height:1; font-weight:800; letter-spacing:-.02em; }
+.brand p { font-size:16px; font-weight:500; opacity:.92; max-width:30ch; }
+.brand .areas { display:flex; flex-wrap:wrap; gap:8px; }
+.brand .areas span { font-size:13px; font-weight:700; padding:5px 11px; border-radius:999px; }
+.areas .a-todo { background:color-mix(in srgb, var(--on-todo) 18%, transparent); }
+.areas .a-gym { background:var(--gym); color:var(--on-gym); }
+.areas .a-school { background:var(--school); color:var(--on-school); box-shadow:inset 0 0 0 1.5px color-mix(in srgb, var(--on-todo) 35%, transparent); }
+.areas .a-food { background:var(--food); color:var(--on-food); }
+
+.auth-card { display:flex; flex-direction:column; gap:14px; padding:18px; border-radius:var(--r-xl); }
+.auth-card .seg { display:grid; grid-template-columns:1fr 1fr; width:100%; }
+.auth-card form { display:flex; flex-direction:column; gap:14px; }
+.fld { display:flex; flex-direction:column; gap:6px; }
+.pw { position:relative; }
+.pw .text-in { padding-right:56px; }
+.pw .eye { position:absolute; right:4px; top:4px; width:44px; height:44px; border-radius:999px; display:grid; place-items:center; color:var(--ink-3); }
+.pw .eye svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.hint { font-size:13px; color:var(--ink-3); }
+.msg { border-radius:14px; padding:12px 14px; font-size:15px; font-weight:600; line-height:1.4; display:flex; flex-direction:column; gap:8px; }
+.msg.err { background:color-mix(in srgb, #FF4D6D 14%, var(--surface)); color:var(--ink); box-shadow:inset 3px 0 0 #E5384F; }
+.msg.ok { background:var(--food-soft); color:var(--ink); }
+.msg button { align-self:flex-start; min-height:40px; padding:0 14px; border-radius:999px; background:var(--surface-2); font-weight:700; font-size:14px; }
+.go { min-height:52px; font-size:17px; }
+.go[disabled] { opacity:.6; }
+.foot { text-align:center; font-size:13px; color:var(--ink-3); }
+
+@media (min-width: 900px) {
+  .auth { max-width:960px; display:grid; grid-template-columns:1fr 1fr; align-items:center; align-content:center; gap:24px; padding-top:48px; }
+  .brand { min-height:440px; justify-content:flex-end; padding:32px; }
+  .brand h1 { font-size:56px; }
+  .auth-card { padding:24px; }
+  .foot { grid-column:1 / -1; }
+}
+</style>
 </head>
 <body>
-<div class="wrap">
-  <div class="logo">
-    <div class="logo-icon">🏠</div>
-    <div class="logo-title">My Dashboard</div>
-    <div class="logo-sub">Sign in to your account</div>
-  </div>
+<main class="auth">
+  <section class="brand" aria-label="Dashboard">
+    <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+    <h1>Dashboard</h1>
+    <p>Your day at a glance: what to do, when to leave, what’s next.</p>
+    <div class="areas" aria-hidden="true"><span class="a-todo">To-do</span><span class="a-gym">Gym</span><span class="a-school">School</span><span class="a-food">Food</span></div>
+  </section>
 
-  <div class="card">
-    <!-- Tabs -->
-    <div class="tabs">
-      <button class="tab-btn active" id="tabSignin" onclick="setTab('signin')">Sign In</button>
-      <button class="tab-btn" id="tabSignup" onclick="setTab('signup')">Create Account</button>
+  <section class="card auth-card" aria-labelledby="form-title">
+    <h2 class="sr" id="form-title">Sign in or create an account</h2>
+    <div class="seg" role="tablist" aria-label="Sign in or create account">
+      <button role="tab" id="tab-in" type="button" aria-selected="true" data-tab="in">Sign in</button>
+      <button role="tab" id="tab-up" type="button" aria-selected="false" data-tab="up">Create account</button>
     </div>
 
-    <!-- Form -->
-    <div id="formWrap">
-      <div class="field">
-        <label>Email</label>
-        <input type="email" id="emailInput" placeholder="you@example.com" autocomplete="email" autocapitalize="none">
+    <form id="auth-form" novalidate>
+      <div class="fld" id="name-fld" hidden>
+        <label class="field-label" for="name-in">Your name</label>
+        <input class="text-in" id="name-in" name="name" autocomplete="given-name" maxlength="40" placeholder="What should we call you?">
       </div>
-      <div class="field">
-        <label>Password</label>
-        <input type="password" id="passInput" placeholder="••••••••" autocomplete="current-password" minlength="6">
+      <div class="fld">
+        <label class="field-label" for="email-in">Email</label>
+        <input class="text-in" id="email-in" name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="you@example.com" required>
       </div>
-      <button class="submit-btn" id="submitBtn" onclick="handleSubmit()">Sign In</button>
-      <div class="loading" id="loading"><span class="spinner"></span> <span id="loadingText">Signing in…</span></div>
-      <div class="msg" id="msgBox"></div>
-    </div>
+      <div class="fld">
+        <label class="field-label" for="pass-in">Password</label>
+        <div class="pw">
+          <input class="text-in" id="pass-in" name="password" type="password" autocomplete="current-password" placeholder="Your password" required>
+          <button class="eye" id="eye" type="button" aria-label="Show password" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path id="eye-p" d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/><path id="eye-x" d="M4 4l16 16" hidden/></svg>
+          </button>
+        </div>
+        <p class="hint" id="pass-hint" hidden>At least 6 characters.</p>
+      </div>
+      <div id="msg" role="alert" aria-live="polite"></div>
+      <button class="btn todo block go" id="go" type="submit">Sign in</button>
+    </form>
+  </section>
 
-    <!-- Check email state (shown after signup) -->
-    <div class="check-email" id="checkEmail">
-      <div class="check-email-icon">📬</div>
-      <h3>Check your email</h3>
-      <p>We sent a confirmation link to <strong id="sentTo"></strong>. Click it to activate your account, then come back and sign in.</p>
-      <span class="back-link" onclick="setTab('signin')">Back to Sign In</span>
-    </div>
-  </div>
-</div>
+  <p class="foot" id="foot">You stay signed in on this device.</p>
+</main>
 
 <script>
+(function () {
+'use strict';
 const SB_URL = 'https://mtuoqwbrujxutofhyahb.supabase.co';
 const SB_KEY = 'sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
 const sb = supabase.createClient(SB_URL, SB_KEY);
+const $ = s => document.querySelector(s);
+const RETIRED = ['health', 'habits', 'finance', 'projects', 'friends', 'trends'];
+let tab = 'in', busy = false;
 
-// Keys that existed before auth was added — will be migrated to user-prefixed keys
-const OLD_KEYS = ['dashboard', 'health', 'po-coach', 'school', 'habits', 'projects', 'settings'];
-
-let currentTab = 'signin';
-
-function setTab(tab) {
-  currentTab = tab;
-  document.getElementById('tabSignin').classList.toggle('active', tab === 'signin');
-  document.getElementById('tabSignup').classList.toggle('active', tab === 'signup');
-  document.getElementById('submitBtn').textContent = tab === 'signin' ? 'Sign In' : 'Create Account';
-  document.getElementById('passInput').autocomplete = tab === 'signin' ? 'current-password' : 'new-password';
-  clearMsg();
-}
-
-function showMsg(text, type) {
-  const el = document.getElementById('msgBox');
-  el.className = 'msg ' + type;
-  el.textContent = text;
-}
-function clearMsg() {
-  const el = document.getElementById('msgBox');
-  el.className = 'msg';
-  el.textContent = '';
-}
-function setLoading(on, text) {
-  document.getElementById('loading').style.display = on ? 'block' : 'none';
-  document.getElementById('loadingText').textContent = text || '';
-  document.getElementById('submitBtn').style.display = on ? 'none' : 'block';
-  document.getElementById('submitBtn').disabled = on;
-}
-
-async function migrateIfNeeded(userId) {
-  try {
-    const migKey = userId + ':_migrated';
-    const { data: already } = await sb.from('app_state').select('data').eq('key', migKey).maybeSingle();
-    if (already) return;
-
-    for (const key of OLD_KEYS) {
-      const { data } = await sb.from('app_state').select('data,updated_at').eq('key', key).maybeSingle();
-      if (data && data.data) {
-        await sb.from('app_state').upsert(
-          { key: userId + ':' + key, data: data.data, updated_at: new Date().toISOString() },
-          { onConflict: 'key' }
-        );
-        // Delete old generic key so future new users don't inherit this data
-        await sb.from('app_state').delete().eq('key', key);
-      }
-    }
-    await sb.from('app_state').upsert(
-      { key: migKey, data: { done: true, at: new Date().toISOString() }, updated_at: new Date().toISOString() },
-      { onConflict: 'key' }
-    );
-  } catch(e) {
-    console.warn('Migration error (non-fatal):', e);
-  }
-}
-
-async function cleanupOldKeys() {
-  try {
-    for (const key of OLD_KEYS) {
-      await sb.from('app_state').delete().eq('key', key);
-    }
-  } catch(e) {}
-}
-
-// localStorage is per-BROWSER, not per-account. If a different account was
-// used on this device before, its cached data (habits, XP, water, weights,
-// meals, mood, reminders, usernames…) would leak into — and then get pushed
-// up into — the new account. So: whenever the logged-in user differs from the
-// last data owner, wipe ALL local app data first. Keeps only the Supabase
-// auth session of the person logging in.
+/* ---------- local data belongs to one account per device ----------
+   localStorage is per browser, not per account. When a different account signs
+   in on this device, wipe the previous owner's cached data (keep only the
+   Supabase session) so it can never leak into or be pushed to the new account. */
 function wipeLocalForNewOwner(userId) {
   try {
     const prevOwner = localStorage.getItem('_dashDataOwner');
@@ -307,87 +138,155 @@ function wipeLocalForNewOwner(userId) {
   try { localStorage.setItem('_dashDataOwner', userId); } catch (e) {}
 }
 
-async function afterLogin(userId, isNewUser = false) {
+// Accounts from before sign-in existed kept their data under generic keys.
+async function migrateIfNeeded(userId) {
+  const OLD = ['dashboard', 'health', 'po-coach', 'school', 'habits', 'projects', 'settings'];
+  try {
+    const migKey = userId + ':_migrated';
+    const { data: already } = await sb.from('app_state').select('key').eq('key', migKey).maybeSingle();
+    if (already) return;
+    for (const key of OLD) {
+      const { data } = await sb.from('app_state').select('data').eq('key', key).maybeSingle();
+      if (data && data.data) {
+        await sb.from('app_state').upsert({ key: userId + ':' + key, data: data.data, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+        await sb.from('app_state').delete().eq('key', key);
+      }
+    }
+    await sb.from('app_state').upsert({ key: migKey, data: { done: true, at: new Date().toISOString() }, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+  } catch (e) { console.warn('Migration (non-fatal):', e); }
+}
+
+async function setUpNewAccount(userId, name) {
+  const now = new Date().toISOString();
+  const pages = {}; RETIRED.forEach(k => { pages[k] = false; });
+  const settings = { name: name, ui: 'v3', v3Archive: 1, pages: pages, setupDone: true, _pushAt: Date.now() };
+  try { localStorage.setItem('dashboard:settings:v1', JSON.stringify(settings)); } catch (e) {}
+  try {
+    await sb.from('app_state').upsert([
+      { key: userId + ':_migrated', data: { done: true, newUser: true, at: now }, updated_at: now },
+      { key: userId + ':settings', data: settings, updated_at: now }
+    ], { onConflict: 'key' });
+  } catch (e) { console.warn('Setup (non-fatal):', e); }
+}
+
+async function enter(userId, isNew, name) {
   wipeLocalForNewOwner(userId);
-  localStorage.setItem('_dashUid', userId);
-  setLoading(true, 'Setting up…');
-  if (isNewUser) {
-    // New signup: skip migration, mark clean so old data is never inherited
-    try {
-      await sb.from('app_state').upsert(
-        { key: userId + ':_migrated', data: { done: true, newUser: true, at: new Date().toISOString() }, updated_at: new Date().toISOString() },
-        { onConflict: 'key' }
-      );
-    } catch(e) {}
-  } else {
-    await migrateIfNeeded(userId);
+  try { localStorage.setItem('_dashUid', userId); } catch (e) {}
+  if (isNew) await setUpNewAccount(userId, name);
+  else await migrateIfNeeded(userId);
+  location.replace('/v3/');
+}
+
+/* ---------- UI ---------- */
+function setTab(t) {
+  tab = t;
+  $('#tab-in').setAttribute('aria-selected', String(t === 'in'));
+  $('#tab-up').setAttribute('aria-selected', String(t === 'up'));
+  $('#name-fld').hidden = t !== 'up';
+  $('#pass-hint').hidden = t !== 'up';
+  $('#pass-in').autocomplete = t === 'up' ? 'new-password' : 'current-password';
+  $('#pass-in').placeholder = t === 'up' ? 'Pick a password' : 'Your password';
+  $('#go').textContent = t === 'up' ? 'Create account' : 'Sign in';
+  $('#foot').textContent = t === 'up' ? 'No email to confirm. You’re in straight away.' : 'You stay signed in on this device.';
+  say('');
+}
+function say(text, kind, action) {
+  const el = $('#msg');
+  if (!text) { el.className = ''; el.innerHTML = ''; return; }
+  el.className = 'msg ' + (kind || 'err');
+  el.textContent = text;
+  if (action) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.id = 'msg-action'; b.textContent = action.label;
+    b.addEventListener('click', action.run);
+    el.appendChild(b);
   }
-  await cleanupOldKeys();
-  if (isNewUser) {
-    // Brand-new account → run the setup wizard (pick pages / kids mode).
-    setLoading(true, 'Setting things up…');
-    window.location.href = 'onboarding.html';
+}
+function setBusy(on, label) {
+  busy = on;
+  const b = $('#go');
+  b.disabled = on;
+  b.textContent = on ? label : (tab === 'up' ? 'Create account' : 'Sign in');
+}
+
+function friendly(error) {
+  const m = String((error && (error.message || error.msg)) || '');
+  const code = error && (error.code || error.error_code);
+  if (code === 'invalid_credentials' || /invalid login credentials/i.test(m)) return 'That email and password don’t match. Check them and try again.';
+  if (/fetch|network|load failed/i.test(m)) return 'Can’t connect right now. Check your internet and try again.';
+  if (/rate limit|too many/i.test(m)) return 'Too many tries in a row. Wait a minute, then try again.';
+  return 'Something went wrong signing in. Try again in a moment.';
+}
+async function callAccount(payload) {
+  try {
+    const r = await fetch('/api/account', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const j = await r.json().catch(() => ({}));
+    return Object.assign({ ok: r.ok }, j);
+  } catch (e) {
+    return { ok: false, code: 'network', error: 'Can’t connect right now. Check your internet and try again.' };
+  }
+}
+
+async function signIn(email, password) {
+  setBusy(true, 'Signing in…');
+  let { data, error } = await sb.auth.signInWithPassword({ email, password });
+  // Older accounts that never confirmed their email: fix them on the spot.
+  if (error && (error.code === 'email_not_confirmed' || /not confirmed/i.test(error.message || ''))) {
+    const fix = await callAccount({ action: 'confirm', email, password });
+    if (fix.ok) ({ data, error } = await sb.auth.signInWithPassword({ email, password }));
+    else { setBusy(false); say(fix.error || friendly(error)); return; }
+  }
+  if (error) { setBusy(false); say(friendly(error)); return; }
+  setBusy(true, 'Opening…');
+  await enter(data.user.id, false);
+}
+
+async function signUp(name, email, password) {
+  setBusy(true, 'Creating account…');
+  const r = await callAccount({ action: 'signup', email, password, name });
+  if (!r.ok) {
+    setBusy(false);
+    if (r.code === 'exists') say(r.error, 'err', { label: 'Sign in instead', run: () => { setTab('in'); $('#pass-in').focus(); } });
+    else say(r.error || 'Couldn’t create the account. Try again in a minute.');
     return;
   }
-  // Returning sign-in: if the account was never set up (e.g. a confirmed-email
-  // signup that skipped the isNewUser path), run the wizard once. Existing
-  // users — whose settings are already populated — go straight in.
-  try {
-    const { data } = await sb.from('app_state').select('data').eq('key', userId + ':settings').maybeSingle();
-    const st = data && data.data;
-    if (!st || (typeof st === 'object' && Object.keys(st).length === 0)) {
-      setLoading(true, 'Setting things up…');
-      window.location.href = 'onboarding.html';
-      return;
-    }
-  } catch (e) {}
-  setLoading(true, 'Loading dashboard…');
-  window.location.href = 'index.html';
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) { setBusy(false); setTab('in'); say('Your account is ready. Sign in with the same email and password.', 'ok'); return; }
+  setBusy(true, 'Setting up…');
+  await enter(data.user.id, true, name);
 }
 
-async function handleSubmit() {
-  const email = document.getElementById('emailInput').value.trim();
-  const pass = document.getElementById('passInput').value;
-  if (!email || !pass) { showMsg('Please enter your email and password.', 'error'); return; }
-  clearMsg();
-
-  if (currentTab === 'signin') {
-    setLoading(true, 'Signing in…');
-    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
-    if (error) { setLoading(false); showMsg(error.message, 'error'); return; }
-    await afterLogin(data.user.id);
-
-  } else {
-    setLoading(true, 'Creating account…');
-    const { data, error } = await sb.auth.signUp({ email, password: pass });
-    setLoading(false);
-    if (error) { showMsg(error.message, 'error'); return; }
-    // If email confirmation is disabled, user is auto-confirmed
-    if (data.session) {
-      await afterLogin(data.user.id, true);
-    } else {
-      document.getElementById('formWrap').style.display = 'none';
-      document.getElementById('sentTo').textContent = email;
-      document.getElementById('checkEmail').style.display = 'block';
-    }
-  }
-}
-
-// Allow Enter key to submit
-document.addEventListener('keydown', e => {
-  if (e.key === 'Enter') handleSubmit();
+$('#auth-form').addEventListener('submit', e => {
+  e.preventDefault();
+  if (busy) return;
+  const name = $('#name-in').value.trim();
+  const email = $('#email-in').value.trim().toLowerCase();
+  const password = $('#pass-in').value;
+  if (tab === 'up' && !name) { say('Add your name first.'); $('#name-in').focus(); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { say('That doesn’t look like an email address.'); $('#email-in').focus(); return; }
+  if (!password) { say('Enter your password.'); $('#pass-in').focus(); return; }
+  if (tab === 'up' && password.length < 6) { say('Use a password with at least 6 characters.'); $('#pass-in').focus(); return; }
+  say('');
+  (tab === 'up' ? signUp(name, email, password) : signIn(email, password)).catch(err => { setBusy(false); say(friendly(err)); });
+});
+document.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+$('#eye').addEventListener('click', () => {
+  const p = $('#pass-in'), show = p.type === 'password';
+  p.type = show ? 'text' : 'password';
+  $('#eye').setAttribute('aria-pressed', String(show));
+  $('#eye').setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+  $('#eye-x').hidden = !show;
 });
 
-// Check if already logged in — skip login screen
-(async () => {
-  try {
-    const { data: { session } } = await sb.auth.getSession();
-    if (session) {
-      wipeLocalForNewOwner(session.user.id);
-      localStorage.setItem('_dashUid', session.user.id);
-      window.location.href = 'index.html';
-    }
-  } catch(e) {}
+// Already signed in on this device: go straight in.
+sb.auth.getSession().then(({ data }) => {
+  const s = data && data.session;
+  if (!s) return;
+  wipeLocalForNewOwner(s.user.id);
+  try { localStorage.setItem('_dashUid', s.user.id); } catch (e) {}
+  location.replace('/v3/');
+}).catch(() => {});
+if (/[?&]signup\b/.test(location.search)) setTab('up');
 })();
 </script>
 </body>

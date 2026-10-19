@@ -7,7 +7,7 @@
 (function () {
 'use strict';
 
-const VERSION = '2.8.0';
+const VERSION = '2.8.1';
 const SB_URL = 'https://mtuoqwbrujxutofhyahb.supabase.co';
 const SB_KEY = 'sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
 const DEMO = /[?&]demo\b/.test(location.search);
@@ -167,10 +167,17 @@ function setTheme(v) {
 }
 const theme = () => settings.get('v3Theme') || 'system';
 const userName = () => String(settings.get('name') || '').trim();
-async function switchDesign(to) {
-  settings.set('ui', to);
-  try { await Promise.race([settings.flush(), new Promise(r => setTimeout(r, 1800))]); } catch (e) {}
-  location.href = to === 'classic' ? '/index.html?classic' : '/v3/';
+// The classic design is retired. Its extra pages leave the old nav too (data kept,
+// only settings.pages flags change), once per account. Gym/School/Food/Transport stay
+// reachable until their new versions ship.
+const RETIRED = ['health', 'habits', 'finance', 'projects', 'friends', 'trends'];
+function retireClassicOnce() {
+  if (settings.get('v3Archive')) return;
+  const pages = Object.assign({}, settings.get('pages') || {});
+  RETIRED.forEach(k => { pages[k] = false; });
+  settings.set('pages', pages);
+  settings.set('ui', 'v3');
+  settings.set('v3Archive', 1);
 }
 
 /* ================= Water (lives in the health row; only po_water_v1 is read) ================= */
@@ -356,7 +363,6 @@ SHEETS.water = () => {
 };
 
 let confirmLogout = false;
-const ARCHIVED = [['Health', '/health.html'], ['Habits', '/habits.html'], ['Finance', '/finance.html'], ['Projects', '/projects.html'], ['Friends', '/friends.html'], ['Trends', '/trends.html']];
 SHEETS.settings = () => {
   const t = theme(), nm = userName();
   return {
@@ -364,10 +370,6 @@ SHEETS.settings = () => {
     body: '<div class="set-avatar"><span class="av" id="set-av">' + esc((nm || '?').charAt(0).toUpperCase()) + '</span><div style="flex:1;min-width:0"><label class="field-label" for="set-name">Name</label><input class="text-in" id="set-name" value="' + esc(nm) + '" autocomplete="off" maxlength="40"></div></div>' +
       '<p class="group-title">Appearance</p><div class="seg" role="radiogroup" aria-label="Appearance">' +
       [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']].map(o => '<button id="th-' + o[0] + '" role="radio" data-act="theme" data-v="' + o[0] + '" aria-checked="' + (t === o[0]) + '">' + o[1] + '</button>').join('') + '</div>' +
-      '<p class="group-title">Design</p><div class="menu-list">' +
-      '<button class="menu-item" id="st-classic" data-act="to-classic">' + ic('repeat') + 'Use the classic design<span class="r">Same data</span></button></div>' +
-      '<p class="group-title">More pages</p><p class="pages-cap">Hidden from the new design, not deleted. Your data is kept.</p><div class="menu-list">' +
-      ARCHIVED.map(p => '<a class="menu-item" id="pg-' + p[0].toLowerCase() + '" href="' + p[1] + '">' + p[0] + '<span class="r">Open</span></a>').join('') + '</div>' +
       '<p class="group-title">Account</p><div class="menu-list">' +
       '<div class="menu-item static">' + ic('info') + 'About<span class="r">Version ' + VERSION + '</span></div>' +
       '<button class="menu-item" id="st-logout" data-act="logout">' + ic('logout') + 'Log out</button></div>' +
@@ -396,7 +398,6 @@ const ACT = {
   'water-undo': () => { addWater(-1); renderSheet(); },
   bottle: el => { setBottle(+el.dataset.v); renderSheet(); },
   theme: el => { settings.set('v3Theme', setTheme(el.dataset.v)); renderSheet(); },
-  'to-classic': () => switchDesign('classic'),
   logout: () => { confirmLogout = true; renderSheet(); },
   'logout-cancel': () => { confirmLogout = false; renderSheet(); },
   'logout-yes': async () => { try { if (!DEMO) await sb().auth.signOut(); } catch (e) {} location.href = '/login.html'; }
@@ -465,14 +466,14 @@ async function boot(page) {
   if (!id) return false;
   ROWS.forEach(r => r.pull(true));
   pullWater(true);
-  settings.on(() => setTheme(theme()));
+  settings.on(() => { setTheme(theme()); if (!DEMO) retireClassicOnce(); });
   return true;
 }
 
 window.DASH = {
   VERSION, DEMO, $, $$, esc, pad, clamp, cap, plural, fmtN, ic, readJSON, writeJSON, reduced,
   DOW, DOW_L, MON, dk, dayAt, todayKey, parseDk, daysFrom, dShort, dLong, nowMin, hhmm,
-  Row, settings, userName, theme, setTheme, switchDesign,
+  Row, settings, userName, theme, setTheme,
   waterProgress, waterChip, addWater, onWater: f => waterSubs.push(f),
   ring, numEl, animate, toast, hideToast, SHEETS, openSheet, renderSheet, closeSheet,
   sheetArg: () => sheetArg, sheetKind: () => sheetKind, ACT, LP, boot
