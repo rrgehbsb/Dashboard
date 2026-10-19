@@ -5,7 +5,7 @@
    uid:food       days[YYYY-MM-DD].entries[].nutrients.kcal, custom.kcal (read) */
 (function () {
 'use strict';
-const D = window.DASH, $ = D.$, esc = D.esc, ic = D.ic;
+const D = window.DASH, $ = D.$, esc = D.esc, ic = D.ic, TT = window.TIMETABLE;
 const SYNC_LS = 'dashboard:sync:v1';
 
 /* ---------- rows ---------- */
@@ -35,6 +35,7 @@ if (D.DEMO) {
     'dashboard:school:v1:subjects': [{ id: 's1', name: 'Biology' }, { id: 's2', name: 'Math' }, { id: 's3', name: 'English' }],
     'dashboard:school:v1:assignments': [{ id: 'a1', subjectId: 's2', title: 'Homework p.112', dueDate: D.dk(D.dayAt(4)), status: 'Todo' }, { id: 'a2', subjectId: 's3', title: 'Essay draft', dueDate: D.dk(D.dayAt(7)), status: 'Todo' }],
     'dashboard:school:v1:tests': [{ id: 't1', subjectId: 's1', name: 'Bio test', testDate: D.dk(D.dayAt(2)) }],
+    'dashboard:school:v1:timetable': { cls: '11-3', mine: ['מדעי המחשב'], trip: true, early: '08:00', hidden: [] },
     'dashboard:school:v1:commute': { setup: true, legs: { walk1: 3, bus1: 34, buffer: 5, wait2: 5, bus2: 3, walk2: 8 }, home: { lines: ['71', '72', '73', '74'], stop: '32645' }, hz: { mode: 'bus', from: '27102', to: '20378', lines: [], transfer: 4, walk: 5 }, days: { 0: { start: '07:45', end: '14:00', by: '08:00' }, 1: { start: '08:00', end: '14:45', by: null }, 2: { start: '07:45', end: '13:30', by: '08:00' }, 3: { start: '08:00', end: '14:45', by: null }, 4: { start: '08:00', end: '13:00', by: null } }, offUntil: null }
   };
   gym.data = {
@@ -86,8 +87,12 @@ function schoolSoon(maxDays) {
   const out = [];
   sch('assignments').forEach(a => { if (!a || a.deleted || a.status === 'Done') return; const d = D.daysFrom(a.dueDate); if (d == null || d < 0 || d > maxDays) return; out.push({ kind: 'hw', title: a.title, subj: subjName(a.subjectId), d: d }); });
   sch('tests').forEach(t => { if (!t || t.deleted) return; const d = D.daysFrom(t.testDate); if (d == null || d < 0 || d > maxDays) return; out.push({ kind: 'test', title: t.name, subj: subjName(t.subjectId), d: d }); });
+  // tests on the school calendar (the School page shows them the same way)
+  if (TT) { const s = TT.settings(school); if (s.cls) TT.upcoming(s, sch('tests'), maxDays).forEach(t => out.push({ kind: 'test', title: t.title, subj: 'School calendar', d: t.d, he: true })); }
   return out.sort((a, b) => a.d - b.d || (a.kind === 'test' ? -1 : 1));
 }
+// Changes to tomorrow's lessons, once the school posts them (around 20:00).
+function ttChanges(dk) { if (!TT) return 0; const s = TT.settings(school); return s.cls ? TT.changes(dk, s) || 0 : 0; }
 const isSetKey = k => /^set\d+/.test(k);
 function gymInfo() {
   const tpl = gym.get('dashboard:gym:v1:template'), logs = gym.get('dashboard:gym:v1:logs') || {};
@@ -164,14 +169,15 @@ function heroModel() {
   }
   const soon = schoolSoon(2);
   const test = soon.find(x => x.kind === 'test');
-  if (test) return { area: 'school', href: D.pageHref('school'), eyebrow: 'Coming up', big: '<span class="t">' + esc(test.title) + '</span>', sub: dayWord(test.d) + (test.subj ? ' · ' + esc(test.subj) : ''), label: test.title + ', ' + dayWord(test.d) };
+  if (test) return { area: 'school', href: D.pageHref('school'), eyebrow: 'Coming up', big: '<span class="t"><bdi>' + esc(test.title) + '</bdi></span>', sub: dayWord(test.d) + (test.subj ? ' · ' + esc(test.subj) : ''), label: test.title + ', ' + dayWord(test.d) };
   const due = soon.filter(x => x.kind === 'hw' && x.d <= 1);
   if (due.length) return { area: 'school', href: D.pageHref('school'), eyebrow: 'Due ' + dayWord(due[0].d).toLowerCase(), big: '<span class="t">' + esc(due[0].title) + '</span>', sub: (due[0].subj ? esc(due[0].subj) : 'School') + (due.length > 1 ? ' · ' + (due.length - 1) + ' more' : ''), label: due[0].title + ' due ' + dayWord(due[0].d) };
   if (n >= 19 * 60) {
     const tm = list(tomorrowK()).filter(g => !g.done);
     if (ph && ph.kind === 'next' && ph.off === 1 && ph.m && ph.m.best) {
+      const ch = ttChanges(D.dk(D.dayAt(1)));
       return { area: 'school', href: D.pageHref('school'), eyebrow: 'Tomorrow · ' + D.dShort(D.dayAt(1)), big: '<span class="lead">Leave</span><span class="n">' + CM.hhmm(ph.m.best.leave) + '</span>',
-        sub: CM.hhmm(ph.m.best.train) + ' train' + (tm.length ? ' · ' + tm.length + ' on your list' : ''), label: 'Tomorrow, leave ' + CM.hhmm(ph.m.best.leave) };
+        sub: CM.hhmm(ph.m.best.train) + ' train' + (ch ? ' · ' + ch + ' timetable ' + D.plural(ch, 'change', 'changes') : '') + (tm.length ? ' · ' + tm.length + ' on your list' : ''), label: 'Tomorrow, leave ' + CM.hhmm(ph.m.best.leave) };
     }
     return { area: 'todo', href: '#todo', eyebrow: 'Tomorrow · ' + D.dShort(D.dayAt(1)), big: tm.length ? '<span class="n">' + D.numEl('hero-tm', tm.length) + '</span><span class="u">planned</span>' : '<span class="t">Nothing planned yet</span>', sub: tm.length ? esc(tm[0].text) + (tm.length > 1 ? ' · and ' + (tm.length - 1) + ' more' : '') : 'Flip the list below to Tomorrow to add things', label: 'Tomorrow' };
   }
@@ -192,7 +198,7 @@ function tileModels(heroArea) {
     : { area: 'gym', href: D.pageHref('gym'), label: 'Gym', p: 0, val: 'No plan', sub: 'Set one up in Gym' });
   if (heroArea !== 'school') {
     const w = schoolSoon(7);
-    out.push(w.length ? { area: 'school', href: D.pageHref('school'), label: 'School', p: 0, val: D.numEl('tile-school', w.length) + '<small>due</small>', sub: esc(w[0].title) + ' · ' + D.DOW[D.dayAt(w[0].d).getDay()] }
+    out.push(w.length ? { area: 'school', href: D.pageHref('school'), label: 'School', p: 0, val: D.numEl('tile-school', w.length) + '<small>due</small>', sub: '<bdi>' + esc(w[0].title) + '</bdi> · ' + D.DOW[D.dayAt(w[0].d).getDay()] }
       : { area: 'school', href: D.pageHref('school'), label: 'School', p: 1, val: 'All clear', sub: 'Nothing due this week' });
   }
   const f = foodInfo();
@@ -355,6 +361,16 @@ $('#todo-form').addEventListener('submit', e => {
 let rolled = false, lastDay = D.todayKey();
 dash.on(() => { if (!rolled) { rolled = true; rollover(); } renderTodo(); renderHeroTiles(); });
 [school, gym, food].forEach(r => r.on(renderHeroTiles));
+if (TT) {
+  // the trip follows the class timetable (first lesson, last lesson, cancelled hours)
+  if (window.COMMUTE) window.COMMUTE.setDayTimes(dk => TT.dayTimes(dk, TT.settings(school)));
+  const ttLoad = () => { const s = TT.settings(school); if (s.cls && !document.hidden) TT.load(s.cls).then(renderHeroTiles); };
+  TT.onChange(renderHeroTiles);
+  school.on(ttLoad);
+  document.addEventListener('visibilitychange', ttLoad);
+  setInterval(ttLoad, 5 * 60e3);
+  ttLoad();
+}
 if (window.COMMUTE) {
   const CMx = window.COMMUTE;
   // keep the trip card live while it matters (before leaving and on the way home)

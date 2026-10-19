@@ -27,6 +27,9 @@ function statusRow(icon, title, where, time, b) {
 }
 
 const entName = k => (C.SCHOOL[k] ? C.SCHOOL[k].name + ' (' + C.SCHOOL[k].he + ')' : 'school');
+const ttOn = () => { const T = window.TIMETABLE, s = T ? T.settings(school) : {}; return !!s.cls && s.trip !== false; };
+// "first lesson 07:45 · by 08:00" when the timetable sets the day, else the times you set
+const startLbl = m => m.auto ? 'first lesson ' + C.hhmm(m.start) + (m.hasBy ? ' · by ' + C.hhmm(m.by) : '') : (m.hasBy ? 'arrive by ' + C.hhmm(m.by) : 'starts ' + C.hhmm(m.start));
 /* ---------- the card ---------- */
 function render() {
   const slot = $('#commute-slot'); if (!slot) return;
@@ -50,7 +53,7 @@ function render() {
     const m = ph.m, p = (S.pick != null && m.opts.find(o => o.train === S.pick)) || ph.pick;
     const lv = C.liveView(c, Object.assign({}, ph, { pick: p }), now) || { leave: p.leave, mins: p.leave - now };
     if (lv.miss || (p.ok && lv.mins <= 5)) area = 'amber';
-    h = '<div class="row1"><span class="lbl">To school · ' + (m.hasBy ? 'arrive by ' + C.hhmm(m.by) : 'starts ' + C.hhmm(m.start)) + '</span><span class="tools">' + tag(lv) + liveBtn + gear + '</span></div>' +
+    h = '<div class="row1"><span class="lbl">To school · ' + startLbl(m) + '</span><span class="tools">' + tag(lv) + liveBtn + gear + '</span></div>' +
       '<div><p class="big">Leave ' + C.hhmm(lv.leave) + '<small>' + (lv.mins > 0 ? 'in ' + lv.mins + ' min' : lv.mins === 0 ? 'now' : (-lv.mins) + ' min ago') + '</small></p>' +
       '<p class="note">' + (lv.miss ? 'Your bus is running late and may miss the ' + C.hhmm(p.train) + ' train. Check the next option below.' :
         (p.ok ? 'At school ' + C.hhmm(p.arrive) + ' · ' + p.spare + ' min to spare' : 'At school ' + C.hhmm(p.arrive) + ', ' + (-p.spare) + ' min late') + ' · ' + entName(p.ent)) + '</p></div>' +
@@ -59,16 +62,18 @@ function render() {
     const a = ph.a, p = (S.pickBack != null && a.opts.find(o => o.train === S.pickBack)) || ph.pick || a.best;
     if (p) {
       const lv = ph.kind === 'after' ? (C.liveView(c, Object.assign({}, ph, { pick: p }), now) || { leave: p.leave, mins: p.leave - now }) : { leave: p.leave, mins: null };
-      h = '<div class="row1"><span class="lbl">Going home · school ends ' + C.hhmm(a.end) + '</span><span class="tools">' + tag(lv) + liveBtn + gear + '</span></div>' +
+      h = '<div class="row1"><span class="lbl">Going home · ' + (a.auto ? 'last lesson ends ' : 'school ends ') + C.hhmm(a.end) + '</span><span class="tools">' + tag(lv) + liveBtn + gear + '</span></div>' +
         '<div><p class="big">' + C.hhmm(p.train) + '<small>train home</small></p><p class="note">Leave school by ' + C.hhmm(lv.leave) + (lv.mins != null ? (lv.mins > 0 ? ' · in ' + lv.mins + ' min' : ' · now') : '') + ' from the ' + entName(p.ent) + ' · home about ' + C.hhmm(p.home) + '</p></div>' +
         backJourney(c, p, lv) + (ph.kind === 'after' ? statusAfter(c, p, lv) : '') + altsHtml(a.opts, p.train, 'alt-back');
     } else h = '<div class="row1"><span class="lbl">Going home</span><span class="tools">' + liveBtn + gear + '</span></div><p class="note">No more trains home today.</p>';
   } else if (ph.kind === 'next' && ph.m && ph.m.best) {
     const m = ph.m, p = m.best, when = ph.off === 1 ? 'Tomorrow' : D.DOW_L[D.dayAt(ph.off).getDay()];
-    h = '<div class="row1"><span class="lbl">' + when + ' · ' + (m.hasBy ? 'arrive by ' + C.hhmm(m.by) : 'starts ' + C.hhmm(m.start)) + '</span><span class="tools">' + tag(null) + liveBtn + gear + '</span></div>' +
+    h = '<div class="row1"><span class="lbl">' + when + ' · ' + startLbl(m) + '</span><span class="tools">' + tag(null) + liveBtn + gear + '</span></div>' +
       '<div><p class="big">Leave ' + C.hhmm(p.leave) + '<small>' + (p.bus ? 'bus ' + esc(p.bus.line) + ' ' + C.hhmm(p.bus.at) : C.hhmm(p.train) + ' train') + '</small></p><p class="note">At school ' + C.hhmm(p.arrive) + ' · ' + p.spare + ' min to spare · ' + entName(p.ent) + '</p></div>' + outJourney(c, p, null);
   } else {
-    h = '<div class="row1"><span class="lbl">Your trip</span><span class="tools">' + liveBtn + gear + '</span></div><p class="note">No school days set. Open the trip settings to add them.</p>';
+    const hol = ttOn() && window.TIMETABLE.holidayOn(D.todayKey());
+    h = '<div class="row1"><span class="lbl">' + (hol ? 'No school' : 'Your trip') + '</span><span class="tools">' + liveBtn + gear + '</span></div>' +
+      (hol ? '<p class="big">' + bdi(hol.title) + '</p><p class="note">Until ' + D.dShort(D.parseDk(hol.end)) + ' · from the school calendar</p>' : '<p class="note">No school days set. Open the trip settings to add them.</p>');
   }
   h += '<button class="link how" id="trip-how" data-act="sheet" data-sheet="tripinfo">' + ic('info', 'xs') + 'How live times work</button>';
   if (!c.home.stop) h += '<button class="alt solid hint-btn" id="pick-stop-cta" data-act="trip-open">Pick your bus stop for real bus times</button>';
@@ -134,7 +139,8 @@ D.SHEETS.tripinfo = () => {
       row('In Herzliya', 'The app picks the fastest way each time: walking to the main entrance (about 14 min), bus 33/34 to the New High School entrance, or another bus to Kanyon Shivat HaKochavim and a 2-minute walk to the main entrance. Nothing to set.') +
       row('Entrances', 'New High School (תיכון חדש): on Sderot Shivat HaKochavim, by the 33/34 stop. Main entrance (הנדסאים): the gate just past Kanyon Shivat HaKochavim. The card tells you which one you’ll use.') +
       row('Trains home', 'Trains to Rosh HaAyin start at Herzliya, so they only turn Live once they leave. They almost always leave on time.') +
-      row('Updates', 'The timetable updates itself every Sunday and Wednesday' + (hh.age != null ? ' (last update ' + (hh.age === 0 ? 'today' : hh.age === 1 ? 'yesterday' : hh.age + ' days ago') + ')' : '') + '. If it’s more than ' + C.STALE_DAYS + ' days old, the card shows “Problem”: planned times may be wrong.') +
+      row('School times', 'Once you pick your class (Timetable on the School page), the trip follows your real day: on time for your first lesson, home after your last. The school posts changes around 20:00 the evening before, so a cancelled first lesson means a later bus. Until then it uses the weekly plan.') +
+      row('Updates', 'The bus and train timetable updates itself every Sunday and Wednesday' + (hh.age != null ? ' (last update ' + (hh.age === 0 ? 'today' : hh.age === 1 ? 'yesterday' : hh.age + ' days ago') + ')' : '') + '. If it’s more than ' + C.STALE_DAYS + ' days old, the card shows “Problem”: planned times may be wrong.') +
       row('Where it comes from', 'The Ministry of Transport’s official timetable and live feed, the same data Moovit uses.') +
       '</div>'
   };
@@ -220,7 +226,8 @@ D.SHEETS.commute = () => {
       (home.stop ? '' : step('cl-bus1', 'Bus ride (estimate)', f.legs.bus1, 'cs-leg', 'bus1', 'Until you pick your stop')) + '</div>' +
       '<p class="group-title">In Herzliya</p><p class="sheet-note">Same school for everyone, so this is automatic. Each time the app picks the fastest way from the station: walk to the main entrance, bus 33/34 to the New High School, or another bus to the mall and a short walk.</p>' +
       '<div class="seg" role="radiogroup" aria-label="From Herzliya station">' + [['auto', 'Fastest way'], ['walk', 'Always walk']].map(o => '<button id="hz-' + o[0] + '" role="radio" data-act="hz-mode" data-v="' + o[0] + '" aria-checked="' + ((hz.mode === 'walk' ? 'walk' : 'auto') === o[0]) + '">' + o[1] + '</button>').join('') + '</div>' +
-      '<p class="group-title">School days</p><div>' + [0, 1, 2, 3, 4, 5, 6].map(wd => {
+      (ttOn() ? '<p class="group-title">School times</p><p class="sheet-note">Your trip follows your class timetable: it gets you there for your first lesson and plans the way home after your last, even when lessons are cancelled. The days below are only a backup for days the timetable can’t tell (like a school trip).</p><button class="btn ghost block" id="cs-tt" data-act="sheet" data-sheet="ttset">Timetable settings</button><p class="group-title">Backup school days</p>' : '<p class="group-title">School days</p>') +
+      '<div>' + [0, 1, 2, 3, 4, 5, 6].map(wd => {
         const on = !!(f.days[wd] && f.days[wd].start);
         return '<div class="day-block"><div class="set-row"><span class="lbl">' + D.DOW_L[wd] + '</span><span class="switch-hit"><button class="switch" id="cs-on-' + wd + '" role="switch" aria-checked="' + on + '" data-act="cs-day" data-wd="' + wd + '" aria-label="School on ' + D.DOW_L[wd] + '"></button></span></div>' +
           (on ? '<div class="set-row sub"><span class="lbl">Starts</span>' + tstep(wd, 'start') + '</div><div class="set-row sub"><span class="lbl">Ends</span>' + tstep(wd, 'end') + '</div>' +

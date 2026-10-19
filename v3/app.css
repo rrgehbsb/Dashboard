@@ -690,3 +690,53 @@ a.tile { color:var(--ink); }
 /* one look for "selected" everywhere: blue with a check */
 .pick[aria-checked="true"] { background:var(--school); color:var(--on-school); }
 .pick[aria-checked="true"]::before { content:"✓"; margin-right:6px; font-weight:800; }
+
+/* ---------- School: timetable card (the day with changes marked) ---------- */
+.tt { display:flex; flex-direction:column; gap:12px; }
+.tt-head { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+.tt-head .card-title small { font-family:var(--f-body); font-size:15px; font-weight:600; color:var(--ink-3); margin-left:6px; }
+.tt-sum { font-size:15px; color:var(--ink-2); }
+.tt-sum b { color:var(--ink); }
+.tt-sum.has b { color:var(--school-ink); }
+.tt-note { display:flex; gap:8px; align-items:flex-start; padding:9px 12px; border-radius:14px; background:var(--school-soft); color:var(--school-ink); font-size:14px; font-weight:600; line-height:1.4; }
+.tt-note svg { flex:none; margin-top:2px; }
+.tt-note.hol { background:var(--food-soft); color:var(--food-ink); }
+.tt-list { display:flex; flex-direction:column; }
+.tt-row { display:grid; grid-template-columns:34px 44px minmax(0,1fr) auto; align-items:center; gap:8px; min-height:46px; padding:6px 8px; margin:0 -8px; border-top:1px solid var(--line); }
+.tt-row:first-child { border-top-color:transparent; }
+.tt-row.now { background:var(--school-soft); border-radius:12px; border-top-color:transparent; }
+.tt-row.now + .tt-row { border-top-color:transparent; }
+.tt-n { font-family:var(--f-display); font-weight:800; font-size:15px; color:var(--ink-3); text-align:center; white-space:nowrap; }
+.tt-row.now .tt-n { color:var(--school-ink); }
+.tt-t { font-size:13px; font-weight:600; color:var(--ink-3); font-variant-numeric:tabular-nums; }
+.tt-main { min-width:0; display:flex; flex-direction:column; }
+.tt-s { display:flex; align-items:baseline; gap:8px; min-width:0; }
+.tt-s b { flex:none; max-width:100%; }
+.tt-main .tch { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tt-main b { font-size:16px; font-weight:600; line-height:1.3; overflow-wrap:anywhere; }
+.tt-main small { font-size:13px; color:var(--ink-3); }
+.tt-main .was { color:var(--ink-2); }
+.tt-row.cancelled .gone { text-decoration:line-through; color:var(--ink-3); font-weight:500; }
+.tt-list.planned .tt-main b { font-weight:500; }
+.tt-chip { font-size:12px; font-weight:800; padding:3px 8px; border-radius:999px; white-space:nowrap; }
+.tt-chip.ch { background:var(--amber); color:var(--on-amber); }
+.tt-chip.cx { background:#E5384F; color:#fff; }
+.tt-chip.ad { background:var(--food-soft); color:var(--food-ink); }
+.tt-foot { display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:14px; color:var(--ink-3); font-weight:600; margin-bottom:-6px; }
+.tt-btns { display:flex; align-items:center; gap:2px; flex:none; }
+.tt-week-wrap { overflow-x:auto; margin:0 -4px; border-radius:var(--r-m); background:var(--surface-2); }
+.tt-week { border-collapse:collapse; width:100%; min-width:540px; table-layout:fixed; font-size:12.5px; }
+.tt-week th, .tt-week td { padding:8px 5px; text-align:center; vertical-align:top; line-height:1.3; overflow-wrap:anywhere; }
+.tt-week thead th:first-child { width:50px; }
+.tt-week thead th { font-weight:800; color:var(--ink-2); }
+.tt-week tbody tr + tr > * { box-shadow:0 -1px 0 var(--line); }
+.tt-week th[scope="row"] { position:sticky; left:0; background:var(--surface-2); font-weight:500; color:var(--ink-3); }
+.tt-week th[scope="row"] b { display:block; font-family:var(--f-display); font-size:15px; color:var(--ink-2); }
+.tt-week th[scope="row"] small { font-size:11px; }
+.tt-week .on { background:var(--school-soft); color:var(--school-ink); }
+.cls-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(70px, 1fr)); }
+.cls-grid .pick { justify-content:center; }
+.hw.cal-row .t-ic { color:var(--school-ink); }
+.cal-title { font-size:20px; font-weight:700; line-height:1.3; }
+button.tt-note { text-align:left; width:100%; font:inherit; font-size:14px; font-weight:600; }
+button.tt-note:active { transform:scale(.99); }

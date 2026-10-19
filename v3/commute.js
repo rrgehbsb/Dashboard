@@ -56,7 +56,19 @@ function cfg(row) {
   if (out.hz.mode !== 'walk') out.hz.mode = 'auto'; // older settings (picked stops) now use the automatic choice
   return out;
 }
-const isSchoolDay = (c, wd) => !!(c.days && c.days[wd] && c.days[wd].start);
+// A school day's times: from the school timetable when it's connected (first lesson →
+// arrival, last lesson → leaving, the 07:45 "arrive by" rule), else your own settings.
+let dayTimesFn = null;
+function setDayTimes(fn) { dayTimesFn = fn; }
+function times(c, wd, dk) {
+  const t = dayTimesFn && dk ? dayTimesFn(dk) : null;
+  if (t && t.none) return null;
+  if (t && t.start != null) return { start: t.start, end: t.end, by: t.by != null ? t.by : t.start, hasBy: t.by != null, auto: true, published: !!t.published };
+  const day = c.days && c.days[wd];
+  if (!day || !day.start) return null;
+  return { start: tm(day.start), end: tm(day.end || '14:00'), by: day.by ? tm(day.by) : tm(day.start), hasBy: !!day.by, auto: false };
+}
+const isSchoolDay = (c, wd, dk) => !!times(c, wd, dk);
 
 /* ---------- bus timetable helpers ---------- */
 const HOME_RE = /^7[1-4]/;
@@ -156,10 +168,10 @@ function hzLeave(c, wd, end, dep) {
 }
 
 /* ---------- morning ---------- */
-function morning(c, wd) {
-  if (!isSchoolDay(c, wd) || !rail) return null;
-  const day = c.days[wd], L = c.legs;
-  const start = tm(day.start), by = day.by ? tm(day.by) : start;
+function morning(c, wd, dk) {
+  const T = times(c, wd, dk);
+  if (!T || !rail) return null;
+  const L = c.legs, start = T.start, by = T.by;
   const homeConns = c.home.stop ? homeRoutes('to', c.home.lines).map(r => ({ r, i: r.stops.indexOf(c.home.stop), j: r.stops.length - 1 })).filter(x => x.i >= 0) : [];
   const homeBus = homeConns.length ? tripsOf(homeConns, wd) : null;
   const opts = [];
@@ -187,13 +199,14 @@ function morning(c, wd) {
   // Leave as late as possible while still arriving on time.
   let best = null;
   opts.forEach(o => { if (o.ok) best = o; });
-  return { wd, start, by, hasBy: !!day.by, opts, best, legs: L, real: { home: !!homeBus, hz: true } };
+  return { wd, dk, start, by, hasBy: T.hasBy, auto: T.auto, published: T.published, opts, best, legs: L, real: { home: !!homeBus, hz: true } };
 }
 
 /* ---------- afternoon ---------- */
-function afternoon(c, wd) {
-  if (!isSchoolDay(c, wd) || !rail) return null;
-  const day = c.days[wd], L = c.legs, end = tm(day.end || '14:00');
+function afternoon(c, wd, dk) {
+  const T = times(c, wd, dk);
+  if (!T || !rail) return null;
+  const L = c.legs, end = T.end;
   const homeBack = c.home.stop && stopLL(c.home.stop)
     ? tripsOf(homeRoutes('from', c.home.lines).map(r => { let best = null; r.stops.forEach((s, j) => { const ll = stopLL(s); if (!ll || j === 0) return; const dd = dist(ll, stopLL(c.home.stop)); if (dd <= 400 && (!best || dd < best.d)) best = { j, d: dd }; }); return best ? { r, i: 0, j: best.j } : null; }).filter(Boolean), wd)
     : null;
@@ -210,14 +223,14 @@ function afternoon(c, wd) {
     if (o.home == null) o.home = t.arr + 5 + L.bus1 + L.walk1;
     opts.push(o);
   });
-  return { wd, end, opts, best: opts[0] || null, legs: L, real: { home: !!homeBack, hz: true } };
+  return { wd, dk, end, auto: T.auto, opts, best: opts[0] || null, legs: L, real: { home: !!homeBack, hz: true } };
 }
 
 function nextSchoolDay(c, fromOff) {
   for (let off = fromOff; off < fromOff + 14; off++) {
     const d = D.dayAt(off);
     if (c.offUntil && D.dk(d) < c.offUntil) continue;
-    if (isSchoolDay(c, d.getDay())) return off;
+    if (isSchoolDay(c, d.getDay(), D.dk(d))) return off;
   }
   return null;
 }
@@ -225,10 +238,10 @@ function nextSchoolDay(c, fromOff) {
 function phase(c, now) {
   if (!c || !rail) return null;
   now = now == null ? D.nowMin() : now;
-  const wd = D.dayAt(0).getDay();
-  if (c.offUntil && D.todayKey() < c.offUntil) return { kind: 'off', until: c.offUntil, nextOff: nextSchoolDay(c, 0) };
-  if (isSchoolDay(c, wd)) {
-    const m = morning(c, wd), a = afternoon(c, wd);
+  const wd = D.dayAt(0).getDay(), dk = D.todayKey();
+  if (c.offUntil && dk < c.offUntil) return { kind: 'off', until: c.offUntil, nextOff: nextSchoolDay(c, 0) };
+  if (isSchoolDay(c, wd, dk)) {
+    const m = morning(c, wd, dk), a = afternoon(c, wd, dk);
     if (m && now < m.by) {
       let pick = m.best;
       if (!pick || now > pick.leave) pick = m.opts.find(o => o.leave >= now) || pick;
@@ -242,7 +255,7 @@ function phase(c, now) {
   }
   const off = nextSchoolDay(c, 1);
   if (off == null) return { kind: 'none' };
-  return { kind: 'next', off, m: morning(c, D.dayAt(off).getDay()) };
+  return { kind: 'next', off, m: morning(c, D.dayAt(off).getDay(), D.dk(D.dayAt(off))) };
 }
 
 /* ---------- live ---------- */
@@ -353,6 +366,6 @@ function watchStops(c, ph) {
 
 window.COMMUTE = {
   KEY, RH_STATION, HZ_STATION, HZ_LL, RH_LL, load, loadRail: load, rail: () => rail, bus: () => bus, defaults, cfg, morning, afternoon, phase, nextSchoolDay, isSchoolDay,
-  SCHOOL, homeRoutes, connections, connectionsNear, stopName, stopLL, dist, tm, hhmm, fetchLive, live: () => live, liveBus, liveTrain, watchStops, isoMin, schedAt, liveView, trainsOf, health, STALE_DAYS
+  SCHOOL, homeRoutes, connections, connectionsNear, stopName, stopLL, dist, tm, hhmm, fetchLive, live: () => live, liveBus, liveTrain, watchStops, isoMin, schedAt, liveView, trainsOf, health, STALE_DAYS, setDayTimes, times
 };
 })();

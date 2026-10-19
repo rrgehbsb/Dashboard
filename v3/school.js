@@ -41,6 +41,7 @@ if (D.DEMO) {
   ];
   school.data[K.te] = [{ id: 't1', subjectId: 'bio', name: 'Bio test · chapters 4–5', testDate: day(2) }, { id: 't2', subjectId: 'phys', name: 'Physics quiz', testDate: day(-3) }];
   school.data[K.gr] = [{ id: 'g1', subjectId: 'math', type: 'Test', gradeValue: 91, maxGrade: 100 }, { id: 'g2', subjectId: 'bio', type: 'Test', gradeValue: 84, maxGrade: 100 }, { id: 'g3', subjectId: 'eng', type: 'Quiz', gradeValue: 88, maxGrade: 100 }];
+  if (window.TIMETABLE) school.data[window.TIMETABLE.KEY] = { cls: '11-3', mine: ['מדעי המחשב'], trip: true, early: '08:00', hidden: [] };
   school.data[C.KEY] = { setup: true, legs: { walk1: 3, bus1: 34, buffer: 5, wait2: 5, bus2: 3, walk2: 8 }, home: { lines: ['71', '72', '73', '74'], stop: '32645' }, hz: { mode: 'bus', from: '27102', to: '20378', lines: [], transfer: 4, walk: 5 }, days: { 0: { start: '07:45', end: '14:00', by: '08:00' }, 1: { start: '08:00', end: '14:45', by: null }, 2: { start: '07:45', end: '13:30', by: '08:00' }, 3: { start: '08:00', end: '14:45', by: null }, 4: { start: '08:00', end: '13:00', by: null } }, offUntil: null };
 }
 
@@ -72,7 +73,23 @@ function items() {
   live(K.as).forEach(a => out.push({ kind: 'hw', id: a.id, title: a.title || 'Untitled', subjectId: a.subjectId, type: a.type || 'Homework', date: a.dueDate || null, done: a.status === 'Done', doneAt: a.completedAt || null }));
   live(K.te).forEach(t => out.push({ kind: 'test', id: t.id, title: t.name || 'Test', subjectId: t.subjectId, type: t.type === 'Quiz' || /quiz|בוחן/i.test(t.name || '') ? 'Quiz' : 'Test', date: t.testDate || null }));
   out.forEach(x => { x.d = D.daysFrom(x.date); });
-  return out;
+  return out.concat(calTests());
+}
+// Tests from the class calendar on the school website (next 3 weeks), read-only until
+// you add one to your own tests. One of yours on the same day hides the calendar copy.
+const CAL_DAYS = 21;
+function calTests() {
+  const T = window.TIMETABLE; if (!T) return [];
+  const s = T.settings(school); if (!s.cls) return [];
+  return T.upcoming(s, arr(K.te), CAL_DAYS).map((t, i) => ({ kind: 'test', cal: true, id: 'cal' + i, uid: t.uid, title: t.title, he: t.subject, time: t.time, type: t.quiz ? 'Quiz' : 'Test', date: t.date, d: t.d }));
+}
+// Hebrew subject on the school calendar → one of your subjects, when it's clear.
+const HE = { 'מתמטיקה': 'math', 'אנגלית': 'english', 'פיזיקה': 'physics', 'ביולוגיה': 'biology', 'כימיה': 'chemistry', 'היסטוריה': 'history', 'ספרות': 'literature', 'תנך': 'bible', 'אזרחות': 'civics', 'לשון': 'hebrew', 'גאוגרפיה': 'geography', 'גיאוגרפיה': 'geography', 'מדעי המחשב': 'computerscience', 'ערבית': 'arabic', 'חינוך גופני': 'physicaleducation', 'רובוטיקה': 'robotics' };
+function subjFromHe(he) {
+  const T = window.TIMETABLE, k = HE[T ? T.norm(he) : he]; if (!k && !he) return '';
+  const subs = subjects(), n = s => String(s.name || '').toLowerCase().replace(/[^a-z֐-׿]/g, '');
+  const m = subs.find(s => k && n(s) === k) || subs.find(s => n(s) === String(he).replace(/[^֐-׿]/g, ''));
+  return m ? m.id : '';
 }
 const gradeFor = testId => live(K.gr).find(g => g.testId === testId);
 const pct = g => (+g.maxGrade ? (+g.gradeValue / +g.maxGrade) * 100 : +g.gradeValue);
@@ -118,7 +135,13 @@ function hwRow(x) {
     '<button class="body" data-act="sheet" data-sheet="item" data-kind="hw" data-id="' + x.id + '"><span class="nm">' + esc(x.title) + '</span><span class="sub">' + typeChip(x) + esc(subjName(x.subjectId) || 'No subject') + '</span></button>' +
     '<span class="due' + (x.d != null && x.d >= 0 && x.d <= 1 ? ' soon' : late ? ' late' : '') + '">' + dueLabel(x.d) + '</span></li>';
 }
+function calRow(x) {
+  return '<li class="hw test-row cal-row" id="hw-' + x.id + '"><span class="check t-ic" aria-hidden="true">' + ic('school', 'sm') + '</span>' +
+    '<button class="body" data-act="sheet" data-sheet="caltest" data-uid="' + esc(x.uid) + '"><span class="nm"><bdi>' + esc(x.title) + '</bdi></span><span class="sub">' + typeChip(x) + 'From school</span></button>' +
+    '<span class="due' + (x.d <= 2 ? ' soon' : '') + '">' + dueLabel(x.d) + '</span></li>';
+}
 function testRow(x) {
+  if (x.cal) return calRow(x);
   const past = x.d != null && x.d < 0;
   return '<li class="hw test-row' + (S.enter === x.id ? ' enter' : '') + '" id="hw-' + x.id + '"><span class="check t-ic" aria-hidden="true">' + ic(past ? 'check' : 'clock', 'sm') + '</span>' +
     '<button class="body" data-act="sheet" data-sheet="item" data-kind="test" data-id="' + x.id + '"><span class="nm">' + esc(x.title) + '</span><span class="sub">' + typeChip(x) + esc(subjName(x.subjectId) || '') + '</span></button>' +
@@ -138,7 +161,7 @@ function renderUpNext() {
   const c = classify();
   const week = c.open.filter(x => x.d != null && x.d >= 0 && x.d <= 7);
   const tests = week.filter(x => x.kind === 'test'), test = tests[0];
-  $('#upnext-sum').innerHTML = (test ? '<b>' + esc(test.title.split('·')[0].trim()) + ' ' + (test.d === 0 ? 'today' : test.d === 1 ? 'tomorrow' : dayName(test.d)) + '.</b> ' : '') +
+  $('#upnext-sum').innerHTML = (test ? '<b><bdi>' + esc(test.title.split('·')[0].trim()) + '</bdi> ' + (test.d === 0 ? 'today' : test.d === 1 ? 'tomorrow' : dayName(test.d)) + '.</b> ' : '') +
     (week.length ? (tests.length ? tests.length + ' ' + D.plural(tests.length, 'test', 'tests') + ' and ' : '') + (week.length - tests.length) + ' homework or ' + D.plural(week.length - tests.length, 'assignment', 'assignments') + ' this week.' : 'Nothing due this week.');
   $('#un-filter').innerHTML = [['all', 'All'], ['hw', 'Homework'], ['tests', 'Tests']].map(o => '<button role="tab" id="unf-' + o[0] + '" data-act="un-filter" data-v="' + o[0] + '" aria-selected="' + (S.filter === o[0]) + '">' + o[1] + '</button>').join('');
   const rows = c.open.filter(passes).map(x => x.kind === 'test' ? testRow(x) : hwRow(x)).join('') + c.scoreable.filter(passes).map(testRow).join('');
@@ -275,6 +298,22 @@ D.SHEETS.item = a => {
       '<div class="sheet-actions"><button class="btn ghost" id="it-del" data-act="it-del">Remove</button><button class="btn school" id="it-save" data-act="it-save">Save</button></div>'
   };
 };
+const calFind = uid => { const T = window.TIMETABLE; return T ? T.tests(T.settings(school)).find(x => x.uid === uid) : null; };
+D.SHEETS.caltest = a => {
+  const t = calFind(a.uid);
+  if (!t) return { title: 'Test', body: '<p class="sheet-note">This test isn’t on the school calendar anymore.</p>' };
+  const row = (k, v) => '<div class="info-row"><b>' + k + '</b><span>' + v + '</span></div>';
+  const kind = t.quiz ? 'Quiz' : 'Test';
+  return {
+    title: kind,
+    body: '<p class="cal-title"><bdi>' + esc(t.title) + '</bdi></p><div class="info-list">' +
+      row('When', esc(D.dLong(D.parseDk(t.date))) + (t.time ? ' · ' + esc(t.time) : '')) +
+      (t.subject ? row('Subject', '<bdi>' + esc(t.subject) + '</bdi>') : '') +
+      row('From', 'Your class calendar on the school website. If the school moves it, it moves here too.') + '</div>' +
+      '<p class="sheet-note">Add it to your tests to change it, or to save your score afterwards.</p>' +
+      '<div class="sheet-actions"><button class="btn ghost" id="cal-hide" data-act="cal-hide" data-uid="' + esc(t.uid) + '">Hide</button><button class="btn school" id="cal-add" data-act="cal-add" data-uid="' + esc(t.uid) + '">Add to my tests</button></div>'
+  };
+};
 D.SHEETS.score = a => {
   const t = live(K.te).find(x => x.id === a.id);
   if (!t) return { title: 'Score', body: '' };
@@ -369,6 +408,19 @@ Object.assign(D.ACT, {
   'old-done': () => { const old = classify().old; old.forEach(x => patch(K.as, x.id, { status: 'Done', completedAt: stamp() })); D.closeSheet(); render(); D.toast('Marked ' + old.length + ' done', () => { old.forEach(x => patch(K.as, x.id, { status: 'Not started', completedAt: null })); render(); }); },
   'old-del': () => { const old = classify().old; old.forEach(x => patch(K.as, x.id, { deleted: true })); D.closeSheet(); render(); D.toast('Removed ' + old.length, () => { old.forEach(x => patch(K.as, x.id, { deleted: false })); render(); }); },
   'subj-hide': el => { ensureSubjectsSaved(); patch(K.subj, el.dataset.id, { hidden: true }); D.renderSheet(); },
+  'cal-hide': el => {
+    const T = window.TIMETABLE, uid = el.dataset.uid, s = T.settings(school), before = (s.hidden || []).slice();
+    school.set(T.KEY, Object.assign({}, s, { hidden: before.concat([uid]) }));
+    D.closeSheet(); render();
+    D.toast('Hidden · bring it back in Timetable settings', () => { school.set(T.KEY, Object.assign({}, T.settings(school), { hidden: before })); render(); });
+  },
+  'cal-add': el => {
+    const t = calFind(el.dataset.uid); if (!t) return;
+    ensureSubjectsSaved();
+    const item = upsert(K.te, { id: newId(), calUid: t.uid, subjectId: subjFromHe(t.subject), name: t.title, type: t.quiz ? 'Quiz' : 'Test', testDate: t.date, studyStatus: 'Not started', importance: 'Normal' });
+    S.enter = item.id; D.closeSheet(); render();
+    D.toast('Added to your tests', () => { patch(K.te, item.id, { deleted: true }); render(); });
+  },
 });
 function syncItem() { const a = D.sheetArg(); if (!a || !a.f) return; const t = $('#it-title'), d = $('#it-date'); if (t) a.f.title = t.value; if (d) a.f.date = d.value; }
 document.addEventListener('submit', e => {
@@ -387,6 +439,7 @@ $('#hw-form').addEventListener('submit', e => {
 });
 
 /* ---------- boot ---------- */
+window.SCHOOL_RENDER = renderUpNext; // the timetable (ttui.js) refreshes calendar tests through this
 school.on(() => { if (!D.sheetKind()) render(); });
 C.load().then(() => renderCommute());
 setInterval(() => { if (!D.sheetKind()) renderCommute(); }, 30000);
