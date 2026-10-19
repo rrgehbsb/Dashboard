@@ -7,7 +7,7 @@
 (function () {
 'use strict';
 
-const VERSION = '2.9.6';
+const VERSION = '2.9.7';
 const SB_URL = 'https://mtuoqwbrujxutofhyahb.supabase.co';
 const SB_KEY = 'sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
 const DEMO = /[?&]demo\b/.test(location.search);
@@ -253,13 +253,14 @@ function Row(area, opt) {
       if (res.error) throw res.error;
       const data = res.data && res.data.data;
       const first = !r.ready;
-      r.ready = true; r.synced = true;
-      if (!isObj(data)) { if (first) emit('remote'); return; }
+      r.ready = true;
+      if (!isObj(data)) { r.synced = true; if (first) emit('remote'); return; } // nothing in the cloud to protect
       const at = data._pushAt || 0;
       if (!force && !first && at === r.lastRemoteAt) return;
-      if (r.pending()) return;
+      if (r.pending()) return; // an edit is waiting: this copy wasn't applied, so not synced yet
       r.lastRemoteAt = at;
       Object.keys(data).forEach(k => { if (k !== '_pushAt' && k !== '_localAt') r.data[k] = (opt.merge && opt.merge[k]) ? opt.merge[k](r.data[k], data[k]) : data[k]; });
+      r.synced = true;
       mirror();
       emit('remote');
     } catch (e) { console.warn('[v3] pull ' + area + ' failed', e); }
