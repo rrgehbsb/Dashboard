@@ -132,7 +132,7 @@ function hwRow(x) {
   const late = x.d != null && x.d < 0;
   return '<li class="hw' + (x.done ? ' is-done' : '') + (S.enter === x.id ? ' enter' : '') + '" id="hw-' + x.id + '">' +
     '<button class="check" id="hwc-' + x.id + '" data-act="hw-toggle" data-id="' + x.id + '" aria-pressed="' + !!x.done + '" aria-label="' + (x.done ? 'Done' : 'Mark done') + ': ' + esc(x.title) + '">' + CHECK + '</button>' +
-    '<button class="body" data-act="sheet" data-sheet="item" data-kind="hw" data-id="' + x.id + '"><span class="nm">' + esc(x.title) + '</span><span class="sub">' + typeChip(x) + esc(subjName(x.subjectId) || 'No subject') + '</span></button>' +
+    '<button class="body" data-act="sheet" data-sheet="item" data-kind="hw" data-id="' + x.id + '"><span class="nm"><bdi>' + esc(x.title) + '</bdi></span><span class="sub">' + typeChip(x) + esc(subjName(x.subjectId) || 'No subject') + '</span></button>' +
     '<span class="due' + (x.d != null && x.d >= 0 && x.d <= 1 ? ' soon' : late ? ' late' : '') + '">' + dueLabel(x.d) + '</span></li>';
 }
 function calRow(x) {
@@ -144,7 +144,7 @@ function testRow(x) {
   if (x.cal) return calRow(x);
   const past = x.d != null && x.d < 0;
   return '<li class="hw test-row' + (S.enter === x.id ? ' enter' : '') + '" id="hw-' + x.id + '"><span class="check t-ic" aria-hidden="true">' + ic(past ? 'check' : 'clock', 'sm') + '</span>' +
-    '<button class="body" data-act="sheet" data-sheet="item" data-kind="test" data-id="' + x.id + '"><span class="nm">' + esc(x.title) + '</span><span class="sub">' + typeChip(x) + esc(subjName(x.subjectId) || '') + '</span></button>' +
+    '<button class="body" data-act="sheet" data-sheet="item" data-kind="test" data-id="' + x.id + '"><span class="nm"><bdi>' + esc(x.title) + '</bdi></span><span class="sub">' + typeChip(x) + esc(subjName(x.subjectId) || '') + '</span></button>' +
     (past ? '<button class="score-chip" id="score-' + x.id + '" data-act="sheet" data-sheet="score" data-id="' + x.id + '">+ score</button>' : '<span class="due' + (x.d != null && x.d <= 2 ? ' soon' : '') + '">' + dueLabel(x.d) + '</span>') + '</li>';
 }
 function classify() {
@@ -190,6 +190,25 @@ const ALIASES = { math: ['math', 'maths', 'mat'], biology: ['bio', 'biology'], e
 const TYPES = [[/^(hw|homework|ex|exercise|exercises|tirgul)$/, 'Homework'], [/^(test|exam|bagrut|mivchan)$/, 'TEST'], [/^(quiz|bochan)$/, 'QUIZ'], [/^(essay|chibur)$/, 'Essay'], [/^(read|reading)$/, 'Reading'], [/^(project|proj|avoda)$/, 'Project'], [/^(presentation|pres|matzeget)$/, 'Presentation'], [/^(worksheet|sheet|daf)$/, 'Worksheet'], [/^(lab)$/, 'Lab'], [/^(study)$/, 'Study']];
 const DAYW = { sun: 0, sunday: 0, mon: 1, monday: 1, tue: 2, tues: 2, tuesday: 2, wed: 3, weds: 3, wednesday: 3, thu: 4, thur: 4, thurs: 4, thursday: 4, fri: 5, friday: 5, sat: 6, saturday: 6 };
 const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+const HEBR = /[\u0590-\u05FF]/;
+const heNorm = w => String(w || '').replace(/["״׳']/g, '');
+const HE_SUBJ = { 'מתמטיקה': 'math', 'מתמ': 'math', 'חשבון': 'math', 'אנגלית': 'english', 'ביולוגיה': 'biology', 'ביו': 'biology', 'היסטוריה': 'history', 'פיזיקה': 'physics', 'כימיה': 'chemistry',
+  'ספרות': 'literature', 'תנך': 'bible', 'אזרחות': 'civics', 'לשון': 'hebrew', 'עברית': 'hebrew', 'גאוגרפיה': 'geography', 'גיאוגרפיה': 'geography', 'מדמח': 'computerscience', 'מחשבים': 'computerscience',
+  'ערבית': 'arabic', 'ספורט': 'physicaleducation', 'חנג': 'physicaleducation', 'רובוטיקה': 'robotics', 'מדעים': 'science', 'טכנולוגיה': 'technology', 'אמנות': 'art', 'מוזיקה': 'music' };
+const HE_TYPES = [[/^(שב|שיעורי-בית|תרגיל|תרגילים|שיעורים)$/, 'Homework'], [/^(מבחן|מבחנים|בגרות)$/, 'TEST'], [/^(בוחן)$/, 'QUIZ'], [/^(חיבור)$/, 'Essay'], [/^(קריאה)$/, 'Reading'],
+  [/^(פרויקט|עבודה)$/, 'Project'], [/^(מצגת)$/, 'Presentation'], [/^(דף|דף-עבודה)$/, 'Worksheet'], [/^(מעבדה)$/, 'Lab'], [/^(למידה|ללמוד)$/, 'Study']];
+const HE_DAYS = { 'ראשון': 0, 'שני': 1, 'שלישי': 2, 'רביעי': 3, 'חמישי': 4, 'שישי': 5, 'שבת': 6 };
+// "במתמטיקה" / "למבחן" / "ביום" → without the one-letter prefix
+const unprefix = w => (w.length > 3 && /^[בלה]/.test(w) ? w.slice(1) : w);
+function heSubject(w) {
+  const key = HE_SUBJ[w] || HE_SUBJ[unprefix(w)];
+  const subs = subjects();
+  if (key) { const m = subs.find(x => norm(x.name) === key); if (m) return m; }
+  return subs.find(x => heNorm(x.name) === w || heNorm(x.name) === unprefix(w)) || null;
+}
+// "Math test" in English; "מבחן במתמטיקה" in Hebrew
+const kindWord = k => D.t(k === 'TEST' ? 'Test' : k === 'QUIZ' ? 'Quiz' : k);
+const titleOf = (kind, sname) => D.he ? kindWord(kind) + (sname ? ' ב' + D.t(sname) : '') : (sname ? sname + ' ' : '') + String(kind === 'TEST' ? 'test' : kind === 'QUIZ' ? 'quiz' : kind).toLowerCase();
 function findSubject(word) {
   const w = norm(word);
   if (w.length < 2) return null;
@@ -199,12 +218,25 @@ function findSubject(word) {
   return null;
 }
 function parseQuick(text) {
-  const words = String(text).split(/\s+/).filter(Boolean);
+  // two-word Hebrew terms become one word first
+  const words = String(text).replace(/שיעורי\s+בית/g, 'שיעורי-בית').replace(/דף\s+עבודה/g, 'דף-עבודה').replace(/מדעי\s+המחשב/g, 'מדמח').replace(/חינוך\s+גופני/g, 'חנג').split(/\s+/).filter(Boolean);
   let subj = null, type = null, off = null, newSubj = null;
   const rest = [];
   words.forEach(raw => {
     const w = raw.toLowerCase().replace(/[.,!?]/g, '');
     let m;
+    if (HEBR.test(w)) {
+      const h = heNorm(w), u = unprefix(h);
+      if (!subj && (m = heSubject(h))) { subj = m; return; }
+      // a school subject you don't have yet: add it under its proper name ("בתנך" → תנ״ך)
+      const key = HE_SUBJ[h] || HE_SUBJ[u], def = key && DEF_SUBJ.find(n => norm(n) === key);
+      if (!subj && !newSubj && def) { newSubj = D.t(def); return; }
+      if (!type && (m = HE_TYPES.find(t => t[0].test(h) || t[0].test(u)))) { type = m[1]; return; }
+      if (off == null && (HE_DAYS[h] != null || HE_DAYS[u] != null)) { off = (((HE_DAYS[h] != null ? HE_DAYS[h] : HE_DAYS[u]) - D.dayAt(0).getDay()) + 7) % 7 || 7; return; }
+      if (off == null && /^(היום|הערב)$/.test(h)) { off = 0; return; }
+      if (off == null && /^(מחר|למחר)$/.test(h)) { off = 1; return; }
+      if (/^(ביום|יום|עד|ל|ב|של)$/.test(h)) return; // "ביום חמישי", "עד מחר"
+    }
     if (!subj && (m = findSubject(w))) { subj = m; return; }
     if (!type && (m = TYPES.find(t => t[0].test(w)))) { type = m[1]; return; }
     if (off == null && Object.prototype.hasOwnProperty.call(DAYW, w)) { off = ((DAYW[w] - D.dayAt(0).getDay()) + 7) % 7 || 7; return; }
@@ -217,25 +249,26 @@ function parseQuick(text) {
     }
     rest.push(raw);
   });
-  if (!subj && type && rest.length && rest[0].length >= 2) newSubj = D.cap(rest.shift());
+  if (!subj && !newSubj && type && rest.length && rest[0].length >= 2) newSubj = D.cap(rest.shift());
   if (!subj && !newSubj && !type && off == null) return null;
   const isTest = type === 'TEST' || type === 'QUIZ';
   const sname = subj ? subj.name : newSubj || '';
   const extra = rest.join(' ');
-  const title = isTest ? ((sname ? sname + ' ' : '') + (type === 'QUIZ' ? 'quiz' : 'test') + (extra ? ' · ' + extra : ''))
-    : (extra ? (type || 'Homework') + ' ' + extra : (sname ? sname + ' ' + (type || 'Homework').toLowerCase() : (type || 'Homework')));
+  const title = isTest ? (titleOf(type, sname) + (extra ? ' · ' + extra : ''))
+    : (extra ? (D.he ? kindWord(type || 'Homework') : (type || 'Homework')) + ' ' + extra : (sname ? titleOf(type || 'Homework', sname) : (D.he ? kindWord(type || 'Homework') : (type || 'Homework'))));
   return { subj, newSubj, kind: isTest ? 'test' : 'hw', type: isTest ? 'Test' : (type || 'Homework'), off, title };
 }
 // What you're adding: the button you picked wins; otherwise what you typed ("test", "quiz", "project"…).
 function withKind(p, v) {
   p = p || { subj: null, newSubj: null, kind: 'hw', type: 'Homework', off: null, title: D.cap(v) };
   const typed = p.kind === 'test' ? (/quiz|bochan|בוחן/i.test(v) ? 'Quiz' : 'Test') : (p.type && p.type !== 'Homework' ? 'Assignment' : 'Homework');
+  const sn = p.subj ? p.subj.name : p.newSubj || '';
   const k = S.qkind || typed;
   if (k === 'Test' || k === 'Quiz') {
-    if (p.kind !== 'test') p.title = (p.subj ? p.subj.name + ' ' : p.newSubj ? p.newSubj + ' ' : '') + k.toLowerCase();
+    if (p.kind !== 'test') p.title = titleOf(k === 'Quiz' ? 'QUIZ' : 'TEST', sn);
     p.kind = 'test'; p.type = k;
   } else {
-    if (p.kind === 'test') p.title = (p.subj ? p.subj.name + ' ' : '') + k.toLowerCase();
+    if (p.kind === 'test') p.title = titleOf(k, p.subj ? p.subj.name : '');
     p.kind = 'hw'; p.type = k === 'Assignment' ? (p.type && p.type !== 'Homework' && p.type !== 'Test' ? p.type : 'Assignment') : 'Homework';
   }
   p.k = k;
@@ -261,7 +294,7 @@ function addQuick(v) {
   S.enter = item.id;
   render();
   const sn = subjName(subjectId), label = p.kind === 'test' ? item.name : (sn && item.title.toLowerCase().indexOf(sn.toLowerCase()) < 0 ? sn + ' · ' + item.title : item.title);
-  D.toast('Added · ' + label + (date ? ', ' + dueLabel(p.off) : ''), () => { patch(p.kind === 'test' ? K.te : K.as, item.id, { deleted: true }); render(); });
+  D.toast('Added · ' + label + (date ? ' · ' + dueLabel(p.off) : ''), () => { patch(p.kind === 'test' ? K.te : K.as, item.id, { deleted: true }); render(); });
 }
 
 /* ---------- actions ---------- */
@@ -319,7 +352,7 @@ D.SHEETS.score = a => {
   if (!t) return { title: 'Score', body: '' };
   if (a.v == null) a.v = 85;
   return {
-    title: t.name + ' · score',
+    title: t.name + ' · ' + D.t('score'), own: true,
     body: '<div class="stepper"><button class="step-btn" id="score-m" data-act="score-step" data-d="-1" aria-label="Lower">−</button><span class="val"><span class="num">' + a.v + '</span><small>/ 100</small></span><button class="step-btn" id="score-p" data-act="score-step" data-d="1" aria-label="Higher">+</button></div>' +
       '<div class="pick-row" role="radiogroup" aria-label="Quick pick">' + [55, 65, 75, 80, 85, 90, 95, 100].map(v => '<button class="pick" id="sp-' + v + '" role="radio" data-act="score-pick" data-v="' + v + '" aria-checked="' + (a.v === v) + '">' + v + '</button>').join('') + '</div>' +
       '<p class="sheet-note">Saved as a ' + esc(subjName(t.subjectId) || 'school') + ' grade.</p><button class="btn school block" id="score-save" data-act="score-save">Save score</button>'
@@ -342,7 +375,7 @@ D.SHEETS.old = () => {
     title: old.length + ' older ' + D.plural(old.length, 'item', 'items'),
     body: '<p class="sheet-note">These were due more than two weeks ago. They stay out of your list. Mark them done or remove them.</p>' +
       '<div class="sheet-actions"><button class="btn ghost" id="old-del" data-act="old-del">Remove all</button><button class="btn school" id="old-done" data-act="old-done">Mark all done</button></div>' +
-      '<div class="menu-list">' + old.map(x => '<div class="menu-item static">' + esc(x.title) + '<span class="r">' + esc(subjName(x.subjectId)) + '</span></div>').join('') + '</div>'
+      '<div class="menu-list">' + old.map(x => '<div class="menu-item static"><bdi>' + esc(x.title) + '</bdi><span class="r">' + esc(subjName(x.subjectId)) + '</span></div>').join('') + '</div>'
   };
 };
 D.SHEETS.schoolmenu = () => ({
@@ -396,7 +429,7 @@ Object.assign(D.ACT, {
     const a = D.sheetArg(), t = live(K.te).find(x => x.id === a.id); if (!t) return;
     const g = upsert(K.gr, { id: newId(), subjectId: t.subjectId, type: 'Test', gradeValue: a.v, maxGrade: 100, date: t.testDate || D.todayKey(), weight: null, notes: null, testId: t.id });
     D.closeSheet(); render();
-    D.toast('Saved · ' + (subjName(t.subjectId) || 'Grade') + ' ' + a.v, () => { patch(K.gr, g.id, { deleted: true }); render(); });
+    D.toast('Saved · ' + D.t(subjName(t.subjectId) || 'Grade') + ' ' + a.v, () => { patch(K.gr, g.id, { deleted: true }); render(); });
   },
   'g-subj': el => { D.sheetArg().f.subjectId = el.dataset.v; D.renderSheet(); },
   'g-step': el => { const f = D.sheetArg().f; f.v = D.clamp(f.v + (+el.dataset.d), 0, 100); D.renderSheet(); },

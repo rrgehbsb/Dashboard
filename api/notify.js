@@ -61,6 +61,49 @@ function israelNow(d) {
 const addDays = (dk, n) => { const [y, m, d] = dk.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); };
 const weekday = dk => { const [y, m, d] = dk.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d)).getUTCDay(); };
 const DOW = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+/* ---------- words: each person gets notifications in the language their app is in ---------- */
+const M = {
+  en: {
+    dow: DOW, place: { rh: 'Rosh HaAyin North', hz: 'Herzliya station' }, theStation: 'the station', friend: 'A friend', someone: 'Someone',
+    train: t => t + ' train', bus: (l, t) => 'bus ' + l + ' at ' + t,
+    leaveTo: 'Leaving home about now', leaveHome: 'Leaving school about now',
+    at: p => 'At ' + p, shouldBeAt: p => 'Should be at ' + p,
+    onTrain: (tr, to) => 'On the ' + tr + ' to ' + (to ? 'Herzliya' : 'Rosh HaAyin'),
+    atSchool: 'At school', shouldSchool: 'Should be at school now', shouldHome: 'Should be home now', same: 'same train as you',
+    cancelled: (n, w) => 'Lesson ' + n + ' cancelled' + (w ? ' (' + w + ')' : ''),
+    changed: (n, a, w) => 'Lesson ' + n + ': ' + a + (w ? ' instead of ' + w : ''),
+    added: (n, a) => 'Lesson ' + n + ': ' + a + ' (new)',
+    notListed: (s, t) => s + ' · ' + t + ' isn’t listed', more: n => '+' + n + ' more',
+    ttTitle: d => 'Tomorrow’s timetable · ' + d,
+    testTitle: 'Notifications are on', testBody: 'Your friends’ trips and timetable changes will show up here.',
+    reqTitle: 'Friend request', reqBody: w => w + ' wants to be friends', accBody: 'Accepted your friend request'
+  },
+  he: {
+    dow: ['יום ראשון', 'יום שני', 'יום שלישי', 'יום רביעי', 'יום חמישי', 'יום שישי', 'שבת'],
+    place: { rh: 'תחנת ראש העין צפון', hz: 'תחנת הרצליה' }, theStation: 'התחנה', friend: 'חבר', someone: 'מישהו',
+    train: t => 'הרכבת של ' + t, bus: (l, t) => 'אוטובוס ' + l + ' ב־' + t,
+    leaveTo: 'יציאה מהבית, בערך עכשיו', leaveHome: 'יציאה מבית הספר, בערך עכשיו',
+    at: p => 'ב' + p.replace(/^ה/, ''), shouldBeAt: p => 'כנראה ב' + p.replace(/^ה/, ''),
+    onTrain: (tr, to) => 'ב' + tr.replace(/^ה/, '') + (to ? ' להרצליה' : ' לראש העין'),
+    atSchool: 'בבית הספר', shouldSchool: 'כנראה כבר בבית הספר', shouldHome: 'כנראה כבר בבית', same: 'באותה רכבת כמוך',
+    cancelled: (n, w) => 'שיעור ' + n + ' בוטל' + (w ? ' (' + w + ')' : ''),
+    changed: (n, a, w) => 'שיעור ' + n + ': ' + a + (w ? ' במקום ' + w : ''),
+    added: (n, a) => 'שיעור ' + n + ': ' + a + ' (חדש)',
+    notListed: (s, t) => s + ' · ' + t + ' לא ברשימה', more: n => '+' + n + ' נוספים',
+    ttTitle: d => 'המערכת של מחר · ' + d,
+    testTitle: 'ההתראות פועלות', testBody: 'נסיעות של חברים ושינויים במערכת יופיעו כאן.',
+    reqTitle: 'בקשת חברות', reqBody: w => w + ' רוצה להיות חברים', accBody: 'בקשת החברות שלך אושרה'
+  }
+};
+const W = lang => M[lang === 'he' ? 'he' : 'en'];
+// everyone's language, from their synced settings (uid:settings → lang)
+async function langsOf(D, ids) {
+  const out = {};
+  if (!ids.length) return out;
+  try { (await D.get('app_state?select=key,lang:data->>lang&key=' + inList(ids.map(id => id + ':settings')))).forEach(r => { out[r.key.split(':')[0]] = r.lang; }); } catch (e) {}
+  return out;
+}
 const hh = m => String(Math.floor(m / 60) % 24).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
 function dist(a, b) { const R = 6371e3, r = x => x * Math.PI / 180; const h = Math.sin(r(b[0] - a[0]) / 2) ** 2 + Math.cos(r(a[0])) * Math.cos(r(b[0])) * Math.sin(r(b[1] - a[1]) / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(h)); }
 
@@ -104,16 +147,16 @@ function near(loc, place) {
   if (place === 'school') return SCHOOL_LL.some(s => dist(ll, s) < 250);
   return !!PLACE[place] && dist(ll, PLACE[place].ll) < PLACE[place].r;
 }
-function bodyFor(mo, dir, leg, loc, same) {
-  const tr = leg.find(x => x[1] === 'train'), bus = leg.find(x => x[1] === 'bus');
-  const train = tr ? hh(tr[0]) + ' train' : '';
-  const busTxt = bus ? 'bus ' + String(bus[2] || '') + ' at ' + hh(bus[0]) : '';
+function bodyFor(mo, dir, leg, loc, same, lang) {
+  const w = W(lang), tr = leg.find(x => x[1] === 'train'), bus = leg.find(x => x[1] === 'bus');
+  const train = tr ? w.train(hh(tr[0])) : '';
+  const busTxt = bus ? w.bus(String(bus[2] || ''), hh(bus[0])) : '';
   let t = '';
-  if (mo.m === 'leave') t = (dir === 'to' ? 'Leaving home about now' : 'Leaving school about now') + (dir === 'to' && busTxt ? ' · ' + busTxt : train ? ' · ' + train : '');
-  else if (mo.m === 'station') { const p = PLACE[mo.where] || { name: 'the station' }; t = (near(loc, mo.where) ? 'At ' : 'Should be at ') + p.name + (train ? ' · ' + train : ''); }
-  else if (mo.m === 'train') t = 'On the ' + train + ' to ' + (dir === 'to' ? 'Herzliya' : 'Rosh HaAyin');
-  else t = dir === 'to' ? (near(loc, 'school') ? 'At school' : 'Should be at school now') : 'Should be home now';
-  return t + (same && (mo.m === 'station' || mo.m === 'train') ? ' · same train as you' : '');
+  if (mo.m === 'leave') t = (dir === 'to' ? w.leaveTo : w.leaveHome) + (dir === 'to' && busTxt ? ' · ' + busTxt : train ? ' · ' + train : '');
+  else if (mo.m === 'station') { const p = w.place[mo.where] || w.theStation; t = (near(loc, mo.where) ? w.at(p) : w.shouldBeAt(p)) + (train ? ' · ' + train : ''); }
+  else if (mo.m === 'train') t = w.onTrain(train, dir === 'to');
+  else t = dir === 'to' ? (near(loc, 'school') ? w.atSchool : w.shouldSchool) : w.shouldHome;
+  return t + (same && (mo.m === 'station' || mo.m === 'train') ? ' · ' + w.same : '');
 }
 
 async function friendMoments(C, D, now, prefs, subsBy) {
@@ -128,7 +171,8 @@ async function friendMoments(C, D, now, prefs, subsBy) {
   ]);
   const P = {}; pres.forEach(p => { P[p.user_id] = p; });
   const L = {}; locs.forEach(l => { L[l.user_id] = l; });
-  const N = {}; profs.forEach(p => { N[p.id] = p.display_name || p.username || 'A friend'; });
+  const N = {}; profs.forEach(p => { N[p.id] = p.display_name || p.username || ''; });
+  const LANG = await langsOf(D, viewers.map(v => v.user_id));
   const friends = new Set(fr.map(f => f.requester + '|' + f.addressee));
   const isFriend = (a, b) => friends.has(a + '|' + b) || friends.has(b + '|' + a);
 
@@ -148,7 +192,7 @@ async function friendMoments(C, D, now, prefs, subsBy) {
         const theirTrain = (leg.find(x => x[1] === 'train') || [])[0];
         momentsOf(leg).forEach(mo => {
           if (want.indexOf(mo.m) < 0 || now.min < mo.t || now.min > mo.t + WINDOW) return;
-          jobs.push({ key: ['f', S, V.user_id, now.dk, dir, mo.m].join(':'), to: V.user_id, payload: { title: N[S] || 'A friend', body: bodyFor(mo, dir, leg, loc, myTrain != null && myTrain === theirTrain), tag: 'fr-' + S, url: '/v3/school.html' } });
+          jobs.push({ key: ['f', S, V.user_id, now.dk, dir, mo.m].join(':'), to: V.user_id, payload: { title: N[S] || W(LANG[V.user_id]).friend, body: bodyFor(mo, dir, leg, loc, myTrain != null && myTrain === theirTrain, LANG[V.user_id]), tag: 'fr-' + S, url: '/v3/school.html' } });
         });
       });
     });
@@ -181,17 +225,17 @@ function myStatus(st, items, was) {
   if (!was.length) return 'added';
   return subjKey(items) === subjKey(was) ? 'same' : 'changed';
 }
-function changesFor(day, mine) {
-  const out = [];
+function changesFor(day, mine, lang) {
+  const w = W(lang), out = [];
   (day.periods || []).forEach(p => {
     const ctx = {}, items = myItems(p.items, mine, ctx);
     let was = p.was ? myItems(p.was, mine).map(e => e.subject) : [];
     let st = mine.length ? myStatus(p.status, items, was) : p.status;
-    if (ctx.teacherMissing && !items.length) { st = 'cancelled'; was = [ctx.teacherMissing.s + ' · ' + ctx.teacherMissing.t + ' isn’t listed']; }
+    if (ctx.teacherMissing && !items.length) { st = 'cancelled'; was = [w.notListed(ctx.teacherMissing.s, ctx.teacherMissing.t)]; }
     const names = l => Array.from(new Set(l.map(x => typeof x === 'string' ? x : x.subject))).join(', ');
-    if (st === 'cancelled') out.push('Lesson ' + p.n + ' cancelled' + (was.length ? ' (' + names(was) + ')' : ''));
-    else if (st === 'changed') out.push('Lesson ' + p.n + ': ' + names(items) + (was.length ? ' instead of ' + names(was) : ''));
-    else if (st === 'added') out.push('Lesson ' + p.n + ': ' + names(items) + ' (new)');
+    if (st === 'cancelled') out.push(w.cancelled(p.n, was.length ? names(was) : ''));
+    else if (st === 'changed') out.push(w.changed(p.n, names(items), was.length ? names(was) : ''));
+    else if (st === 'added') out.push(w.added(p.n, names(items)));
   });
   return out;
 }
@@ -202,6 +246,7 @@ async function timetableAlerts(C, D, now, prefs, subsBy) {
   const people = prefs.filter(p => p.timetable && subsBy[p.user_id]);
   if (!people.length) return 0;
   const rows = await D.get('app_state?select=key,data&key=' + inList(people.map(p => p.user_id + ':school')));
+  const LANG = await langsOf(D, people.map(p => p.user_id));
   const byClass = {}, jobs = [];
   for (const p of people) {
     const row = rows.find(r => r.key === p.user_id + ':school');
@@ -211,14 +256,15 @@ async function timetableAlerts(C, D, now, prefs, subsBy) {
     const j = await byClass[tt.cls];
     const day = j && j.days && j.days[tomorrow];
     if (!day || !day.published) continue;
-    const ch = changesFor(day, Array.isArray(tt.mine) ? tt.mine : []);
+    const lang = LANG[p.user_id], w = W(lang);
+    const ch = changesFor(day, Array.isArray(tt.mine) ? tt.mine : [], lang);
     const notes = (day.notes || []).map(n => n.text).filter(Boolean);
     if (!ch.length && !notes.length) continue;
     const lines = notes.slice(0, 1).concat(ch);
-    const body = lines.slice(0, 3).join(' · ') + (lines.length > 3 ? ' · +' + (lines.length - 3) + ' more' : '');
+    const body = lines.slice(0, 3).join(' · ') + (lines.length > 3 ? ' · ' + w.more(lines.length - 3) : '');
     // a new key if the school changes the day again later
     const sig = require('crypto').createHash('sha1').update(lines.join('|')).digest('hex').slice(0, 10);
-    jobs.push({ key: ['tt', p.user_id, tomorrow, sig].join(':'), to: p.user_id, payload: { title: 'Tomorrow’s timetable · ' + DOW[wd], body, tag: 'tt-' + tomorrow, url: '/v3/school.html' } });
+    jobs.push({ key: ['tt', p.user_id, tomorrow, sig].join(':'), to: p.user_id, payload: { title: w.ttTitle(w.dow[wd]), body, tag: 'tt-' + tomorrow, url: '/v3/school.html' } });
   }
   if (!jobs.length) return 0;
   const fresh = await D.claim(jobs.map(j => j.key));
@@ -273,12 +319,13 @@ module.exports = async function handler(req, res) {
     const u = await userFrom(C, req);
     if (!u) return res.status(401).json({ ok: false, error: 'Sign in again.' });
     const subsOf = id => D.get('push_subs?select=user_id,endpoint,p256dh,auth&user_id=eq.' + encodeURIComponent(id));
-    const nameOf = async id => { const p = (await D.get('profiles?select=username,display_name&id=eq.' + encodeURIComponent(id)))[0]; return (p && (p.display_name || p.username)) || 'Someone'; };
+    const nameOf = async (id, w) => { const p = (await D.get('profiles?select=username,display_name&id=eq.' + encodeURIComponent(id)))[0]; return (p && (p.display_name || p.username)) || w.someone; };
 
     if (body.test) {
       const subs = await subsOf(u.id);
       if (!subs.length) return res.status(200).json({ ok: false, code: 'no_subs', error: 'This phone isn’t signed up for notifications yet.' });
-      const sent = await sendTo(C, D, subs, { title: 'Notifications are on', body: 'Your friends’ trips and timetable changes will show up here.', tag: 'test', url: '/v3/' });
+      const w = W((await langsOf(D, [u.id]))[u.id]);
+      const sent = await sendTo(C, D, subs, { title: w.testTitle, body: w.testBody, tag: 'test', url: '/v3/' });
       return res.status(200).json({ ok: sent > 0, sent });
     }
     if ((body.event === 'request' || body.event === 'accepted') && /^[0-9a-f-]{36}$/i.test(String(body.to || ''))) {
@@ -291,10 +338,10 @@ module.exports = async function handler(req, res) {
       const fresh = await D.claim([['ev', body.event, row.id].join(':')]);
       if (!fresh.size) return res.status(200).json({ ok: true, sent: 0 });
       const subs = await subsOf(to); if (!subs.length) return res.status(200).json({ ok: true, sent: 0 });
-      const who = await nameOf(u.id);
+      const w = W((await langsOf(D, [to]))[to]), who = await nameOf(u.id, w);
       const sent = await sendTo(C, D, subs, body.event === 'request'
-        ? { title: 'Friend request', body: who + ' wants to be friends', tag: 'req-' + u.id, url: '/v3/school.html#friends' }
-        : { title: who, body: 'Accepted your friend request', tag: 'acc-' + u.id, url: '/v3/school.html#friends' });
+        ? { title: w.reqTitle, body: w.reqBody(who), tag: 'req-' + u.id, url: '/v3/school.html#friends' }
+        : { title: who, body: w.accBody, tag: 'acc-' + u.id, url: '/v3/school.html#friends' });
       return res.status(200).json({ ok: true, sent });
     }
     return res.status(400).json({ ok: false, error: 'Unknown request' });

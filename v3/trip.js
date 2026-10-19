@@ -65,9 +65,9 @@ function render() {
   const ph = C.phase(c), L = c.legs, now = D.nowMin();
   maybeFetch(c, ph);
   let h = '', area = 'school';
-  const tag = lv => '<span class="tt-tag' + (lv && lv.anyLive ? ' on' : '') + '">' + (lv && lv.anyLive ? '<i class="ld"></i>Live' : ic('clock', 'xs') + 'Timetable') + '</span>';
+  const tag = lv => '<span class="tt-tag' + (lv && lv.anyLive ? ' on' : '') + '">' + (lv && lv.anyLive ? '<i class="ld"></i>Live' : ic('clock', 'xs') + 'Scheduled') + '</span>';
   if (ph.kind === 'off') {
-    h = '<div class="row1"><span class="lbl">No school</span><span class="tools">' + liveBtn + gear + '</span></div><div><p class="big">Back ' + (ph.nextOff != null ? D.DOW_L[D.dayAt(ph.nextOff).getDay()] : 'soon') + '</p><p class="note">Trip paused until ' + D.dShort(D.parseDk(ph.until)) + '.</p></div>';
+    h = '<div class="row1"><span class="lbl">No school</span><span class="tools">' + liveBtn + gear + '</span></div><div><p class="big">' + (ph.nextOff != null ? 'Back on ' + D.DOW_L[D.dayAt(ph.nextOff).getDay()] : 'Back soon') + '</p><p class="note">Trip paused until ' + D.dShort(D.parseDk(ph.until)) + '.</p></div>';
   } else if (ph.kind === 'morning') {
     const m = ph.m, p = (S.pick != null && m.opts.find(o => o.leave === S.pick)) || ph.pick;
     const lv = C.liveView(c, Object.assign({}, ph, { pick: p }), now) || { leave: p.leave, mins: p.leave - now };
@@ -149,7 +149,7 @@ function statusMorning(c, p, lv, ar) {
   }
   rows.push(statusRow('train', 'Train ' + esc(p.trainNo || ''), 'Rosh HaAyin North → Herzliya', legTime(lv && lv.train, p.train, ar.trainArr != null ? ar.trainArr : p.trainArr, ar.trainArrLive), badge(lv && lv.train)));
   if (p.hz) {
-    rows.push(waitRow(ar.waitHz, 'in Herzliya to reach bus ' + esc(p.hz.line), ar.walkHz, ar.missHz ? 'The train is late, so you’ll miss bus ' + esc(p.hz.line) + ': ' + (ar.alt && ar.alt.hz ? 'take bus ' + esc(ar.alt.hz.line) + ' at ' + C.hhmm(ar.alt.hz.at) + (ar.alt.nick ? ' (' + bdi(ar.alt.nick) + ')' : '') : 'walk') + ' instead' : null));
+    rows.push(waitRow(ar.waitHz, 'in Herzliya to reach bus ' + esc(p.hz.line), ar.walkHz, ar.missHz ? 'The train is late, so you’ll miss bus ' + esc(p.hz.line) + ': ' + (ar.alt && ar.alt.hz ? 'take bus ' + esc(ar.alt.hz.line) + ' at ' + C.hhmm(ar.alt.hz.at) + (ar.alt.nick ? ' (' + esc(ar.alt.nick) + ')' : '') : 'walk') + ' instead' : null));
     rows.push(statusRow('bus', 'Bus ' + esc(p.hz.line) + (p.hz.nick ? ' · ' + bdi(p.hz.nick) : ''), 'from ' + bdi(C.stopName(p.hz.from)), legTime(lv && lv.hz, p.hz.at, ar.hzArr != null ? ar.hzArr : p.hz.off), badge(lv && lv.hz)));
   }
   if (ar.arrive != null) rows.push('<div class="st-end">' + ic('flag', 'xs') + '<span>At school <b>' + C.hhmm(ar.arrive) + '</b> · ' + earlyTxt(ar.spare) + '</span></div>');
@@ -278,7 +278,7 @@ D.SHEETS.live = () => {
   body += sec('Herzliya → Rosh HaAyin North', trainRows(C.HZ_STATION, 'toRoshHaAyin', 4));
   const hzp = planHz(c);
   if (hzp) body += sec('Herzliya · ' + bdi(C.stopName(hzp.from)), busRows(hzp.from, null, 5));
-  body += '<p class="sheet-note">' + (lv.at ? 'Updated ' + (age < 60 ? 'just now' : Math.round(age / 60) + ' min ago') + '. ' : 'Loading live data… ') +
+  body += '<p class="sheet-note"><span>' + (lv.at ? 'Updated ' + (age < 60 ? 'just now' : Math.round(age / 60) + ' min ago') + '.' : 'Loading live data…') + '</span> ' +
     '“Live” means the bus or train is being tracked right now; “Scheduled” means it hasn’t started yet, so the time is from the timetable. Live data comes from the Ministry of Transport.</p>' +
     '<div class="sheet-actions"><button class="btn ghost" id="board-how" data-act="sheet" data-sheet="tripinfo">' + ic('info') + 'How it works</button><button class="btn ghost" id="board-refresh" data-act="board-refresh">' + ic('repeat') + 'Refresh</button></div>';
   return { title: 'Live buses & trains', body };

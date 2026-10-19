@@ -97,7 +97,8 @@ const SYS_PROMPT = 'You are a nutrition estimator inside a fitness app. The user
   + 'portion sizes when none is given. Respond with ONLY a JSON array — no markdown fences, no commentary, no extra '
   + 'text before or after. Each item must look exactly like this shape: '
   + '{"name":"Scrambled eggs","qty_desc":"3 eggs","kcal":234,"protein_g":18,"carbs_g":2,"fat_g":17}. '
-  + 'kcal/protein_g/carbs_g/fat_g must all be plain numbers (no units, no ranges). Keep names short and specific.';
+  + 'kcal/protein_g/carbs_g/fat_g must all be plain numbers (no units, no ranges). Keep names short and specific. '
+  + 'Write "name" and "qty_desc" in the same language the user wrote in (Hebrew in, Hebrew out).';
 
 function extractJsonArray(text) {
   try { const v = JSON.parse(text); if (Array.isArray(v)) return v; } catch (e) {}

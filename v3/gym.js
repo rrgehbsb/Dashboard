@@ -55,6 +55,7 @@ const isSetKey = k => /^set\d+R?$/.test(k);
 const isDate = k => /^\d{4}-\d{2}-\d{2}$/.test(k);
 const newId = p => p + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5);
 const fmtDay = dk => D.dShort(D.parseDk(dk));
+const own = s => '<bdi>' + esc(s) + '</bdi>'; // exercise and day names: shown as written
 
 function parseSet(txt) {
   const raw = String(txt || '').trim();
@@ -70,7 +71,7 @@ function parseSet(txt) {
 function cells(ex) {
   const out = [];
   for (let i = 0; i < nSets(ex); i++) {
-    if (ex.unilateral) { out.push({ i, side: '', tag: 'L' }); out.push({ i, side: 'R', tag: 'R' }); }
+    if (ex.unilateral) { out.push({ i, side: '', tag: D.he ? 'שמ׳' : 'L' }); out.push({ i, side: 'R', tag: D.he ? 'ימ׳' : 'R' }); }
     else out.push({ i, side: '', tag: '' });
   }
   return out;
@@ -202,7 +203,7 @@ function exHtml(ex, day, sk) {
       else delta = dw < 0 ? 'Lighter today' : 'Same as last';
     }
     return '<button class="ex-result" id="exr-' + ex.id + '" data-act="ex-open" data-ex="' + ex.id + '" aria-label="' + esc(ex.name) + ' done, ' + esc(line) + '. Tap to change.">' +
-      '<span class="tick">' + ic('check', 'sm') + '</span><span class="body"><span class="nm">' + esc(ex.name) + '</span><span class="sets">' + esc(line) + '</span></span>' +
+      '<span class="tick">' + ic('check', 'sm') + '</span><span class="body"><span class="nm">' + own(ex.name) + '</span><span class="sets">' + esc(line) + '</span></span>' +
       '<span class="up">' + (up ? ic('up', 'xs') : '') + esc(delta) + '</span></button>';
   }
   const lastLine = prev
@@ -221,7 +222,7 @@ function exHtml(ex, day, sk) {
   const headBtn = allDone && S.open[ex.id]
     ? '<button class="btn-text gym" id="exc-' + ex.id + '" data-act="ex-close" data-ex="' + ex.id + '">Done</button>'
     : '<button class="icon-btn flat" id="exm-' + ex.id + '" data-act="ex-menu" data-ex="' + ex.id + '" aria-label="Options for ' + esc(ex.name) + '">' + ic('more') + '</button>';
-  return '<article class="card ex" id="ex-' + ex.id + '"><div class="ex-head"><div><h3 class="ex-name">' + esc(ex.name) + '</h3>' +
+  return '<article class="card ex" id="ex-' + ex.id + '"><div class="ex-head"><div><h3 class="ex-name">' + own(ex.name) + '</h3>' +
     '<p class="ex-last">' + esc(lastLine) + (prev ? ' <span class="rx rx-' + rx.action + '">' + esc(rx.label) + '</span>' : '') + '</p></div>' + headBtn + '</div>' +
     '<div class="pills" style="grid-template-columns:repeat(' + cols + ',minmax(0,1fr))">' + pills + '</div></article>';
 }
@@ -246,11 +247,11 @@ function summaryHtml(day, sk) {
   });
   const pct = comparable && lastVol > 0 ? Math.round((vol - lastVol) / lastVol * 100) : null;
   const isToday = sk === D.todayKey();
-  return '<section class="summary" id="summary" aria-label="Session summary"><p class="eb">' + (isToday ? 'Today' : fmtDay(sk)) + ' · session summary</p><h2>' + esc(day.name) + ' done</h2>' +
+  return '<section class="summary" id="summary" aria-label="Session summary"><p class="eb">' + (isToday ? 'Today' : fmtDay(sk)) + ' · session summary</p><h2>' + own(day.name) + ' done</h2>' +
     '<div class="stats"><div class="stat"><b>' + sets + '</b><span>sets</span></div>' +
     '<div class="stat"><b>' + (pct == null ? '—' : (pct > 0 ? '+' : '') + (pct === 0 ? 0 : pct) + '%') + '</b><span>' + (pct == null ? 'new baseline' : 'volume vs last') + '</span></div>' +
     '<div class="stat"><b>' + D.fmtN(Math.round(vol)) + '</b><span>kg lifted</span></div></div>' +
-    (best ? '<div class="best"><span class="ic">' + ic('up', 'sm') + '</span><div><b>New best · ' + esc(best.ex.name) + '</b>' + trim(best.p.w) + ' × ' + trim(best.p.r) + ' · est. 1RM ' + Math.round(est1RM(best.p)) + ' ' + unit(best.ex) + '</div></div>'
+    (best ? '<div class="best"><span class="ic">' + ic('up', 'sm') + '</span><div><b>New best · ' + own(best.ex.name) + '</b>' + trim(best.p.w) + ' × ' + trim(best.p.r) + ' · est. 1RM ' + Math.round(est1RM(best.p)) + ' ' + unit(best.ex) + '</div></div>'
       : '<div class="best"><span class="ic">' + ic('check', 'sm') + '</span><div><b>' + (pct == null ? 'Baseline set' : 'Solid session') + '</b>' + (pct == null ? 'Next time compares against today.' : 'Every set logged.') + '</div></div>') +
     (!isToday ? '<button class="btn ghost" id="gym-new" data-act="gym-new">Start a new ' + esc(day.name) + ' session</button>' : '') + '</section>';
 }
@@ -269,7 +270,7 @@ function render() {
   const pr = progress(day), sk = pr.sk, ld = lastDone(day);
   const idx = t.findIndex(d => d.id === day.id);
   head.innerHTML = '<div><p class="eyebrow">' + (pr.finished ? 'Done' : sk === D.todayKey() ? 'Today’s workout' : 'This week') + ' · ' + D.dShort(D.parseDk(sk)) + '</p>' +
-    '<button class="day-pick" id="day-pick" data-act="sheet" data-sheet="day" aria-label="Workout day ' + esc(day.name) + '. Change day"><h1>' + esc(day.name) + '</h1><span class="chev">' + ic('chev-d', 'sm') + '</span></button></div>' +
+    '<button class="day-pick" id="day-pick" data-act="sheet" data-sheet="day" aria-label="Workout day ' + esc(day.name) + '. Change day"><h1>' + own(day.name) + '</h1><span class="chev">' + ic('chev-d', 'sm') + '</span></button></div>' +
     '<button class="icon-btn" id="gym-more" data-act="sheet" data-sheet="gymmenu" aria-label="Gym options">' + ic('more') + '</button>' +
     '<p class="gym-meta">Day ' + (idx + 1) + ' of ' + t.length + (ld && ld !== sk ? ' · last done ' + fmtDay(ld) : '') + '</p>';
   if (!(day.exercises || []).length) {
@@ -351,7 +352,7 @@ D.SHEETS.set = a => {
   const reps = []; for (let r = Math.max(1, rMin(ex) - 3); r <= rMax(ex) + 4; r++) reps.push(r);
   if (reps.indexOf(a.r) < 0) { reps.push(a.r); reps.sort((x, y) => x - y); }
   return {
-    title: ex.name + ' · Set ' + (c.i + 1) + (c.tag ? ' ' + c.tag : ''),
+    title: ex.name + ' · ' + D.t('Set ' + (c.i + 1)) + (c.tag ? ' ' + c.tag : ''), own: true,
     body: (ex.bw || a.w == null ? '' : '<p class="field-label">Weight</p><div class="stepper"><button class="step-btn" id="set-wm" data-act="set-w" data-d="-1" aria-label="Less weight">−</button>' +
       '<span class="val" aria-live="polite"><span class="num">' + trim(a.w) + '</span><small>' + unit(ex) + '</small></span>' +
       '<button class="step-btn" id="set-wp" data-act="set-w" data-d="1" aria-label="More weight">+</button></div>') +
@@ -365,7 +366,7 @@ D.SHEETS.day = () => {
   const cur = currentDay();
   return {
     title: 'Pick a day',
-    body: '<div class="menu-list">' + tpl().map(d => { const ld = lastDone(d); return '<button class="menu-item" id="day-' + esc(d.id) + '" data-act="day-set" data-day="' + esc(d.id) + '">' + ic('gym') + esc(d.name) +
+    body: '<div class="menu-list">' + tpl().map(d => { const ld = lastDone(d); return '<button class="menu-item" id="day-' + esc(d.id) + '" data-act="day-set" data-day="' + esc(d.id) + '">' + ic('gym') + own(d.name) +
       '<span class="r">' + (cur && d.id === cur.id ? 'Open now' : ld ? 'Last ' + fmtDay(ld) : 'Not done yet') + '</span></button>'; }).join('') + '</div>'
   };
 };
@@ -390,8 +391,8 @@ D.SHEETS.history = () => {
   });
   return {
     title: 'History',
-    body: rows.length ? '<div>' + rows.map(r => '<div class="set-row"><span class="lbl">' + esc(r.name) + '<small>' + fmtDay(r.dk) + ' · ' + r.n + ' sets</small></span>' +
-      (r.top ? '<span class="due">' + esc(r.top.ex.name.split(' ')[0]) + ' ' + esc(showWR(r.top.ex, r.top.p)) + '</span>' : '') + '</div>').join('') + '</div>'
+    body: rows.length ? '<div>' + rows.map(r => '<div class="set-row"><span class="lbl">' + own(r.name) + '<small>' + fmtDay(r.dk) + ' · ' + r.n + ' sets</small></span>' +
+      (r.top ? '<span class="due">' + own(r.top.ex.name.split(' ')[0]) + ' ' + esc(showWR(r.top.ex, r.top.p)) + '</span>' : '') + '</div>').join('') + '</div>'
       : '<p class="sheet-note">No workouts logged yet. Your sessions show up here.</p>'
   };
 };
@@ -410,7 +411,7 @@ D.SHEETS.plan = a => {
 D.SHEETS.exmenu = a => {
   const { ex } = findEx(a.ex); if (!ex) return { title: '', body: '' };
   return {
-    title: ex.name,
+    title: ex.name, own: true,
     body: '<div class="menu-list">' +
       '<button class="menu-item" id="em-edit" data-act="sheet" data-sheet="exedit" data-ex="' + ex.id + '">' + ic('edit') + 'Edit exercise</button>' +
       '<button class="menu-item" id="em-up" data-act="ex-move" data-ex="' + ex.id + '" data-d="-1">' + ic('up') + 'Move up</button>' +
@@ -479,7 +480,7 @@ async function saveWeight(w) {
 }
 
 /* ---------- actions ---------- */
-const SPLITS = { ppl: ['Push', 'Pull', 'Legs'], ul: ['Upper', 'Lower'], fb: ['Full body'] };
+const SPLITS = D.he ? { ppl: ['דחיפה', 'משיכה', 'רגליים'], ul: ['פלג עליון', 'פלג תחתון'], fb: ['כל הגוף'] } : { ppl: ['Push', 'Pull', 'Legs'], ul: ['Upper', 'Lower'], fb: ['Full body'] };
 Object.assign(D.ACT, {
   pill: el => tapPill(el.dataset.ex, el.dataset.c),
   'ex-open': el => { S.open[el.dataset.ex] = true; render(); },

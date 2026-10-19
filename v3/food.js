@@ -82,6 +82,8 @@ function markDeleted(dk, ids, on) {
 function addLib(f) { const now = Date.now(), item = Object.assign({ id: rid('f'), updatedAt: now }, f); food.set('library', lib().concat([item])); return item; }
 function autoGroup() { const h = new Date().getHours(); return h < 11 ? 'breakfast' : h < 16 ? 'lunch' : h < 21 ? 'dinner' : 'snacks'; }
 const groupName = g => (GROUPS.find(x => x[0] === g) || [g, D.cap(g)])[1];
+// what's in your diary is shown as written ("Quick add" is the app's own name for a number you typed)
+const foodName = n => n === 'Quick add' ? 'Quick add' : '<bdi>' + esc(n) + '</bdi>';
 
 /* ---------- targets (Mifflin-St Jeor + activity + goal; same as the classic page) ---------- */
 async function loadBodyweight() {
@@ -135,7 +137,7 @@ function renderAi() {
   if (a.state === 'error') { el.innerHTML = '<p class="sheet-note">' + esc(a.msg) + '</p>'; return; }
   const items = a.items.filter(it => !it.skip);
   const tot = items.reduce((t, i) => { t.kcal += +i.kcal || 0; t.p += +i.protein_g || 0; return t; }, { kcal: 0, p: 0 });
-  el.innerHTML = '<div class="parsed">' + a.items.map((it, i) => '<div class="it' + (it.skip ? ' skip' : '') + '"><span>' + esc(it.name) + '<small>' + esc(it.qty_desc || '') + (it.qty_desc ? ' · ' : '') + Math.round(+it.protein_g || 0) + ' g protein</small></span><span class="k">' + Math.round(+it.kcal || 0) + ' kcal</span>' +
+  el.innerHTML = '<div class="parsed">' + a.items.map((it, i) => '<div class="it' + (it.skip ? ' skip' : '') + '"><span>' + foodName(it.name) + '<small>' + esc(it.qty_desc || '') + (it.qty_desc ? ' · ' : '') + Math.round(+it.protein_g || 0) + ' g protein</small></span><span class="k">' + Math.round(+it.kcal || 0) + ' kcal</span>' +
     '<button class="mini" id="ai-x-' + i + '" data-act="ai-skip" data-i="' + i + '" aria-label="' + (it.skip ? 'Keep ' : 'Leave out ') + esc(it.name) + '">' + ic(it.skip ? 'plus' : 'x', 'xs') + '</button></div>').join('') +
     '<div class="tot"><span>Goes in ' + groupName(a.group) + '</span><span>' + D.fmtN(Math.round(tot.kcal)) + ' kcal · ' + Math.round(tot.p) + ' g protein</span></div>' +
     '<p class="hint-s">An estimate. Check anything that matters.</p>' +
@@ -148,7 +150,7 @@ function render() {
   $('#water-slot-food').innerHTML = D.waterChip('food');
   renderAi();
   const q = quickList();
-  $('#qchips').innerHTML = q.map(c => '<button class="qchip" id="q-' + esc(c.id) + '" data-act="qchip" data-t="' + c.t + '" data-id="' + esc(c.id) + '">' + ic(c.t === 'meal' ? 'grid' : 'plus', 'xs') + esc(c.name) + ' <small>' + Math.round(c.kcal) + '</small></button>').join('');
+  $('#qchips').innerHTML = q.map(c => '<button class="qchip" id="q-' + esc(c.id) + '" data-act="qchip" data-t="' + c.t + '" data-id="' + esc(c.id) + '">' + ic(c.t === 'meal' ? 'grid' : 'plus', 'xs') + foodName(c.name) + ' <small>' + Math.round(c.kcal) + '</small></button>').join('');
   $('#qchips').hidden = !q.length;
   const p = T.kcal ? t.kcal / T.kcal : 0;
   $('#food-sum').innerHTML = '<div class="fsum"><div class="fring">' + D.ring('food-main', p, 132, 12) + '<div class="c"><b>' + D.numEl('food-kcal', Math.round(t.kcal)) + '</b><span>' + (T.kcal ? 'of ' + D.fmtN(T.kcal) + ' kcal' : 'kcal') + '</span></div></div>' +
@@ -160,7 +162,7 @@ function render() {
     (groups.length ? groups.map(g => {
       const es = list.filter(e => e.group === g), k = es.reduce((a, e) => a + (+((e.n || {}).kcal) || 0), 0);
       return '<div class="meal"><div class="meal-h"><span>' + groupName(g) + '</span><span>' + D.fmtN(Math.round(k)) + ' kcal</span></div>' +
-        es.map(e => '<button class="entry" id="entry-' + esc(e.id) + '" data-act="sheet" data-sheet="entry" data-id="' + esc(e.id) + '"><span>' + esc(e.name) + (e.qty && e.qty !== 1 ? ' <small>×' + D.fmtN(e.qty, e.unit === 'g' ? 0 : 1) + (e.unit === 'g' ? ' g' : '') + '</small>' : '') + '</span><span class="k">' + D.fmtN(Math.round(+((e.n || {}).kcal) || 0)) + '</span></button>').join('') + '</div>';
+        es.map(e => '<button class="entry" id="entry-' + esc(e.id) + '" data-act="sheet" data-sheet="entry" data-id="' + esc(e.id) + '"><span>' + foodName(e.name) + (e.qty && e.qty !== 1 ? ' <small>×' + D.fmtN(e.qty, e.unit === 'g' ? 0 : 1) + (e.unit === 'g' ? ' g' : '') + '</small>' : '') + '</span><span class="k">' + D.fmtN(Math.round(+((e.n || {}).kcal) || 0)) + '</span></button>').join('') + '</div>';
     }).join('') : '<p class="empty">Nothing added for ' + (S.day === 0 ? 'today' : 'this day') + ' yet.</p>');
   D.animate($('#view-food'));
 }
@@ -193,7 +195,7 @@ D.SHEETS.entry = a => {
   const f = e.foodId ? foodById(e.foodId) : null, grams = e.unit === 'g';
   const base = f ? snap(f, a.q) : (() => { const m = a.q / (+e.qty || 1), n = {}; Object.keys(e.n || {}).forEach(k => { n[k] = e.n[k] * m; }); return n; })();
   return {
-    title: e.name,
+    title: e.name === 'Quick add' ? D.t('Quick add') : e.name, own: true,
     body: '<p class="field-label">' + (grams ? 'Amount' : 'Portions') + '</p><div class="stepper"><button class="step-btn" id="eq-m" data-act="entry-q" data-d="-1" aria-label="Less">−</button><span class="val"><span class="num">' + D.fmtN(a.q, grams ? 0 : 1) + '</span><small>' + (grams ? 'g' : '×') + '</small></span><button class="step-btn" id="eq-p" data-act="entry-q" data-d="1" aria-label="More">+</button></div>' +
       '<p class="sheet-note">' + D.fmtN(Math.round(base.kcal || 0)) + ' kcal · ' + Math.round(base.protein_g || 0) + ' g protein</p>' +
       '<p class="field-label">Meal</p><div class="pick-row" role="radiogroup" aria-label="Meal">' + GROUPS.map(g => '<button class="pick" id="eg-' + g[0] + '" role="radio" data-act="entry-g" data-v="' + g[0] + '" aria-checked="' + (a.g === g[0]) + '">' + g[1] + '</button>').join('') + '</div>' +
@@ -288,7 +290,7 @@ $('#food-search').addEventListener('input', () => {
   const q = $('#food-search').value.trim(), el = $('#search-res');
   if (q.length < 2) { el.innerHTML = ''; return; }
   const mine = lib().filter(f => f && !f.deleted && f.name.toLowerCase().indexOf(q.toLowerCase()) >= 0).slice(0, 4);
-  const row = (f, src, i) => '<div class="res"><span class="nm">' + esc(f.name) + '<small>' + Math.round(+(f.nutrients || {}).kcal || 0) + ' kcal' + (f.kind === 'per100' ? ' per 100 g' : '') + '</small></span><button class="chip-btn" id="sr-' + src + i + '" data-act="search-add" data-src="' + src + '" data-i="' + i + '">Add</button></div>';
+  const row = (f, src, i) => '<div class="res"><span class="nm">' + foodName(f.name) + '<small>' + Math.round(+(f.nutrients || {}).kcal || 0) + ' kcal' + (f.kind === 'per100' ? ' per 100 g' : '') + '</small></span><button class="chip-btn" id="sr-' + src + i + '" data-act="search-add" data-src="' + src + '" data-i="' + i + '">Add</button></div>';
   S.found = { mine, usda: [] };
   el.innerHTML = mine.map((f, i) => row(f, 'mine', i)).join('') + '<p class="sheet-note" id="usda-note">Searching the food database…</p>';
   const seq = ++searchSeq;

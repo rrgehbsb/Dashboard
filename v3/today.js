@@ -8,6 +8,7 @@
 (function () {
 'use strict';
 const D = window.DASH, $ = D.$, esc = D.esc, ic = D.ic, TT = window.TIMETABLE;
+const own = s => '<bdi>' + esc(s) + '</bdi>'; // something you wrote: shown as written, never translated
 
 /* ---------- rows ---------- */
 // Repeating tasks merge entry by entry (newest change wins; the days they were already
@@ -75,15 +76,17 @@ function dayLabel(dk) { const d = D.daysFrom(dk); return d === 0 ? 'Today' : d =
 /* A date typed at the end of a task: "buy charger fri", "dentist 25/10", "call gran
    tomorrow", "essay next week", "renew card in 10 days". Shown before adding, and it
    can be switched off with ×, so "watch Friday" stays a plain task if you want. */
-const WDAY = { sun: 0, sunday: 0, mon: 1, monday: 1, tue: 2, tues: 2, tuesday: 2, wed: 3, weds: 3, wednesday: 3, thu: 4, thur: 4, thurs: 4, thursday: 4, fri: 5, friday: 5, sat: 6, saturday: 6 };
+const WDAY = { sun: 0, sunday: 0, mon: 1, monday: 1, tue: 2, tues: 2, tuesday: 2, wed: 3, weds: 3, wednesday: 3, thu: 4, thur: 4, thurs: 4, thursday: 4, fri: 5, friday: 5, sat: 6, saturday: 6,
+  'ראשון': 0, 'שני': 1, 'שלישי': 2, 'רביעי': 3, 'חמישי': 4, 'שישי': 5, 'שבת': 6, 'בראשון': 0, 'בשני': 1, 'בשלישי': 2, 'ברביעי': 3, 'בחמישי': 4, 'בשישי': 5, 'בשבת': 6 };
 function parseWhen(raw) {
   const words = String(raw || '').trim().split(/\s+/);
   if (words.length < 2) return null;
   const w = i => (words[words.length - i] || '').toLowerCase().replace(/[,.!]+$/, '');
   const todayWd = D.dayAt(0).getDay();
   let off = null, n = 1, m;
-  if (/^(today|tonight)$/.test(w(1))) off = 0;
-  else if (/^(tomorrow|tmrw|tmr|tomo)$/.test(w(1))) off = 1;
+  if (/^(today|tonight|היום|הערב)$/.test(w(1))) off = 0;
+  else if (/^(tomorrow|tmrw|tmr|tomo|מחר|למחר)$/.test(w(1))) off = 1;
+  else if (w(1) === 'מחרתיים') off = 2;
   else if (WDAY[w(1)] != null) off = ((WDAY[w(1)] - todayWd) + 7) % 7 || 7;
   else if ((m = w(1).match(/^(\d{1,2})[./](\d{1,2})(?:[./](\d{2}|\d{4}))?$/))) {
     const now = D.dayAt(0), y = m[3] ? (m[3].length === 2 ? 2000 + +m[3] : +m[3]) : now.getFullYear();
@@ -92,9 +95,12 @@ function parseWhen(raw) {
     if (!m[3] && d < now) d = new Date(y + 1, +m[2] - 1, +m[1], 12);
     off = Math.round((d - now) / 864e5);
   } else if (w(1) === 'week' && w(2) === 'next') { off = (7 - todayWd) || 7; n = 2; }
+  else if (w(1) === 'הבא' && w(2) === 'שבוע') { off = (7 - todayWd) || 7; n = 2; }
   else if (/^days?$/.test(w(1)) && /^\d{1,3}$/.test(w(2)) && w(3) === 'in') { off = +w(2); n = 3; }
+  else if (w(1) === 'ימים' && /^\d{1,3}$/.test(w(2)) && w(3) === 'בעוד') { off = +w(2); n = 3; }
+  else if (w(1) === 'יומיים' && w(2) === 'בעוד') { off = 2; n = 2; }
   if (off == null || off < 0 || off > 366) return null;
-  if (n === 1 && words.length > 2 && /^(on|next|this|by)$/.test(w(2))) n = 2;
+  if (n === 1 && words.length > 2 && /^(on|next|this|by|ביום|עד|יום)$/.test(w(2))) n = 2;
   const text = words.slice(0, words.length - n).join(' ').trim();
   return text ? { text, dk: D.dk(D.dayAt(off)) } : null;
 }
@@ -227,26 +233,26 @@ function heroModel() {
   if (ph && ph.riding && ph.pick && lvw) {
     const ar = CM.arrivals(cc, ph, ph.pick, lvw), r = CM.rideNow(ph, ph.pick, ar, n);
     if (r) return { area: 'school', href: D.pageHref('school'), eyebrow: ph.kind === 'morning' ? 'On your way to school' : 'On your way home',
-      big: '<span class="t">' + esc(r.big) + '</span>', sub: warn + esc(r.small) + (ph.kind === 'morning' ? ' · at school ' + CM.hhmm(ar.arrive) : '') + ' <span class="tag">' + (lvw.anyLive ? 'Live' : 'Timetable') + '</span>', label: r.big };
+      big: '<span class="t">' + esc(r.big) + '</span>', sub: warn + esc(r.small) + (ph.kind === 'morning' ? ' · at school ' + CM.hhmm(ar.arrive) : '') + ' <span class="tag">' + (lvw.anyLive ? 'Live' : 'Scheduled') + '</span>', label: r.big };
   }
   if (ph && ph.kind === 'morning' && ph.pick && ph.mins != null && ph.mins <= 120 && ph.mins >= -15) {
     const late = !ph.pick.ok || (lvw && lvw.miss);
     return { area: ph.mins <= 5 || late ? 'amber' : 'school', href: D.pageHref('school'), eyebrow: 'To school',
       big: ph.mins > 0 ? '<span class="lead">Leave in</span><span class="n">' + D.numEl('hero-min', ph.mins) + '</span><span class="u">min</span>' : '<span class="t">Leave now</span>',
-      sub: warn + (lvw && lvw.miss ? 'Bus is late · may miss the ' + CM.hhmm(ph.pick.train) + ' train' : CM.hhmm(lvw ? lvw.leave : ph.pick.leave) + ' · ' + (ph.pick.bus ? 'bus ' + esc(ph.pick.bus.line) + ' → ' : '') + CM.hhmm(ph.pick.train) + ' train' + (!ph.pick.ok ? ' · arrives ' + (-ph.pick.spare) + ' min late' : '')) + ' <span class="tag">' + (lvw && lvw.anyLive ? 'Live' : 'Timetable') + '</span>',
+      sub: warn + (lvw && lvw.miss ? 'Bus is late · may miss the ' + CM.hhmm(ph.pick.train) + ' train' : CM.hhmm(lvw ? lvw.leave : ph.pick.leave) + ' · ' + (ph.pick.bus ? 'bus ' + esc(ph.pick.bus.line) + ' → ' : '') + CM.hhmm(ph.pick.train) + ' train' + (!ph.pick.ok ? ' · arrives ' + (-ph.pick.spare) + ' min late' : '')) + ' <span class="tag">' + (lvw && lvw.anyLive ? 'Live' : 'Scheduled') + '</span>',
       bar: D.clamp(ph.mins / 30, 0, 1), label: 'Leave in ' + ph.mins + ' minutes' };
   }
   if (ph && ph.kind === 'after' && ph.pick) {
     return { area: ph.mins <= 5 && ph.mins >= 0 ? 'amber' : 'school', href: D.pageHref('school'), eyebrow: 'Going home',
       big: '<span class="lead">Train home</span><span class="n">' + CM.hhmm(ph.pick.train) + '</span>',
-      sub: warn + 'Leave school by ' + CM.hhmm(lvw ? lvw.leave : ph.pick.leave) + (ph.mins > 0 ? ' · in ' + ph.mins + ' min' : ' · now') + ' <span class="tag">' + (lvw && lvw.anyLive ? 'Live' : 'Timetable') + '</span>',
+      sub: warn + 'Leave school by ' + CM.hhmm(lvw ? lvw.leave : ph.pick.leave) + (ph.mins > 0 ? ' · in ' + ph.mins + ' min' : ' · now') + ' <span class="tag">' + (lvw && lvw.anyLive ? 'Live' : 'Scheduled') + '</span>',
       bar: D.clamp(ph.mins / 30, 0, 1), label: 'Train home ' + CM.hhmm(ph.pick.train) };
   }
   const soon = schoolSoon(2);
   const test = soon.find(x => x.kind === 'test');
   if (test) return { area: 'school', href: D.pageHref('school'), eyebrow: 'Coming up', big: '<span class="t"><bdi>' + esc(test.title) + '</bdi></span>', sub: dayWord(test.d) + (test.subj ? ' · ' + esc(test.subj) : ''), label: test.title + ', ' + dayWord(test.d) };
   const due = soon.filter(x => x.kind === 'hw' && x.d <= 1);
-  if (due.length) return { area: 'school', href: D.pageHref('school'), eyebrow: 'Due ' + dayWord(due[0].d).toLowerCase(), big: '<span class="t">' + esc(due[0].title) + '</span>', sub: (due[0].subj ? esc(due[0].subj) : 'School') + (due.length > 1 ? ' · ' + (due.length - 1) + ' more' : ''), label: due[0].title + ' due ' + dayWord(due[0].d) };
+  if (due.length) return { area: 'school', href: D.pageHref('school'), eyebrow: 'Due ' + dayWord(due[0].d).toLowerCase(), big: '<span class="t">' + own(due[0].title) + '</span>', sub: (due[0].subj ? esc(due[0].subj) : 'School') + (due.length > 1 ? ' · ' + (due.length - 1) + ' more' : ''), label: due[0].title + ' due ' + dayWord(due[0].d) };
   if (n >= 19 * 60) {
     const tm = list(tomorrowK()).filter(g => !g.done);
     if (ph && ph.kind === 'next' && ph.off === 1 && ph.m && ph.m.best) {
@@ -254,22 +260,22 @@ function heroModel() {
       return { area: 'school', href: D.pageHref('school'), eyebrow: 'Tomorrow · ' + D.dShort(D.dayAt(1)), big: '<span class="lead">Leave</span><span class="n">' + CM.hhmm(ph.m.best.leave) + '</span>',
         sub: CM.hhmm(ph.m.best.train) + ' train' + (ch ? ' · ' + ch + ' timetable ' + D.plural(ch, 'change', 'changes') : ttWeeklyOnly(D.dk(D.dayAt(1))) ? ' · weekly plan, not updated yet' : '') + (tm.length ? ' · ' + tm.length + ' on your list' : ''), label: 'Tomorrow, leave ' + CM.hhmm(ph.m.best.leave) };
     }
-    return { area: 'todo', href: '#todo', eyebrow: 'Tomorrow · ' + D.dShort(D.dayAt(1)), big: tm.length ? '<span class="n">' + D.numEl('hero-tm', tm.length) + '</span><span class="u">planned</span>' : '<span class="t">Nothing planned yet</span>', sub: tm.length ? esc(tm[0].text) + (tm.length > 1 ? ' · and ' + (tm.length - 1) + ' more' : '') : 'Flip the list below to Tomorrow to add things', label: 'Tomorrow' };
+    return { area: 'todo', href: '#todo', eyebrow: 'Tomorrow · ' + D.dShort(D.dayAt(1)), big: tm.length ? '<span class="n">' + D.numEl('hero-tm', tm.length) + '</span><span class="u">planned</span>' : '<span class="t">Nothing planned yet</span>', sub: tm.length ? own(tm[0].text) + (tm.length > 1 ? ' · and ' + (tm.length - 1) + ' more' : '') : 'Flip the list below to Tomorrow to add things', label: 'Tomorrow' };
   }
   const items = list(todayK()).filter(g => !g.later && !isOld(g));
   const done = items.filter(g => g.done).length;
   if (!items.length) return { area: 'todo', href: '#todo', eyebrow: 'Today', big: '<span class="t">Clear day</span>', sub: 'Nothing on your list', label: 'Clear day' };
   if (done === items.length) return { area: 'todo', href: '#todo', eyebrow: 'Today', big: '<span class="t">All done</span>', sub: items.length + ' ' + D.plural(items.length, 'thing', 'things') + ' ticked off', label: 'All done' };
-  return { area: 'todo', href: '#todo', eyebrow: 'Today', big: '<span class="n">' + D.numEl('hero-done', done) + '</span><span class="u">of ' + items.length + ' done</span>', sub: 'Next: ' + esc((items.find(g => !g.done && g.queued) || items.find(g => !g.done)).text), bar: done / items.length, label: done + ' of ' + items.length + ' done' };
+  return { area: 'todo', href: '#todo', eyebrow: 'Today', big: '<span class="n">' + D.numEl('hero-done', done) + '</span><span class="u">of ' + items.length + ' done</span>', sub: 'Next: ' + own((items.find(g => !g.done && g.queued) || items.find(g => !g.done)).text), bar: done / items.length, label: done + ' of ' + items.length + ' done' };
 }
 function tileModels(heroArea) {
   const out = [];
   const g = gymInfo();
   out.push(g ? (g.doneToday
     ? (g.finished
-      ? { area: 'gym', href: D.pageHref('gym'), label: 'Gym', p: g.week / g.perWeek, val: 'Done', sub: esc(g.doneToday) + ' · ' + g.week + ' this week' }
-      : { area: 'gym', href: D.pageHref('gym'), label: 'Gym', p: g.setsTotal ? g.setsDone / g.setsTotal : 0, val: esc(g.doneToday), sub: g.setsDone + ' of ' + g.setsTotal + ' sets' })
-    : { area: 'gym', href: D.pageHref('gym'), label: 'Gym', p: g.week / g.perWeek, val: esc(g.next), sub: g.week ? 'Up next · ' + g.week + ' this week' : 'Up next' })
+      ? { area: 'gym', href: D.pageHref('gym'), label: 'Gym', p: g.week / g.perWeek, val: 'Done', sub: own(g.doneToday) + ' · ' + g.week + ' this week' }
+      : { area: 'gym', href: D.pageHref('gym'), label: 'Gym', p: g.setsTotal ? g.setsDone / g.setsTotal : 0, val: own(g.doneToday), sub: g.setsDone + ' of ' + g.setsTotal + ' sets' })
+    : { area: 'gym', href: D.pageHref('gym'), label: 'Gym', p: g.week / g.perWeek, val: own(g.next), sub: g.week ? 'Up next · ' + g.week + ' this week' : 'Up next' })
     : { area: 'gym', href: D.pageHref('gym'), label: 'Gym', p: 0, val: 'No plan', sub: 'Set one up in Gym' });
   if (heroArea !== 'school') {
     const w = schoolSoon(7);
@@ -305,7 +311,7 @@ function row(g, i, k) {
   const meta = chips ? '<span class="task-meta">' + chips + '</span>' : '';
   return '<li class="task' + (g.done ? ' is-done' : '') + (S.enter === k + '#' + i ? ' enter' : '') + '" id="task-' + i + '" data-i="' + i + '" data-lp="task-menu">' +
     '<button class="check" id="check-' + i + '" data-act="task-toggle" data-i="' + i + '" aria-pressed="' + !!g.done + '" aria-label="' + (g.done ? 'Done' : 'Not done') + ': ' + esc(g.text) + '">' + CHECK + '</button>' +
-    '<div class="task-text">' + (g.queued ? '<span class="pin-ic" title="Pinned">' + ic('pin', 'xs') + '<span class="sr">Pinned. </span></span>' : '') + '<span class="tt">' + esc(g.text) + '</span>' + meta + '</div>' +
+    '<div class="task-text">' + (g.queued ? '<span class="pin-ic" title="Pinned">' + ic('pin', 'xs') + '<span class="sr">Pinned. </span></span>' : '') + '<span class="tt" translate="no">' + esc(g.text) + '</span>' + meta + '</div>' +
     '<button class="more-btn" id="more-' + i + '" data-act="task-menu" data-i="' + i + '" aria-label="Options for ' + esc(g.text) + '">' + ic('more') + '</button></li>';
 }
 function updateHead() {
@@ -346,9 +352,9 @@ function renderTodo() {
     if (nUp) {
       const first = ups[0];
       ex += '<button class="fold-line" id="up-toggle" data-act="toggle-up" aria-expanded="' + !!S.showUp + '"><span class="ok up">' + ic('cal', 'xs') + '</span><span class="up-sum">Coming up · ' + nUp +
-        (S.showUp ? '' : '<small>' + esc(dayLabel(first[0].slice(6))) + ': ' + esc(first[1][0][0].text) + '</small>') + '</span>' + ic('chev-r', 'sm chev') + '</button>';
+        (S.showUp ? '' : '<small>' + esc(dayLabel(first[0].slice(6))) + ': ' + own(first[1][0][0].text) + '</small>') + '</span>' + ic('chev-r', 'sm chev') + '</button>';
       if (S.showUp) ex += '<div class="up-list">' + ups.map(([x, items]) => '<p class="up-day">' + esc(dayLabel(x.slice(6))) + '</p><ul class="tasks">' + items.map(([g, j]) =>
-        '<li class="task up-task"><button class="up-row" id="up-' + x.slice(6) + '-' + j + '" data-act="up-menu" data-k="' + x + '" data-i="' + j + '"><span class="up-dot" aria-hidden="true"></span><span class="tt">' + esc(g.text) + '</span>' + ic('chev-r', 'sm') + '</button></li>').join('') + '</ul>').join('') + '</div>';
+        '<li class="task up-task"><button class="up-row" id="up-' + x.slice(6) + '-' + j + '" data-act="up-menu" data-k="' + x + '" data-i="' + j + '"><span class="up-dot" aria-hidden="true"></span><span class="tt" translate="no">' + esc(g.text) + '</span>' + ic('chev-r', 'sm') + '</button></li>').join('') + '</ul>').join('') + '</div>';
     }
     const old = idx.filter(([g]) => !g.done && isOld(g));
     if (old.length) ex += '<div class="older"><p><strong>' + old.length + ' older ' + D.plural(old.length, 'task', 'tasks') + '</strong> from before</p><button class="btn-text" id="older-review" data-act="older-review">Review</button></div>';
@@ -380,7 +386,7 @@ D.SHEETS.task = a => {
   if (!g) return { title: 'Task', body: '' };
   const other = S.day === 'today' ? 'tomorrow' : 'today';
   return {
-    title: g.text,
+    title: g.text, own: true,
     body: '<div class="menu-list">' +
       '<button class="menu-item" id="tm-pin" data-act="task-pin" data-i="' + a.i + '">' + ic('pin') + (g.queued ? 'Unpin' : 'Pin to top') + '</button>' +
       (g.later ? '<button class="menu-item" id="tm-now" data-act="task-now" data-i="' + a.i + '">' + ic('up') + 'Bring back to today</button>' : '') +
@@ -397,7 +403,7 @@ D.SHEETS.uptask = a => {
   const g = list(a.k)[+a.i];
   if (!g) return { title: 'Task', body: '' };
   return {
-    title: g.text,
+    title: g.text, own: true,
     body: '<p class="sheet-note">On your list ' + (D.daysFrom(a.k.slice(6)) <= 6 ? 'on ' : '') + esc(dayLabel(a.k.slice(6))) + '.</p><div class="menu-list">' +
       '<button class="menu-item" id="ut-today" data-act="up-today">' + ic('up') + 'Do it today</button>' +
       dateItem('ut-date', 'Change the date…', a.k.slice(6)) +
@@ -411,7 +417,7 @@ D.SHEETS.repeat = a => {
   const r = g.rep && reps().find(x => x.id === g.rep), wd = D.parseDk(a.k.slice(6)).getDay();
   const opt = (every, label) => '<button class="menu-item" data-act="rep-set" data-every="' + every + '" aria-pressed="' + !!(r && r.every === every && (every !== 'week' || r.wd === wd)) + '">' + label + '</button>';
   return {
-    title: 'Repeat · ' + g.text,
+    title: D.t('Repeat') + ' · ' + g.text, own: true,
     body: '<p class="sheet-note">It comes back on your list on those days. Not a calendar: no times, and it won’t pile up. If it’s still on your list, it isn’t added twice.</p>' +
       '<div class="menu-list rep-opts">' + opt('day', 'Every day') + opt('school', 'School days (Sun–Thu)') + opt('week', 'Every ' + D.DOW_L[wd]) + '</div>' +
       (r ? '<button class="btn ghost block" id="rep-stop" data-act="rep-stop">Stop repeating</button>' : '')
@@ -435,7 +441,7 @@ D.SHEETS.older = () => {
     title: old.length + ' older ' + D.plural(old.length, 'task', 'tasks'),
     body: '<p class="sheet-note">These were still open from more than a week ago. They stay off today\'s list. Keep them for later, or clear them out.</p>' +
       '<div class="sheet-actions"><button class="btn ghost" id="older-clear" data-act="older-clear">Clear all</button><button class="btn todo" id="older-keep" data-act="older-keep">Keep for later</button></div>' +
-      '<div class="menu-list">' + old.map(g => '<div class="menu-item static">' + esc(g.text) + '</div>').join('') + '</div>'
+      '<div class="menu-list">' + old.map(g => '<div class="menu-item static">' + own(g.text) + '</div>').join('') + '</div>'
   };
 };
 Object.assign(D.ACT, {
@@ -514,7 +520,7 @@ function renderWhen() {
   if (!w || plain) { el.hidden = true; el.innerHTML = ''; return; }
   el.hidden = false;
   el.innerHTML = '<span class="when-chip">' + ic('cal', 'xs') + 'For ' + esc(dayLabel(w.dk)) + (D.daysFrom(w.dk) > 6 ? '' : ' · ' + esc(D.dShort(D.parseDk(w.dk)))) + '</span>' +
-    (w.text && !w.picked && w.text !== v ? '<span class="when-text">“' + esc(w.text) + '”</span>' : '') +
+    (w.text && !w.picked && w.text !== v ? '<span class="when-text">“' + own(w.text) + '”</span>' : '') +
     '<button type="button" class="when-x" data-act="when-clear" aria-label="No date">' + ic('x', 'xs') + '</button>';
 }
 // the date pickers inside the task menus

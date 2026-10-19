@@ -12,12 +12,14 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3">
 <link rel="icon" href="/icon.svg?v=3" type="image/svg+xml">
 <title>Sign in · Dashboard</title>
-<script>(function(){try{var t=localStorage.getItem('dash3:theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<script>(function(){try{var t=localStorage.getItem('dash3:theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);var l=localStorage.getItem('dash3:lang');if(l==='he'){document.documentElement.lang='he';document.documentElement.dir='rtl';}}catch(e){}})();</script>
+<script src="/v3/he.js?v=2.9.12"></script>
+<script src="/v3/i18n.js?v=2.9.12"></script>
 <script src="/v3/vendor/supabase-2.116.0.js"></script>
 <script>(function(){var s=window.supabase;if(s&&s.createClient&&!s.__oneClient){s.__oneClient=true;var o=s.createClient.bind(s),c={};s.createClient=function(u,k,op){var q=String(u)+"|"+String(k);return c[q]||(c[q]=o(u,k,op));};}})();</script>
 <link rel="preload" href="/v3/fonts/BricolageGrotesque-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/v3/fonts/Onest-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/v3/app.css?v=2.9.11">
+<link rel="stylesheet" href="/v3/app.css?v=2.9.12">
 <style>
 /* Login: one bright brand block + one white working card. Top-aligned on phones so the
    keyboard never covers the button; two columns from 900px. */
@@ -29,7 +31,10 @@
   padding-top:calc(env(safe-area-inset-top, 0px) + 20px);
   padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 24px);
 }
-.brand { background:var(--todo); color:var(--on-todo); border-radius:var(--r-xl); padding:22px 22px 24px; display:flex; flex-direction:column; gap:14px; }
+.brand { position:relative; background:var(--todo); color:var(--on-todo); border-radius:var(--r-xl); padding:22px 22px 24px; display:flex; flex-direction:column; gap:14px; }
+/* English / עברית: one tap, before you even sign in */
+.lang-btn { position:absolute; top:18px; inset-inline-end:18px; min-height:40px; padding:0 14px; border-radius:999px; font-weight:700; font-size:14px; color:var(--on-todo); background:color-mix(in srgb, var(--on-todo) 16%, transparent); display:inline-flex; align-items:center; gap:6px; }
+.lang-btn svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 .brand .logo { width:56px; height:56px; border-radius:15px; box-shadow:0 4px 14px rgba(0,0,0,.18); display:block; }
 .brand .mark svg { width:28px; height:28px; fill:none; stroke:currentColor; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round; }
 .brand h1 { font-size:38px; line-height:1; font-weight:800; letter-spacing:-.02em; }
@@ -46,12 +51,13 @@
 .auth-card form { display:flex; flex-direction:column; gap:14px; }
 .fld { display:flex; flex-direction:column; gap:6px; }
 .pw { position:relative; }
-.pw .text-in { padding-right:56px; }
-.pw .eye { position:absolute; right:4px; top:4px; width:44px; height:44px; border-radius:999px; display:grid; place-items:center; color:var(--ink-3); }
+.pw .text-in { padding-inline-end:56px; }
+.pw .eye { position:absolute; inset-inline-end:4px; top:4px; width:44px; height:44px; border-radius:999px; display:grid; place-items:center; color:var(--ink-3); }
 .pw .eye svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 .hint { font-size:13px; color:var(--ink-3); }
 .msg { border-radius:14px; padding:12px 14px; font-size:15px; font-weight:600; line-height:1.4; display:flex; flex-direction:column; gap:8px; }
 .msg.err { background:color-mix(in srgb, #FF4D6D 14%, var(--surface)); color:var(--ink); box-shadow:inset 3px 0 0 #E5384F; }
+[dir="rtl"] .msg.err { box-shadow:inset -3px 0 0 #E5384F; }
 .msg.ok { background:var(--food-soft); color:var(--ink); }
 .msg button { align-self:flex-start; min-height:40px; padding:0 14px; border-radius:999px; background:var(--surface-2); font-weight:700; font-size:14px; }
 .go { min-height:52px; font-size:17px; }
@@ -77,7 +83,8 @@
 <main class="auth">
   <section class="brand" aria-label="Dashboard">
     <img class="logo" src="/icon.svg?v=3" width="56" height="56" alt="">
-    <h1>Dashboard</h1>
+    <button class="lang-btn" id="lang-btn" type="button" translate="no"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span id="lang-lbl">עברית</span></button>
+    <h1 translate="no">Dashboard</h1>
     <p>Your day at a glance: what to do, when to leave, what’s next.</p>
     <div class="areas" aria-hidden="true"><span class="a-todo">To-do</span><span class="a-gym">Gym</span><span class="a-school">School</span><span class="a-food">Food</span></div>
   </section>
@@ -158,6 +165,11 @@ const SB_KEY = 'sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
 const sb = supabase.createClient(SB_URL, SB_KEY);
 const $ = s => document.querySelector(s);
 const RETIRED = ['health', 'habits', 'finance', 'projects', 'friends', 'trends'];
+const HE = !!(window.I18N && window.I18N.he);
+$('#lang-btn').setAttribute('lang', HE ? 'en' : 'he');
+$('#lang-lbl').textContent = HE ? 'English' : 'עברית';
+$('#lang-btn').setAttribute('aria-label', HE ? 'Switch to English' : 'החלפה לעברית');
+$('#lang-btn').addEventListener('click', () => { if (window.I18N) window.I18N.set(HE ? 'en' : 'he'); location.reload(); });
 let tab = 'in', busy = false;
 
 /* ---------- local data belongs to one account per device ----------
@@ -200,7 +212,7 @@ async function migrateIfNeeded(userId) {
 async function setUpNewAccount(userId, name) {
   const now = new Date().toISOString();
   const pages = {}; RETIRED.forEach(k => { pages[k] = false; });
-  const settings = { name: name, ui: 'v3', v3Archive: 1, pages: pages, setupDone: true, _pushAt: Date.now() };
+  const settings = { name: name, ui: 'v3', v3Archive: 1, pages: pages, setupDone: true, lang: HE ? 'he' : 'en', _pushAt: Date.now() };
   try { localStorage.setItem('dashboard:settings:v1', JSON.stringify(settings)); } catch (e) {}
   try {
     await sb.from('app_state').upsert([

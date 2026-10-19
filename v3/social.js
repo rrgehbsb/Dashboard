@@ -228,7 +228,7 @@ function segNow(x, dir) {
     case 'station': return 'At ' + (STATION[x[2]] || 'the station');
     case 'train': return 'On the train to ' + (dir === 'to' ? 'Herzliya' : 'Rosh HaAyin');
     case 'school': return 'At school';
-    case 'home': return 'Home';
+    case 'home': return 'At home';
   }
   return '';
 }
@@ -533,7 +533,7 @@ function friendRow(f, compact) {
   const st = statusLine(f);
   const same = st && sameTrain(st.t);
   return '<button class="fr-row" id="fr-' + esc(String(f.fid)) + '" data-act="sheet" data-sheet="friend" data-id="' + esc(String(f.id)) + '">' + avatar(f, compact ? 36 : 44) +
-    '<span class="fr-main"><b>' + esc(nameOf(f)) + '</b><span class="fr-st">' + (st ? ic(st.icon, 'xs') + '<span>' + esc(st.text) + (st.sub ? ' · ' + esc(st.sub) : '') + '</span>' : '<span>' + (compact ? '' : 'Not sharing right now') + '</span>') + '</span></span>' +
+    '<span class="fr-main"><b><bdi>' + esc(nameOf(f)) + '</bdi></b><span class="fr-st">' + (st ? ic(st.icon, 'xs') + '<span>' + esc(st.text) + (st.sub ? ' · ' + esc(st.sub) : '') + '</span>' : '<span>' + (compact ? '' : 'Not sharing right now') + '</span>') + '</span></span>' +
     (same ? '<span class="fr-same">Same train</span>' : st && st.l && st.t ? '<span class="fr-loc" title="Sharing location">' + ic('locate', 'xs') + '</span>' : '') + '</button>';
 }
 function pushBlock() {
@@ -565,21 +565,21 @@ D.SHEETS.friends = () => {
   if (!S.loaded && !S.err) load();
   if (S.needsSql) return { title: 'Friends', body: '<p class="problem">' + ic('info', 'xs') + '<span>Friends needs a one-time database update. Run <b>supabase/friends-v3.sql</b> in Supabase (SQL Editor → paste → Run), then reopen this.</span></p>' };
   if (!S.me) return { title: 'Friends', body: '<p class="sheet-note">See when your friends are on the bus or the train, or already at school. Start with your profile so they can find you.</p><button class="btn school block" id="fr-setup" data-act="sheet" data-sheet="profile">Set up my profile</button>' + (S.err && !S.loaded ? '<p class="sheet-note">Couldn’t reach the server.</p>' : '') };
-  let h = '<button class="fr-me" id="fr-me" data-act="sheet" data-sheet="profile">' + avatar(S.me, 44) + '<span class="fr-main"><b>' + esc(nameOf(S.me)) + '</b><span class="fr-st"><span>@' + esc(S.me.username) + '</span></span></span><span class="r">Edit' + ic('chev-r', 'sm') + '</span></button>';
+  let h = '<button class="fr-me" id="fr-me" data-act="sheet" data-sheet="profile">' + avatar(S.me, 44) + '<span class="fr-main"><b><bdi>' + esc(nameOf(S.me)) + '</bdi></b><span class="fr-st"><span><bdi>@' + esc(S.me.username) + '</bdi></span></span></span><span class="r">Edit' + ic('chev-r', 'sm') + '</span></button>';
   h += '<form class="add-row" id="fr-add-form" autocomplete="off"><label class="sr" for="fr-add-in">Friend’s username</label><input id="fr-add-in" placeholder="Add a friend by username" value="' + esc(S.add) + '" maxlength="21" autocapitalize="none" spellcheck="false"><button class="add-btn schbg" id="fr-add" type="submit" aria-label="Send friend request">' + ic('plus') + '</button></form>';
-  if (S.reqIn.length) h += '<p class="group-title">Requests</p><div class="fr-list">' + S.reqIn.map(r => '<div class="fr-row static">' + avatar(r, 44) + '<span class="fr-main"><b>' + esc(nameOf(r)) + '</b><span class="fr-st"><span>@' + esc(r.username) + '</span></span></span><span class="fr-acts"><button class="btn-text" id="frd-' + r.fid + '" data-act="fr-decline" data-fid="' + r.fid + '">Decline</button><button class="btn school sm" id="fra-' + r.fid + '" data-act="fr-accept" data-fid="' + r.fid + '">Accept</button></span></div>').join('') + '</div>';
-  h += '<p class="group-title">Friends</p>' + (S.friends.length ? '<div class="fr-list">' + S.friends.map(f => friendRow(f)).join('') + '</div>' : '<p class="sheet-note">No friends yet. Add them by username, and tell them yours: <b>@' + esc(S.me.username) + '</b></p>');
-  if (S.reqOut.length) h += '<div class="fr-list">' + S.reqOut.map(r => '<div class="fr-row static muted">' + avatar(r, 36) + '<span class="fr-main"><b>' + esc(nameOf(r)) + '</b><span class="fr-st"><span>Request sent</span></span></span><button class="btn-text" id="frc-' + r.fid + '" data-act="fr-cancel" data-fid="' + r.fid + '">Cancel</button></div>').join('') + '</div>';
+  if (S.reqIn.length) h += '<p class="group-title">Requests</p><div class="fr-list">' + S.reqIn.map(r => '<div class="fr-row static">' + avatar(r, 44) + '<span class="fr-main"><b><bdi>' + esc(nameOf(r)) + '</bdi></b><span class="fr-st"><span><bdi>@' + esc(r.username) + '</bdi></span></span></span><span class="fr-acts"><button class="btn-text" id="frd-' + r.fid + '" data-act="fr-decline" data-fid="' + r.fid + '">Decline</button><button class="btn school sm" id="fra-' + r.fid + '" data-act="fr-accept" data-fid="' + r.fid + '">Accept</button></span></div>').join('') + '</div>';
+  h += '<p class="group-title">Friends</p>' + (S.friends.length ? '<div class="fr-list">' + S.friends.map(f => friendRow(f)).join('') + '</div>' : '<p class="sheet-note">No friends yet. Add them by username, and tell them yours: <b><bdi>@' + esc(S.me.username) + '</bdi></b></p>');
+  if (S.reqOut.length) h += '<div class="fr-list">' + S.reqOut.map(r => '<div class="fr-row static muted">' + avatar(r, 36) + '<span class="fr-main"><b><bdi>' + esc(nameOf(r)) + '</bdi></b><span class="fr-st"><span>Request sent</span></span></span><button class="btn-text" id="frc-' + r.fid + '" data-act="fr-cancel" data-fid="' + r.fid + '">Cancel</button></div>').join('') + '</div>';
   if (S.needsV4) h += '<p class="problem">' + ic('info', 'xs') + '<span>Choosing who sees what, location and notifications need one more database update: run <b>supabase/friends-v4.local.sql</b> in Supabase.</span></p>';
   // what friends see
   h += '<p class="group-title">What friends see</p>' +
     sw('fr-share-trip', 'Share my trip', shareTrip(), 'When you leave, your bus and train, when you get there. Worked out from your plan, so it works with the app closed.', 'fr-share-trip');
   // the chips show who sees it; "Everyone" also covers friends you add later
-  if (shareTrip() && S.friends.length && !S.needsV4) h += '<div class="pick-row fr-who" role="group" aria-label="Who sees your trip">' + chip('tt-all', 'Everyone', S.tripTo == null, 'fr-trip-all') + S.friends.map(f => chip('tw-' + f.fid, esc(nameOf(f)), seesTrip(f.id), 'fr-trip-who', ' data-id="' + esc(f.id) + '"')).join('') + '</div>' +
+  if (shareTrip() && S.friends.length && !S.needsV4) h += '<div class="pick-row fr-who" role="group" aria-label="Who sees your trip">' + chip('tt-all', 'Everyone', S.tripTo == null, 'fr-trip-all') + S.friends.map(f => chip('tw-' + f.fid, '<bdi>' + esc(nameOf(f)) + '</bdi>', seesTrip(f.id), 'fr-trip-who', ' data-id="' + esc(f.id) + '"')).join('') + '</div>' +
     (S.tripTo != null && !S.tripTo.length ? '<p class="sheet-note warn">Nobody can see your trip right now. Pick friends, or tap Everyone.</p>' : '');
   if (!S.needsV4) {
     h += sw('fr-share-loc', 'Share my location', locOn(), 'From this phone, only to the friends you pick. They see the nearest stop and can open it in Maps.', 'fr-share-loc');
-    if (locOn() && S.friends.length) h += '<div class="pick-row fr-who" role="group" aria-label="Who sees your location">' + S.friends.map(f => chip('lw-' + f.fid, esc(nameOf(f)), S.locTo.indexOf(f.id) >= 0, 'fr-loc-who', ' data-id="' + esc(f.id) + '"')).join('') + '</div>' +
+    if (locOn() && S.friends.length) h += '<div class="pick-row fr-who" role="group" aria-label="Who sees your location">' + S.friends.map(f => chip('lw-' + f.fid, '<bdi>' + esc(nameOf(f)) + '</bdi>', S.locTo.indexOf(f.id) >= 0, 'fr-loc-who', ' data-id="' + esc(f.id) + '"')).join('') + '</div>' +
       (S.locTo.length ? '' : '<p class="sheet-note warn">Pick who can see it. Right now nobody can.</p>') +
       '<div class="seg sm loc-when" role="radiogroup" aria-label="When to share">' + [['trip', 'During my trips'], ['open', 'Whenever the app is open']].map(o => '<button id="lm-' + o[0] + '" role="radio" data-act="fr-loc-mode" data-v="' + o[0] + '" aria-checked="' + (locMode() === o[0]) + '">' + o[1] + '</button>').join('') + '</div>' +
       '<p class="sheet-note">Only while the app is open: phones don’t let web apps use location in the background. ' + (locMode() === 'trip' ? 'During your trips means from 15 minutes before you leave until you arrive, both ways. ' : '') + 'It takes one rough reading every 3 minutes instead of keeping GPS on, so it barely uses battery.</p>';
@@ -590,7 +590,7 @@ D.SHEETS.friends = () => {
     if (S.push === 'on' || D.DEMO) {
       const P = S.prefs || { friends: [], moments: [], timetable: false };
       h += '<p class="sheet-note">Tell me when a friend is:</p><div class="pick-row" role="group" aria-label="Moments">' + MOMENTS.map(m => chip('nm-' + m[0], m[1], P.moments.indexOf(m[0]) >= 0, 'nt-moment', ' data-m="' + m[0] + '"')).join('') + '</div>' +
-        (S.friends.length ? '<p class="sheet-note">About:</p><div class="pick-row" role="group" aria-label="Friends to hear about">' + S.friends.map(f => chip('nf-' + f.fid, esc(nameOf(f)), alertsFor(f.id), 'nt-friend', ' data-id="' + esc(f.id) + '"')).join('') + '</div>' : '') +
+        (S.friends.length ? '<p class="sheet-note">About:</p><div class="pick-row" role="group" aria-label="Friends to hear about">' + S.friends.map(f => chip('nf-' + f.fid, '<bdi>' + esc(nameOf(f)) + '</bdi>', alertsFor(f.id), 'nt-friend', ' data-id="' + esc(f.id) + '"')).join('') + '</div>' : '') +
         sw('nt-tt', 'Tomorrow’s timetable changes', P.timetable, 'Around 20:00, when the school posts them: cancelled lessons and swaps', 'nt-tt');
     }
   }
@@ -600,7 +600,7 @@ D.SHEETS.friend = a => {
   const f = S.friends.find(x => String(x.id) === String(a.id));
   if (!f) return { title: 'Friend', body: '<p class="sheet-note">Not on your friends list anymore.</p>' };
   const st = tripStatus(f.pres && f.pres.trip), l = locStatus(f.loc);
-  let h = '<div class="fr-hero">' + avatar(f, 64) + '<div><b>' + esc(nameOf(f)) + '</b><span>@' + esc(f.username) + '</span></div></div>';
+  let h = '<div class="fr-hero">' + avatar(f, 64) + '<div><b><bdi>' + esc(nameOf(f)) + '</bdi></b><span><bdi>@' + esc(f.username) + '</bdi></span></div></div>';
   if (st) {
     h += '<p class="fr-now">' + ic(st.icon, 'sm') + '<span><b>' + esc(st.text) + '</b>' + (st.sub ? ' · ' + esc(st.sub) : '') + '</span></p>';
     if (sameTrain(st)) h += '<p class="fr-same big">' + ic('train', 'xs') + 'Same train as you</p>';
@@ -619,7 +619,7 @@ D.SHEETS.friend = a => {
   h += S.removing === f.fid
     ? '<div class="confirm"><p>Remove ' + esc(nameOf(f)) + '? You’ll stop seeing each other’s trips.</p><div class="sheet-actions"><button class="btn ghost" id="fr-rm-no" data-act="fr-rm-no">Cancel</button><button class="btn primary" id="fr-rm-yes" data-act="fr-rm-yes" data-fid="' + f.fid + '">Remove</button></div></div>'
     : '<button class="btn ghost block" id="fr-rm" data-act="fr-rm" data-fid="' + f.fid + '">Remove friend</button>';
-  return { title: nameOf(f), body: h };
+  return { title: nameOf(f), own: true, body: h };
 };
 
 /* ---------- actions ---------- */

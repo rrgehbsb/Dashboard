@@ -7,7 +7,7 @@
 (function () {
 'use strict';
 
-const VERSION = '2.9.11';
+const VERSION = '2.9.12';
 const SB_URL = 'https://mtuoqwbrujxutofhyahb.supabase.co';
 const SB_KEY = 'sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
 const DEMO = /[?&]demo\b/.test(location.search);
@@ -23,21 +23,26 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 const plural = (n, one, many) => n === 1 ? one : many;
 const fmtN = (n, dec) => Number(n).toLocaleString('en-US', { minimumFractionDigits: dec || 0, maximumFractionDigits: dec || 0 });
-const ic = (n, cls) => '<svg class="i ' + (cls || '') + '" aria-hidden="true"><use href="#i-' + n + '"/></svg>';
+const DIR_ICONS = { 'chev-r': 1, 'chev-l': 1, arrow: 1, go: 1, logout: 1 }; // mirrored right-to-left
+const ic = (n, cls) => '<svg class="i ' + (cls || '') + (DIR_ICONS[n] ? ' dir' : '') + '" aria-hidden="true"><use href="#i-' + n + '"/></svg>';
 const readJSON = k => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } };
 const writeJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 
-const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const DOW_L = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const MON_L = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+// language (i18n.js): Hebrew dates read "יום שני, 19 באוקטובר" / "יום ב׳ 26.10"
+const L10N = window.I18N || { he: false, t: x => x };
+const HE = L10N.he;
+const t = (x, v) => L10N.t(x, v);
+const DOW = HE ? ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'] : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DOW_L = HE ? ['יום ראשון', 'יום שני', 'יום שלישי', 'יום רביעי', 'יום חמישי', 'יום שישי', 'שבת'] : ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const MON = HE ? ['ינו׳', 'פבר׳', 'מרץ', 'אפר׳', 'מאי', 'יוני', 'יולי', 'אוג׳', 'ספט׳', 'אוק׳', 'נוב׳', 'דצמ׳'] : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MON_L = HE ? ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'] : ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const dk = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
 const dayAt = off => { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() + off); return d; };
 const todayKey = () => dk(new Date());
 const parseDk = s => { const p = String(s).split('-').map(Number); return new Date(p[0], p[1] - 1, p[2], 12); };
 const daysFrom = s => { if (!s) return null; const d = parseDk(s); if (isNaN(d)) return null; return Math.round((d - dayAt(0)) / 864e5); };
-const dShort = d => DOW[d.getDay()] + ' ' + d.getDate() + ' ' + MON[d.getMonth()];
-const dLong = d => DOW_L[d.getDay()] + ', ' + d.getDate() + ' ' + MON_L[d.getMonth()];
+const dShort = d => HE ? 'יום ' + DOW[d.getDay()] + ' ' + d.getDate() + '.' + (d.getMonth() + 1) : DOW[d.getDay()] + ' ' + d.getDate() + ' ' + MON[d.getMonth()];
+const dLong = d => HE ? DOW_L[d.getDay()] + ', ' + d.getDate() + ' ב' + MON_L[d.getMonth()] : DOW_L[d.getDay()] + ', ' + d.getDate() + ' ' + MON_L[d.getMonth()];
 const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
 const hhmm = m => { m = ((Math.round(m) % 1440) + 1440) % 1440; return pad(Math.floor(m / 60)) + ':' + pad(m % 60); };
 
@@ -477,7 +482,10 @@ function openSheet(kind, arg) {
 function renderSheet() {
   if (!sheetKind || !SHEETS[sheetKind]) return;
   const r = SHEETS[sheetKind](sheetArg);
-  $('#sheet-title').textContent = r.title;
+  const st = $('#sheet-title');
+  st.textContent = r.title;
+  // a title that is something you wrote (a task, a friend's name) stays exactly as written
+  if (r.own) st.setAttribute('translate', 'no'); else st.removeAttribute('translate');
   $('#sheet-body').innerHTML = r.body;
   animate($('#sheet-body'));
 }
@@ -515,6 +523,8 @@ SHEETS.settings = a => {
     body: '<div class="set-avatar">' + (S ? '<button class="av" id="set-av" data-act="sheet" data-sheet="profile" aria-label="Profile and photo">' + av + '</button>' : '<span class="av" id="set-av">' + av + '</span>') +
       '<div style="flex:1;min-width:0"><label class="field-label" for="set-name">Name</label><input class="text-in" id="set-name" value="' + esc(nm) + '" autocomplete="off" maxlength="40"></div></div>' +
       (S ? '<div class="menu-list"><button class="menu-item" id="st-friends" data-act="sheet" data-sheet="friends">' + ic('users') + 'Friends' + ic('chev-r', 'sm r') + '</button></div>' : '') +
+      '<p class="group-title" translate="no">Language · שפה</p><div class="seg lang-seg" role="radiogroup" aria-label="Language" translate="no">' +
+      [['en', 'English'], ['he', 'עברית']].map(o => '<button id="lang-' + o[0] + '" role="radio" data-act="lang" data-v="' + o[0] + '" aria-checked="' + ((HE ? 'he' : 'en') === o[0]) + '" lang="' + o[0] + '">' + o[1] + '</button>').join('') + '</div>' +
       '<p class="group-title">Appearance</p><div class="seg" role="radiogroup" aria-label="Appearance">' +
       [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']].map(o => '<button id="th-' + o[0] + '" role="radio" data-act="theme" data-v="' + o[0] + '" aria-checked="' + (t === o[0]) + '">' + o[1] + '</button>').join('') + '</div>' +
       '<p class="group-title">Account</p><div class="menu-list">' +
@@ -600,6 +610,8 @@ const ACT = {
   'logout-cancel': () => { confirmLogout = false; renderSheet(); },
   'rc-new': () => newRecoveryCode(),
   'rc-copy': async () => { const a = sheetArg; try { await navigator.clipboard.writeText(a.code); a.copied = true; renderSheet(); } catch (e) { const r = document.createRange(), b = $('#rc-box'); if (b) { r.selectNodeContents(b); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); } } },
+  // a new language: remembered here and on your other devices, then the app reloads in it
+  lang: el => { const l = el.dataset.v; if (l === (HE ? 'he' : 'en')) return; L10N.set(l); settings.set('lang', l); settings.flush().finally(() => location.reload()); setTimeout(() => location.reload(), 1500); },
   'logout-yes': async () => { try { if (!DEMO) await sb().auth.signOut(); } catch (e) {} location.href = '/login.html'; }
 };
 const LP = { 'water-sheet': () => openSheet('water') };
@@ -667,7 +679,11 @@ async function boot(page) {
   const id = await session();
   if (!id) return false;
   syncAll();
-  settings.on(() => { setTheme(theme()); if (!DEMO) retireClassicOnce(); });
+  settings.on(() => {
+    setTheme(theme()); if (!DEMO) retireClassicOnce();
+    const l = settings.get('lang');
+    if ((l === 'he' || l === 'en') && l !== (HE ? 'he' : 'en') && !settings.hasDirty()) { L10N.set(l); location.reload(); }
+  });
   return true;
 }
 
@@ -678,6 +694,6 @@ window.DASH = {
   waterProgress, waterChip, addWater, onWater: f => waterSubs.push(f),
   ring, numEl, animate, toast, hideToast, SHEETS, openSheet, renderSheet, closeSheet,
   sheetArg: () => sheetArg, sheetKind: () => sheetKind, ACT, LP, boot,
-  sb, fresh, uid: () => uid, pageHref, ukey, isOffline: () => offline
+  sb, fresh, uid: () => uid, pageHref, ukey, isOffline: () => offline, t, he: HE
 };
 })();
