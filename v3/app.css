@@ -855,3 +855,9 @@ button.tt-note:active { transform:scale(.99); }
 :root[data-theme="dark"] .tt-checked.bad { color:#FFB067; }
 .commute .note.wp { display:flex; gap:6px; align-items:flex-start; margin-top:8px; padding:8px 10px; border-radius:12px; background:color-mix(in srgb, var(--hf) 14%, transparent); font-size:13px; }
 .commute .note.wp svg { flex:none; margin-top:2px; }
+
+/* ---------- Recovery code ---------- */
+.code-box { display:block; text-align:center; padding:18px 12px; border-radius:var(--r-m); background:var(--todo-soft); color:var(--todo-ink); font-family:ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size:24px; font-weight:800; letter-spacing:.08em; user-select:all; -webkit-user-select:all; overflow-wrap:anywhere; }
+.warn-dot { color:#C2410C; font-weight:700; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .warn-dot { color:#FFB067; } }
+:root[data-theme="dark"] .warn-dot { color:#FFB067; }

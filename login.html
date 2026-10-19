@@ -17,7 +17,7 @@
 <script>(function(){var s=window.supabase;if(s&&s.createClient&&!s.__oneClient){s.__oneClient=true;var o=s.createClient.bind(s),c={};s.createClient=function(u,k,op){var q=String(u)+"|"+String(k);return c[q]||(c[q]=o(u,k,op));};}})();</script>
 <link rel="preload" href="/v3/fonts/BricolageGrotesque-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/v3/fonts/Onest-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/v3/app.css?v=2.9.7">
+<link rel="stylesheet" href="/v3/app.css?v=2.9.8">
 <style>
 /* Login: one bright brand block + one white working card. Top-aligned on phones so the
    keyboard never covers the button; two columns from 900px. */
@@ -57,6 +57,12 @@
 .go { min-height:52px; font-size:17px; }
 .go[disabled] { opacity:.6; }
 .foot { text-align:center; font-size:13px; color:var(--ink-3); }
+.link-btn { align-self:center; min-height:44px; padding:0 12px; font-weight:700; font-size:15px; color:var(--todo-ink); }
+#rec-form, .code-panel { display:flex; flex-direction:column; gap:14px; }
+#rec-form[hidden], .code-panel[hidden], #auth-form[hidden], .auth-card .seg[hidden] { display:none; }
+.rec-title { font-size:22px; font-weight:800; line-height:1.15; margin-bottom:4px; }
+.code-in { font-family:ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing:.06em; text-transform:uppercase; }
+.code-box { display:block; text-align:center; padding:18px 12px; border-radius:var(--r-m); background:var(--todo-soft); color:var(--todo-ink); font-family:ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size:24px; font-weight:800; letter-spacing:.08em; user-select:all; -webkit-user-select:all; overflow-wrap:anywhere; }
 
 @media (min-width: 900px) {
   .auth { max-width:960px; display:grid; grid-template-columns:1fr 1fr; align-items:center; align-content:center; gap:24px; padding-top:48px; }
@@ -104,7 +110,41 @@
       </div>
       <div id="msg" role="alert" aria-live="polite"></div>
       <button class="btn todo block go" id="go" type="submit">Sign in</button>
+      <button class="link-btn" id="forgot" type="button">Forgot password?</button>
     </form>
+
+    <!-- forgot password: the recovery code sets a new one (no email needed) -->
+    <form id="rec-form" novalidate hidden>
+      <div>
+        <h2 class="rec-title">Set a new password</h2>
+        <p class="hint">Use the recovery code you saved when you made your account (or later in Settings).</p>
+      </div>
+      <div class="fld">
+        <label class="field-label" for="rec-email">Email</label>
+        <input class="text-in" id="rec-email" type="email" inputmode="email" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="you@example.com">
+      </div>
+      <div class="fld">
+        <label class="field-label" for="rec-code">Recovery code</label>
+        <input class="text-in code-in" id="rec-code" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" placeholder="XXXX-XXXX-XXXX-XXXX" maxlength="24">
+      </div>
+      <div class="fld">
+        <label class="field-label" for="rec-pass">New password</label>
+        <input class="text-in" id="rec-pass" type="password" autocomplete="new-password" placeholder="At least 6 characters">
+      </div>
+      <div id="rec-msg" role="alert" aria-live="polite"></div>
+      <button class="btn todo block go" id="rec-go" type="submit">Set new password</button>
+      <button class="link-btn" id="rec-back" type="button">Back to sign in</button>
+      <p class="hint">No code? Ask whoever runs this app to reset your password.</p>
+    </form>
+
+    <!-- shown once: the recovery code -->
+    <div id="code-panel" class="code-panel" hidden>
+      <h2 class="rec-title" id="code-title">Save your recovery code</h2>
+      <p class="hint" id="code-why">If you ever forget your password, this code lets you set a new one. Nobody else has it, and it won’t be shown again. Take a screenshot or save it in your notes.</p>
+      <output class="code-box" id="code-box" aria-live="polite"></output>
+      <button class="btn ghost block" id="code-copy" type="button">Copy code</button>
+      <button class="btn todo block go" id="code-done" type="button">I saved it · continue</button>
+    </div>
   </section>
 
   <p class="foot" id="foot">You stay signed in on this device.</p>
@@ -189,6 +229,7 @@ function setTab(t) {
   $('#pass-in').placeholder = t === 'up' ? 'Pick a password' : 'Your password';
   $('#go').textContent = t === 'up' ? 'Create account' : 'Sign in';
   $('#foot').textContent = t === 'up' ? 'No email to confirm. You’re in straight away.' : 'You stay signed in on this device.';
+  $('#forgot').hidden = t === 'up';
   say('');
 }
 function say(text, kind, action) {
@@ -218,9 +259,11 @@ function friendly(error) {
   if (/rate limit|too many/i.test(m)) return 'Too many tries in a row. Wait a minute, then try again.';
   return 'Something went wrong signing in. Try again in a moment.';
 }
-async function callAccount(payload) {
+async function callAccount(payload, token) {
   try {
-    const r = await fetch('/api/account', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = 'Bearer ' + token;
+    const r = await fetch('/api/account', { method: 'POST', headers, body: JSON.stringify(payload) });
     const j = await r.json().catch(() => ({}));
     return Object.assign({ ok: r.ok }, j);
   } catch (e) {
@@ -254,8 +297,53 @@ async function signUp(name, email, password) {
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
   if (error) { setBusy(false); setTab('in'); say('Your account is ready. Sign in with the same email and password.', 'ok'); return; }
   setBusy(true, 'Setting up…');
+  // a recovery code instead of "reset by email" (shown once, before going in)
+  const rc = await callAccount({ action: 'recovery_new' }, data.session && data.session.access_token);
+  if (rc.ok && rc.code) await showCode(rc.code);
   await enter(data.user.id, true, name);
 }
+
+/* ---------- recovery codes ---------- */
+// Shows the code until "I saved it" is tapped.
+function showCode(code, title, why) {
+  $('#auth-form').hidden = true; $('#rec-form').hidden = true; $('.auth-card .seg').hidden = true;
+  $('#code-title').textContent = title || 'Save your recovery code';
+  if (why) $('#code-why').textContent = why;
+  $('#code-box').textContent = code;
+  $('#code-panel').hidden = false;
+  $('#foot').textContent = 'Keep the code somewhere only you can see.';
+  $('#code-done').focus();
+  return new Promise(res => { $('#code-done').onclick = () => { $('#code-done').disabled = true; $('#code-done').textContent = 'Opening…'; res(); }; });
+}
+$('#code-copy').addEventListener('click', async () => {
+  const code = $('#code-box').textContent;
+  try { await navigator.clipboard.writeText(code); $('#code-copy').textContent = 'Copied ✓'; }
+  catch (e) { const r = document.createRange(); r.selectNodeContents($('#code-box')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); $('#code-copy').textContent = 'Selected: copy it now'; }
+});
+function showRecover(on) {
+  $('#auth-form').hidden = on; $('.auth-card .seg').hidden = on; $('#rec-form').hidden = !on;
+  $('#foot').textContent = on ? 'Your recovery code works once. You’ll get a new one.' : 'You stay signed in on this device.';
+  if (on) { $('#rec-email').value = $('#email-in').value; ($('#rec-email').value ? $('#rec-code') : $('#rec-email')).focus(); }
+}
+function recSay(text, kind) { const el = $('#rec-msg'); el.className = text ? 'msg ' + (kind || 'err') : ''; el.textContent = text || ''; }
+$('#forgot').addEventListener('click', () => showRecover(true));
+$('#rec-back').addEventListener('click', () => { recSay(''); showRecover(false); });
+$('#rec-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  if (busy) return;
+  const email = $('#rec-email').value.trim().toLowerCase(), code = $('#rec-code').value.trim(), password = $('#rec-pass').value;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { recSay('That doesn’t look like an email address.'); $('#rec-email').focus(); return; }
+  if (code.replace(/[^A-Za-z0-9]/g, '').length !== 16) { recSay('The code has 16 letters and numbers, like ABCD-EFGH-JKLM-NPQR.'); $('#rec-code').focus(); return; }
+  if (password.length < 6) { recSay('Use a password with at least 6 characters.'); $('#rec-pass').focus(); return; }
+  busy = true; $('#rec-go').disabled = true; $('#rec-go').textContent = 'Checking…'; recSay('');
+  const r = await callAccount({ action: 'recover', email, code, password });
+  if (!r.ok) { busy = false; $('#rec-go').disabled = false; $('#rec-go').textContent = 'Set new password'; recSay(r.error || 'Couldn’t set the new password. Try again.'); return; }
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) { busy = false; showRecover(false); $('#email-in').value = email; say('Your password is changed. Sign in with the new one.', 'ok'); return; }
+  try { await sb.auth.signOut({ scope: 'others' }); } catch (err) {} // other phones must sign in again
+  await showCode(r.code, 'Your new recovery code', 'Your password is changed and the old code is used up. Here’s your new one: save it the same way. Other devices were signed out.');
+  await enter(data.user.id, false);
+});
 
 $('#auth-form').addEventListener('submit', e => {
   e.preventDefault();
