@@ -26,6 +26,11 @@ function statusRow(icon, title, where, time, b) {
   return '<div class="st-row">' + ic(icon, 'sm') + '<div class="st-main"><b>' + title + '</b><span>' + where + '</span></div><div class="st-side"><span class="st-t">' + time + '</span>' + b + '</div></div>';
 }
 
+// The option you tap is the one your friends see (when you share your trip).
+function shareChoice(dir, train) {
+  const c = C.cfg(school), ph = c && C.rail() ? C.phase(c) : null, m = ph && (dir === 'to' ? ph.m : ph.a);
+  if (m && window.SOCIAL) window.SOCIAL.choose(m.dk, dir, train);
+}
 const entName = k => (C.SCHOOL[k] ? C.SCHOOL[k].name + ' (' + C.SCHOOL[k].he + ')' : 'school');
 const ttOn = () => { const T = window.TIMETABLE, s = T ? T.settings(school) : {}; return !!s.cls && s.trip !== false; };
 // "first lesson 07:45 · by 08:00" when the timetable sets the day, else the times you set
@@ -296,8 +301,8 @@ function syncOff() { const i = $('#cs-off'); if (i && S.trip) S.trip.offUntil = 
 const reopen = () => D.openSheet('commute', {});
 Object.assign(D.ACT, {
   'trip-open': () => { if (D.sheetKind() !== 'commute' && D.sheetKind() !== 'pick') S.trip = null; work(); D.openSheet('commute', {}); },
-  'alt-pick': el => { S.pick = +el.dataset.t; render(); },
-  'alt-back': el => { S.pickBack = +el.dataset.t; render(); },
+  'alt-pick': el => { S.pick = +el.dataset.t; render(); shareChoice('to', S.pick); },
+  'alt-back': el => { S.pickBack = +el.dataset.t; render(); shareChoice('home', S.pickBack); },
   'board-refresh': () => { S.lastFetch = 0; refreshBoard(); D.toast('Refreshing live data'); },
   'home-line': el => { syncOff(); const f = work(), l = el.dataset.v, i = f.home.lines.indexOf(l); if (i >= 0) { if (f.home.lines.length > 1) f.home.lines.splice(i, 1); } else f.home.lines.push(l); D.renderSheet(); },
   'pick-home': () => { syncOff(); D.openSheet('pick', { k: 'home' }); },

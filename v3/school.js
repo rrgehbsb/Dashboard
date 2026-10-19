@@ -350,6 +350,7 @@ D.SHEETS.schoolmenu = () => ({
   body: '<div class="menu-list">' +
     '<button class="menu-item" id="sm-live" data-act="sheet" data-sheet="live">' + ic('clock') + 'Live buses & trains</button>' +
     '<button class="menu-item" id="sm-trip" data-act="trip-open">' + ic('train') + 'Trip & school times</button>' +
+    (window.SOCIAL ? '<button class="menu-item" id="sm-friends" data-act="sheet" data-sheet="friends">' + ic('users') + 'Friends</button>' : '') +
     '<button class="menu-item" id="sm-grades" data-act="sheet" data-sheet="grades">' + ic('grid') + 'Grades</button>' +
     '<button class="menu-item" id="sm-subj" data-act="sheet" data-sheet="subjects">' + ic('edit') + 'Subjects</button></div>'
 });

@@ -740,3 +740,53 @@ a.tile { color:var(--ink); }
 .cal-title { font-size:20px; font-weight:700; line-height:1.3; }
 button.tt-note { text-align:left; width:100%; font:inherit; font-size:14px; font-weight:600; }
 button.tt-note:active { transform:scale(.99); }
+
+/* ---------- Friends (profile, friends list, friends on the way) ---------- */
+.set-avatar .av { overflow:hidden; }
+.set-avatar .av img, .fav img { width:100%; height:100%; object-fit:cover; display:block; }
+.fav { display:grid; place-items:center; flex:none; border-radius:999px; overflow:hidden; background:var(--school-soft); color:var(--school-ink); font-family:var(--f-display); font-weight:800; }
+.fav.s36 { width:36px; height:36px; font-size:15px; }
+.fav.s44 { width:44px; height:44px; font-size:18px; }
+.fav.s64 { width:64px; height:64px; font-size:26px; }
+.fav.s88 { width:88px; height:88px; font-size:34px; }
+.pf-photo { display:flex; align-items:center; gap:16px; }
+.pf-btns { display:flex; flex-direction:column; align-items:flex-start; gap:4px; }
+.at-in { display:flex; align-items:center; gap:4px; background:var(--surface-2); border-radius:var(--r-m); padding-left:14px; }
+.at-in span { color:var(--ink-3); font-weight:700; font-size:17px; }
+.at-in .text-in { background:transparent; padding-left:2px; }
+.fr-list { display:flex; flex-direction:column; }
+.fr-row, .fr-me { display:flex; align-items:center; gap:12px; min-height:60px; padding:8px 0; text-align:left; width:100%; }
+.fr-list .fr-row + .fr-row { border-top:1px solid var(--line); }
+.fr-row.muted { opacity:.75; min-height:52px; }
+.fr-me { background:var(--surface-2); border-radius:var(--r-m); padding:10px 14px; }
+.fr-me .r { margin-left:auto; display:flex; align-items:center; gap:2px; color:var(--ink-3); font-weight:600; font-size:15px; }
+.fr-main { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.fr-main b { font-size:16px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.fr-st { display:flex; align-items:center; gap:6px; font-size:14px; color:var(--ink-2); min-width:0; }
+.fr-st span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.fr-st svg { flex:none; color:var(--school-ink); }
+.fr-acts { display:flex; align-items:center; gap:4px; flex:none; }
+.btn.sm { min-height:40px; padding:0 14px; font-size:14px; }
+.fr-same { flex:none; font-size:12px; font-weight:800; padding:3px 9px; border-radius:999px; background:var(--school); color:var(--on-school); white-space:nowrap; }
+.fr-same.big { display:inline-flex; align-items:center; gap:6px; align-self:flex-start; font-size:14px; padding:6px 12px; }
+.fr-loc { flex:none; color:var(--school-ink); display:grid; place-items:center; }
+.fr-card { display:flex; flex-direction:column; gap:4px; padding-bottom:10px; }
+.fr-head { display:flex; align-items:center; justify-content:space-between; }
+.fr-hero { display:flex; align-items:center; gap:14px; }
+.fr-hero div { display:flex; flex-direction:column; min-width:0; }
+.fr-hero b { font-size:20px; font-weight:800; }
+.fr-hero span { color:var(--ink-3); font-size:15px; }
+.fr-now { display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:var(--r-m); background:var(--school-soft); color:var(--school-ink); font-size:16px; }
+.fr-now b { color:var(--ink); }
+.fr-now svg { flex:none; }
+.fr-plan { list-style:none; display:flex; flex-direction:column; background:var(--surface-2); border-radius:var(--r-m); padding:4px 14px; }
+.fr-plan li { display:flex; align-items:center; gap:10px; min-height:40px; font-size:15px; }
+.fr-plan li + li { border-top:1px solid var(--line); }
+.fr-plan .t { width:44px; font-weight:700; font-variant-numeric:tabular-nums; color:var(--ink-2); }
+.fr-plan svg { color:var(--ink-3); flex:none; }
+.fr-plan li.past { color:var(--ink-3); }
+.fr-plan li.now { font-weight:700; color:var(--school-ink); }
+.fr-plan li.now svg, .fr-plan li.now .t { color:var(--school-ink); }
+.fr-map .grow { display:flex; flex-direction:column; }
+.fr-map .grow small { font-size:13px; color:var(--ink-3); font-weight:500; }
+.fr-acts .btn-text, .fr-row .btn-text { color:var(--ink-2); }

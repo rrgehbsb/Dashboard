@@ -1,10 +1,10 @@
 // Dashboard Service Worker
 // Bump CACHE_VERSION on each deploy to force cache refresh
-const CACHE_VERSION = 'v2.9.3';
+const CACHE_VERSION = 'v2.9.4';
 const CACHE_NAME = `dashboard-${CACHE_VERSION}`;
 
 // Files to pre-cache on install
-const V3 = '?v=2.9.3';
+const V3 = '?v=2.9.4';
 const PRECACHE = [
   '/v3/',
   '/v3/app.css' + V3,
@@ -20,6 +20,7 @@ const PRECACHE = [
   '/v3/trip.js' + V3,
   '/v3/timetable.js' + V3,
   '/v3/ttui.js' + V3,
+  '/v3/social.js' + V3,
   '/v3/data/rail.json?v=20261019',
   '/v3/data/bus.json?v=20261019',
   '/v3/vendor/supabase-2.116.0.js',

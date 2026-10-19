@@ -7,7 +7,7 @@
 (function () {
 'use strict';
 
-const VERSION = '2.9.3';
+const VERSION = '2.9.4';
 const SB_URL = 'https://mtuoqwbrujxutofhyahb.supabase.co';
 const SB_KEY = 'sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
 const DEMO = /[?&]demo\b/.test(location.search);
@@ -392,9 +392,14 @@ SHEETS.water = () => {
 let confirmLogout = false;
 SHEETS.settings = () => {
   const t = theme(), nm = userName();
+  // profile photo + friends come from social.js (when the page loads it)
+  const S = window.SOCIAL, me = S && S.me(), photo = me && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(me.avatar || '') ? me.avatar : null;
+  const av = (photo ? '<img src="' + photo + '" alt="">' : esc((nm || '?').charAt(0).toUpperCase()));
   return {
     title: 'Settings',
-    body: '<div class="set-avatar"><span class="av" id="set-av">' + esc((nm || '?').charAt(0).toUpperCase()) + '</span><div style="flex:1;min-width:0"><label class="field-label" for="set-name">Name</label><input class="text-in" id="set-name" value="' + esc(nm) + '" autocomplete="off" maxlength="40"></div></div>' +
+    body: '<div class="set-avatar">' + (S ? '<button class="av" id="set-av" data-act="sheet" data-sheet="profile" aria-label="Profile and photo">' + av + '</button>' : '<span class="av" id="set-av">' + av + '</span>') +
+      '<div style="flex:1;min-width:0"><label class="field-label" for="set-name">Name</label><input class="text-in" id="set-name" value="' + esc(nm) + '" autocomplete="off" maxlength="40"></div></div>' +
+      (S ? '<div class="menu-list"><button class="menu-item" id="st-friends" data-act="sheet" data-sheet="friends">' + ic('users') + 'Friends' + ic('chev-r', 'sm r') + '</button></div>' : '') +
       '<p class="group-title">Appearance</p><div class="seg" role="radiogroup" aria-label="Appearance">' +
       [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']].map(o => '<button id="th-' + o[0] + '" role="radio" data-act="theme" data-v="' + o[0] + '" aria-checked="' + (t === o[0]) + '">' + o[1] + '</button>').join('') + '</div>' +
       '<p class="group-title">Account</p><div class="menu-list">' +
@@ -470,7 +475,7 @@ function wire() {
   document.addEventListener('input', e => {
     if (e.target && e.target.id === 'set-name') {
       settings.set('name', e.target.value);
-      const av = $('#set-av'); if (av) av.textContent = (e.target.value.trim() || '?').charAt(0).toUpperCase();
+      const av = $('#set-av'); if (av && !av.querySelector('img')) av.textContent = (e.target.value.trim() || '?').charAt(0).toUpperCase();
       window.dispatchEvent(new CustomEvent('dash:name'));
     }
   });

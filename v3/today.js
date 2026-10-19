@@ -17,6 +17,7 @@ const dash = D.Row('dashboard', {
   onRemote: data => { const b = D.readJSON(SYNC_LS) || {}; Object.keys(data).forEach(k => { if (k !== '_pushAt') b[k] = data[k]; }); b._localAt = data._pushAt || b._localAt || 0; D.writeJSON(SYNC_LS, b); }
 });
 const school = D.Row('school', { readOnly: true });
+window.TODAY_SCHOOL_ROW = school; // social.js shares the trip from here too
 const gym = D.Row('po-coach', { readOnly: true });
 const food = D.Row('food', { readOnly: true });
 
