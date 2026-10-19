@@ -7,7 +7,7 @@
 (function () {
 'use strict';
 
-const VERSION = '2.9.12';
+const VERSION = '2.9.13';
 const SB_URL = 'https://mtuoqwbrujxutofhyahb.supabase.co';
 const SB_KEY = 'sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
 const DEMO = /[?&]demo\b/.test(location.search);
@@ -522,7 +522,8 @@ SHEETS.settings = a => {
     title: 'Settings',
     body: '<div class="set-avatar">' + (S ? '<button class="av" id="set-av" data-act="sheet" data-sheet="profile" aria-label="Profile and photo">' + av + '</button>' : '<span class="av" id="set-av">' + av + '</span>') +
       '<div style="flex:1;min-width:0"><label class="field-label" for="set-name">Name</label><input class="text-in" id="set-name" value="' + esc(nm) + '" autocomplete="off" maxlength="40"></div></div>' +
-      (S ? '<div class="menu-list"><button class="menu-item" id="st-friends" data-act="sheet" data-sheet="friends">' + ic('users') + 'Friends' + ic('chev-r', 'sm r') + '</button></div>' : '') +
+      '<div class="menu-list"><button class="menu-item tour-row" id="st-tour" data-act="tour"><span class="tour-ic">' + ic('spark') + '</span><span class="grow">Take the tour<small>Everything the app does, in 2 minutes</small></span>' + ic('chev-r', 'sm r') + '</button>' +
+      (S ? '<button class="menu-item" id="st-friends" data-act="sheet" data-sheet="friends">' + ic('users') + 'Friends' + ic('chev-r', 'sm r') + '</button>' : '') + '</div>' +
       '<p class="group-title" translate="no">Language · שפה</p><div class="seg lang-seg" role="radiogroup" aria-label="Language" translate="no">' +
       [['en', 'English'], ['he', 'עברית']].map(o => '<button id="lang-' + o[0] + '" role="radio" data-act="lang" data-v="' + o[0] + '" aria-checked="' + ((HE ? 'he' : 'en') === o[0]) + '" lang="' + o[0] + '">' + o[1] + '</button>').join('') + '</div>' +
       '<p class="group-title">Appearance</p><div class="seg" role="radiogroup" aria-label="Appearance">' +
@@ -614,6 +615,13 @@ const ACT = {
   lang: el => { const l = el.dataset.v; if (l === (HE ? 'he' : 'en')) return; L10N.set(l); settings.set('lang', l); settings.flush().finally(() => location.reload()); setTimeout(() => location.reload(), 1500); },
   'logout-yes': async () => { try { if (!DEMO) await sb().auth.signOut(); } catch (e) {} location.href = '/login.html'; }
 };
+let tourP = null;
+function loadTour() {
+  if (window.TOUR) return Promise.resolve();
+  if (!tourP) tourP = new Promise((res, rej) => { const el = document.createElement('script'); el.src = '/v3/tour.js?v=' + VERSION; el.onload = res; el.onerror = () => { tourP = null; rej(new Error('tour')); }; document.head.appendChild(el); });
+  return tourP;
+}
+ACT.tour = () => { closeSheet(); loadTour().then(() => window.TOUR.open()).catch(() => toast('Couldn’t open the tour. Check your connection.')); };
 const LP = { 'water-sheet': () => openSheet('water') };
 
 let lp = null, suppressClick = false, lastLp = 0;
@@ -679,7 +687,10 @@ async function boot(page) {
   const id = await session();
   if (!id) return false;
   syncAll();
+  if (DEMO && /[?&]tour\b/.test(location.search)) setTimeout(() => ACT.tour(), 300);
+  let tourOffered = false;
   settings.on(() => {
+    if (page === 'today' && !tourOffered && settings.get('tourPending') === true) { tourOffered = true; settings.set('tourPending', false); setTimeout(() => ACT.tour(), 900); }
     setTheme(theme()); if (!DEMO) retireClassicOnce();
     const l = settings.get('lang');
     if ((l === 'he' || l === 'en') && l !== (HE ? 'he' : 'en') && !settings.hasDirty()) { L10N.set(l); location.reload(); }

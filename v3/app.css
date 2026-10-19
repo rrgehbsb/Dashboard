@@ -924,3 +924,9 @@ button.tt-note:active { transform:scale(.99); }
 @media (min-width: 900px) {
   [dir="rtl"] .tabs { box-shadow:-1px 0 0 var(--line); }
 }
+
+/* Settings: the tour row */
+.tour-row .grow { display:flex; flex-direction:column; line-height:1.25; }
+.tour-row .grow small { font-size:13px; font-weight:500; color:var(--ink-3); margin-top:2px; }
+.tour-ic { width:34px; height:34px; border-radius:11px; display:grid; place-items:center; flex:none; color:#fff;
+  background:linear-gradient(135deg, var(--todo), var(--school) 55%, var(--water)); box-shadow:0 4px 12px -4px color-mix(in srgb, var(--todo) 70%, transparent); }

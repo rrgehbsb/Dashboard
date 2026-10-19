@@ -266,7 +266,7 @@ function heroModel() {
   const done = items.filter(g => g.done).length;
   if (!items.length) return { area: 'todo', href: '#todo', eyebrow: 'Today', big: '<span class="t">Clear day</span>', sub: 'Nothing on your list', label: 'Clear day' };
   if (done === items.length) return { area: 'todo', href: '#todo', eyebrow: 'Today', big: '<span class="t">All done</span>', sub: items.length + ' ' + D.plural(items.length, 'thing', 'things') + ' ticked off', label: 'All done' };
-  return { area: 'todo', href: '#todo', eyebrow: 'Today', big: '<span class="n">' + D.numEl('hero-done', done) + '</span><span class="u">of ' + items.length + ' done</span>', sub: 'Next: ' + own((items.find(g => !g.done && g.queued) || items.find(g => !g.done)).text), bar: done / items.length, label: done + ' of ' + items.length + ' done' };
+  return { area: 'todo', href: '#todo', eyebrow: 'Today', big: '<span class="n">' + D.numEl('hero-done', done) + '</span><span class="u">of ' + items.length + ' done</span>', sub: '<span>Next: ' + own((items.find(g => !g.done && g.queued) || items.find(g => !g.done)).text) + '</span>', bar: done / items.length, label: done + ' of ' + items.length + ' done' };
 }
 function tileModels(heroArea) {
   const out = [];

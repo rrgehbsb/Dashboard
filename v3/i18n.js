@@ -54,7 +54,7 @@ function seg(s, inner) {
   if (pm && EXACT.has(pm[1])) return lead + EXACT.get(pm[1]) + pm[2] + trail;
   for (const p of PATTERNS) { const m = core.match(p.re); if (m) return lead + fill(p.to, p.names, m.slice(1)) + trail; }
   if (pm) { for (const p of PATTERNS) { const m = pm[1].match(p.re); if (m) return lead + fill(p.to, p.names, m.slice(1)) + pm[2] + trail; } }
-  if (!inner && /[A-Za-z]{2,}/.test(core) && !/^[A-Z0-9 ._@:/-]+$/.test(core)) missing.add(core);
+  if (!inner && /[A-Za-z]{2,}/.test(core) && !/[֐-׿]/.test(core) && !/^[A-Z0-9 ._@:/-]+$/.test(core)) missing.add(core); // text that is already Hebrew is done
   return s;
 }
 // numbers read left to right inside Hebrew: "07:45–11:45", "80×8", "12 / 140" (kept together, never reversed)

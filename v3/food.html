@@ -13,14 +13,14 @@
 <link rel="icon" href="/icon.svg?v=3" type="image/svg+xml">
 <title>Food · Dashboard</title>
 <script>(function(){try{var t=localStorage.getItem('dash3:theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);var l=localStorage.getItem('dash3:lang');if(l==='he'){document.documentElement.lang='he';document.documentElement.dir='rtl';}}catch(e){}})();</script>
-<script src="/v3/he.js?v=2.9.12"></script>
-<script src="/v3/i18n.js?v=2.9.12"></script>
+<script src="/v3/he.js?v=2.9.13"></script>
+<script src="/v3/i18n.js?v=2.9.13"></script>
 <script src="/v3/vendor/supabase-2.116.0.js"></script>
 <script>(function(){var s=window.supabase;if(s&&s.createClient&&!s.__oneClient){s.__oneClient=true;var o=s.createClient.bind(s),c={};s.createClient=function(u,k,op){var q=String(u)+"|"+String(k);return c[q]||(c[q]=o(u,k,op));};}})();</script>
 <script>/*__acctGuard4*/(function(){try{var real=null;for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(!/^sb-.*-auth-token$/.test(k))continue;try{var v=localStorage.getItem(k);if(v&&v.slice(0,7)==="base64-"){try{v=decodeURIComponent(escape(atob(v.slice(7))));}catch(e){try{v=atob(v.slice(7));}catch(e2){}}}var raw=JSON.parse(v);if(raw){if(raw.user&&raw.user.id)real=raw.user.id;else{var jwt=raw.access_token||(raw.currentSession&&raw.currentSession.access_token);if(jwt){var pp=JSON.parse(atob(jwt.split(".")[1].replace(/-/g,"+").replace(/_/g,"/")));if(pp&&pp.sub)real=pp.sub;}}}}catch(e){}if(real)break;}if(!real)return;localStorage.setItem("_dashUid",real);localStorage.setItem("_dashDataOwner",real);}catch(e){}})();</script>
 <link rel="preload" href="/v3/fonts/BricolageGrotesque-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/v3/fonts/Onest-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/v3/app.css?v=2.9.12">
+<link rel="stylesheet" href="/v3/app.css?v=2.9.13">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
@@ -61,7 +61,7 @@
     <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></symbol>
     <symbol id="i-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M8.5 15.5a5 5 0 0 1 0-7M15.5 8.5a5 5 0 0 1 0 7M5.6 18.4a9 9 0 0 1 0-12.8M18.4 5.6a9 9 0 0 1 0 12.8"/></symbol>
     <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M15.5 4.6a3.5 3.5 0 0 1 0 6.8M18 14.4c2.2.7 3.5 2.8 3.5 5.6"/></symbol><symbol id="i-locate" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22"/></symbol>
-  </defs>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol><symbol id="i-spark" viewBox="0 0 24 24"><path d="M11 3.5l1.7 4.8L17.5 10l-4.8 1.7L11 16.5l-1.7-4.8L4.5 10l4.8-1.7z"/><path d="M18.5 14.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/></symbol><symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18.5h10.5a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.6 9.6 4.5 4.5 0 0 0 7 18.5z"/></symbol><symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></symbol><symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></symbol><symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></symbol></defs>
 </svg>
 
 <div class="app" id="app">
@@ -127,9 +127,9 @@
   </div>
 </div>
 
-<script src="/v3/core.js?v=2.9.12"></script>
-<script src="/v3/food.js?v=2.9.12"></script>
-<script src="/v3/photo.js?v=2.9.12"></script>
-<script src="/v3/social.js?v=2.9.12"></script>
+<script src="/v3/core.js?v=2.9.13"></script>
+<script src="/v3/food.js?v=2.9.13"></script>
+<script src="/v3/photo.js?v=2.9.13"></script>
+<script src="/v3/social.js?v=2.9.13"></script>
 </body>
 </html>
