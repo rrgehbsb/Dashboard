@@ -1,10 +1,10 @@
 // Dashboard Service Worker
 // Bump CACHE_VERSION on each deploy to force cache refresh
-const CACHE_VERSION = 'v2.9.5';
+const CACHE_VERSION = 'v2.9.6';
 const CACHE_NAME = `dashboard-${CACHE_VERSION}`;
 
 // Files to pre-cache on install
-const V3 = '?v=2.9.5';
+const V3 = '?v=2.9.6';
 const PRECACHE = [
   '/v3/',
   '/v3/app.css' + V3,
@@ -31,6 +31,7 @@ const PRECACHE = [
   '/topbar.js',
   '/manifest.json',
   '/icon.svg',
+  '/badge-96.png',
 ];
 
 // Versioned v3 assets (?v=…), the pinned library and fonts never change at the same
@@ -116,12 +117,15 @@ self.addEventListener('fetch', e => {
 self.addEventListener('push', e => {
   let data = {};
   try { data = e.data ? e.data.json() : {}; } catch (err) { data = { body: e.data ? e.data.text() : '' }; }
+  // No big picture by default: the phone already shows the app's icon and name, and
+  // repeating the logo inside the notification looked like "Dashboard in Dashboard".
+  // The badge is the small white symbol Android puts in the status bar.
   const options = {
     body: data.body || '',
-    icon: '/icon-192.png',
-    badge: '/icon-192.png',
+    badge: '/badge-96.png',
     data: { url: data.url || '/v3/' },
   };
+  if (data.icon) options.icon = data.icon;
   if (data.tag) { options.tag = data.tag; options.renotify = true; }
   e.waitUntil(self.registration.showNotification(data.title || 'Dashboard', options));
 });

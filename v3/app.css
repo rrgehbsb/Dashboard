@@ -834,3 +834,24 @@ button.tt-note:active { transform:scale(.99); }
 :root[data-theme="dark"] .pf-user-st.free, :root[data-theme="dark"] .nt-on-row > span { color:#4BE3A0; }
 :root[data-theme="dark"] .pf-user-st.taken, :root[data-theme="dark"] .pf-user-st.bad { color:#FF7A8A; }
 :root[data-theme="dark"] .sheet-note.warn { color:#FFB067; }
+.seg.loc-when { display:grid; grid-template-columns:1fr 1fr; width:100%; }
+.seg.loc-when button { padding:0 8px; }
+
+/* ---------- Timetable: updated by the school vs weekly plan; your teachers ---------- */
+.tt-state { display:flex; gap:8px; align-items:flex-start; padding:10px 12px; border-radius:14px; font-size:14px; line-height:1.4; }
+.tt-state svg { flex:none; margin-top:2px; }
+.tt-state.ok { background:var(--food-soft); color:var(--food-ink); }
+.tt-state.ok b { color:inherit; }
+.tt-state.wait { background:var(--amber); color:var(--on-amber); }
+.tt-checked { display:block; font-size:12px; font-weight:600; color:var(--ink-3); margin-top:2px; }
+.tt-checked.bad { color:#C2410C; }
+.tt-foot > span:first-child { display:flex; flex-direction:column; }
+.grp-list { display:flex; flex-direction:column; gap:10px; }
+.grp-row { display:flex; flex-direction:column; gap:6px; padding:10px 12px; border-radius:var(--r-m); background:var(--surface-2); }
+.grp-name { font-weight:800; font-size:16px; }
+.grp-row .pick { min-height:40px; padding:0 12px; font-size:14px; background:var(--surface); }
+.grp-row .pick[aria-checked="true"] { background:var(--school); color:var(--on-school); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tt-checked.bad { color:#FFB067; } }
+:root[data-theme="dark"] .tt-checked.bad { color:#FFB067; }
+.commute .note.wp { display:flex; gap:6px; align-items:flex-start; margin-top:8px; padding:8px 10px; border-radius:12px; background:color-mix(in srgb, var(--hf) 14%, transparent); font-size:13px; }
+.commute .note.wp svg { flex:none; margin-top:2px; }

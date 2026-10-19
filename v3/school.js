@@ -41,7 +41,7 @@ if (D.DEMO) {
   ];
   school.data[K.te] = [{ id: 't1', subjectId: 'bio', name: 'Bio test · chapters 4–5', testDate: day(2) }, { id: 't2', subjectId: 'phys', name: 'Physics quiz', testDate: day(-3) }];
   school.data[K.gr] = [{ id: 'g1', subjectId: 'math', type: 'Test', gradeValue: 91, maxGrade: 100 }, { id: 'g2', subjectId: 'bio', type: 'Test', gradeValue: 84, maxGrade: 100 }, { id: 'g3', subjectId: 'eng', type: 'Quiz', gradeValue: 88, maxGrade: 100 }];
-  if (window.TIMETABLE) school.data[window.TIMETABLE.KEY] = { cls: '11-3', mine: ['מדעי המחשב'], trip: true, early: '08:00', hidden: [] };
+  if (window.TIMETABLE) school.data[window.TIMETABLE.KEY] = { cls: '11-3', mine: ['מדעי המחשב', 'מתמטיקה|צפריר דלית'], trip: true, early: '08:00', hidden: [] };
   school.data[C.KEY] = { setup: true, legs: { walk1: 3, bus1: 34, buffer: 5, wait2: 5, bus2: 3, walk2: 8 }, home: { lines: ['71', '72', '73', '74'], stop: '32645' }, hz: { mode: 'bus', from: '27102', to: '20378', lines: [], transfer: 4, walk: 5 }, days: { 0: { start: '07:45', end: '14:00', by: '08:00' }, 1: { start: '08:00', end: '14:45', by: null }, 2: { start: '07:45', end: '13:30', by: '08:00' }, 3: { start: '08:00', end: '14:45', by: null }, 4: { start: '08:00', end: '13:00', by: null } }, offUntil: null };
 }
 

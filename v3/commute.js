@@ -158,7 +158,7 @@ function hzBuses(wd) {
 }
 const hzWalk = E => PLATFORM + walkMin(HZ_LL, E.ll);
 // Your choice for today (tapped on the trip card) wins over the setting.
-const PICK_LS = 'dash3:hzPick';
+const PICK_LS = D.ukey('dash3:hzPick');
 function hzPickFor(dk) { const p = D.readJSON(PICK_LS); return p && p.dk === dk ? p.k : null; }
 function setHzPick(dk, k) { D.writeJSON(PICK_LS, k ? { dk, k } : null); }
 // morning: the ways from a train arriving at Herzliya to school — החדש, הליכה, walking

@@ -113,7 +113,7 @@ function targets() {
     if (!out.carbs_g && out.protein_g) out.carbs_g = Math.max(0, Math.round((out.kcal - out.protein_g * 4 - out.fat_g * 9) / 4));
   }
   // Today's Food tile reads this device-local copy (it doesn't load bodyweight itself)
-  if (out.kcal && !D.DEMO) D.writeJSON('dash3:food:targets', { kcal: out.kcal, protein_g: out.protein_g, at: Date.now() });
+  if (out.kcal && !D.DEMO) D.writeJSON(D.ukey('dash3:food:targets'), { kcal: out.kcal, protein_g: out.protein_g, at: Date.now() });
   return out;
 }
 

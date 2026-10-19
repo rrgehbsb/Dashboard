@@ -35,6 +35,8 @@ function shareChoice(dir, leave) {
 const entName = k => (C.SCHOOL[k] ? C.SCHOOL[k].name + ' (' + C.SCHOOL[k].he + ')' : 'school');
 const ttOn = () => { const T = window.TIMETABLE, s = T ? T.settings(school) : {}; return !!s.cls && s.trip !== false; };
 // "first lesson 07:45 · by 08:00" when the timetable sets the day, else the times you set
+// the first-lesson time is from the weekly plan until the school posts the day
+const wpNote = m => m && m.auto && !m.published ? '<p class="note wp">' + ic('clock', 'xs') + 'From the weekly plan: the school hasn’t posted this day’s update yet, so a cancelled first lesson won’t show.</p>' : '';
 const startLbl = m => m.auto ? 'first lesson ' + C.hhmm(m.start) + (m.hasBy ? ' · by ' + C.hhmm(m.by) : '') : (m.hasBy ? 'arrive by ' + C.hhmm(m.by) : 'starts ' + C.hhmm(m.start));
 /* ---------- the card ---------- */
 function render() {
@@ -62,7 +64,7 @@ function render() {
     h = '<div class="row1"><span class="lbl">To school · ' + startLbl(m) + '</span><span class="tools">' + tag(lv) + liveBtn + gear + '</span></div>' +
       '<div><p class="big">Leave ' + C.hhmm(lv.leave) + '<small>' + (lv.mins > 0 ? 'in ' + lv.mins + ' min' : lv.mins === 0 ? 'now' : (-lv.mins) + ' min ago') + '</small></p>' +
       '<p class="note">' + (lv.miss ? 'Your bus is running late and may miss the ' + C.hhmm(p.train) + ' train. Check the next option below.' :
-        (p.ok ? 'At school ' + C.hhmm(p.arrive) + ' · ' + p.spare + ' min to spare' : 'At school ' + C.hhmm(p.arrive) + ', ' + (-p.spare) + ' min late') + ' · ' + entName(p.ent)) + '</p></div>' +
+        (p.ok ? 'At school ' + C.hhmm(p.arrive) + ' · ' + p.spare + ' min to spare' : 'At school ' + C.hhmm(p.arrive) + ', ' + (-p.spare) + ' min late') + ' · ' + entName(p.ent)) + '</p>' + wpNote(m) + '</div>' +
       outJourney(c, p, lv) + statusMorning(c, p, lv) + hzHtml(c, m, p) + altsHtml(m.opts, p.leave, 'alt-pick');
   } else if (ph.kind === 'school' || ph.kind === 'after') {
     const a = ph.a, p = (S.pickBack != null && a.opts.find(o => o.leave === S.pickBack)) || ph.pick || a.best;
@@ -75,7 +77,7 @@ function render() {
   } else if (ph.kind === 'next' && ph.m && ph.m.best) {
     const m = ph.m, p = m.best, when = ph.off === 1 ? 'Tomorrow' : D.DOW_L[D.dayAt(ph.off).getDay()];
     h = '<div class="row1"><span class="lbl">' + when + ' · ' + startLbl(m) + '</span><span class="tools">' + tag(null) + liveBtn + gear + '</span></div>' +
-      '<div><p class="big">Leave ' + C.hhmm(p.leave) + '<small>' + (p.bus ? 'bus ' + esc(p.bus.line) + ' ' + C.hhmm(p.bus.at) : C.hhmm(p.train) + ' train') + '</small></p><p class="note">At school ' + C.hhmm(p.arrive) + ' · ' + p.spare + ' min to spare · ' + entName(p.ent) + '</p></div>' + outJourney(c, p, null) + hzHtml(c, m, p);
+      '<div><p class="big">Leave ' + C.hhmm(p.leave) + '<small>' + (p.bus ? 'bus ' + esc(p.bus.line) + ' ' + C.hhmm(p.bus.at) : C.hhmm(p.train) + ' train') + '</small></p><p class="note">At school ' + C.hhmm(p.arrive) + ' · ' + p.spare + ' min to spare · ' + entName(p.ent) + '</p>' + wpNote(m) + '</div>' + outJourney(c, p, null) + hzHtml(c, m, p);
   } else {
     const hol = ttOn() && window.TIMETABLE.holidayOn(D.todayKey());
     h = '<div class="row1"><span class="lbl">' + (hol ? 'No school' : 'Your trip') + '</span><span class="tools">' + liveBtn + gear + '</span></div>' +

@@ -4,6 +4,7 @@
 // instead of the home-screen app, so the app never got signed in).
 //
 // POST { action: 'signup',  email, password, name }  -> create a confirmed user
+// POST { action: 'delete',  email, password }        -> delete your own account and its data
 // POST { action: 'confirm', email, password }        -> unstick an older account
 //      that was never confirmed. Supabase only answers "email not confirmed"
 //      after the password has been checked, so the password proves ownership.
@@ -105,6 +106,24 @@ module.exports = async function handler(req, res) {
         body: JSON.stringify({ email_confirm: true }),
       });
       if (!u.ok) return fail(res, 502, 'confirm_failed', 'Couldn’t fix the account right now. Try again in a minute.');
+      return res.status(200).json({ ok: true });
+    }
+
+    if (action === 'delete') {
+      // Delete your own account and everything saved in it. The password is checked
+      // first, so only the owner can do this.
+      const t = await fetch(`${SB_URL}/auth/v1/token?grant_type=password`, {
+        method: 'POST',
+        headers: { apikey: SB_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      if (!t.ok) return fail(res, 401, 'wrong', 'That email and password don’t match.');
+      const tj = await t.json().catch(() => ({}));
+      const id = tj.user && tj.user.id;
+      if (!id || !/^[0-9a-f-]{36}$/i.test(id)) return fail(res, 502, 'delete_failed', 'Couldn’t delete the account right now.');
+      await fetch(`${SB_URL}/rest/v1/app_state?key=like.${id}:*`, { method: 'DELETE', headers: admin });
+      const d = await fetch(`${SB_URL}/auth/v1/admin/users/${id}`, { method: 'DELETE', headers: admin }); // friends, trips, … go with it
+      if (!d.ok) return fail(res, 502, 'delete_failed', 'Couldn’t delete the account right now.');
       return res.status(200).json({ ok: true });
     }
 

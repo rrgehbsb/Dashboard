@@ -164,7 +164,16 @@ async function friendMoments(C, D, now, prefs, subsBy) {
 // The same "your lessons" rules as the app (v3/timetable.js).
 const ALIAS = { 'מעבדת פיזיקה': 'פיזיקה', 'מעבדת פיסיקה': 'פיזיקה', 'פיסיקה': 'פיזיקה', 'שעת מחנך': 'חינוך', 'מתמטיקה טכניונית': 'מתמטיקה מואץ' };
 function norm(s) { let t = String(s || '').replace(/["״׳']/g, '').replace(/(^|\s)תלן(?=\s|$)/g, ' ').replace(/\s+/g, ' ').trim(); t = t.replace(/\s+\d+$/, ''); return ALIAS[t] || t; }
-function myItems(items, mine) { const l = (items || []).map(e => typeof e === 'string' ? { subject: e } : e); return l.length <= 1 || !mine.length ? l : l.filter(e => mine.indexOf(norm(e.subject)) >= 0); }
+const parsePick = x => { const i = String(x).indexOf('|'); return i < 0 ? { s: norm(x), t: null } : { s: norm(String(x).slice(0, i)), t: String(x).slice(i + 1) }; };
+// split periods: only your groups (your teacher's, if you picked one); whole-class lessons stay
+function myItems(items, mine, ctx) {
+  const list = (items || []).map(e => typeof e === 'string' ? { subject: e, teacher: '' } : e);
+  if (!mine.length || list.length <= 1) return list;
+  const picks = mine.map(parsePick), keep = new Set();
+  list.forEach(e => { const P = picks.filter(p => p.s === norm(e.subject)); if (!P.length) return; const T = P.map(p => p.t).filter(Boolean); if (!T.length || !e.teacher || T.indexOf(e.teacher) >= 0) keep.add(e); });
+  if (ctx) { const m = picks.find(p => p.t && !list.some(e => keep.has(e) && norm(e.subject) === p.s) && list.some(e => norm(e.subject) === p.s)); if (m) ctx.teacherMissing = m; }
+  return list.filter(e => keep.has(e));
+}
 const subjKey = l => Array.from(new Set(l.map(x => norm(typeof x === 'string' ? x : x.subject)))).sort().join('|');
 function myStatus(st, items, was) {
   if (st !== 'changed' && st !== 'added' && st !== 'cancelled') return st;
@@ -175,8 +184,10 @@ function myStatus(st, items, was) {
 function changesFor(day, mine) {
   const out = [];
   (day.periods || []).forEach(p => {
-    const items = myItems(p.items, mine), was = p.was ? myItems(p.was, mine).map(e => e.subject) : [];
-    const st = mine.length ? myStatus(p.status, items, was) : p.status;
+    const ctx = {}, items = myItems(p.items, mine, ctx);
+    let was = p.was ? myItems(p.was, mine).map(e => e.subject) : [];
+    let st = mine.length ? myStatus(p.status, items, was) : p.status;
+    if (ctx.teacherMissing && !items.length) { st = 'cancelled'; was = [ctx.teacherMissing.s + ' · ' + ctx.teacherMissing.t + ' isn’t listed']; }
     const names = l => Array.from(new Set(l.map(x => typeof x === 'string' ? x : x.subject))).join(', ');
     if (st === 'cancelled') out.push('Lesson ' + p.n + ' cancelled' + (was.length ? ' (' + names(was) + ')' : ''));
     else if (st === 'changed') out.push('Lesson ' + p.n + ': ' + names(items) + (was.length ? ' instead of ' + names(was) : ''));
@@ -229,7 +240,14 @@ async function userFrom(C, req) {
 module.exports = async function handler(req, res) {
   const C = cfg();
   const ready = !!(C.url && C.key && C.pub && C.priv);
-  if (req.method === 'GET') return res.status(200).json({ ok: true, ready, scheduler: !!C.cron });
+  if (req.method === 'GET') {
+    const out = { ok: true, ready, scheduler: !!C.cron };
+    // with the scheduler secret: when did the scheduler last call? (proves it runs)
+    if (C.cron && String(req.headers.authorization || '') === 'Bearer ' + C.cron && ready) {
+      try { const hb = (await db(C).get('notify_log?select=at&key=eq.heartbeat'))[0]; out.lastCall = hb ? hb.at : null; out.secondsAgo = hb ? Math.round((Date.now() - Date.parse(hb.at)) / 1000) : null; } catch (e) { out.lastCall = 'unknown'; }
+    }
+    return res.status(200).json(out);
+  }
   if (req.method !== 'POST') return res.status(405).end();
   if (!ready) return res.status(500).json({ ok: false, error: 'Notifications aren’t set up on the server yet.' });
   webpush.setVapidDetails(SITE, C.pub, C.priv);
@@ -241,6 +259,7 @@ module.exports = async function handler(req, res) {
     // the scheduler
     if (C.cron && auth === 'Bearer ' + C.cron) {
       const now = israelNow();
+      await fetch(C.url + '/rest/v1/notify_log?on_conflict=key', { method: 'POST', headers: { apikey: C.key, Authorization: 'Bearer ' + C.key, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' }, body: JSON.stringify({ key: 'heartbeat', at: new Date().toISOString() }) }).catch(() => {});
       const prefs = await D.get('notify_prefs?select=user_id,friends,moments,timetable');
       const ids = prefs.map(p => p.user_id);
       const subs = ids.length ? await D.get('push_subs?select=user_id,endpoint,p256dh,auth&user_id=' + inList(ids)) : [];

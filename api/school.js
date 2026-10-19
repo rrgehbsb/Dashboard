@@ -173,6 +173,24 @@ module.exports = async function handler(req, res) {
     if (!/^\d{1,2}-\d{1,2}$/.test(cls)) return res.status(400).json({ ok: false, error: 'Give a class, e.g. ?cls=11-3' });
     const base = wk.tables[cls] || null;
     const now = isoIL(new Date());
+    // ?groups=1: the subjects that split into groups for this class, with each group's
+    // teacher, from the last two weeks of daily timetables (the weekly page has no teachers)
+    if (q.groups) {
+      const G = await cached('groups:' + cls, 6 * 3600e3, async () => {
+        const past = []; for (let i = -14; i <= 3; i++) past.push(ymd(new Date(now.getFullYear(), now.getMonth(), now.getDate() + i)));
+        const docs = await Promise.all(past.map(d => daily(d).catch(() => null)));
+        const name = dailyName(cls), map = {};
+        docs.forEach(doc => (doc && doc.lessons || []).forEach(l => {
+          const items = ((l.classes || {})[name] || []).filter(e => e && e.subject);
+          if (items.length < 2) return; // whole-class lessons aren't groups
+          items.forEach(e => { const s = norm(e.subject); if (!s) return; const g = map[s] = map[s] || { s, name: s, teachers: new Set() }; if (e.teacher) g.teachers.add(String(e.teacher).trim()); });
+        }));
+        (base ? Object.values(base) : []).forEach(day => day.forEach(p => { if (p.items.length > 1) p.items.forEach(x => { const s = norm(x); if (s && !map[s]) map[s] = { s, name: s, teachers: new Set() }; }); }));
+        return Object.values(map).map(g => ({ s: g.s, name: g.name, teachers: Array.from(g.teachers).sort((a, b) => a.localeCompare(b, 'he')) })).sort((a, b) => a.name.localeCompare(b.name, 'he'));
+      });
+      res.setHeader('Cache-Control', 'public, s-maxage=21600, stale-while-revalidate=86400');
+      return res.status(200).json({ ok: true, cls, groups: G });
+    }
     const dates = [0, 1, 2, 3].map(i => ymd(new Date(now.getFullYear(), now.getMonth(), now.getDate() + i)));
     const [docs, cal] = await Promise.all([Promise.all(dates.map(d => daily(d).catch(() => null))), calendar(cls).catch(() => ({ tests: [], events: [], holidays: [] }))]);
     const days = {};
@@ -181,7 +199,8 @@ module.exports = async function handler(req, res) {
       const b = base && wd <= 4 ? base[wd] : null;
       days[d] = docs[i] ? dayFor(docs[i], cls, b) : { published: false };
     });
-    res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+    // short cache: the school can post or change the day at any time
+    res.setHeader('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=300');
     return res.status(200).json({ ok: true, cls, name: clsName(cls), fetchedAt: new Date().toISOString(), days, week: base, calendar: cal });
   } catch (e) {
     return res.status(502).json({ ok: false, error: 'Couldn’t reach the school website right now.', detail: String(e && e.message || e).slice(0, 120) });

@@ -7,11 +7,10 @@
 (function () {
 'use strict';
 
-const VERSION = '2.9.5';
+const VERSION = '2.9.6';
 const SB_URL = 'https://mtuoqwbrujxutofhyahb.supabase.co';
 const SB_KEY = 'sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
 const DEMO = /[?&]demo\b/.test(location.search);
-const SETTINGS_LS = 'dashboard:settings:v1';
 
 /* ================= Small helpers ================= */
 const $ = (s, r) => (r || document).querySelector(s);
@@ -61,48 +60,145 @@ window.__sbToken = window.__sbToken || function () {
   return null;
 };
 
-let _sb = null, uid = null;
+// Who is signed in on this device, straight from the saved session (no network needed).
+function storedAuth() {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!/^sb-.*-auth-token$/.test(k)) continue;
+      let v = localStorage.getItem(k);
+      if (v && v.slice(0, 7) === 'base64-') { try { v = decodeURIComponent(escape(atob(v.slice(7)))); } catch (e) { v = atob(v.slice(7)); } }
+      const s = JSON.parse(v), sess = s && (s.currentSession || s);
+      if (sess && sess.user && sess.user.id) return { uid: sess.user.id };
+      if (sess && sess.access_token) { const p = JSON.parse(atob(sess.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); if (p && p.sub) return { uid: p.sub }; }
+    }
+  } catch (e) {}
+  return null;
+}
+
+/* ---------- one person's data per device ----------
+   Everything this app keeps on the device is stored under the signed-in person's id,
+   and when a different account signs in here, the previous person's copies are
+   removed before anything is read. Their data can never show up in, or be saved
+   into, someone else's account. (The database also refuses it: each row only
+   accepts its owner.) */
+const OWNER = DEMO ? 'demo' : ((storedAuth() || {}).uid || null);
+const LEGACY_KEYS = ['po_water_v1', 'dashboard:sync:v1', 'dashboard:settings:v1'];
+(function ownDevice() {
+  if (DEMO || !OWNER) return;
+  try {
+    const prev = localStorage.getItem('dash3:owner'), drop = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i); if (!k) continue;
+      if (/^dash3:row:[^:]+$/.test(k)) drop.push(k); // caches from before they were kept per person
+      else if (prev && prev !== OWNER && ((k.indexOf('dash3:') === 0 && k.indexOf('dash3:tt:') !== 0) || LEGACY_KEYS.indexOf(k) >= 0)) drop.push(k);
+    }
+    drop.forEach(k => localStorage.removeItem(k));
+    localStorage.setItem('dash3:owner', OWNER);
+  } catch (e) {}
+})();
+const ukey = k => k + ':' + (OWNER || 'signed-out'); // a device key that belongs to this person
+
+let _sb = null, uid = null, offline = false;
 function sb() { if (!_sb) _sb = window.supabase.createClient(SB_URL, SB_KEY); return _sb; }
 function waitSupabase() { return new Promise(res => { (function w() { window.supabase ? res() : setTimeout(w, 40); })(); }); }
 async function fresh() { try { await sb().auth.getSession(); } catch (e) {} }
+const wait = ms => new Promise(res => setTimeout(res, ms));
+// Signed in? A bad connection is NOT a sign-out: when the saved session is still on the
+// device (the sign-in library removes it only when it's really invalid), keep working
+// from what's saved here and sync once the network is back. Only a missing or revoked
+// session goes to the login page.
 async function session() {
   if (DEMO) { uid = 'demo'; return uid; }
   await waitSupabase();
-  let s = null;
-  try { const r = await sb().auth.getSession(); s = r.data && r.data.session; } catch (e) {}
-  if (!s) { location.href = '/login.html'; return null; }
-  uid = s.user.id;
-  try { localStorage.setItem('_dashUid', uid); } catch (e) {}
-  return uid;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    let s = null;
+    try { const r = await sb().auth.getSession(); s = r.data && r.data.session; } catch (e) {}
+    if (s) { uid = s.user.id; offline = false; try { localStorage.setItem('_dashUid', uid); } catch (e) {} return uid; }
+    if (!storedAuth()) break;
+    await wait(1200);
+  }
+  const st = storedAuth();
+  if (st && st.uid === OWNER) {
+    uid = st.uid; offline = true;
+    setTimeout(() => toast('No connection. Your changes are saved on this phone and sync when you’re back online.'), 600);
+    reconnect();
+    return uid;
+  }
+  location.href = '/login.html';
+  return null;
 }
+async function reconnect() {
+  while (offline) {
+    await wait(navigator.onLine === false ? 4000 : 15000);
+    let s = null;
+    try { const r = await sb().auth.getSession(); s = r.data && r.data.session; } catch (e) {}
+    if (s && s.user.id === uid) { offline = false; syncAll(); return; }
+    if (!storedAuth()) { location.href = '/login.html'; return; }
+  }
+}
+window.addEventListener('online', () => { if (offline) { offline = false; session().then(id => { if (id) syncAll(); }); } else syncAll(); });
+function syncAll() { ROWS.forEach(r => (r.hasDirty() ? r.flush() : r.pull(true))); flushWater(); pullWater(true); }
 
 /* ================= Merge-safe synced row ================= */
+// Saving sends only the keys that changed, merged into the row by the database
+// (app_state_patch, supabase/sync-v5.sql), so a key another device changed a moment
+// ago is never overwritten. Without that function: read the row, overlay, write.
+let patchRPC = null; // null = not tried yet, true = available, false = not installed
+async function saveRow(rowKey, patch, cloud) {
+  if (patchRPC !== false) {
+    const r = await sb().rpc('app_state_patch', { p_key: rowKey, p_patch: patch });
+    if (!r.error) { patchRPC = true; return; }
+    if (!(r.error.code === 'PGRST202' || /could not find the function|function .* does not exist/i.test(r.error.message || ''))) throw r.error;
+    patchRPC = false;
+  }
+  if (!cloud) { // the caller only read part of the row: read all of it before writing it back
+    const res = await sb().from('app_state').select('data').eq('key', rowKey).maybeSingle();
+    if (res.error) throw res.error;
+    cloud = isObj(res.data && res.data.data) ? res.data.data : {};
+  }
+  const up = await sb().from('app_state').upsert({ key: rowKey, data: Object.assign({}, cloud, patch), updated_at: new Date().toISOString() }, { onConflict: 'key' });
+  if (up.error) throw up.error;
+}
+const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
+// Before a device's first sync it hasn't seen your data, so its edits may only ADD to
+// what's in the cloud, never replace it (lists gain new entries, objects gain keys).
+function addOnly(cloudV, localV) {
+  if (Array.isArray(cloudV) && Array.isArray(localV)) { const seen = new Set(cloudV.map(x => JSON.stringify(x))); return cloudV.concat(localV.filter(x => !seen.has(JSON.stringify(x)))); }
+  if (isObj(cloudV) && isObj(localV)) { const out = Object.assign({}, cloudV); Object.keys(localV).forEach(k => { out[k] = k in cloudV ? addOnly(cloudV[k], localV[k]) : localV[k]; }); return out; }
+  return localV === undefined ? cloudV : localV; // a single setting you just chose
+}
 const ROWS = [];
 function Row(area, opt) {
   opt = opt || {};
-  const LS = 'dash3:row:' + area;
-  const r = { area: area, data: DEMO ? {} : (readJSON(LS) || {}), lastRemoteAt: null, ready: false, readOnly: !!opt.readOnly };
-  if (opt.seed && !DEMO) { try { opt.seed(r.data); } catch (e) {} }
-  const gen = {}, dirty = new Set(), subs = [];
+  const LS = OWNER ? 'dash3:row:' + OWNER + ':' + area : null, LSD = LS ? LS + ':dirty' : null;
+  const cached = DEMO || !LS ? null : readJSON(LS);
+  const r = { area: area, owner: OWNER, data: isObj(cached) ? cached : {}, lastRemoteAt: null, ready: false, synced: false, readOnly: !!opt.readOnly };
+  const initial = new Set(Object.keys(r.data));
+  // edits not yet saved survive the app being closed: they're kept here and sent next time
+  const dirty = new Set(DEMO || !LSD ? [] : (readJSON(LSD) || []).filter(k => typeof k === 'string'));
+  const gen = {}, subs = [];
   let pushT = null, pushing = false;
-  const mirror = () => { if (!DEMO) writeJSON(LS, r.data); };
+  const mirror = () => { if (!DEMO && LS) writeJSON(LS, r.data); };
+  const saveDirty = () => { if (!DEMO && LSD) writeJSON(LSD, Array.from(dirty)); };
   const key = () => uid + ':' + area;
+  const mine = () => !DEMO && !!uid && uid === r.owner; // never save one person's copy into another's row
   const emit = src => subs.forEach(f => { try { f(src); } catch (e) { console.error(e); } });
 
   r.get = k => r.data[k];
   r.on = f => subs.push(f);
   r.set = (k, v) => {
     r.data[k] = v; gen[k] = (gen[k] || 0) + 1; dirty.add(k);
-    mirror();
-    if (opt.onLocal && !DEMO) { try { opt.onLocal(k, v); } catch (e) {} }
+    mirror(); saveDirty();
     clearTimeout(pushT); pushT = setTimeout(push, 500);
   };
   r.pending = () => !!pushT || pushing || dirty.size > 0;
+  r.hasDirty = () => dirty.size > 0;
 
   async function push() {
     pushT = null;
     if (DEMO) { dirty.clear(); return; }
-    if (!uid || !dirty.size || pushing) return;
+    if (!mine() || offline || !dirty.size || pushing) return; // offline: it goes up when the connection is back
     pushing = true;
     const keys = Array.from(dirty), snap = {};
     keys.forEach(k => { snap[k] = gen[k]; });
@@ -110,70 +206,81 @@ function Row(area, opt) {
       await fresh();
       const res = await sb().from('app_state').select('data').eq('key', key()).maybeSingle();
       if (res.error) throw res.error;
-      const cloud = (res.data && res.data.data && typeof res.data.data === 'object') ? res.data.data : {};
-      const out = Object.assign({}, cloud);
-      // keys holding growing collections merge entry-level (opt.merge[k]); local wins ties
-      keys.forEach(k => { out[k] = (opt.merge && opt.merge[k]) ? opt.merge[k](cloud[k], r.data[k]) : r.data[k]; });
+      const cloud = isObj(res.data && res.data.data) ? res.data.data : {};
+      const patch = {};
+      keys.forEach(k => {
+        const m = opt.merge && opt.merge[k];
+        if (m) patch[k] = m(cloud[k], r.data[k]); // growing collections merge entry by entry
+        else if (!r.synced && !initial.has(k) && cloud[k] !== undefined) patch[k] = addOnly(cloud[k], r.data[k]);
+        else patch[k] = r.data[k];
+      });
       const at = Date.now();
-      out._pushAt = at;
-      const up = await sb().from('app_state').upsert({ key: key(), data: out, updated_at: new Date().toISOString() }, { onConflict: 'key' });
-      if (up.error) throw up.error;
+      patch._pushAt = at;
+      await saveRow(key(), patch, cloud);
+      let changed = false;
       keys.forEach(k => {
         if (gen[k] !== snap[k]) return;
         dirty.delete(k);
-        // merged keys: keep what the cloud now holds (includes the other device's entries)
-        if (opt.merge && opt.merge[k]) r.data[k] = out[k];
+        // keep what the cloud now holds (it includes the other device's entries)
+        if (JSON.stringify(patch[k]) !== JSON.stringify(r.data[k])) { r.data[k] = patch[k]; changed = true; }
       });
+      r.synced = true; r.ready = true;
       r.lastRemoteAt = at;
       // adopt keys other devices changed meanwhile (overlay, never wipe)
       Object.keys(cloud).forEach(k => {
         if (k === '_pushAt' || k === '_localAt' || dirty.has(k) || keys.indexOf(k) >= 0) return;
-        r.data[k] = (opt.merge && opt.merge[k]) ? opt.merge[k](r.data[k], cloud[k]) : cloud[k];
+        const v = (opt.merge && opt.merge[k]) ? opt.merge[k](r.data[k], cloud[k]) : cloud[k];
+        if (JSON.stringify(v) !== JSON.stringify(r.data[k])) { r.data[k] = v; changed = true; }
       });
-      mirror();
-      if (opt.afterPush) { try { opt.afterPush(at); } catch (e) {} }
+      mirror(); saveDirty();
+      if (changed) emit('remote');
     } catch (e) {
       console.warn('[v3] push ' + area + ' failed, retrying', e);
       setTimeout(() => { if (dirty.size && !pushT) pushT = setTimeout(push, 0); }, 5000);
     } finally {
       pushing = false;
-      if (dirty.size && !pushT) pushT = setTimeout(push, 500);
+      if (dirty.size && !pushT && mine()) pushT = setTimeout(push, 500);
     }
   }
   r.flush = () => { if (dirty.size) { clearTimeout(pushT); return push(); } return Promise.resolve(); };
 
   r.pull = async force => {
     if (DEMO) { r.ready = true; emit('remote'); return; }
-    if (!uid || r.pending()) return;
+    if (!mine() || r.pending()) return;
     try {
       await fresh();
       const res = await sb().from('app_state').select('data').eq('key', key()).maybeSingle();
       if (res.error) throw res.error;
       const data = res.data && res.data.data;
       const first = !r.ready;
-      r.ready = true;
-      if (!data || typeof data !== 'object') { if (first) emit('remote'); return; }
+      r.ready = true; r.synced = true;
+      if (!isObj(data)) { if (first) emit('remote'); return; }
       const at = data._pushAt || 0;
       if (!force && !first && at === r.lastRemoteAt) return;
       if (r.pending()) return;
       r.lastRemoteAt = at;
       Object.keys(data).forEach(k => { if (k !== '_pushAt' && k !== '_localAt') r.data[k] = (opt.merge && opt.merge[k]) ? opt.merge[k](r.data[k], data[k]) : data[k]; });
       mirror();
-      if (opt.onRemote) { try { opt.onRemote(data); } catch (e) {} }
       emit('remote');
     } catch (e) { console.warn('[v3] pull ' + area + ' failed', e); }
   };
 
-  // Last-chance save when the app is closed mid-edit (same approach as the classic pages).
+  // Last-chance save when the app is closed mid-edit: only the changed keys, merged into
+  // the row by the database. Collections that merge entry by entry wait for the next
+  // open instead (they're kept on this device), so they can't overwrite entries another
+  // device added. Never before the first sync.
   r.keepalive = () => {
-    if (DEMO || !uid || !dirty.size) return;
-    const out = Object.assign({}, r.data, { _pushAt: Date.now() });
+    if (!mine() || !dirty.size || !r.synced || patchRPC !== true) return;
+    const patch = { _pushAt: Date.now() };
+    dirty.forEach(k => { if (!(opt.merge && opt.merge[k])) patch[k] = r.data[k]; });
+    if (Object.keys(patch).length < 2) return;
+    const tok = window.__sbToken(); if (!tok) return;
     try {
-      fetch(SB_URL + '/rest/v1/app_state', {
+      fetch(SB_URL + '/rest/v1/rpc/app_state_patch', {
         method: 'POST', keepalive: true,
-        headers: { 'Content-Type': 'application/json', apikey: SB_KEY, Authorization: 'Bearer ' + (window.__sbToken() || SB_KEY), Prefer: 'resolution=merge-duplicates' },
-        body: JSON.stringify({ key: key(), data: out, updated_at: new Date().toISOString() })
-      });
+        headers: { 'Content-Type': 'application/json', apikey: SB_KEY, Authorization: 'Bearer ' + tok },
+        body: JSON.stringify({ p_key: key(), p_patch: patch })
+      }).catch(() => {});
     } catch (e) {}
   };
   ROWS.push(r);
@@ -181,15 +288,12 @@ function Row(area, opt) {
 }
 
 /* ================= Settings (row: settings, mirrored to the classic localStorage copy) ================= */
-const settings = Row('settings', {
-  seed: d => { const s = readJSON(SETTINGS_LS); if (s && typeof s === 'object') Object.keys(s).forEach(k => { if (!(k in d)) d[k] = s[k]; }); },
-  onLocal: () => { const s = Object.assign({}, settings.data); s._pushAt = Date.now(); writeJSON(SETTINGS_LS, s); },
-  onRemote: data => { const s = Object.assign({}, readJSON(SETTINGS_LS) || {}, data); writeJSON(SETTINGS_LS, s); }
-});
+const settings = Row('settings');
 function setTheme(v) {
   const t = (v === 'light' || v === 'dark') ? v : 'system';
   if (t === 'system') document.documentElement.removeAttribute('data-theme');
   else document.documentElement.setAttribute('data-theme', t);
+  try { localStorage.setItem('dash3:theme', t); } catch (e) {} // read before the page paints
   return t;
 }
 const theme = () => settings.get('v3Theme') || 'system';
@@ -207,9 +311,13 @@ function retireClassicOnce() {
   settings.set('v3Archive', 1);
 }
 
-/* ================= Water (lives in the health row; only po_water_v1 is read) ================= */
-const WATER_LS = 'po_water_v1';
-let waterRemoteAt = -1, waterLocalAt = 0;
+/* ================= Water (lives in the health row; only po_water_v1 is read) =================
+   Each tap is kept as a change ("add 500 ml today", "undo", "bottle size") until it is
+   saved, and saving replays the changes on top of the cloud copy. So a phone that
+   hasn't downloaded your water yet, or is offline, can't overwrite your history or
+   settings with its defaults. */
+const WATER_LS = ukey('dash3:water'), WOPS_LS = ukey('dash3:waterOps');
+let waterRemoteAt = -1, wOps = DEMO ? [] : (readJSON(WOPS_LS) || []), wFlushing = false;
 function waterDefault() {
   return { unit: 'bottle', bottleMl: 500, glassMl: 250, weightUnit: 'kg', sizes: { cup: 250, bottle: 500, big: 1000 }, _mlV2: true,
     profile: { weightKg: 75, age: 25, sex: 'm', activityHrsPerWeek: 5 }, caffeineMgPerDay: 200, substances: [], logs: {} };
@@ -234,59 +342,64 @@ function waterProgress() {
   return { done: done, total: Math.max(1, Math.ceil(totalMl / unitVol)), ml: false, set: true };
 }
 const bottleMl = () => { const s = waterState(); return s._mlV2 ? ((s.sizes && s.sizes.bottle) || 500) : 1; };
-async function pushWater(state) {
-  if (DEMO || !uid) return;
+function applyWater(st, op) {
+  st = JSON.parse(JSON.stringify(isObj(st) ? st : waterDefault()));
+  st.logs = st.logs || {}; st.hist = st.hist || {};
+  if (op.t === 'add') { st.logs[op.k] = (st.logs[op.k] || 0) + op.ml; if (st._mlV2) (st.hist[op.k] = st.hist[op.k] || []).push(op.ml); }
+  else if (op.t === 'undo') { const h = st.hist[op.k] || []; const last = h.length ? h.pop() : op.ml; st.logs[op.k] = Math.max(0, (st.logs[op.k] || 0) - last); }
+  else if (op.t === 'bottle') { st.sizes = Object.assign({}, st.sizes || {}, { bottle: op.ml }); st.bottleMl = op.ml; }
+  st._ts = op.at || Date.now();
+  return st;
+}
+const saveOps = () => { if (!DEMO) writeJSON(WOPS_LS, wOps); };
+function waterOp(op) {
+  op.at = Date.now();
+  writeWater(applyWater(readWater(), op));
+  emitWater();
+  if (DEMO) return;
+  wOps.push(op); saveOps();
+  flushWater();
+}
+async function flushWater() {
+  if (DEMO || !uid || uid !== OWNER || offline || !wOps.length || wFlushing) return;
+  wFlushing = true;
+  const ops = wOps.slice();
+  let ok = false;
   try {
     await fresh();
-    const res = await sb().from('app_state').select('data').eq('key', uid + ':health').maybeSingle();
-    const cur = (res.data && res.data.data) || {};
+    const res = await sb().from('app_state').select('w:data->po_water_v1').eq('key', uid + ':health').maybeSingle();
+    if (res.error) throw res.error;
+    let st = res.data && isObj(res.data.w) ? res.data.w : null;
+    if (!st) st = readWater(); // nothing in the cloud yet: this device's copy is all there is
+    ops.forEach(o => { st = applyWater(st, o); });
     const at = Date.now();
-    const merged = Object.assign({}, cur, { po_water_v1: state, _pushAt: at });
-    const up = await sb().from('app_state').upsert({ key: uid + ':health', data: merged, updated_at: new Date().toISOString() }, { onConflict: 'key' });
-    if (up.error) throw up.error;
-    waterRemoteAt = at;
-  } catch (e) { console.warn('[v3] water push failed', e); }
+    await saveRow(uid + ':health', { po_water_v1: st, _pushAt: at }, null);
+    wOps = wOps.slice(ops.length); saveOps();
+    let local = st; wOps.forEach(o => { local = applyWater(local, o); }); // taps made while saving
+    writeWater(local); waterRemoteAt = at; emitWater();
+    ok = true;
+  } catch (e) {
+    console.warn('[v3] water save failed, retrying', e);
+    setTimeout(flushWater, 10000);
+  } finally { wFlushing = false; if (ok && wOps.length) flushWater(); }
 }
 async function pullWater(force) {
-  if (DEMO || !uid) return;
-  if (Date.now() - waterLocalAt < 4000) return;
+  if (DEMO || !uid || uid !== OWNER) return;
+  if (wOps.length) { flushWater(); return; } // your unsaved taps go up first
   try {
     await fresh();
     const res = await sb().from('app_state').select('w:data->po_water_v1, at:data->_pushAt').eq('key', uid + ':health').maybeSingle();
-    if (res.error || !res.data) return;
+    if (res.error || !res.data || wOps.length) return;
     const at = res.data.at || 0;
     if (!force && at === waterRemoteAt) return;
     waterRemoteAt = at;
-    if (res.data.w) { writeWater(res.data.w); emitWater(); }
+    if (isObj(res.data.w)) { writeWater(res.data.w); emitWater(); }
   } catch (e) {}
 }
 const waterSubs = [];
 const emitWater = () => waterSubs.forEach(f => { try { f(); } catch (e) {} });
-function addWater(sign) {
-  const st = waterState(), k = todayKey(), inc = bottleMl();
-  st.logs = st.logs || {};
-  st.hist = st.hist || {};
-  if (sign < 0) {
-    const h = st.hist[k] || [];
-    const last = h.length ? h.pop() : inc;
-    st.logs[k] = Math.max(0, (st.logs[k] || 0) - last);
-  } else {
-    st.logs[k] = (st.logs[k] || 0) + inc;
-    if (st._mlV2) (st.hist[k] = st.hist[k] || []).push(inc);
-  }
-  st._ts = Date.now();
-  waterLocalAt = Date.now();
-  writeWater(st);
-  emitWater();
-  pushWater(st);
-}
-function setBottle(ml) {
-  const st = waterState();
-  st.sizes = Object.assign({}, st.sizes || {}, { bottle: ml });
-  st.bottleMl = ml; st._ts = Date.now();
-  waterLocalAt = Date.now();
-  writeWater(st); emitWater(); pushWater(st);
-}
+function addWater(sign) { waterOp({ t: sign < 0 ? 'undo' : 'add', k: todayKey(), ml: bottleMl() }); }
+function setBottle(ml) { waterOp({ t: 'bottle', ml: ml }); }
 const litres = ml => fmtN(ml / 1000, 1);
 function waterChip(slot) {
   const w = waterProgress();
@@ -480,11 +593,13 @@ function wire() {
     }
   });
 
-  const pullAll = force => { ROWS.forEach(r => r.pull(force)); pullWater(force); };
+  // unsaved edits go up first; otherwise fetch what changed elsewhere
+  const pullAll = force => { ROWS.forEach(r => (r.hasDirty() ? r.flush() : r.pull(force))); flushWater(); pullWater(force); };
   window.addEventListener('focus', () => pullAll(true));
   window.addEventListener('pageshow', () => pullAll(true));
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) ROWS.forEach(r => r.keepalive());
+    // leaving the app: save right away (phones give a few seconds), plus the last-chance save
+    if (document.hidden) ROWS.forEach(r => { r.flush(); r.keepalive(); });
     else pullAll(true);
   });
   window.addEventListener('pagehide', () => ROWS.forEach(r => r.keepalive()));
@@ -499,8 +614,7 @@ async function boot(page) {
   if ('serviceWorker' in navigator && !DEMO) navigator.serviceWorker.register('/sw.js').catch(() => {});
   const id = await session();
   if (!id) return false;
-  ROWS.forEach(r => r.pull(true));
-  pullWater(true);
+  syncAll();
   settings.on(() => { setTheme(theme()); if (!DEMO) retireClassicOnce(); });
   return true;
 }
@@ -512,6 +626,6 @@ window.DASH = {
   waterProgress, waterChip, addWater, onWater: f => waterSubs.push(f),
   ring, numEl, animate, toast, hideToast, SHEETS, openSheet, renderSheet, closeSheet,
   sheetArg: () => sheetArg, sheetKind: () => sheetKind, ACT, LP, boot,
-  sb, fresh, uid: () => uid, pageHref
+  sb, fresh, uid: () => uid, pageHref, ukey, isOffline: () => offline
 };
 })();

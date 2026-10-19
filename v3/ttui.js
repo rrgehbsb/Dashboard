@@ -15,6 +15,30 @@ function nextDay() {
 }
 const dayLabel = dk => dk === D.todayKey() ? 'Today' : dk === D.dk(D.dayAt(1)) ? 'Tomorrow' : D.DOW_L[D.parseDk(dk).getDay()];
 
+// "today 19:52" / "yesterday 19:52" / "Sun 18 Oct 19:52"
+function when(iso) {
+  if (!iso) return '';
+  const d = new Date(iso); if (isNaN(d)) return '';
+  const k = D.dk(d), t = D.hhmm(d.getHours() * 60 + d.getMinutes());
+  return k === D.todayKey() ? 'today ' + t : k === D.dk(D.dayAt(-1)) ? 'yesterday ' + t : D.dShort(d) + ' ' + t;
+}
+// Is this the school's update, or still only the weekly plan? Never leave it unclear.
+function stateHtml(v, isToday, n) {
+  if (v.holiday) return '';
+  if (v.published) return '<div class="tt-state ok" id="tt-state">' + ic('check', 'xs') + '<span><b>Updated by the school</b>' + (v.uploadedAt ? ' · ' + when(v.uploadedAt) : '') +
+    ' · ' + (n ? '<b>' + n + ' ' + D.plural(n, 'change', 'changes') + '</b>' : 'no changes') + '</span></div>';
+  const late = !isToday && D.nowMin() >= 20 * 60 + 30;
+  return '<div class="tt-state wait" id="tt-state">' + ic('clock', 'xs') + '<span><b>Not updated yet: this is the weekly plan.</b> ' +
+    (isToday ? 'The school hasn’t posted an update for today. ' : late ? 'The school usually posts it by now, so it may come late tonight. ' : 'The school posts the update for each day the day before, usually by 20:00. ') +
+    'Until then cancelled lessons and absent teachers don’t show.</span></div>';
+}
+function checkedHtml() {
+  const f = T.freshness(); if (!f.at) return '';
+  const age = Math.round((Date.now() - f.at) / 60e3), at = new Date(f.at);
+  const t = D.hhmm(at.getHours() * 60 + at.getMinutes());
+  return f.ok ? '<span class="tt-checked">Checked ' + (age < 1 ? 'just now' : age < 60 ? age + ' min ago' : t) + '</span>'
+    : '<span class="tt-checked bad">Couldn’t check for updates · saved copy from ' + t + '</span>';
+}
 // Back-to-back lessons of the same thing (a double or triple lesson) show as one row.
 function merge(list) {
   const sig = q => q.status === 'same' || q.status === 'planned' ? Array.from(new Set(q.items.map(e => e.subject + '/' + (e.teacher || '')))).sort().join('|') : null;
@@ -34,7 +58,7 @@ function row(p, isToday) {
   const teach = p.items.length === 1 && p.items[0].teacher ? '<small class="tch">' + bdi(p.items[0].teacher) + '</small>' : '';
   let chip = '', extra = '';
   if (p.status === 'changed') { chip = '<span class="tt-chip ch">Changed</span>'; extra = p.was && p.was.length ? '<small class="was">Was ' + uniq(p.was) + '</small>' : ''; }
-  else if (p.status === 'cancelled') chip = '<span class="tt-chip cx">Cancelled</span>';
+  else if (p.status === 'cancelled') { chip = '<span class="tt-chip cx">Cancelled</span>'; if (p.why && p.why.teacher) extra = '<small class="was">For your group: ' + bdi(p.why.teacher) + ' isn’t listed</small>'; }
   else if (p.status === 'added') chip = '<span class="tt-chip ad">New</span>';
   const body = p.status === 'cancelled' ? '<b class="gone">' + uniq(p.was || []) + '</b>' : '<b>' + (names || '—') + '</b>';
   const n = p.nTo != null && p.nTo !== p.n ? p.n + '–' + p.nTo : p.n;
@@ -76,14 +100,17 @@ function render() {
   let h = '<div class="tt-head"><h2 class="card-title">Timetable <small>' + bdi(d.name || '') + '</small></h2>' + seg + '</div>';
   if (v.holiday) h += '<p class="tt-note hol">' + ic('info', 'xs') + '<span>' + bdi(v.holiday.title) + ' · no school</span></p>';
   v.notes.forEach(n => { h += '<p class="tt-note">' + ic('info', 'xs') + '<span>' + (n.n != null ? 'Lesson ' + n.n + ': ' : '') + bdi(n.text) + '</span></p>'; });
-  if (!(s.mine && s.mine.length) && T.groupSubjects().length) h += '<button class="tt-note act" id="tt-groups" data-act="sheet" data-sheet="ttset">' + ic('sliders', 'xs') + '<span>Some lessons are split into groups. <u>Pick yours</u> to see only your lessons and plan the right trip.</span></button>';
-  const n = T.changes(dk, s);
-  if (!v.published) h += '<p class="tt-sum">' + (isToday ? 'Today’s update isn’t on the school site, so this is the weekly plan.' : 'Weekly plan. The school posts changes around 20:00 the evening before.') + '</p>';
-  else h += '<p class="tt-sum' + (n ? ' has' : '') + '">' + (n ? '<b>' + n + ' ' + D.plural(n, 'change', 'changes') + '</b> from the weekly plan' : 'Updated by the school · no changes') + '</p>';
+  const groups = T.groupSubjects();
+  if (!(s.mine && s.mine.length) && groups.length) h += '<button class="tt-note act" id="tt-groups" data-act="sheet" data-sheet="ttset">' + ic('sliders', 'xs') + '<span>Some lessons are split into groups. <u>Pick yours</u> (and your teacher) to see only your lessons and plan the right trip.</span></button>';
+  else {
+    const noTeacher = (s.mine || []).map(T.parsePick).filter(p => !p.t && (groups.find(g => g.s === p.s) || { teachers: [] }).teachers.length > 1);
+    if (noTeacher.length) h += '<button class="tt-note act" id="tt-teachers" data-act="sheet" data-sheet="ttset">' + ic('sliders', 'xs') + '<span>' + bdi(noTeacher[0].s) + ' has several teachers. <u>Pick yours</u> to see when your group is off.</span></button>';
+  }
+  h += stateHtml(v, isToday, T.changes(dk, s));
   const rows = v.holiday ? [] : v.periods.filter(p => p.items.length || p.status === 'cancelled');
   h += rows.length ? '<div class="tt-list' + (v.published ? '' : ' planned') + '">' + merge(rows).map(p => row(p, isToday)).join('') + '</div>' : v.holiday ? '' : '<p class="empty">No lessons.</p>';
   const tt = T.dayTimes(dk, s);
-  h += '<div class="tt-foot">' + (tt && !tt.none ? '<span>' + D.hhmm(tt.start) + '–' + D.hhmm(tt.end) + (tt.by != null ? ' · by ' + D.hhmm(tt.by) : '') + '</span>' : '<span></span>') +
+  h += '<div class="tt-foot">' + (tt && !tt.none ? '<span>' + D.hhmm(tt.start) + '–' + D.hhmm(tt.end) + (tt.by != null ? ' · by ' + D.hhmm(tt.by) : '') + checkedHtml() + '</span>' : '<span>' + checkedHtml() + '</span>') +
     '<span class="tt-btns"><button class="btn-text sch" id="tt-week" data-act="sheet" data-sheet="ttweek">Week</button><button class="icon-btn flat" id="tt-gear" data-act="sheet" data-sheet="ttset" aria-label="Timetable settings">' + ic('sliders', 'sm') + '</button></span></div>';
   slot.innerHTML = '<section class="card tt" id="tt" aria-label="Timetable">' + h + '</section>';
 }
@@ -102,13 +129,14 @@ D.SHEETS.ttweek = () => {
       const p = (d.week[w] || []).find(x => x.n === n);
       if (!p) return '<td></td>';
       // same rule as the day view: with your groups picked, a split lesson without yours is free
-      const list = p.items.length > 1 && s.mine && s.mine.length ? p.items.filter(x => s.mine.indexOf(T.norm(x)) >= 0) : p.items;
+      const picks = (s.mine || []).map(T.parsePick);
+      const list = p.items.length > 1 && picks.length ? p.items.filter(x => picks.some(q => q.s === T.norm(x))) : p.items;
       return '<td' + (w === today ? ' class="on"' : '') + '>' + Array.from(new Set(list)).map(x => bdi(x)).join('<br>') + '</td>';
     }).join('') + '</tr>';
   }
   return {
     title: 'Weekly timetable · ' + esc(d.name || ''),
-    body: '<p class="sheet-note">The school’s weekly plan. The day itself can change: the School card shows the updated day with changes marked.</p>' +
+    body: '<p class="sheet-note">The school’s regular weekly plan. It never shows changes, cancelled lessons or teachers: the School card shows each day as the school updates it.</p>' +
       '<div class="tt-week-wrap"><table class="tt-week"><thead><tr><th></th>' + ['Sun', 'Mon', 'Tue', 'Wed', 'Thu'].map((x, w) => '<th scope="col"' + (w === today ? ' class="on"' : '') + '>' + x + '</th>').join('') + '</tr></thead><tbody>' + rows + '</tbody></table></div>'
   };
 };
@@ -118,14 +146,23 @@ function work(a) { if (!a.f) a.f = JSON.parse(JSON.stringify(T.settings(school))
 D.SHEETS.ttset = a => {
   const f = work(a);
   if (!a.list) { T.classes().then(l => { a.list = l; if (D.sheetKind() === 'ttset') D.renderSheet(); }); }
-  const groups = T.groupSubjects();
+  if (f.cls && !a.gl) { a.gl = true; T.loadGroups(f.cls).then(() => { if (D.sheetKind() === 'ttset') D.renderSheet(); }); }
+  const groups = T.groupSubjects(), picks = f.mine.map(T.parsePick);
+  const gchip = (g, t, label, on) => '<button class="pick" data-act="tt-grp" data-s="' + esc(g.s) + '" data-t="' + esc(t) + '" role="radio" aria-checked="' + on + '">' + label + '</button>';
+  const groupRow = g => {
+    const cur = picks.find(p => p.s === g.s), many = g.teachers.length > 1;
+    return '<div class="grp-row"><p class="grp-name">' + bdi(g.name) + '</p><div class="pick-row" role="radiogroup" aria-label="' + esc(g.name) + '">' +
+      gchip(g, '', 'Not mine', !cur) +
+      g.teachers.map(t => gchip(g, t, bdi(t), !!cur && (cur.t === t || (!cur.t && !many)))).join('') +
+      (!g.teachers.length ? gchip(g, '*', 'Mine', !!cur) : many ? gchip(g, '*', 'Not sure', !!cur && !cur.t) : '') + '</div></div>';
+  };
   const sw = (id, label, on, hint, act) => '<div class="set-row"><span class="lbl">' + label + (hint ? '<small>' + hint + '</small>' : '') + '</span><span class="switch-hit"><button class="switch" id="' + id + '" role="switch" aria-checked="' + !!on + '" data-act="' + act + '" aria-label="' + label + '"></button></span></div>';
   return {
     title: 'Timetable',
     body: '<p class="group-title">Your class</p>' +
       (a.list ? '<div class="pick-row cls-grid" role="radiogroup" aria-label="Class">' + a.list.map(c => '<button class="pick" id="cls-' + c.id + '" role="radio" data-act="tt-cls" data-v="' + c.id + '" aria-checked="' + (f.cls === c.id) + '">' + bdi(c.name) + '</button>').join('') + '</div>' : '<p class="sheet-note">Loading classes…</p>') +
-      (f.cls && groups.length ? '<p class="group-title">Your groups</p><p class="sheet-note">Some lessons split into groups. Pick every one you’re in: a split lesson with none of yours counts as a free period, so your trip skips it.</p><div class="pick-row" role="group" aria-label="Your groups">' +
-        groups.map(g => '<button class="pick" id="grp-' + esc(g).replace(/[^\w֐-׿]/g, '') + '" data-act="tt-grp" data-v="' + esc(g) + '" aria-pressed="' + (f.mine.indexOf(g) >= 0) + '">' + bdi(g) + '</button>').join('') + '</div>' : '') +
+      (f.cls && groups.length ? '<p class="group-title">Your groups</p><p class="sheet-note">These subjects split into groups, each with its own teacher and sometimes its own hours. Pick your teacher for each one you take. Then the timetable shows only your lessons, and if your teacher isn’t in, it shows your group as cancelled.</p>' +
+        '<div class="grp-list">' + groups.map(groupRow).join('') + '</div>' : '') +
       '<p class="group-title">Your trip</p>' +
       sw('tt-trip', 'Plan my trip from the timetable', f.trip, 'Get there for your first lesson and head home after your last, cancelled lessons included. Off: the times in trip settings.', 'tt-trip') +
       sw('tt-early', 'On 07:45 days I can arrive by 08:00', !!f.early, 'Plans those mornings to 08:00', 'tt-early') +
@@ -138,7 +175,12 @@ Object.assign(D.ACT, {
   'tt-view': el => { S.view = el.dataset.v; S.picked = true; render(); },
   'tt-retry': () => { S.failed = false; render(); },
   'tt-cls': el => { const a = D.sheetArg(), f = work(a); if (f.cls !== el.dataset.v) { f.cls = el.dataset.v; f.mine = []; } T.load(f.cls, true).then(() => { if (D.sheetKind() === 'ttset') D.renderSheet(); }); D.renderSheet(); },
-  'tt-grp': el => { const f = work(D.sheetArg()), g = el.dataset.v, i = f.mine.indexOf(g); if (i >= 0) f.mine.splice(i, 1); else f.mine.push(g); D.renderSheet(); },
+  'tt-grp': el => {
+    const f = work(D.sheetArg()), sub = el.dataset.s, t = el.dataset.t;
+    f.mine = f.mine.filter(x => T.parsePick(x).s !== sub);
+    if (t === '*') f.mine.push(sub); else if (t) f.mine.push(sub + '|' + t);
+    D.renderSheet();
+  },
   'tt-trip': () => { const f = work(D.sheetArg()); f.trip = !f.trip; D.renderSheet(); },
   'tt-early': () => { const f = work(D.sheetArg()); f.early = f.early ? null : '08:00'; D.renderSheet(); },
   'tt-unhide': () => { const f = work(D.sheetArg()); f.hidden = []; D.renderSheet(); },
@@ -161,7 +203,7 @@ function connect() {
 }
 T.onChange(() => { if (D.sheetKind()) return; render(); if (window.TRIPUI) window.TRIPUI.render(); if (window.SCHOOL_RENDER) window.SCHOOL_RENDER(); });
 school.on(() => { if (!D.sheetKind()) connect(); });
-setInterval(() => { const s = T.settings(school); if (s.cls && !document.hidden) T.load(s.cls); }, 5 * 60e3);
+setInterval(() => { const s = T.settings(school); if (s.cls && !document.hidden) T.load(s.cls); render(); }, 60e3);
 document.addEventListener('visibilitychange', () => { const s = T.settings(school); if (!document.hidden && s.cls) T.load(s.cls); });
 window.TTUI = { render };
 connect();

@@ -17,7 +17,8 @@
 'use strict';
 const D = window.DASH, $ = D.$, esc = D.esc, ic = D.ic, hhmm = D.hhmm;
 const VAPID_PUBLIC = 'BPHqx3CLnpghjbbgLMSDvLK4nIpqN6Lp7DtDxUDbQ-B7zehrpiCLxcKHhUb-2w9FewCUiPboX5-Yo5cB5YHYxko';
-const LS_ME = 'dash3:me', LS_FR = 'dash3:friends', LS_LOC = 'dash3:shareLoc', LS_PUB = 'dash3:tripPub', LS_CHOSEN = 'dash3:tripPick', LS_KNOWN = 'dash3:knownFriends';
+// kept per person on this device (D.ukey), so another account here never sees them
+const LS_ME = D.ukey('dash3:me'), LS_FR = D.ukey('dash3:friends'), LS_LOC = D.ukey('dash3:shareLoc'), LS_PUB = D.ukey('dash3:tripPub'), LS_CHOSEN = D.ukey('dash3:tripPick'), LS_KNOWN = D.ukey('dash3:knownFriends');
 const LOC_FRESH_MIN = 20;
 const MOMENTS = [['leave', 'Leaving'], ['station', 'At the station'], ['train', 'On the train'], ['arrive', 'Arrived']];
 const S = {
@@ -396,30 +397,54 @@ function toggleTripFor(id) {
   setTripTo(all.every(x => list.indexOf(x) >= 0) ? null : list);
 }
 
-/* ---------- sharing: your location (this phone, app open, picked friends) ---------- */
-let watchId = null, lastLoc = null;
-function startLoc() {
-  if (!locOn() || D.DEMO || S.needsSql || S.needsV4 || watchId != null || document.hidden || !navigator.geolocation || !D.uid()) return;
-  watchId = navigator.geolocation.watchPosition(pos => {
+/* ---------- sharing: your location (this phone, app open, picked friends) ----------
+   Battery: no GPS unless location sharing is on AND someone is picked to see it; only
+   while the app is open (phones don't let web apps use location in the background);
+   by default only around your trips (15 min before you leave until you arrive); one
+   low-accuracy fix every 3 minutes (Wi-Fi/cell positioning, no continuous GPS), and
+   nothing is sent if you haven't moved. */
+const LS_LOCMODE = D.ukey('dash3:locMode'); // 'trip' (default) | 'open'
+const LOC_EVERY = 3 * 60e3;
+let locTimer = null, lastLoc = null;
+const locMode = () => { try { return localStorage.getItem(LS_LOCMODE) === 'open' ? 'open' : 'trip'; } catch (e) { return 'trip'; } };
+// are you on (or about to start) one of today's trips?
+function inTripWindow() {
+  const plan = myPlan(), d = plan && plan.days[D.todayKey()];
+  if (!d) return !plan; // no trip set up: sharing follows the app being open
+  const now = D.nowMin();
+  return ['to', 'home'].some(k => validLeg(d[k]) && now >= d[k][0][0] - 15 && now <= endOf(d[k]) + 10);
+}
+const locWanted = () => locOn() && !D.DEMO && !S.needsSql && !S.needsV4 && S.locTo.length > 0 && !document.hidden && !!navigator.geolocation && !!D.uid() && (locMode() === 'open' || inTripWindow());
+function fix() {
+  navigator.geolocation.getCurrentPosition(pos => {
     const ll = [pos.coords.latitude, pos.coords.longitude];
-    if (lastLoc && dist(ll, lastLoc.ll) < 120 && Date.now() - lastLoc.at < 120e3) return; // every 2 min, or when you've moved
+    if (lastLoc && dist(ll, lastLoc.ll) < 100 && Date.now() - lastLoc.at < 6 * 60e3) return; // haven't moved: nothing to send
     lastLoc = { ll, at: Date.now() };
     upsertOwn('locations', { lat: +ll[0].toFixed(5), lng: +ll[1].toFixed(5), loc_at: new Date().toISOString(), share_to: S.locTo });
   }, err => {
     if (err && err.code === 1) { setLoc(false); D.toast('Location is blocked for this app. Allow it in your phone’s settings to share it.'); }
-  }, { enableHighAccuracy: false, maximumAge: 60e3, timeout: 30e3 });
+  }, { enableHighAccuracy: false, maximumAge: 2 * 60e3, timeout: 20e3 });
 }
-function stopLoc() { if (watchId != null) { try { navigator.geolocation.clearWatch(watchId); } catch (e) {} watchId = null; } }
+// started and stopped as the conditions change (checked every minute and on every change)
+function locCheck() {
+  if (locWanted()) { if (!locTimer) { fix(); locTimer = setInterval(fix, LOC_EVERY); } }
+  else stopLoc();
+}
+const startLoc = locCheck;
+function stopLoc() { if (locTimer) { clearInterval(locTimer); locTimer = null; } }
 function setLoc(on) {
   try { localStorage.setItem(LS_LOC, on ? '1' : '0'); } catch (e) {}
-  if (on) { lastLoc = null; startLoc(); } else { stopLoc(); lastLoc = null; upsertOwn('locations', { lat: null, lng: null, loc_at: null }); }
+  lastLoc = null;
+  if (on) locCheck(); else { stopLoc(); upsertOwn('locations', { lat: null, lng: null, loc_at: null }); }
   changed();
 }
+function setLocMode(m) { try { localStorage.setItem(LS_LOCMODE, m); } catch (e) {} locCheck(); changed(); }
 function toggleLocFor(id) {
   const list = S.locTo.slice(), i = list.indexOf(id);
   if (i >= 0) list.splice(i, 1); else list.push(id);
   S.locTo = list;
   if (!D.DEMO) upsertOwn('locations', { share_to: list });
+  locCheck();
   changed();
 }
 
@@ -553,9 +578,11 @@ D.SHEETS.friends = () => {
   if (shareTrip() && S.friends.length && !S.needsV4) h += '<div class="pick-row fr-who" role="group" aria-label="Who sees your trip">' + chip('tt-all', 'Everyone', S.tripTo == null, 'fr-trip-all') + S.friends.map(f => chip('tw-' + f.fid, esc(nameOf(f)), seesTrip(f.id), 'fr-trip-who', ' data-id="' + esc(f.id) + '"')).join('') + '</div>' +
     (S.tripTo != null && !S.tripTo.length ? '<p class="sheet-note warn">Nobody can see your trip right now. Pick friends, or tap Everyone.</p>' : '');
   if (!S.needsV4) {
-    h += sw('fr-share-loc', 'Share my location', locOn(), 'From this phone, only while the app is open, only to the friends you pick. They see the nearest stop and can open it in Maps.', 'fr-share-loc');
+    h += sw('fr-share-loc', 'Share my location', locOn(), 'From this phone, only to the friends you pick. They see the nearest stop and can open it in Maps.', 'fr-share-loc');
     if (locOn() && S.friends.length) h += '<div class="pick-row fr-who" role="group" aria-label="Who sees your location">' + S.friends.map(f => chip('lw-' + f.fid, esc(nameOf(f)), S.locTo.indexOf(f.id) >= 0, 'fr-loc-who', ' data-id="' + esc(f.id) + '"')).join('') + '</div>' +
-      (S.locTo.length ? '' : '<p class="sheet-note warn">Pick who can see it. Right now nobody can.</p>');
+      (S.locTo.length ? '' : '<p class="sheet-note warn">Pick who can see it. Right now nobody can.</p>') +
+      '<div class="seg sm loc-when" role="radiogroup" aria-label="When to share">' + [['trip', 'During my trips'], ['open', 'Whenever the app is open']].map(o => '<button id="lm-' + o[0] + '" role="radio" data-act="fr-loc-mode" data-v="' + o[0] + '" aria-checked="' + (locMode() === o[0]) + '">' + o[1] + '</button>').join('') + '</div>' +
+      '<p class="sheet-note">Only while the app is open: phones don’t let web apps use location in the background. ' + (locMode() === 'trip' ? 'During your trips means from 15 minutes before you leave until you arrive, both ways. ' : '') + 'It takes one rough reading every 3 minutes instead of keeping GPS on, so it barely uses battery.</p>';
   }
   // notifications
   if (!S.needsV4) {
@@ -620,6 +647,7 @@ Object.assign(D.ACT, {
   'fr-trip-all': () => setTripTo(S.tripTo == null ? [] : null),
   'fr-trip-who': el => toggleTripFor(el.dataset.id),
   'fr-loc-who': el => toggleLocFor(el.dataset.id),
+  'fr-loc-mode': el => setLocMode(el.dataset.v),
   'ff-trip': el => toggleTripFor(el.dataset.id),
   'ff-loc': el => { toggleLocFor(el.dataset.id); if (S.locTo.indexOf(el.dataset.id) >= 0 && !locOn()) D.toast('Turn on “Share my location” in Friends to start sharing'); },
   'ff-alert': async el => {
@@ -680,7 +708,7 @@ whenUid(() => {
   // a notification tap can open School at #friends
   if (location.hash === '#friends') setTimeout(() => D.openSheet('friends'), 300);
   // friends' trips change by the minute; their rows refresh every minute while you look
-  setInterval(() => { if (!document.hidden) { if ($('#friends-slot') || D.sheetKind() === 'friends' || D.sheetKind() === 'friend') load(); else changed(); tick(); } }, 60e3);
+  setInterval(() => { if (!document.hidden) { if ($('#friends-slot') || D.sheetKind() === 'friends' || D.sheetKind() === 'friend') load(); else changed(); tick(); locCheck(); } }, 60e3);
   document.addEventListener('visibilitychange', () => { if (document.hidden) stopLoc(); else { startLoc(); tick(); if ($('#friends-slot')) load(); } });
 });
 setInterval(() => { renderStrip(); if (D.sheetKind() === 'friend') D.renderSheet(); }, 30e3);

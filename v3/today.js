@@ -6,16 +6,9 @@
 (function () {
 'use strict';
 const D = window.DASH, $ = D.$, esc = D.esc, ic = D.ic, TT = window.TIMETABLE;
-const SYNC_LS = 'dashboard:sync:v1';
 
 /* ---------- rows ---------- */
-const dash = D.Row('dashboard', {
-  seed: d => { const b = D.readJSON(SYNC_LS); if (b && typeof b === 'object') Object.keys(b).forEach(k => { if (k !== '_localAt' && !(k in d)) d[k] = b[k]; }); },
-  // keep the classic home page's local mirror in step, so switching back never shows stale lists
-  onLocal: (k, v) => { const b = D.readJSON(SYNC_LS) || {}; b[k] = v; b._localAt = Date.now(); D.writeJSON(SYNC_LS, b); },
-  afterPush: at => { const b = D.readJSON(SYNC_LS) || {}; b._localAt = at; D.writeJSON(SYNC_LS, b); },
-  onRemote: data => { const b = D.readJSON(SYNC_LS) || {}; Object.keys(data).forEach(k => { if (k !== '_pushAt') b[k] = data[k]; }); b._localAt = data._pushAt || b._localAt || 0; D.writeJSON(SYNC_LS, b); }
-});
+const dash = D.Row('dashboard');
 const school = D.Row('school', { readOnly: true });
 window.TODAY_SCHOOL_ROW = school; // social.js shares the trip from here too
 const gym = D.Row('po-coach', { readOnly: true });
@@ -94,6 +87,8 @@ function schoolSoon(maxDays) {
 }
 // Changes to tomorrow's lessons, once the school posts them (around 20:00).
 function ttChanges(dk) { if (!TT) return 0; const s = TT.settings(school); return s.cls ? TT.changes(dk, s) || 0 : 0; }
+// is that day still only the weekly plan (the school hasn't posted its update)?
+function ttWeeklyOnly(dk) { if (!TT) return false; const s = TT.settings(school); if (!s.cls) return false; const v = TT.day(dk, s); return !!v && !v.published && !v.holiday; }
 const isSetKey = k => /^set\d+/.test(k);
 function gymInfo() {
   const tpl = gym.get('dashboard:gym:v1:template'), logs = gym.get('dashboard:gym:v1:logs') || {};
@@ -131,7 +126,7 @@ function foodInfo() {
   const nut = e => e.n || e.nutrients || {};
   const kcal = Math.round(entries.reduce((s, e) => s + (+nut(e).kcal || 0), 0));
   const p = Math.round(entries.reduce((s, e) => s + (+nut(e).protein_g || 0), 0));
-  const custom = food.get('custom') || {}, worked = D.readJSON('dash3:food:targets') || {};
+  const custom = food.get('custom') || {}, worked = D.readJSON(D.ukey('dash3:food:targets')) || {};
   return { kcal: kcal, protein: p, target: +custom.kcal || +worked.kcal || null, pTarget: +custom.protein_g || +worked.protein_g || null };
 }
 
@@ -178,7 +173,7 @@ function heroModel() {
     if (ph && ph.kind === 'next' && ph.off === 1 && ph.m && ph.m.best) {
       const ch = ttChanges(D.dk(D.dayAt(1)));
       return { area: 'school', href: D.pageHref('school'), eyebrow: 'Tomorrow · ' + D.dShort(D.dayAt(1)), big: '<span class="lead">Leave</span><span class="n">' + CM.hhmm(ph.m.best.leave) + '</span>',
-        sub: CM.hhmm(ph.m.best.train) + ' train' + (ch ? ' · ' + ch + ' timetable ' + D.plural(ch, 'change', 'changes') : '') + (tm.length ? ' · ' + tm.length + ' on your list' : ''), label: 'Tomorrow, leave ' + CM.hhmm(ph.m.best.leave) };
+        sub: CM.hhmm(ph.m.best.train) + ' train' + (ch ? ' · ' + ch + ' timetable ' + D.plural(ch, 'change', 'changes') : ttWeeklyOnly(D.dk(D.dayAt(1))) ? ' · weekly plan, not updated yet' : '') + (tm.length ? ' · ' + tm.length + ' on your list' : ''), label: 'Tomorrow, leave ' + CM.hhmm(ph.m.best.leave) };
     }
     return { area: 'todo', href: '#todo', eyebrow: 'Tomorrow · ' + D.dShort(D.dayAt(1)), big: tm.length ? '<span class="n">' + D.numEl('hero-tm', tm.length) + '</span><span class="u">planned</span>' : '<span class="t">Nothing planned yet</span>', sub: tm.length ? esc(tm[0].text) + (tm.length > 1 ? ' · and ' + (tm.length - 1) + ' more' : '') : 'Flip the list below to Tomorrow to add things', label: 'Tomorrow' };
   }
