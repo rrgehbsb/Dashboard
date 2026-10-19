@@ -69,11 +69,9 @@ function render() {
   } else {
     h = '<div class="row1"><span class="lbl">Your trip</span><span class="tools">' + liveBtn + gear + '</span></div><p class="note">No school days set. Open the trip settings to add them.</p>';
   }
-  const built = C.rail() && C.rail().built ? D.parseDk(String(C.rail().built).replace(/(d{4})(d{2})(d{2})/, '$1-$2-$3')) : null;
-  const ageDays = built ? Math.floor((D.dayAt(0) - built) / 864e5) : null;
-  if (ageDays != null && ageDays > 14) h += '<p class="note">Timetable last updated ' + ageDays + ' days ago, so times may have changed. Live times are still current.</p>';
+  h += '<button class="link how" id="trip-how" data-act="sheet" data-sheet="tripinfo">' + ic('info', 'xs') + 'How live times work</button>';
   if (!c.home.stop) h += '<button class="alt solid hint-btn" id="pick-stop-cta" data-act="trip-open">Pick your bus stop for real bus times</button>';
-  slot.innerHTML = '<section class="commute" id="commute" data-area="' + area + '" aria-label="Trip">' + h + '</section>';
+  slot.innerHTML = '<section class="commute" id="commute" data-area="' + area + '" aria-label="Trip">' + problemsHtml() + h + '</section>';
 }
 function outJourney(c, p, lv) {
   const L = c.legs, legs = [];
@@ -114,6 +112,31 @@ function altsHtml(opts, cur, act) {
   return '<div class="alts" role="group" aria-label="Other options">' + list.map(o => '<button class="alt" id="alt-' + o.train + '" data-act="' + act + '" data-t="' + o.train + '" aria-pressed="' + (o.train === cur) + '">' +
     'Leave ' + C.hhmm(o.leave) + (o.ok === false ? ' · late' : '') + '</button>').join('') + '</div>';
 }
+
+/* ---------- problems + how it works ---------- */
+function problems() {
+  const hh = C.health(), out = [];
+  if (hh.expired || hh.stale) out.push('<b>Problem:</b> the timetable hasn’t updated for ' + hh.age + ' days, so planned times may be wrong. Live times still work. Let the app owner know.');
+  if (hh.liveDown) out.push('<b>Problem:</b> live data isn’t loading right now, so these times come from the timetable only.');
+  return out;
+}
+const problemsHtml = () => problems().map(p => '<p class="problem" role="alert">' + ic('info', 'xs') + '<span>' + p + '</span></p>').join('');
+D.SHEETS.tripinfo = () => {
+  const hh = C.health();
+  const row = (t, d) => '<div class="info-row"><b>' + t + '</b><span>' + d + '</span></div>';
+  return {
+    title: 'How live times work',
+    body: problemsHtml() + '<div class="info-list">' +
+      row('Live', 'The bus or train is being tracked by GPS right now. The time is when it will really get there.') +
+      row('Scheduled', 'It hasn’t started its route yet, so the time comes from the official timetable.') +
+      row('Late or early', 'Shown when it’s 2 minutes or more off. Within a minute counts as on time. Your leave time moves with your bus.') +
+      row('Orange card', 'Leave within 5 minutes, or your bus is late enough that you might miss the train.') +
+      row('Trains home', 'Trains to Rosh HaAyin start at Herzliya, so they only turn Live once they leave. They almost always leave on time.') +
+      row('Updates', 'The timetable updates itself every Sunday and Wednesday' + (hh.age != null ? ' (last update ' + (hh.age === 0 ? 'today' : hh.age === 1 ? 'yesterday' : hh.age + ' days ago') + ')' : '') + '. If it’s more than ' + C.STALE_DAYS + ' days old, the card shows “Problem”: planned times may be wrong.') +
+      row('Where it comes from', 'The Ministry of Transport’s official timetable and live feed, the same data Moovit uses.') +
+      '</div>'
+  };
+};
 
 /* ---------- live data refresh ---------- */
 let fetching = false;
@@ -158,7 +181,7 @@ D.SHEETS.live = () => {
   const c = C.cfg(school), lv = C.live(), age = lv.at ? Math.round((Date.now() - lv.at) / 1000) : null;
   if (Date.now() - S.lastFetch > 25000) setTimeout(refreshBoard, 0);
   const sec = (title, body) => '<p class="group-title">' + title + '</p>' + body;
-  let body = '';
+  let body = problemsHtml();
   if (c && c.home.stop) body += sec('Your stop · ' + bdi(C.stopName(c.home.stop)), busRows(c.home.stop, c.home.lines && c.home.lines.length ? c.home.lines : HOME_LINES, 6));
   else body += '<button class="menu-item" id="board-pick" data-act="trip-open">' + ic('bus') + 'Pick your bus stop to see its buses here</button>';
   body += sec('Rosh HaAyin North → Herzliya', trainRows(C.RH_STATION, 'toHerzliya', 4));
@@ -166,7 +189,7 @@ D.SHEETS.live = () => {
   if (c && c.hz.mode === 'bus' && c.hz.from) body += sec('Herzliya · ' + bdi(C.stopName(c.hz.from)), busRows(c.hz.from, c.hz.lines, 5));
   body += '<p class="sheet-note">' + (lv.at ? 'Updated ' + (age < 60 ? 'just now' : Math.round(age / 60) + ' min ago') + '. ' : 'Loading live data… ') +
     '“Live” means the bus or train is being tracked right now; “Scheduled” means it hasn’t started yet, so the time is from the timetable. Live data comes from the Ministry of Transport.</p>' +
-    '<button class="btn ghost block" id="board-refresh" data-act="board-refresh">' + ic('repeat') + 'Refresh</button>';
+    '<div class="sheet-actions"><button class="btn ghost" id="board-how" data-act="sheet" data-sheet="tripinfo">' + ic('info') + 'How it works</button><button class="btn ghost" id="board-refresh" data-act="board-refresh">' + ic('repeat') + 'Refresh</button></div>';
   return { title: 'Live buses & trains', body };
 };
 

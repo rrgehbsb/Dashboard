@@ -222,9 +222,10 @@ async function fetchLive(codes) {
   if (D.DEMO) { live = { at: Date.now(), stops: demoLive(codes), ok: true }; return live; }
   if (liveP) return liveP;
   liveP = fetch('/api/transit?stops=' + codes.join(',')).then(r => r.json()).then(j => {
-    if (j && j.stops) { live = { at: Date.now(), stops: Object.assign({}, live.stops, j.stops), ok: j.ok }; }
+    if (j && j.stops && j.ok !== false) { live = { at: Date.now(), stops: Object.assign({}, live.stops, j.stops), ok: true, err: false }; }
+    else { live.err = true; live.errAt = Date.now(); }
     return live;
-  }).catch(() => live).finally(() => { liveP = null; });
+  }).catch(() => { live.err = true; live.errAt = Date.now(); return live; }).finally(() => { liveP = null; });
   return liveP;
 }
 const isoMin = iso => { const d = new Date(iso); return isNaN(d) ? null : d.getHours() * 60 + d.getMinutes() + (D.dk(d) > D.todayKey() ? 1440 : 0); };
@@ -297,6 +298,19 @@ function liveView(c, ph, now) {
   out.anyLive = !!((out.bus && out.bus.live) || (out.train && out.train.live) || (out.hz && out.hz.live));
   return out;
 }
+// Is anything wrong with the data? The timetable refreshes twice a week, so more
+// than 7 days old means the automatic update has failed at least twice.
+const STALE_DAYS = 7;
+function health() {
+  const out = { age: null, stale: false, expired: false, liveDown: false };
+  if (rail && rail.built) {
+    const b = String(rail.built), d = new Date(+b.slice(0, 4), +b.slice(4, 6) - 1, +b.slice(6, 8), 12);
+    out.age = Math.max(0, Math.floor((D.dayAt(0) - d) / 864e5)); out.stale = out.age > STALE_DAYS;
+  }
+  if (rail && rail.validTo) out.expired = D.todayKey().replace(/-/g, '') > String(rail.validTo);
+  out.liveDown = !!(live.err && Date.now() - (live.errAt || 0) < 5 * 60 * 1000);
+  return out;
+}
 // stops to watch right now, for the card and the board
 function watchStops(c, ph) {
   if (!c) return [];
@@ -308,6 +322,6 @@ function watchStops(c, ph) {
 
 window.COMMUTE = {
   KEY, RH_STATION, HZ_STATION, HZ_LL, RH_LL, load, loadRail: load, rail: () => rail, bus: () => bus, defaults, cfg, morning, afternoon, phase, nextSchoolDay, isSchoolDay,
-  homeRoutes, connections, connectionsNear, stopName, stopLL, dist, tm, hhmm, fetchLive, live: () => live, liveBus, liveTrain, watchStops, isoMin, schedAt, liveView, trainsOf
+  homeRoutes, connections, connectionsNear, stopName, stopLL, dist, tm, hhmm, fetchLive, live: () => live, liveBus, liveTrain, watchStops, isoMin, schedAt, liveView, trainsOf, health, STALE_DAYS
 };
 })();

@@ -654,3 +654,13 @@ a.tile { color:var(--ink); }
 .menu-list.stops .menu-item[aria-pressed="true"] { background:var(--school-soft); }
 .menu-item[disabled] { opacity:.5; }
 .pick[aria-pressed="true"] { background:var(--ink); color:var(--surface); }
+
+/* ---------- v3 Trip: problems + how it works ---------- */
+.problem { display:flex; gap:8px; align-items:flex-start; padding:10px 12px; border-radius:14px; background:var(--amber); color:var(--on-amber); font-size:14px; font-weight:600; line-height:1.4; }
+.problem svg { margin-top:2px; flex:none; }
+.link.how { align-self:flex-start; display:inline-flex; align-items:center; gap:6px; padding:0; min-height:36px; color:inherit; opacity:.9; font-size:14px; }
+.info-list { display:flex; flex-direction:column; background:var(--surface-2); border-radius:var(--r-m); padding:4px 14px; }
+.info-row { display:flex; flex-direction:column; gap:2px; padding:10px 0; }
+.info-row + .info-row { box-shadow:0 -1px 0 var(--line); }
+.info-row b { font-size:15px; }
+.info-row span { font-size:15px; color:var(--ink-2); line-height:1.45; }

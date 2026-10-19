@@ -147,18 +147,19 @@ function heroModel() {
   // The trip to school comes first while it matters: leaving soon, or heading home.
   const CM = window.COMMUTE, cc = CM && CM.rail() ? CM.cfg(school) : null, ph = cc ? CM.phase(cc) : null;
   const lvw = ph && (ph.kind === 'morning' || ph.kind === 'after') ? CM.liveView(cc, ph) : null;
+  const hp = cc && CM.health ? CM.health() : {}, warn = (hp.stale || hp.expired) ? '⚠ Timetable outdated · ' : hp.liveDown ? '⚠ Live data unavailable · ' : '';
   if (lvw) { ph.mins = lvw.mins; }
   if (ph && ph.kind === 'morning' && ph.pick && ph.mins != null && ph.mins <= 120 && ph.mins >= -15) {
     const late = !ph.pick.ok || (lvw && lvw.miss);
     return { area: ph.mins <= 5 || late ? 'amber' : 'school', href: D.pageHref('school'), eyebrow: 'To school',
       big: ph.mins > 0 ? '<span class="lead">Leave in</span><span class="n">' + D.numEl('hero-min', ph.mins) + '</span><span class="u">min</span>' : '<span class="t">Leave now</span>',
-      sub: (lvw && lvw.miss ? 'Bus is late · may miss the ' + CM.hhmm(ph.pick.train) + ' train' : CM.hhmm(lvw ? lvw.leave : ph.pick.leave) + ' · ' + (ph.pick.bus ? 'bus ' + esc(ph.pick.bus.line) + ' → ' : '') + CM.hhmm(ph.pick.train) + ' train' + (!ph.pick.ok ? ' · arrives ' + (-ph.pick.spare) + ' min late' : '')) + ' <span class="tag">' + (lvw && lvw.anyLive ? 'Live' : 'Timetable') + '</span>',
+      sub: warn + (lvw && lvw.miss ? 'Bus is late · may miss the ' + CM.hhmm(ph.pick.train) + ' train' : CM.hhmm(lvw ? lvw.leave : ph.pick.leave) + ' · ' + (ph.pick.bus ? 'bus ' + esc(ph.pick.bus.line) + ' → ' : '') + CM.hhmm(ph.pick.train) + ' train' + (!ph.pick.ok ? ' · arrives ' + (-ph.pick.spare) + ' min late' : '')) + ' <span class="tag">' + (lvw && lvw.anyLive ? 'Live' : 'Timetable') + '</span>',
       bar: D.clamp(ph.mins / 30, 0, 1), label: 'Leave in ' + ph.mins + ' minutes' };
   }
   if (ph && ph.kind === 'after' && ph.pick) {
     return { area: ph.mins <= 5 && ph.mins >= 0 ? 'amber' : 'school', href: D.pageHref('school'), eyebrow: 'Going home',
       big: '<span class="lead">Train home</span><span class="n">' + CM.hhmm(ph.pick.train) + '</span>',
-      sub: 'Leave school by ' + CM.hhmm(lvw ? lvw.leave : ph.pick.leave) + (ph.mins > 0 ? ' · in ' + ph.mins + ' min' : ' · now') + ' <span class="tag">' + (lvw && lvw.anyLive ? 'Live' : 'Timetable') + '</span>',
+      sub: warn + 'Leave school by ' + CM.hhmm(lvw ? lvw.leave : ph.pick.leave) + (ph.mins > 0 ? ' · in ' + ph.mins + ' min' : ' · now') + ' <span class="tag">' + (lvw && lvw.anyLive ? 'Live' : 'Timetable') + '</span>',
       bar: D.clamp(ph.mins / 30, 0, 1), label: 'Train home ' + CM.hhmm(ph.pick.train) };
   }
   const soon = schoolSoon(2);
