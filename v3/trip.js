@@ -26,6 +26,7 @@ function statusRow(icon, title, where, time, b) {
   return '<div class="st-row">' + ic(icon, 'sm') + '<div class="st-main"><b>' + title + '</b><span>' + where + '</span></div><div class="st-side"><span class="st-t">' + time + '</span>' + b + '</div></div>';
 }
 
+const entName = k => (C.SCHOOL[k] ? C.SCHOOL[k].name + ' (' + C.SCHOOL[k].he + ')' : 'school');
 /* ---------- the card ---------- */
 function render() {
   const slot = $('#commute-slot'); if (!slot) return;
@@ -52,20 +53,20 @@ function render() {
     h = '<div class="row1"><span class="lbl">To school · ' + (m.hasBy ? 'arrive by ' + C.hhmm(m.by) : 'starts ' + C.hhmm(m.start)) + '</span><span class="tools">' + tag(lv) + liveBtn + gear + '</span></div>' +
       '<div><p class="big">Leave ' + C.hhmm(lv.leave) + '<small>' + (lv.mins > 0 ? 'in ' + lv.mins + ' min' : lv.mins === 0 ? 'now' : (-lv.mins) + ' min ago') + '</small></p>' +
       '<p class="note">' + (lv.miss ? 'Your bus is running late and may miss the ' + C.hhmm(p.train) + ' train. Check the next option below.' :
-        p.ok ? 'At school ' + C.hhmm(p.arrive) + ' · ' + p.spare + ' min to spare' : 'At school ' + C.hhmm(p.arrive) + ', ' + (-p.spare) + ' min late') + '</p></div>' +
+        (p.ok ? 'At school ' + C.hhmm(p.arrive) + ' · ' + p.spare + ' min to spare' : 'At school ' + C.hhmm(p.arrive) + ', ' + (-p.spare) + ' min late') + ' · ' + entName(p.ent)) + '</p></div>' +
       outJourney(c, p, lv) + statusMorning(c, p, lv) + altsHtml(m.opts, p.train, 'alt-pick');
   } else if (ph.kind === 'school' || ph.kind === 'after') {
     const a = ph.a, p = (S.pickBack != null && a.opts.find(o => o.train === S.pickBack)) || ph.pick || a.best;
     if (p) {
       const lv = ph.kind === 'after' ? (C.liveView(c, Object.assign({}, ph, { pick: p }), now) || { leave: p.leave, mins: p.leave - now }) : { leave: p.leave, mins: null };
       h = '<div class="row1"><span class="lbl">Going home · school ends ' + C.hhmm(a.end) + '</span><span class="tools">' + tag(lv) + liveBtn + gear + '</span></div>' +
-        '<div><p class="big">' + C.hhmm(p.train) + '<small>train home</small></p><p class="note">Leave school by ' + C.hhmm(lv.leave) + (lv.mins != null ? (lv.mins > 0 ? ' · in ' + lv.mins + ' min' : ' · now') : '') + ' · home about ' + C.hhmm(p.home) + '</p></div>' +
+        '<div><p class="big">' + C.hhmm(p.train) + '<small>train home</small></p><p class="note">Leave school by ' + C.hhmm(lv.leave) + (lv.mins != null ? (lv.mins > 0 ? ' · in ' + lv.mins + ' min' : ' · now') : '') + ' from the ' + entName(p.ent) + ' · home about ' + C.hhmm(p.home) + '</p></div>' +
         backJourney(c, p, lv) + (ph.kind === 'after' ? statusAfter(c, p, lv) : '') + altsHtml(a.opts, p.train, 'alt-back');
     } else h = '<div class="row1"><span class="lbl">Going home</span><span class="tools">' + liveBtn + gear + '</span></div><p class="note">No more trains home today.</p>';
   } else if (ph.kind === 'next' && ph.m && ph.m.best) {
     const m = ph.m, p = m.best, when = ph.off === 1 ? 'Tomorrow' : D.DOW_L[D.dayAt(ph.off).getDay()];
     h = '<div class="row1"><span class="lbl">' + when + ' · ' + (m.hasBy ? 'arrive by ' + C.hhmm(m.by) : 'starts ' + C.hhmm(m.start)) + '</span><span class="tools">' + tag(null) + liveBtn + gear + '</span></div>' +
-      '<div><p class="big">Leave ' + C.hhmm(p.leave) + '<small>' + (p.bus ? 'bus ' + esc(p.bus.line) + ' ' + C.hhmm(p.bus.at) : C.hhmm(p.train) + ' train') + '</small></p><p class="note">At school ' + C.hhmm(p.arrive) + ' · ' + p.spare + ' min to spare</p></div>' + outJourney(c, p, null);
+      '<div><p class="big">Leave ' + C.hhmm(p.leave) + '<small>' + (p.bus ? 'bus ' + esc(p.bus.line) + ' ' + C.hhmm(p.bus.at) : C.hhmm(p.train) + ' train') + '</small></p><p class="note">At school ' + C.hhmm(p.arrive) + ' · ' + p.spare + ' min to spare · ' + entName(p.ent) + '</p></div>' + outJourney(c, p, null);
   } else {
     h = '<div class="row1"><span class="lbl">Your trip</span><span class="tools">' + liveBtn + gear + '</span></div><p class="note">No school days set. Open the trip settings to add them.</p>';
   }
@@ -79,13 +80,12 @@ function outJourney(c, p, lv) {
   legs.push(legHtml('bus', p.bus ? 'Bus ' + esc(p.bus.line) : 'Bus', p.bus ? (lv && lv.bus && lv.bus.live ? lv.bus.eta : p.bus.at) : p.leave + L.walk1, false, lv && lv.bus && lv.bus.live));
   legs.push(legHtml('train', 'Train', lv && lv.train && lv.train.live ? lv.train.eta : p.train, true, lv && lv.train && lv.train.live));
   if (p.hz) legs.push(legHtml('bus', 'Bus ' + esc(p.hz.line), lv && lv.hz && lv.hz.live ? lv.hz.eta : p.hz.at, false, lv && lv.hz && lv.hz.live));
-  else if (c.hz.mode !== 'walk') legs.push(legHtml('bus', 'Bus', p.trainArr + L.wait2));
-  legs.push(legHtml('walk', 'Walk', p.hz ? p.hz.off : c.hz.mode === 'walk' ? p.trainArr : p.trainArr + L.wait2 + L.bus2));
+  legs.push(legHtml('walk', p.hzWalk ? 'Walk ' + p.hzWalk + '′' : 'Walk', p.hz ? p.hz.off : p.trainArr));
   legs.push(legHtml('flag', 'School', p.arrive, true));
   return '<div class="journey" style="grid-template-columns:repeat(' + legs.length + ',minmax(0,1fr))">' + legs.join('') + '</div>';
 }
 function backJourney(c, p, lv) {
-  const legs = [legHtml('walk', 'Walk', lv ? lv.leave : p.leave)];
+  const legs = [legHtml('walk', p.hzWalk ? 'Walk ' + p.hzWalk + '′' : 'Walk', lv ? lv.leave : p.leave)];
   if (p.hz) legs.push(legHtml('bus', 'Bus ' + esc(p.hz.line), lv && lv.hz && lv.hz.live ? lv.hz.eta : p.hz.at, false, lv && lv.hz && lv.hz.live));
   legs.push(legHtml('train', 'Train', lv && lv.train && lv.train.live ? lv.train.eta : p.train, true, lv && lv.train && lv.train.live));
   legs.push(legHtml('bus', p.bus ? 'Bus ' + esc(p.bus.line) : 'Bus', p.bus ? p.bus.at : p.trainArr + 5));
@@ -131,6 +131,8 @@ D.SHEETS.tripinfo = () => {
       row('Scheduled', 'It hasn’t started its route yet, so the time comes from the official timetable.') +
       row('Late or early', 'Shown when it’s 2 minutes or more off. Within a minute counts as on time. Your leave time moves with your bus.') +
       row('Orange card', 'Leave within 5 minutes, or your bus is late enough that you might miss the train.') +
+      row('In Herzliya', 'The app picks the fastest way each time: walking to the main entrance (about 14 min), bus 33/34 to the New High School entrance, or another bus to Kanyon Shivat HaKochavim and a 2-minute walk to the main entrance. Nothing to set.') +
+      row('Entrances', 'New High School (תיכון חדש): on Sderot Shivat HaKochavim, by the 33/34 stop. Main entrance (הנדסאים): the gate just past Kanyon Shivat HaKochavim. The card tells you which one you’ll use.') +
       row('Trains home', 'Trains to Rosh HaAyin start at Herzliya, so they only turn Live once they leave. They almost always leave on time.') +
       row('Updates', 'The timetable updates itself every Sunday and Wednesday' + (hh.age != null ? ' (last update ' + (hh.age === 0 ? 'today' : hh.age === 1 ? 'yesterday' : hh.age + ' days ago') + ')' : '') + '. If it’s more than ' + C.STALE_DAYS + ' days old, the card shows “Problem”: planned times may be wrong.') +
       row('Where it comes from', 'The Ministry of Transport’s official timetable and live feed, the same data Moovit uses.') +
@@ -146,7 +148,8 @@ function maybeFetch(c, ph) {
   fetching = true; S.lastFetch = Date.now();
   C.fetchLive(C.watchStops(c, ph)).then(() => { fetching = false; render(); if (D.sheetKind() === 'live') D.renderSheet(); });
 }
-function boardStops(c) { return [c && c.home.stop, C.RH_STATION, C.HZ_STATION, c && c.hz.mode === 'bus' ? c.hz.from : null].filter(Boolean); }
+function planHz(c) { const ph = c && C.rail() ? C.phase(c) : null, p = ph && (ph.pick || (ph.m && ph.m.best) || (ph.a && ph.a.best)); return p && p.hz ? p.hz : null; }
+function boardStops(c) { const hz = planHz(c); return [c && c.home.stop, C.RH_STATION, C.HZ_STATION, hz ? hz.from : null].filter(Boolean); }
 function refreshBoard() {
   const c = C.cfg(school) || C.defaults();
   S.lastFetch = Date.now();
@@ -186,7 +189,8 @@ D.SHEETS.live = () => {
   else body += '<button class="menu-item" id="board-pick" data-act="trip-open">' + ic('bus') + 'Pick your bus stop to see its buses here</button>';
   body += sec('Rosh HaAyin North → Herzliya', trainRows(C.RH_STATION, 'toHerzliya', 4));
   body += sec('Herzliya → Rosh HaAyin North', trainRows(C.HZ_STATION, 'toRoshHaAyin', 4));
-  if (c && c.hz.mode === 'bus' && c.hz.from) body += sec('Herzliya · ' + bdi(C.stopName(c.hz.from)), busRows(c.hz.from, c.hz.lines, 5));
+  const hzp = planHz(c);
+  if (hzp) body += sec('Herzliya · ' + bdi(C.stopName(hzp.from)), busRows(hzp.from, null, 5));
   body += '<p class="sheet-note">' + (lv.at ? 'Updated ' + (age < 60 ? 'just now' : Math.round(age / 60) + ' min ago') + '. ' : 'Loading live data… ') +
     '“Live” means the bus or train is being tracked right now; “Scheduled” means it hasn’t started yet, so the time is from the timetable. Live data comes from the Ministry of Transport.</p>' +
     '<div class="sheet-actions"><button class="btn ghost" id="board-how" data-act="sheet" data-sheet="tripinfo">' + ic('info') + 'How it works</button><button class="btn ghost" id="board-refresh" data-act="board-refresh">' + ic('repeat') + 'Refresh</button></div>';
@@ -202,8 +206,6 @@ const step = (id, label, val, act, k, hint) => '<div class="set-row"><span class
 const pickRow = (id, label, code, act, disabled) => '<button class="menu-item pick-stop" id="' + id + '" data-act="' + act + '"' + (disabled ? ' disabled' : '') + '><span class="grow"><small>' + label + '</small>' + (code ? bdi(C.stopName(code)) : '<span class="muted">Choose…</span>') + '</span>' + ic('chev-r', 'sm') + '</button>';
 D.SHEETS.commute = () => {
   const f = work(), hz = f.hz, home = f.home;
-  const conns = hz.from && hz.to ? C.connections(hz.from, hz.to, null) : [];
-  const hzLines = Array.from(new Set(conns.map(x => x.r.line)));
   const tstep = (wd, k) => '<span class="mini-step"><button id="cs-' + wd + k + '-m" data-act="cs-time" data-wd="' + wd + '" data-k="' + k + '" data-d="-5" aria-label="Earlier">−</button><output>' + (f.days[wd][k] || '—') + '</output><button id="cs-' + wd + k + '-p" data-act="cs-time" data-wd="' + wd + '" data-k="' + k + '" data-d="5" aria-label="Later">+</button></span>';
   return {
     title: 'Trip & school times',
@@ -213,13 +215,8 @@ D.SHEETS.commute = () => {
       '<div class="menu-list">' + pickRow('pick-home', 'Your bus stop', home.stop, 'pick-home') + '</div>' +
       '<div>' + step('cl-walk1', 'Walk to your stop', f.legs.walk1, 'cs-leg', 'walk1') + step('cl-buffer', 'Time at the station', f.legs.buffer, 'cs-leg', 'buffer', 'Before the train leaves') +
       (home.stop ? '' : step('cl-bus1', 'Bus ride (estimate)', f.legs.bus1, 'cs-leg', 'bus1', 'Until you pick your stop')) + '</div>' +
-      '<p class="group-title">In Herzliya</p>' +
-      '<div class="seg" role="radiogroup" aria-label="From Herzliya station">' + [['bus', 'Bus'], ['walk', 'Walk']].map(o => '<button id="hz-' + o[0] + '" role="radio" data-act="hz-mode" data-v="' + o[0] + '" aria-checked="' + (hz.mode === o[0]) + '">' + o[1] + '</button>').join('') + '</div>' +
-      (hz.mode === 'bus'
-        ? '<div class="menu-list">' + pickRow('pick-hzfrom', 'Get on at (near the station)', hz.from, 'pick-hzfrom') + pickRow('pick-hzto', 'Get off at', hz.to, 'pick-hzto', !hz.from) + '</div>' +
-          (hzLines.length ? '<p class="field-label">Lines that go there</p><div class="pick-row" role="group" aria-label="Herzliya lines">' + hzLines.map(l => '<button class="pick" id="hzl-' + esc(l) + '" data-act="hz-line" data-v="' + esc(l) + '" aria-pressed="' + (!hz.lines.length || hz.lines.indexOf(l) >= 0) + '">' + esc(l) + '</button>').join('') + '</div>' : '') +
-          '<div>' + step('hz-tr', 'From the train to the stop', hz.transfer, 'hz-step', 'transfer') + step('hz-wk', 'Walk to school', hz.walk, 'hz-step', 'walk', 'After you get off') + '</div>'
-        : '<div>' + step('hz-wo', 'Walk from the station', hz.walkOnly || 15, 'hz-step', 'walkOnly') + '</div>') +
+      '<p class="group-title">In Herzliya</p><p class="sheet-note">Same school for everyone, so this is automatic. Each time the app picks the fastest way from the station: walk to the main entrance, bus 33/34 to the New High School, or another bus to the mall and a short walk.</p>' +
+      '<div class="seg" role="radiogroup" aria-label="From Herzliya station">' + [['auto', 'Fastest way'], ['walk', 'Always walk']].map(o => '<button id="hz-' + o[0] + '" role="radio" data-act="hz-mode" data-v="' + o[0] + '" aria-checked="' + ((hz.mode === 'walk' ? 'walk' : 'auto') === o[0]) + '">' + o[1] + '</button>').join('') + '</div>' +
       '<p class="group-title">School days</p><div>' + [0, 1, 2, 3, 4, 5, 6].map(wd => {
         const on = !!(f.days[wd] && f.days[wd].start);
         return '<div class="day-block"><div class="set-row"><span class="lbl">' + D.DOW_L[wd] + '</span><span class="switch-hit"><button class="switch" id="cs-on-' + wd + '" role="switch" aria-checked="' + on + '" data-act="cs-day" data-wd="' + wd + '" aria-label="School on ' + D.DOW_L[wd] + '"></button></span></div>' +
@@ -255,8 +252,10 @@ function hzToList(from) {
 }
 function listHtml(items, q, sel, near) {
   const qq = String(q || '').trim();
-  const rows = items.filter(x => !qq || C.stopName(x.code).indexOf(qq) >= 0 || x.code.indexOf(qq) === 0);
-  if (!rows.length) return '<p class="sheet-note">No stop matches “' + esc(qq) + '”.</p>';
+  // a bus number (e.g. 74 or 71א) shows that line's stops; 4+ digits is a stop code; anything else searches names
+  const isLine = /^\d{1,3}[֐-׿]?$/.test(qq), isCode = /^\d{4,}$/.test(qq);
+  const rows = items.filter(x => !qq || (isLine ? Array.from(x.lines).some(l => l === qq || l.replace(/\D+$/, '') === qq) : isCode ? x.code.indexOf(qq) === 0 : C.stopName(x.code).indexOf(qq) >= 0));
+  if (!rows.length) return '<p class="sheet-note">' + (isLine ? 'No stop here on line ' + esc(qq) + '. Turn the line on above, or check the number.' : 'No stop matches “' + esc(qq) + '”.') + '</p>';
   return '<div class="menu-list stops">' + rows.slice(0, 120).map(x => '<button class="menu-item" id="st-' + x.code + '" data-act="pick-set" data-code="' + x.code + '" aria-pressed="' + (x.code === sel) + '"><span class="grow">' + bdi(C.stopName(x.code)) +
     '<small>' + Array.from(x.lines).slice(0, 8).map(esc).join(' · ') + (x.d != null ? ' · ' + Math.round(x.d) + ' m' + (near ? ' from you' : ' from the station') : '') + '</small></span>' + (x.code === sel ? ic('check', 'sm') : '') + '</button>').join('') + '</div>';
 }
@@ -268,7 +267,7 @@ D.SHEETS.pick = a => {
   a.items = items;
   return {
     title: a.k === 'home' ? 'Your bus stop' : a.k === 'hzfrom' ? 'Get on at' : 'Get off at',
-    body: '<input class="text-in" id="pick-q" placeholder="Search by street name (Hebrew)" autocomplete="off" dir="auto" value="' + esc(a.q || '') + '">' +
+    body: '<input class="text-in" id="pick-q" placeholder="Street name or bus number, e.g. 74" autocomplete="off" dir="auto" value="' + esc(a.q || '') + '">' +
       (a.k !== 'hzfrom' ? '<button class="btn ghost block" id="pick-near" data-act="pick-near">' + ic('locate') + (a.near ? 'Sorted by distance from you' : 'Closest to me') + '</button>' : '') +
       '<div id="pick-list">' + listHtml(items, a.q, sel, !!a.near) + '</div>' +
       '<button class="btn ghost block" id="pick-back" data-act="trip-open">Back</button>'

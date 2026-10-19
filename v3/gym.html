@@ -18,7 +18,7 @@
 <script>/*__acctGuard4*/(function(){try{var real=null;for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(!/^sb-.*-auth-token$/.test(k))continue;try{var v=localStorage.getItem(k);if(v&&v.slice(0,7)==="base64-"){try{v=decodeURIComponent(escape(atob(v.slice(7))));}catch(e){try{v=atob(v.slice(7));}catch(e2){}}}var raw=JSON.parse(v);if(raw){if(raw.user&&raw.user.id)real=raw.user.id;else{var jwt=raw.access_token||(raw.currentSession&&raw.currentSession.access_token);if(jwt){var pp=JSON.parse(atob(jwt.split(".")[1].replace(/-/g,"+").replace(/_/g,"/")));if(pp&&pp.sub)real=pp.sub;}}}}catch(e){}if(real)break;}if(!real)return;localStorage.setItem("_dashUid",real);localStorage.setItem("_dashDataOwner",real);}catch(e){}})();</script>
 <link rel="preload" href="/v3/fonts/BricolageGrotesque-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/v3/fonts/Onest-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/v3/app.css?v=2.9.0">
+<link rel="stylesheet" href="/v3/app.css?v=2.9.1">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
@@ -91,7 +91,7 @@
   </div>
 </div>
 
-<script src="/v3/core.js?v=2.9.0"></script>
-<script src="/v3/gym.js?v=2.9.0"></script>
+<script src="/v3/core.js?v=2.9.1"></script>
+<script src="/v3/gym.js?v=2.9.1"></script>
 </body>
 </html>

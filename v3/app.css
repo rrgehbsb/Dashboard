@@ -664,3 +664,9 @@ a.tile { color:var(--ink); }
 .info-row + .info-row { box-shadow:0 -1px 0 var(--line); }
 .info-row b { font-size:15px; }
 .info-row span { font-size:15px; color:var(--ink-2); line-height:1.45; }
+
+/* ---------- multi-select chips: obvious on/off ---------- */
+.pick[aria-pressed] { border:2px solid transparent; }
+.pick[aria-pressed="true"] { background:var(--school); color:var(--on-school); border-color:var(--school); }
+.pick[aria-pressed="true"]::before { content:"✓"; margin-right:6px; font-weight:800; }
+.pick[aria-pressed="false"] { background:transparent; color:var(--ink-3); border:2px dashed var(--line); }

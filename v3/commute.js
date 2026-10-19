@@ -44,7 +44,7 @@ function defaults() {
     setup: false,
     legs: { walk1: +old.walkToBus || 3, bus1: +old.busJourney || 30, buffer: +old.stationBuffer || 5, wait2: 5, bus2: 3, walk2: +old.walkToSchool || 8 },
     home: { lines: ['71', '72', '73', '74'], stop: null },
-    hz: { mode: 'bus', from: null, to: null, lines: [], transfer: 4, walk: 5 },
+    hz: { mode: 'auto' },
     days, offUntil: null
   };
 }
@@ -52,7 +52,9 @@ function cfg(row) {
   const c = row && row.get(KEY);
   if (!c || !c.setup) return null;
   const d = defaults();
-  return Object.assign({}, d, c, { legs: Object.assign({}, d.legs, c.legs), home: Object.assign({}, d.home, c.home), hz: Object.assign({}, d.hz, c.hz) });
+  const out = Object.assign({}, d, c, { legs: Object.assign({}, d.legs, c.legs), home: Object.assign({}, d.home, c.home), hz: Object.assign({}, d.hz, c.hz) });
+  if (out.hz.mode !== 'walk') out.hz.mode = 'auto'; // older settings (picked stops) now use the automatic choice
+  return out;
 }
 const isSchoolDay = (c, wd) => !!(c.days && c.days[wd] && c.days[wd].start);
 
@@ -101,25 +103,71 @@ function connectionsNear(fromLL, fromR, toLL, toR, lines) {
 const tripsOf = (conns, wd) => conns.reduce((a, c) => a.concat(trips(c.r, wd, c.i, c.j).map(t => Object.assign(t, { from: c.r.stops[c.i], to: c.r.stops[c.j] }))), []).sort((a, b) => a.at - b.at);
 const trainsOf = (dir, wd) => (rail && rail[dir] ? (rail[dir][wd] || []).map(x => ({ dep: tm(x[0]), arr: tm(x[1]), no: x[2] || '' })) : []);
 
+/* ---------- Herzliya: station <-> school, picked automatically ----------
+   Everyone goes to the same school, so this part needs no settings. The campus has
+   two entrances: the New High School (תיכון חדש) on Sderot Shivat HaKochavim, by the
+   33/34 stop, and the main Handasaim entrance, the gate just past Kanyon Shivat
+   HaKochavim. Each time the app compares walking with every bus that runs from the
+   stops by the station to a stop by either entrance, and takes the fastest. */
+const SCHOOL = {
+  main: { key: 'main', name: 'Main entrance', he: 'הנדסאים', ll: [32.16397, 34.82495] },
+  nw: { key: 'nw', name: 'New High School entrance', he: 'תיכון חדש', ll: [32.16410, 34.82615] }
+};
+const WALK_M_PER_MIN = 75, DETOUR = 1.3, PLATFORM = 2; // street-route factor; minutes train door ↔ station street
+const walkMin = (a, b) => Math.max(1, Math.round(dist(a, b) * DETOUR / WALK_M_PER_MIN));
+const hzCache = {};
+function hzBuses(wd) {
+  if (hzCache[wd]) return hzCache[wd];
+  const out = [];
+  [SCHOOL.main, SCHOOL.nw].forEach(E => {
+    connectionsNear(HZ_LL, 320, E.ll, 260, null).forEach(c => trips(c.r, wd, c.i, c.j).forEach(t => {
+      const from = c.r.stops[c.i], to = c.r.stops[c.j];
+      out.push(Object.assign(t, { from, to, ent: E.key, walkA: walkMin(HZ_LL, stopLL(from)) + PLATFORM, walkB: walkMin(stopLL(to), E.ll) }));
+    }));
+  });
+  return (hzCache[wd] = out.sort((a, b) => a.at - b.at));
+}
+const hzWalk = E => PLATFORM + walkMin(HZ_LL, E.ll);
+// morning: fastest way from a train arriving at Herzliya to school
+function hzArrive(c, wd, arr) {
+  let best = { arrive: arr + hzWalk(SCHOOL.main), ent: 'main', walk: hzWalk(SCHOOL.main) };
+  if (c.hz.mode === 'walk') return best;
+  hzBuses(wd).forEach(b => {
+    if (b.at < arr + b.walkA || b.at > arr + 30) return;
+    const a = b.off + b.walkB;
+    if (a < best.arrive) best = { arrive: a, ent: b.ent, hz: b, walk: b.walkB };
+  });
+  return best;
+}
+// afternoon: the latest you can leave school and still catch a train leaving at dep
+function hzLeave(c, wd, end, dep) {
+  const E = SCHOOL.main, w = hzWalk(E);
+  let best = dep - w >= end ? { leave: dep - w, ent: 'main', walk: w } : null;
+  if (c.hz.mode === 'walk') return best;
+  [SCHOOL.main, SCHOOL.nw].forEach(E2 => {
+    connectionsNear(E2.ll, 260, HZ_LL, 320, null).forEach(cn => trips(cn.r, wd, cn.i, cn.j).forEach(t => {
+      const from = cn.r.stops[cn.i], to = cn.r.stops[cn.j], wa = walkMin(E2.ll, stopLL(from)), wb = walkMin(stopLL(to), HZ_LL) + PLATFORM;
+      if (t.off + wb > dep || t.at - wa < end) return;
+      const leave = t.at - wa;
+      if (!best || leave > best.leave) best = { leave, ent: E2.key, hz: Object.assign(t, { from, to }), walk: wa };
+    }));
+  });
+  return best;
+}
+
 /* ---------- morning ---------- */
 function morning(c, wd) {
   if (!isSchoolDay(c, wd) || !rail) return null;
   const day = c.days[wd], L = c.legs;
   const start = tm(day.start), by = day.by ? tm(day.by) : start;
-  const hzBus = c.hz.mode === 'bus' && c.hz.from && c.hz.to ? tripsOf(connections(c.hz.from, c.hz.to, c.hz.lines), wd) : null;
   const homeConns = c.home.stop ? homeRoutes('to', c.home.lines).map(r => ({ r, i: r.stops.indexOf(c.home.stop), j: r.stops.length - 1 })).filter(x => x.i >= 0) : [];
   const homeBus = homeConns.length ? tripsOf(homeConns, wd) : null;
   const opts = [];
   const trains = trainsOf('toHerzliya', wd);
-  // From the train onwards: the first bus you can catch in Herzliya (or the walk).
   function finish(o, t) {
     o.train = t.dep; o.trainArr = t.arr; o.trainNo = t.no;
-    if (hzBus) {
-      const b = hzBus.find(x => x.at >= t.arr + (c.hz.transfer || 4) && x.at <= t.arr + 45);
-      if (!b) return false;
-      o.hz = b; o.arrive = b.off + (c.hz.walk || 0);
-    } else if (c.hz.mode === 'walk') o.arrive = t.arr + (c.hz.walkOnly || 15);
-    else o.arrive = t.arr + L.wait2 + L.bus2 + L.walk2;
+    const h = hzArrive(c, wd, t.arr);
+    o.arrive = h.arrive; o.ent = h.ent; o.hzWalk = h.walk; if (h.hz) o.hz = h.hz;
     if (o.leave < 4 * 60 || o.arrive > by + 60) return false;
     o.ok = o.arrive <= by; o.spare = by - o.arrive;
     return true;
@@ -139,47 +187,30 @@ function morning(c, wd) {
   // Leave as late as possible while still arriving on time.
   let best = null;
   opts.forEach(o => { if (o.ok) best = o; });
-  return { wd, start, by, hasBy: !!day.by, opts, best, legs: L, real: { home: !!homeBus, hz: !!hzBus } };
+  return { wd, start, by, hasBy: !!day.by, opts, best, legs: L, real: { home: !!homeBus, hz: true } };
 }
 
 /* ---------- afternoon ---------- */
 function afternoon(c, wd) {
   if (!isSchoolDay(c, wd) || !rail) return null;
   const day = c.days[wd], L = c.legs, end = tm(day.end || '14:00');
-  let hzBack = null;
-  if (c.hz.mode === 'bus' && c.hz.to) {
-    let conns = connectionsNear(stopLL(c.hz.to), 300, HZ_LL, 450, c.hz.lines);
-    if (!conns.length) conns = connectionsNear(stopLL(c.hz.to), 300, HZ_LL, 450, null);
-    if (conns.length) hzBack = tripsOf(conns, wd);
-  }
   const homeBack = c.home.stop && stopLL(c.home.stop)
-    ? tripsOf(homeRoutes('from', c.home.lines).map(r => { const fromI = 0; let best = null; r.stops.forEach((s, j) => { const ll = stopLL(s); if (!ll || j === 0) return; const dd = dist(ll, stopLL(c.home.stop)); if (dd <= 400 && (!best || dd < best.d)) best = { j, d: dd }; }); return best ? { r, i: fromI, j: best.j } : null; }).filter(Boolean), wd)
+    ? tripsOf(homeRoutes('from', c.home.lines).map(r => { let best = null; r.stops.forEach((s, j) => { const ll = stopLL(s); if (!ll || j === 0) return; const dd = dist(ll, stopLL(c.home.stop)); if (dd <= 400 && (!best || dd < best.d)) best = { j, d: dd }; }); return best ? { r, i: 0, j: best.j } : null; }).filter(Boolean), wd)
     : null;
-  const trains = trainsOf('toRoshHaAyin', wd);
   const opts = [];
-  // each Herzliya option (bus or walk) → the first train → the first bus home
-  if (hzBack) {
-    hzBack.filter(b => b.at >= end + (c.hz.walk || 0) && b.at <= end + 120).slice(0, 6).map(b => ({ hz: b, leave: b.at - (c.hz.walk || 0), atStation: b.off + (c.hz.transfer || 4) })).forEach(s => {
-      const t = trains.find(x => x.dep >= s.atStation); if (!t) return;
-      const o = Object.assign({ train: t.dep, trainArr: t.arr, trainNo: t.no }, s);
-      addHome(o, t);
-      if (!opts.some(x => x.train === o.train)) opts.push(o);
-    });
-  } else {
-    const toStationMin = c.hz.mode === 'walk' ? (c.hz.walkOnly || 15) + 3 : L.walk2 + L.wait2 + L.bus2 + 3;
-    trains.filter(t => t.dep >= end + toStationMin).slice(0, 4).forEach(t => {
-      const o = { train: t.dep, trainArr: t.arr, trainNo: t.no, leave: t.dep - toStationMin };
-      addHome(o, t); opts.push(o);
-    });
-  }
-  function addHome(o, t) {
+  trainsOf('toRoshHaAyin', wd).forEach(t => {
+    if (opts.length >= 4) return;
+    const h = hzLeave(c, wd, end, t.dep); if (!h) return;
+    const o = { train: t.dep, trainArr: t.arr, trainNo: t.no, leave: h.leave, ent: h.ent, hzWalk: h.walk };
+    if (h.hz) o.hz = h.hz;
     if (homeBack) {
       const b = homeBack.find(x => x.at >= t.arr + 3 && x.at <= t.arr + 45);
-      if (b) { o.bus = b; o.home = b.off + L.walk1; return; }
+      if (b) { o.bus = b; o.home = b.off + L.walk1; }
     }
-    o.home = t.arr + 5 + L.bus1 + L.walk1;
-  }
-  return { wd, end, opts, best: opts[0] || null, legs: L, real: { home: !!homeBack, hz: !!hzBack } };
+    if (o.home == null) o.home = t.arr + 5 + L.bus1 + L.walk1;
+    opts.push(o);
+  });
+  return { wd, end, opts, best: opts[0] || null, legs: L, real: { home: !!homeBack, hz: true } };
 }
 
 function nextSchoolDay(c, fromOff) {
@@ -282,7 +313,7 @@ function liveView(c, ph, now) {
   if (ph.kind === 'morning') {
     out.bus = p.bus ? liveBus(c.home.stop, p.bus) : null;
     out.train = liveTrain(RH_STATION, p.train, p.trainNo);
-    out.hz = p.hz ? liveBus(c.hz.from, p.hz) : null;
+    out.hz = p.hz ? liveBus(p.hz.from, p.hz) : null;
     if (out.bus && out.bus.live) out.leave = out.bus.eta - L.walk1;
     if (out.bus && out.bus.live && p.bus) {
       const atStation = p.bus.off + Math.max(0, out.bus.delay), dep = p.train + (out.train ? out.train.delay : 0);
@@ -315,13 +346,13 @@ function health() {
 function watchStops(c, ph) {
   if (!c) return [];
   const s = [];
-  if (!ph || ph.kind === 'morning' || ph.kind === 'next' || ph.kind === 'none') { s.push(c.home.stop, RH_STATION, HZ_STATION, c.hz.mode === 'bus' ? c.hz.from : null); }
+  if (!ph || ph.kind === 'morning' || ph.kind === 'next' || ph.kind === 'none') { const p = ph && (ph.pick || (ph.m && ph.m.best)); s.push(c.home.stop, RH_STATION, HZ_STATION, p && p.hz ? p.hz.from : null); }
   else { const p = ph.pick || {}; s.push(p.hz ? p.hz.from : null, HZ_STATION, RH_STATION, p.bus ? p.bus.from : null); }
   return s.filter(Boolean);
 }
 
 window.COMMUTE = {
   KEY, RH_STATION, HZ_STATION, HZ_LL, RH_LL, load, loadRail: load, rail: () => rail, bus: () => bus, defaults, cfg, morning, afternoon, phase, nextSchoolDay, isSchoolDay,
-  homeRoutes, connections, connectionsNear, stopName, stopLL, dist, tm, hhmm, fetchLive, live: () => live, liveBus, liveTrain, watchStops, isoMin, schedAt, liveView, trainsOf, health, STALE_DAYS
+  SCHOOL, homeRoutes, connections, connectionsNear, stopName, stopLL, dist, tm, hhmm, fetchLive, live: () => live, liveBus, liveTrain, watchStops, isoMin, schedAt, liveView, trainsOf, health, STALE_DAYS
 };
 })();
