@@ -1,0 +1,42 @@
+# Refresh the bus and train timetables (v3/data/*.json) from the Ministry of
+# Transport GTFS feed twice a week. A commit to main makes Vercel redeploy, and the
+# app picks up the new data on its next open. No reminders needed.
+name: Refresh timetables
+
+on:
+  schedule:
+    - cron: '30 1 * * 0'   # Sunday 01:30 UTC (04:30 in Israel)
+    - cron: '30 1 * * 3'   # Wednesday 01:30 UTC
+  workflow_dispatch: {}     # "Run workflow" button on GitHub
+  push:
+    branches: [main]
+    paths: ['tools/gtfs/**', '.github/workflows/timetables.yml']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: timetables
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Download the GTFS feed
+        run: curl -fsSL --retry 4 --retry-delay 20 -o /tmp/gtfs.zip https://gtfs.mot.gov.il/gtfsfiles/israel-public-transportation.zip && ls -la /tmp/gtfs.zip
+      - name: Build rail.json and bus.json
+        run: node tools/gtfs/build.js /tmp/gtfs.zip
+      - name: Commit if anything changed
+        run: |
+          if git diff --quiet -- v3/data; then echo "Timetables unchanged."; exit 0; fi
+          git config user.name "timetable-bot"
+          git config user.email "timetable-bot@users.noreply.github.com"
+          git add v3/data/rail.json v3/data/bus.json
+          git commit -m "timetables: refresh from the MOT GTFS feed ($(date -u +%F))"
+          git push

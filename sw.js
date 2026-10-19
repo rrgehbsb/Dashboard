@@ -1,10 +1,10 @@
 // Dashboard Service Worker
 // Bump CACHE_VERSION on each deploy to force cache refresh
-const CACHE_VERSION = 'v2.8.7';
+const CACHE_VERSION = 'v2.8.8';
 const CACHE_NAME = `dashboard-${CACHE_VERSION}`;
 
 // Files to pre-cache on install
-const V3 = '?v=2.8.7';
+const V3 = '?v=2.8.8';
 const PRECACHE = [
   '/v3/',
   '/v3/app.css' + V3,
@@ -33,7 +33,7 @@ const PRECACHE = [
 // URL, so they are served from the cache instantly. Pages stay network-first.
 function isImmutable(url) {
   const p = url.pathname;
-  return p.startsWith('/v3/vendor/') || p.startsWith('/v3/fonts/') || (p.startsWith('/v3/') && url.searchParams.has('v'));
+  return p.startsWith('/v3/vendor/') || p.startsWith('/v3/fonts/') || (p.startsWith('/v3/') && !p.startsWith('/v3/data/') && url.searchParams.has('v'));
 }
 
 // The page asks a waiting worker to take over immediately (installed iOS apps
@@ -76,6 +76,13 @@ self.addEventListener('fetch', e => {
     if (response && response.ok) { const clone = response.clone(); caches.open(CACHE_NAME).then(cache => cache.put(request, clone)); }
     return response;
   };
+
+  // Timetables refresh twice a week under the same URL: answer from the cache at once,
+  // and fetch the newest copy in the background for the next open.
+  if (url.pathname.startsWith('/v3/data/')) {
+    e.respondWith(caches.match(request).then(hit => { const net = fetch(request).then(save).catch(() => hit); return hit || net; }));
+    return;
+  }
 
   if (isImmutable(url)) {
     e.respondWith(caches.match(request).then(hit => hit || fetch(request).then(save)));

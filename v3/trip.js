@@ -69,6 +69,9 @@ function render() {
   } else {
     h = '<div class="row1"><span class="lbl">Your trip</span><span class="tools">' + liveBtn + gear + '</span></div><p class="note">No school days set. Open the trip settings to add them.</p>';
   }
+  const built = C.rail() && C.rail().built ? D.parseDk(String(C.rail().built).replace(/(d{4})(d{2})(d{2})/, '$1-$2-$3')) : null;
+  const ageDays = built ? Math.floor((D.dayAt(0) - built) / 864e5) : null;
+  if (ageDays != null && ageDays > 14) h += '<p class="note">Timetable last updated ' + ageDays + ' days ago, so times may have changed. Live times are still current.</p>';
   if (!c.home.stop) h += '<button class="alt solid hint-btn" id="pick-stop-cta" data-act="trip-open">Pick your bus stop for real bus times</button>';
   slot.innerHTML = '<section class="commute" id="commute" data-area="' + area + '" aria-label="Trip">' + h + '</section>';
 }
