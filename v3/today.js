@@ -223,6 +223,12 @@ function heroModel() {
   const lvw = ph && (ph.kind === 'morning' || ph.kind === 'after') ? CM.liveView(cc, ph) : null;
   const hp = cc && CM.health ? CM.health() : {}, warn = (hp.stale || hp.expired) ? '⚠ Timetable outdated · ' : hp.liveDown ? '⚠ Live data unavailable · ' : '';
   if (lvw) { ph.mins = lvw.mins; }
+  // on the way (to school or home): what's next and when you get there
+  if (ph && ph.riding && ph.pick && lvw) {
+    const ar = CM.arrivals(cc, ph, ph.pick, lvw), r = CM.rideNow(ph, ph.pick, ar, n);
+    if (r) return { area: 'school', href: D.pageHref('school'), eyebrow: ph.kind === 'morning' ? 'On your way to school' : 'On your way home',
+      big: '<span class="t">' + esc(r.big) + '</span>', sub: warn + esc(r.small) + (ph.kind === 'morning' ? ' · at school ' + CM.hhmm(ar.arrive) : '') + ' <span class="tag">' + (lvw.anyLive ? 'Live' : 'Timetable') + '</span>', label: r.big };
+  }
   if (ph && ph.kind === 'morning' && ph.pick && ph.mins != null && ph.mins <= 120 && ph.mins >= -15) {
     const late = !ph.pick.ok || (lvw && lvw.miss);
     return { area: ph.mins <= 5 || late ? 'amber' : 'school', href: D.pageHref('school'), eyebrow: 'To school',

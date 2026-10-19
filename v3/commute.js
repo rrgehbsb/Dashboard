@@ -268,13 +268,21 @@ function phase(c, now) {
   if (c.offUntil && dk < c.offUntil) return { kind: 'off', until: c.offUntil, nextOff: nextSchoolDay(c, 0) };
   if (isSchoolDay(c, wd, dk)) {
     const m = morning(c, wd, dk), a = afternoon(c, wd, dk);
-    if (m && now < m.by) {
-      let pick = m.best;
-      if (!pick || now > pick.leave) pick = m.opts.find(o => o.leave >= now) || pick;
-      if (pick) return { kind: 'morning', m, pick, mins: pick.leave - now };
+    // Once the planned trip has started you're most likely on it: keep following it until
+    // you arrive (the next option is offered as "Not on it?"), instead of jumping ahead.
+    if (m) {
+      const best = m.best || m.opts.find(o => o.leave >= now) || null;
+      const going = !!best && now >= best.leave && now < best.arrive + 5;
+      if (best && going) return { kind: 'morning', m, pick: best, riding: true, next: m.opts.find(o => o.leave > now) || null, mins: best.leave - now };
+      if (best && now < m.by) {
+        const pick = now <= best.leave ? best : m.opts.find(o => o.leave >= now) || best;
+        return { kind: 'morning', m, pick, mins: pick.leave - now };
+      }
     }
     if (a && now < a.end - 20) return { kind: 'school', a };
     if (a && a.opts.length) {
+      const first = a.best || a.opts[0];
+      if (first && now >= first.leave && now < first.home + 5) return { kind: 'after', a, pick: first, riding: true, next: a.opts.find(o => o.leave > now) || null, mins: first.leave - now };
       const pick = a.opts.find(o => o.leave >= now - 2);
       if (pick) return { kind: 'after', a, pick, mins: pick.leave - now };
     }
@@ -368,6 +376,79 @@ function liveView(c, ph, now) {
   out.anyLive = !!((out.bus && out.bus.live) || (out.train && out.train.live) || (out.hz && out.hz.live));
   return out;
 }
+// When you get to each place (live where the feed knows), and how long you have at each
+// change. Positive spare = early, negative = late.
+//   to school: busDep → busArr (at the station) · waitStation · trainDep → trainArr
+//              · waitHz · hzDep → hzArr · arrive, spare
+//   going home: hzDep → atStation · waitHz · trainDep → trainArr · waitRh · busDep → home
+function arrivals(c, ph, p, lv) {
+  if (!p) return null;
+  const L = c.legs, out = {}, d = x => (x && x.live ? x.delay : 0);
+  if (ph.kind === 'morning' || ph.kind === 'next') {
+    if (p.bus) {
+      out.busDep = lv && lv.bus ? lv.bus.eta : p.bus.at;
+      const atSt = p.bus.to ? liveBus(p.bus.to, Object.assign({}, p.bus, { at: p.bus.off })) : null; // the same bus, at the station
+      out.busArr = atSt && atSt.live ? atSt.eta : p.bus.off + Math.max(0, d(lv && lv.bus));
+      out.busArrLive = !!(atSt && atSt.live);
+    }
+    out.trainDep = lv && lv.train ? lv.train.eta : p.train;
+    const tA = liveTrain(HZ_STATION, p.trainArr, p.trainNo);
+    out.trainArr = tA && tA.live ? tA.eta : p.trainArr + Math.max(0, d(lv && lv.train));
+    out.trainArrLive = !!(tA && tA.live);
+    if (p.bus) { out.waitStation = out.trainDep - out.busArr; out.walkStation = PLATFORM; }
+    if (p.hz) {
+      out.hzDep = lv && lv.hz ? lv.hz.eta : p.hz.at;
+      out.hzArr = p.hz.off + Math.max(0, d(lv && lv.hz));
+      out.waitHz = out.hzDep - out.trainArr; out.walkHz = p.hz.walkA || PLATFORM;
+      out.arrive = out.hzArr + (p.hzWalk || 0);
+      // a late train misses this bus: the next way from Herzliya (another bus, or walking)
+      if (out.waitHz - out.walkHz < 0 && ph.m) {
+        const alt = hzOptions(c, ph.m.wd, out.trainArr).reduce((a, b) => (b.arrive < a.arrive ? b : a));
+        out.missHz = true; out.alt = alt; out.arrive = alt.arrive;
+      }
+    } else out.arrive = out.trainArr + (p.hzWalk || 0);
+    out.by = ph.m ? ph.m.by : p.arrive + (p.spare || 0);
+    out.spare = out.by - out.arrive;
+  } else {
+    if (p.hz) {
+      out.hzDep = lv && lv.hz ? lv.hz.eta : p.hz.at;
+      out.atStation = p.hz.off + Math.max(0, d(lv && lv.hz)) + PLATFORM;
+    } else out.atStation = p.leave + (p.hzWalk || 0);
+    out.trainDep = lv && lv.train ? lv.train.eta : p.train;
+    out.waitHz = out.trainDep - out.atStation; out.walkHz = 0;
+    const tA = liveTrain(RH_STATION, p.trainArr, p.trainNo);
+    out.trainArr = tA && tA.live ? tA.eta : p.trainArr + Math.max(0, d(lv && lv.train));
+    out.trainArrLive = !!(tA && tA.live);
+    if (p.bus) {
+      out.busDep = lv && lv.bus ? lv.bus.eta : p.bus.at;
+      out.waitRh = out.busDep - out.trainArr; out.walkRh = 3;
+      out.home = p.bus.off + Math.max(0, d(lv && lv.bus)) + L.walk1;
+    } else out.home = p.home;
+  }
+  return out;
+}
+// What's next on a trip that's under way: { big, small } for the card and the Today screen.
+function rideNow(ph, p, ar, now) {
+  if (!p || !ar) return null;
+  const n = now == null ? D.nowMin() : now, mins = t => Math.max(0, Math.round(t - n));
+  const early = s => s >= 0 ? (s === 0 ? 'right on time' : s + ' min early') : (-s) + ' min late';
+  if (ph.kind === 'morning') {
+    if (p.bus && n < ar.busDep) return { big: 'Bus ' + p.bus.line + ' at ' + hhmm(ar.busDep), small: 'in ' + mins(ar.busDep) + ' min · at the station ' + hhmm(ar.busArr) };
+    if (p.bus && n < ar.busArr) return { big: 'At the station ' + hhmm(ar.busArr), small: (ar.waitStation >= 0 ? ar.waitStation + ' min before the ' + hhmm(ar.trainDep) + ' train' : 'the ' + hhmm(ar.trainDep) + ' train may leave first') };
+    if (n < ar.trainDep) return { big: 'Train ' + hhmm(ar.trainDep), small: 'leaves in ' + mins(ar.trainDep) + ' min · Herzliya ' + hhmm(ar.trainArr) };
+    if (n < ar.trainArr && ar.missHz) return { big: 'Herzliya ' + hhmm(ar.trainArr), small: 'the train is late, so ' + (ar.alt.hz ? 'take bus ' + ar.alt.hz.line + ' at ' + hhmm(ar.alt.hz.at) : 'walk') + ' · at school ' + hhmm(ar.arrive) };
+    if (n < ar.trainArr) return { big: 'Herzliya ' + hhmm(ar.trainArr), small: p.hz ? 'then bus ' + p.hz.line + (p.hz.nick ? ' (' + p.hz.nick + ')' : '') + ' at ' + hhmm(ar.hzDep) + ' · ' + Math.max(0, ar.waitHz) + ' min to get there (' + ar.walkHz + '-min walk)' : 'then a ' + (p.hzWalk || 12) + '-min walk · at school ' + hhmm(ar.arrive) };
+    if (p.hz && n < ar.hzDep) return { big: 'Bus ' + p.hz.line + ' at ' + hhmm(ar.hzDep), small: 'in ' + mins(ar.hzDep) + ' min · at school ' + hhmm(ar.arrive) };
+    return { big: 'At school ' + hhmm(ar.arrive), small: early(ar.spare) };
+  }
+  if (p.hz && n < ar.hzDep) return { big: 'Bus ' + p.hz.line + ' at ' + hhmm(ar.hzDep), small: 'in ' + mins(ar.hzDep) + ' min · at the station ' + hhmm(ar.atStation) };
+  if (n < ar.atStation) return { big: 'At the station ' + hhmm(ar.atStation), small: (ar.waitHz >= 0 ? ar.waitHz + ' min before the ' + hhmm(ar.trainDep) + ' train' : 'the ' + hhmm(ar.trainDep) + ' train may leave first') };
+  if (n < ar.trainDep) return { big: 'Train ' + hhmm(ar.trainDep), small: 'leaves in ' + mins(ar.trainDep) + ' min · Rosh HaAyin ' + hhmm(ar.trainArr) };
+  if (n < ar.trainArr) return { big: 'Rosh HaAyin ' + hhmm(ar.trainArr), small: p.bus ? 'then bus ' + p.bus.line + ' at ' + hhmm(ar.busDep) + ' · ' + Math.max(0, ar.waitRh) + ' min to get there' : 'home about ' + hhmm(ar.home) };
+  if (p.bus && n < ar.busDep) return { big: 'Bus ' + p.bus.line + ' at ' + hhmm(ar.busDep), small: 'in ' + mins(ar.busDep) + ' min · home ' + hhmm(ar.home) };
+  return { big: 'Home ' + hhmm(ar.home), small: 'about ' + mins(ar.home) + ' min' };
+}
+
 // Is anything wrong with the data? The timetable refreshes twice a week, so more
 // than 7 days old means the automatic update has failed at least twice.
 const STALE_DAYS = 7;
@@ -385,13 +466,13 @@ function health() {
 function watchStops(c, ph) {
   if (!c) return [];
   const s = [];
-  if (!ph || ph.kind === 'morning' || ph.kind === 'next' || ph.kind === 'none') { const p = ph && (ph.pick || (ph.m && ph.m.best)); s.push(c.home.stop, RH_STATION, HZ_STATION, p && p.hz ? p.hz.from : null); }
+  if (!ph || ph.kind === 'morning' || ph.kind === 'next' || ph.kind === 'none') { const p = ph && (ph.pick || (ph.m && ph.m.best)); s.push(c.home.stop, RH_STATION, HZ_STATION, p && p.hz ? p.hz.from : null, p && p.bus ? p.bus.to : null); }
   else { const p = ph.pick || {}; s.push(p.hz ? p.hz.from : null, HZ_STATION, RH_STATION, p.bus ? p.bus.from : null); }
   return s.filter(Boolean);
 }
 
 window.COMMUTE = {
   KEY, RH_STATION, HZ_STATION, HZ_LL, RH_LL, load, loadRail: load, rail: () => rail, bus: () => bus, defaults, cfg, morning, afternoon, phase, nextSchoolDay, isSchoolDay,
-  SCHOOL, HZ_STOPS, HZ_NICK, hzOptions, setHzPick, hzPickFor, homeRoutes, connections, connectionsNear, stopName, stopLL, dist, tm, hhmm, fetchLive, live: () => live, liveBus, liveTrain, watchStops, isoMin, schedAt, liveView, trainsOf, health, STALE_DAYS, setDayTimes, times
+  SCHOOL, HZ_STOPS, HZ_NICK, hzOptions, setHzPick, hzPickFor, homeRoutes, connections, connectionsNear, stopName, stopLL, dist, tm, hhmm, fetchLive, live: () => live, liveBus, liveTrain, watchStops, isoMin, schedAt, liveView, arrivals, rideNow, trainsOf, health, STALE_DAYS, setDayTimes, times
 };
 })();

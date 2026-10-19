@@ -38,6 +38,17 @@ const ttOn = () => { const T = window.TIMETABLE, s = T ? T.settings(school) : {}
 // the first-lesson time is from the weekly plan until the school posts the day
 const wpNote = m => m && m.auto && !m.published ? '<p class="note wp">' + ic('clock', 'xs') + 'From the weekly plan: the school hasn’t posted this day’s update yet, so a cancelled first lesson won’t show.</p>' : '';
 const startLbl = m => m.auto ? 'first lesson ' + C.hhmm(m.start) + (m.hasBy ? ' · by ' + C.hhmm(m.by) : '') : (m.hasBy ? 'arrive by ' + C.hhmm(m.by) : 'starts ' + C.hhmm(m.start));
+// "7 min early" / "right on time" / "2 min late"
+const earlyTxt = sp => sp > 0 ? sp + ' min early' : sp === 0 ? 'right on time' : (-sp) + ' min late';
+// the time you have between two legs: plenty (green), tight (amber), might miss (red)
+// min = the time between arriving and the next one leaving; walk = how much of it is walking.
+// Green: 3+ minutes to spare after the walk; amber: 1–2; red: you'd miss it.
+function waitRow(min, text, walk, missTxt) {
+  if (min == null || isNaN(min)) return '';
+  const spare = min - (walk || 0), cls = spare >= 3 ? 'ok' : spare >= 1 ? 'tight' : 'miss';
+  const body = spare < 0 ? (missTxt || 'Might miss it: ' + min + ' min ' + text) : (spare < 3 ? 'Tight: ' : '') + min + ' min ' + text + (walk > 2 ? ' (' + walk + '-min walk)' : '');
+  return '<div class="st-wait ' + cls + '"><i aria-hidden="true"></i><span>' + body + '</span></div>';
+}
 /* ---------- the card ---------- */
 function render() {
   const slot = $('#commute-slot'); if (!slot) return;
@@ -60,24 +71,46 @@ function render() {
   } else if (ph.kind === 'morning') {
     const m = ph.m, p = (S.pick != null && m.opts.find(o => o.leave === S.pick)) || ph.pick;
     const lv = C.liveView(c, Object.assign({}, ph, { pick: p }), now) || { leave: p.leave, mins: p.leave - now };
-    if (lv.miss || (p.ok && lv.mins <= 5)) area = 'amber';
-    h = '<div class="row1"><span class="lbl">To school · ' + startLbl(m) + '</span><span class="tools">' + tag(lv) + liveBtn + gear + '</span></div>' +
-      '<div><p class="big">Leave ' + C.hhmm(lv.leave) + '<small>' + (lv.mins > 0 ? 'in ' + lv.mins + ' min' : lv.mins === 0 ? 'now' : (-lv.mins) + ' min ago') + '</small></p>' +
-      '<p class="note">' + (lv.miss ? 'Your bus is running late and may miss the ' + C.hhmm(p.train) + ' train. Check the next option below.' :
-        (p.ok ? 'At school ' + C.hhmm(p.arrive) + ' · ' + p.spare + ' min to spare' : 'At school ' + C.hhmm(p.arrive) + ', ' + (-p.spare) + ' min late') + ' · ' + entName(p.ent)) + '</p>' + wpNote(m) + '</div>' +
-      outJourney(c, p, lv) + statusMorning(c, p, lv) + hzHtml(c, m, p) + altsHtml(m.opts, p.leave, 'alt-pick');
+    const ar = C.arrivals(c, ph, p, lv);
+    const riding = now >= lv.leave && now < ar.arrive + 5;
+    if (lv.miss || (!riding && p.ok && lv.mins <= 5)) area = 'amber';
+    if (riding) {
+      // on your way: what's next and when you get there, with a way out if you missed it
+      const r = C.rideNow(ph, p, ar, now), nx = m.opts.find(o => o.leave > now && o !== p);
+      h = '<div class="row1"><span class="lbl">On your way · ' + startLbl(m) + '</span><span class="tools">' + tag(lv) + liveBtn + gear + '</span></div>' +
+        '<div><p class="big ride">' + esc(r.big) + '<small>' + esc(r.small) + '</small></p>' +
+        '<p class="note">' + (lv.miss ? 'Your bus is running late and may miss the ' + C.hhmm(ar.trainDep) + ' train.' : 'At school ' + C.hhmm(ar.arrive) + ' · ' + earlyTxt(ar.spare) + ' · ' + entName(p.ent)) + '</p>' +
+        (nx ? '<button class="alt not-on" id="not-on" data-act="alt-pick" data-t="' + nx.leave + '">Not on it? Leave ' + C.hhmm(nx.leave) + ' instead</button>' : '') + '</div>' +
+        outJourney(c, p, lv, ar) + statusMorning(c, p, lv, ar);
+    } else {
+      h = '<div class="row1"><span class="lbl">To school · ' + startLbl(m) + '</span><span class="tools">' + tag(lv) + liveBtn + gear + '</span></div>' +
+        '<div><p class="big">Leave ' + C.hhmm(lv.leave) + '<small>' + (lv.mins > 0 ? 'in ' + lv.mins + ' min' : lv.mins === 0 ? 'now' : (-lv.mins) + ' min ago') + '</small></p>' +
+        '<p class="note">' + (lv.miss ? 'Your bus is running late and may miss the ' + C.hhmm(p.train) + ' train. Check the next option below.' :
+          'At school ' + C.hhmm(ar.arrive) + ' · ' + earlyTxt(ar.spare) + ' · ' + entName(p.ent)) + '</p>' + wpNote(m) + '</div>' +
+        outJourney(c, p, lv, ar) + statusMorning(c, p, lv, ar) + hzHtml(c, m, p) + altsHtml(m.opts, p.leave, 'alt-pick');
+    }
   } else if (ph.kind === 'school' || ph.kind === 'after') {
     const a = ph.a, p = (S.pickBack != null && a.opts.find(o => o.leave === S.pickBack)) || ph.pick || a.best;
     if (p) {
       const lv = ph.kind === 'after' ? (C.liveView(c, Object.assign({}, ph, { pick: p }), now) || { leave: p.leave, mins: p.leave - now }) : { leave: p.leave, mins: null };
-      h = '<div class="row1"><span class="lbl">Going home · ' + (a.auto ? 'last lesson ends ' : 'school ends ') + C.hhmm(a.end) + '</span><span class="tools">' + tag(lv) + liveBtn + gear + '</span></div>' +
-        '<div><p class="big">' + C.hhmm(p.train) + '<small>train home</small></p><p class="note">Leave school by ' + C.hhmm(lv.leave) + (lv.mins != null ? (lv.mins > 0 ? ' · in ' + lv.mins + ' min' : ' · now') : '') + ' from the ' + entName(p.ent) + ' · home about ' + C.hhmm(p.home) + '</p></div>' +
-        backJourney(c, p, lv) + (ph.kind === 'after' ? statusAfter(c, p, lv) : '') + altsHtml(a.opts, p.leave, 'alt-back');
+      const ar = C.arrivals(c, { kind: 'after' }, p, ph.kind === 'after' ? lv : null);
+      const riding = ph.kind === 'after' && now >= lv.leave && now < ar.home + 5;
+      if (riding) {
+        const r = C.rideNow({ kind: 'after' }, p, ar, now), nx = a.opts.find(o => o.leave > now && o !== p);
+        h = '<div class="row1"><span class="lbl">On your way home</span><span class="tools">' + tag(lv) + liveBtn + gear + '</span></div>' +
+          '<div><p class="big ride">' + esc(r.big) + '<small>' + esc(r.small) + '</small></p><p class="note">Home about ' + C.hhmm(ar.home) + '</p>' +
+          (nx ? '<button class="alt not-on" id="not-on" data-act="alt-back" data-t="' + nx.leave + '">Not on it? Leave ' + C.hhmm(nx.leave) + ' instead</button>' : '') + '</div>' +
+          backJourney(c, p, lv) + statusAfter(c, p, lv, ar);
+      } else {
+        h = '<div class="row1"><span class="lbl">Going home · ' + (a.auto ? 'last lesson ends ' : 'school ends ') + C.hhmm(a.end) + '</span><span class="tools">' + tag(lv) + liveBtn + gear + '</span></div>' +
+          '<div><p class="big">' + C.hhmm(p.train) + '<small>train home</small></p><p class="note">Leave school by ' + C.hhmm(lv.leave) + (lv.mins != null ? (lv.mins > 0 ? ' · in ' + lv.mins + ' min' : ' · now') : '') + ' from the ' + entName(p.ent) + ' · home about ' + C.hhmm(ar.home) + '</p></div>' +
+          backJourney(c, p, lv) + statusAfter(c, p, ph.kind === 'after' ? lv : null, ar) + altsHtml(a.opts, p.leave, 'alt-back');
+      }
     } else h = '<div class="row1"><span class="lbl">Going home</span><span class="tools">' + liveBtn + gear + '</span></div><p class="note">No more trains home today.</p>';
   } else if (ph.kind === 'next' && ph.m && ph.m.best) {
     const m = ph.m, p = m.best, when = ph.off === 1 ? 'Tomorrow' : D.DOW_L[D.dayAt(ph.off).getDay()];
     h = '<div class="row1"><span class="lbl">' + when + ' · ' + startLbl(m) + '</span><span class="tools">' + tag(null) + liveBtn + gear + '</span></div>' +
-      '<div><p class="big">Leave ' + C.hhmm(p.leave) + '<small>' + (p.bus ? 'bus ' + esc(p.bus.line) + ' ' + C.hhmm(p.bus.at) : C.hhmm(p.train) + ' train') + '</small></p><p class="note">At school ' + C.hhmm(p.arrive) + ' · ' + p.spare + ' min to spare · ' + entName(p.ent) + '</p>' + wpNote(m) + '</div>' + outJourney(c, p, null) + hzHtml(c, m, p);
+      '<div><p class="big">Leave ' + C.hhmm(p.leave) + '<small>' + (p.bus ? 'bus ' + esc(p.bus.line) + ' ' + C.hhmm(p.bus.at) : C.hhmm(p.train) + ' train') + '</small></p><p class="note">At school ' + C.hhmm(p.arrive) + ' · ' + earlyTxt(p.spare) + ' · ' + entName(p.ent) + '</p>' + wpNote(m) + '</div>' + outJourney(c, p, null) + statusMorning(c, p, null, C.arrivals(c, ph, p, null)) + hzHtml(c, m, p);
   } else {
     const hol = ttOn() && window.TIMETABLE.holidayOn(D.todayKey());
     h = '<div class="row1"><span class="lbl">' + (hol ? 'No school' : 'Your trip') + '</span><span class="tools">' + liveBtn + gear + '</span></div>' +
@@ -87,14 +120,14 @@ function render() {
   if (!c.home.stop) h += '<button class="alt solid hint-btn" id="pick-stop-cta" data-act="trip-open">Pick your bus stop for real bus times</button>';
   slot.innerHTML = '<section class="commute" id="commute" data-area="' + area + '" aria-label="Trip">' + problemsHtml() + h + '</section>';
 }
-function outJourney(c, p, lv) {
+function outJourney(c, p, lv, ar) {
   const L = c.legs, legs = [];
   legs.push(legHtml('walk', 'Walk', lv ? lv.leave : p.leave));
   legs.push(legHtml('bus', p.bus ? 'Bus ' + esc(p.bus.line) : 'Bus', p.bus ? (lv && lv.bus && lv.bus.live ? lv.bus.eta : p.bus.at) : p.leave + L.walk1, false, lv && lv.bus && lv.bus.live));
   legs.push(legHtml('train', 'Train', lv && lv.train && lv.train.live ? lv.train.eta : p.train, true, lv && lv.train && lv.train.live));
   if (p.hz) legs.push(legHtml('bus', 'Bus ' + esc(p.hz.line), lv && lv.hz && lv.hz.live ? lv.hz.eta : p.hz.at, false, lv && lv.hz && lv.hz.live));
   legs.push(legHtml('walk', p.hzWalk ? 'Walk ' + p.hzWalk + '′' : 'Walk', p.hz ? p.hz.off : p.trainArr));
-  legs.push(legHtml('flag', 'School', p.arrive, true));
+  legs.push(legHtml('flag', 'School', ar && ar.arrive != null ? ar.arrive : p.arrive, true));
   return '<div class="journey" style="grid-template-columns:repeat(' + legs.length + ',minmax(0,1fr))">' + legs.join('') + '</div>';
 }
 function backJourney(c, p, lv) {
@@ -105,18 +138,34 @@ function backJourney(c, p, lv) {
   legs.push(legHtml('home', 'Home', p.home, true));
   return '<div class="journey" style="grid-template-columns:repeat(' + legs.length + ',minmax(0,1fr))">' + legs.join('') + '</div>';
 }
-function statusMorning(c, p, lv) {
+// "06:52 → 07:11": leaves (struck-through timetable time if live differs) → gets there
+const legTime = (l, dep, arr, arrLive) => etaText(l, dep) + '<span class="arr"> → ' + C.hhmm(arr) + (arrLive ? '<i class="ld" title="Live"></i>' : '') + '</span>';
+function statusMorning(c, p, lv, ar) {
   const rows = [];
-  if (p.bus) rows.push(statusRow('bus', 'Bus ' + esc(p.bus.line), bdi(C.stopName(c.home.stop)), etaText(lv && lv.bus, p.bus.at), badge(lv && lv.bus)));
-  rows.push(statusRow('train', 'Train ' + esc(p.trainNo || ''), 'Rosh HaAyin North → Herzliya', etaText(lv && lv.train, p.train), badge(lv && lv.train)));
-  if (p.hz) rows.push(statusRow('bus', 'Bus ' + esc(p.hz.line) + (p.hz.nick ? ' · ' + bdi(p.hz.nick) : ''), 'from ' + bdi(C.stopName(p.hz.from)), etaText(lv && lv.hz, p.hz.at), badge(lv && lv.hz)));
+  ar = ar || {};
+  if (p.bus) {
+    rows.push(statusRow('bus', 'Bus ' + esc(p.bus.line), bdi(C.stopName(c.home.stop)), legTime(lv && lv.bus, p.bus.at, ar.busArr != null ? ar.busArr : p.bus.off, ar.busArrLive), badge(lv && lv.bus)));
+    rows.push(waitRow(ar.waitStation, 'at Rosh HaAyin North before the train', ar.walkStation));
+  }
+  rows.push(statusRow('train', 'Train ' + esc(p.trainNo || ''), 'Rosh HaAyin North → Herzliya', legTime(lv && lv.train, p.train, ar.trainArr != null ? ar.trainArr : p.trainArr, ar.trainArrLive), badge(lv && lv.train)));
+  if (p.hz) {
+    rows.push(waitRow(ar.waitHz, 'in Herzliya to reach bus ' + esc(p.hz.line), ar.walkHz, ar.missHz ? 'The train is late, so you’ll miss bus ' + esc(p.hz.line) + ': ' + (ar.alt && ar.alt.hz ? 'take bus ' + esc(ar.alt.hz.line) + ' at ' + C.hhmm(ar.alt.hz.at) + (ar.alt.nick ? ' (' + bdi(ar.alt.nick) + ')' : '') : 'walk') + ' instead' : null));
+    rows.push(statusRow('bus', 'Bus ' + esc(p.hz.line) + (p.hz.nick ? ' · ' + bdi(p.hz.nick) : ''), 'from ' + bdi(C.stopName(p.hz.from)), legTime(lv && lv.hz, p.hz.at, ar.hzArr != null ? ar.hzArr : p.hz.off), badge(lv && lv.hz)));
+  }
+  if (ar.arrive != null) rows.push('<div class="st-end">' + ic('flag', 'xs') + '<span>At school <b>' + C.hhmm(ar.arrive) + '</b> · ' + earlyTxt(ar.spare) + '</span></div>');
   return '<div class="st-list">' + rows.join('') + '</div>';
 }
-function statusAfter(c, p, lv) {
+function statusAfter(c, p, lv, ar) {
   const rows = [];
-  if (p.hz) rows.push(statusRow('bus', 'Bus ' + esc(p.hz.line), bdi(C.stopName(p.hz.from)), etaText(lv && lv.hz, p.hz.at), badge(lv && lv.hz)));
-  rows.push(statusRow('train', 'Train ' + esc(p.trainNo || ''), 'Herzliya → Rosh HaAyin North', etaText(lv && lv.train, p.train), badge(lv && lv.train)));
-  if (p.bus) rows.push(statusRow('bus', 'Bus ' + esc(p.bus.line), bdi(C.stopName(p.bus.from)) + ' → home', C.hhmm(p.bus.at), badge(lv && lv.bus)));
+  ar = ar || {};
+  if (p.hz) rows.push(statusRow('bus', 'Bus ' + esc(p.hz.line), bdi(C.stopName(p.hz.from)), legTime(lv && lv.hz, p.hz.at, (ar.atStation != null ? ar.atStation : p.hz.off)), badge(lv && lv.hz)));
+  rows.push(waitRow(ar.waitHz, 'at Herzliya station before the train', ar.walkHz));
+  rows.push(statusRow('train', 'Train ' + esc(p.trainNo || ''), 'Herzliya → Rosh HaAyin North', legTime(lv && lv.train, p.train, ar.trainArr != null ? ar.trainArr : p.trainArr, ar.trainArrLive), badge(lv && lv.train)));
+  if (p.bus) {
+    rows.push(waitRow(ar.waitRh, 'at Rosh HaAyin North to reach bus ' + esc(p.bus.line), ar.walkRh));
+    rows.push(statusRow('bus', 'Bus ' + esc(p.bus.line), bdi(C.stopName(p.bus.from)) + ' → home', legTime(lv && lv.bus, p.bus.at, p.bus.off), badge(lv && lv.bus)));
+  }
+  if (ar.home != null) rows.push('<div class="st-end">' + ic('home', 'xs') + '<span>Home about <b>' + C.hhmm(ar.home) + '</b></span></div>');
   return '<div class="st-list">' + rows.join('') + '</div>';
 }
 // Herzliya, mornings: the two stops everyone uses (החדש, הליכה) first, then walking.

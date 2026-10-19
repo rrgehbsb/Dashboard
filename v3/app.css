@@ -60,7 +60,10 @@
 }
 
 *, *::before, *::after { box-sizing:border-box; }
-html { -webkit-text-size-adjust:100%; background:var(--ground); }
+/* no rubber-band bounce of the whole page: in a home-screen app, iPad/iPhone bounce the
+   fixed menu along with the content, so it looked like the menu scrolled */
+html { -webkit-text-size-adjust:100%; background:var(--ground); overscroll-behavior:none; }
+body { overscroll-behavior:none; }
 body {
   margin:0; background:var(--ground); color:var(--ink);
   font-family:var(--f-body); font-size:16px; line-height:1.45;
@@ -887,3 +890,17 @@ button.tt-note:active { transform:scale(.99); }
 .up-row { display:flex; align-items:center; gap:0; width:100%; min-height:48px; text-align:left; font-size:17px; font-weight:500; color:var(--ink); padding-right:4px; }
 .up-row .tt { flex:1; min-width:0; overflow-wrap:anywhere; }
 .up-row svg { color:var(--ink-3); flex:none; }
+
+/* ---------- Trip: arrival times and the time you have at each change ---------- */
+.st-t .arr { opacity:.85; font-weight:700; }
+.st-wait { display:flex; align-items:center; gap:8px; padding:6px 0 6px 28px; font-size:13px; font-weight:700; }
+.st-wait i { width:8px; height:8px; border-radius:999px; flex:none; }
+.st-wait.ok i { background:#2EE59D; }
+.st-wait.tight i { background:var(--amber); }
+.st-wait.miss { color:#FFD1D8; }
+.st-wait.miss i { background:#FF4D6D; }
+.st-row + .st-wait, .st-wait + .st-row { box-shadow:none; }
+.st-end { display:flex; align-items:center; gap:8px; min-height:44px; font-size:14px; font-weight:600; box-shadow:0 -1px 0 color-mix(in srgb, var(--hf) 18%, transparent); }
+.st-end b { font-weight:800; }
+.commute .big.ride { font-size:36px; }
+.alt.not-on { margin-top:10px; }
