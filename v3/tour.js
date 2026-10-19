@@ -99,6 +99,8 @@ const CSS = `
 .tour-notif span { font-size:14px; color:var(--ink-2); display:block; line-height:1.3; }
 .tour-swap { transition:opacity .3s ease, transform .3s ease; }
 .tour-swap.fade { opacity:0; transform:translateY(6px); }
+.tsug-b .btn-like { min-height:36px; padding:0 12px; border-radius:999px; font-size:14px; font-weight:800; display:inline-flex; align-items:center; background:color-mix(in srgb, var(--hb) 12%, transparent); }
+.tsug-b .btn-like.tsug-go { background:var(--hb); color:var(--hf); }
 .tour-cloud { display:flex; align-items:center; gap:12px; padding:14px 16px; border-radius:var(--r-l); background:var(--surface); box-shadow:var(--shadow); font-weight:700; }
 .tour-cloud .ci { width:42px; height:42px; border-radius:999px; display:grid; place-items:center; background:var(--surface-2); color:var(--ink-2); transition:background-color .3s, color .3s; }
 .tour-cloud.ok .ci { background:var(--food-soft); color:var(--food-ink); }
@@ -131,6 +133,7 @@ const journey = legs => '<div class="journey" style="grid-template-columns:repea
 const stRow = (icon, title, where, t, badge, id) => '<div class="st-row"' + (id ? ' id="' + id + '"' : '') + '>' + ic(icon, 'sm') + '<div class="st-main"><b>' + title + '</b><span>' + where + '</span></div><div class="st-side"><span class="st-t">' + t + '</span>' + badge + '</div></div>';
 const badge = (kind, text) => '<span class="st-b' + (kind ? ' ' + kind : '') + '">' + (kind ? '<i></i>' : '') + text + '</span>';
 const wait = (cls, text, id) => '<div class="st-wait ' + cls + '"' + (id ? ' id="' + id + '"' : '') + '><i aria-hidden="true"></i><span>' + text + '</span></div>';
+const trow = (icon, title, sub, time, label, chip, id, cls) => '<div class="trow' + (cls ? ' ' + cls : '') + '"' + (id ? ' id="' + id + '"' : '') + '><span class="tr-ic">' + ic(icon, 'sm') + '</span><span class="tr-main"><b>' + title + '</b><span class="tr-sub">' + sub + '</span></span><span class="tr-side"><b>' + time + '</b><span>' + label + '</span></span>' + ic('chev-r', 'sm tr-chev') + (chip ? '<span class="tr-chip">' + chip + '</span>' : '') + '</div>';
 const avatar = (n, size) => '<span class="fav s' + size + ' ini" aria-hidden="true">' + esc(n.charAt(0)) + '</span>';
 const nextDow = wd => { const t = D.dayAt(0).getDay(); return ((wd - t) + 7) % 7 || 7; };
 const dayName = off => D.DOW_L[D.dayAt(off).getDay()];
@@ -239,68 +242,89 @@ const CH = [
     } },
 
   { key: 'trip', area: 'school', chip: 'Trip to school', eb: 'Trip to school', h: 'Leave at the right minute',
-    p: 'Pick your bus stop once. Every school day it plans the bus, the train and the bus in Herzliya around your first lesson, and follows them live.',
-    tips: [['Green: plenty of time to make the change', '#2EE59D'], ['Amber: tight, walk fast', '#FFB21E'], ['Red: you might miss it, so check the next option', '#FF5A6E']],
-    dur: 11000, height: 520, minH: 0,
+    p: 'It plans like you would: the train that gets you to your first lesson, then the bus that safely makes that train. Tap a line to pick another one.',
+    tips: [['Your minutes on the platform count the walk and how late your bus usually is', '#2EE59D'], ['Amber: tight. Red: you might miss the train', '#FFB21E']],
+    dur: 12000, height: 560, minH: 470,
     build: () => '<section class="commute"><div class="row1"><span class="lbl">To school · first lesson 08:30</span><span class="tools"><span class="tt-tag on"><i class="ld"></i>Live</span></span></div>' +
-      '<div><p class="big">Leave 07:24<small id="tr-in">in 12 min</small></p><p class="note" id="tr-note">At school 08:22 · 8 min early · Main entrance (הנדסאים)</p></div>' +
-      journey([leg('walk', 'Walk', '07:24'), leg('bus', 'Bus 74', '07:27'), leg('train', 'Train', '07:49', 1), leg('bus', 'Bus 501', '08:16'), leg('flag', 'School', '08:22', 1)]) +
-      '<div class="st-list">' + stRow('bus', 'Bus 74', own('יהודה הלוי/ שילה'), '<span id="tr-bt">07:27</span><span class="arr"> → 07:42</span>', badge('', 'Scheduled'), 'tr-bus') +
-      wait('ok', '7 min at Rosh HaAyin North before the train (2-min walk)', 'tr-w1') +
-      stRow('train', 'Train 618', 'Rosh HaAyin North → Herzliya', '07:49<span class="arr"> → 08:11</span>', badge('ok', 'Live · on time')) + '</div></section>',
+      '<div><p class="big">Leave <span id="tr-leave">07:24</span><small id="tr-in">in 12 min</small></p><p class="note">At school 08:22 · 8 min early · Main entrance (הנדסאים)</p></div>' +
+      '<div class="trows">' + trow('bus', 'Bus 74 · <span id="tr-bt">07:27</span>', own('יהודה הלוי/ שילה'), '<span id="tr-ba">07:45</span>', 'at the station', '<span class="sp tight" id="tr-sp"><i></i>4 min on the platform</span>', 'tr-bus') +
+      trow('train', 'Train 07:49', 'Rosh HaAyin North → Herzliya', '08:11', 'in Herzliya', '') + '</div></section>' +
+      '<div class="tour-scrim" id="tr-scrim"></div><div class="tour-sheet" id="tr-sheet"><div class="grab"></div><h4>Buses to the 07:49 train</h4><div class="plist">' +
+      [['07:12', '07:30', 'ok', '12 min on the platform', 0, 'tr-b1'], ['07:17', '07:35', 'ok', '7 min on the platform', 1], ['07:27', '07:45', 'tight', '4 min on the platform', 0, 'tr-b3']].map(x =>
+        '<div class="popt' + (x[5] === 'tr-b3' ? ' on' : '') + '" id="' + (x[5] || '') + '"><span class="po-main"><b>74 · ' + x[0] + '</b><span>→ station ' + x[1] + (x[4] ? ' <span class="ptag">Suggested</span>' : '') + '</span></span><span class="po-side"><span class="sp ' + x[2] + '"><i></i>' + x[3] + '</span></span></div>').join('') +
+      '</div></div>',
     play: async x => {
       const inn = x.$('#tr-in');
-      for (let m = 12; m >= 10; m--) { inn.textContent = 'in ' + m + ' min'; await x.wait(800); }
-      await x.wait(400);
-      // the bus is running late: everything after it moves with it
-      const b = x.$('#tr-bus');
-      b.querySelector('.st-t').innerHTML = '<s>07:27</s> 07:31<span class="arr"> → 07:46</span>';
-      b.querySelector('.st-b').outerHTML = badge('late', 'Live · 4 min late');
-      b.animate([{ background: 'rgba(255,255,255,.18)' }, { background: 'transparent' }], { duration: 900 });
-      await x.wait(700);
-      const w = x.$('#tr-w1'); w.className = 'st-wait tight'; w.querySelector('span').textContent = 'Tight: 3 min at Rosh HaAyin North before the train (2-min walk)';
-      w.animate([{ transform: 'scale(1.04)' }, { transform: 'none' }], { duration: 400 });
-      inn.textContent = 'in 14 min';
+      for (let m = 12; m >= 11; m--) { inn.textContent = 'in ' + m + ' min'; await x.wait(700); }
+      // you took a later bus than suggested: pick the one that keeps your minutes
+      await x.tap('#tr-bus');
+      x.$('#tr-scrim').classList.add('on'); x.$('#tr-sheet').classList.add('open');
+      await x.wait(1400);
+      await x.tap('#tr-b1');
+      x.$('#tr-sheet').classList.remove('open'); x.$('#tr-scrim').classList.remove('on'); x.lift();
+      await x.wait(300);
+      x.$('#tr-leave').textContent = '07:09'; x.$('#tr-bt').textContent = '07:12'; x.$('#tr-ba').textContent = '07:30';
+      const sp = x.$('#tr-sp'); sp.className = 'sp ok'; sp.innerHTML = '<i></i>12 min on the platform';
+      inn.textContent = 'in 1 min';
+      x.$('#tr-bus').animate([{ background: 'rgba(255,255,255,.22)' }, { background: 'transparent' }], { duration: 900 });
+      x.toast('Bus 74 at 07:12 for today');
       await x.wait(2400);
     } },
 
   { key: 'hz', area: 'school', chip: 'Herzliya stops', eb: 'Trip to school', h: 'החדש or הליכה?',
     p: 'In Herzliya you get the two stops everyone uses, side by side, with the faster one marked. Tap one to use it today; set your usual one in trip settings.',
-    dur: 9000, height: 470, minH: 0,
-    build: () => '<section class="commute"><div><p class="big" style="font-size:40px">Leave 07:24</p><p class="note" id="hz-note">At school 08:21 · 9 min early · New High School entrance (תיכון חדש)</p></div>' +
-      '<div class="hz-block"><p class="hz-h">Recommended in Herzliya · train arrives 08:11</p>' +
-      '<div class="hz-opt" id="hz-a" aria-pressed="true"><span class="nick"><bdi>החדש</bdi></span><span class="hz-main"><b>Bus 3 · 08:16 <em>fastest</em></b><span>from <bdi>ת. רכבת הרצליה</bdi></span></span><span class="hz-t">08:21<small>at school</small></span></div>' +
-      '<div class="hz-opt" id="hz-b" aria-pressed="false"><span class="nick"><bdi>הליכה</bdi></span><span class="hz-main"><b>Bus 501 · 08:16</b><span>from <bdi>ת. רכבת הרצליה</bdi></span></span><span class="hz-t">08:22<small>at school</small></span></div>' +
-      '<div class="hz-opt foot" aria-pressed="false"><span class="nick foot">' + ic('walk', 'xs') + '</span><span class="hz-main"><b>Walk all the way</b><span>Main entrance (הנדסאים)</span></span><span class="hz-t">08:25<small>at school</small></span></div></div></section>',
+    dur: 8000, height: 300,
+    build: () => '<section class="commute"><div><p class="note" id="hz-note">At school 08:21 · 9 min early · New High School entrance (תיכון חדש)</p></div>' +
+      '<div class="trows"><div class="trow hz2"><span class="tr-ic">' + ic('flag', 'sm') + '</span><span class="tr-main"><b>Herzliya → school</b></span><span class="tr-side"><b id="hz-t">08:21</b><span>at school</span></span>' +
+      '<span class="hzcs"><span class="hzc fast" id="hz-a" aria-pressed="true">' + own('החדש') + '<small>08:21</small></span><span class="hzc" id="hz-b" aria-pressed="false">' + own('הליכה') + '<small>08:22</small></span><span class="hzc" aria-pressed="false">' + ic('walk', 'xs') + '<small>08:25</small></span></span></div></div></section>',
     play: async x => {
       await x.wait(1200);
       await x.tap('#hz-b');
       x.$('#hz-a').setAttribute('aria-pressed', 'false'); x.$('#hz-b').setAttribute('aria-pressed', 'true');
+      x.$('#hz-t').textContent = '08:22';
       x.$('#hz-note').textContent = 'At school 08:22 · 8 min early · Main entrance (הנדסאים)';
       x.lift();
       await x.wait(2600);
     } },
 
   { key: 'ride', area: 'school', chip: 'On the way', eb: 'On the way', h: 'It follows you',
-    p: 'Once you leave, the card shows the next step and exactly when you’ll reach school. Missed the bus? “Not on it?” switches to the next one.',
-    dur: 12000, height: 430, minH: 0,
+    p: 'Once you leave, the card shows the next step and exactly when you’ll reach school, live. Missed the bus? “Not on it?” shows the other ones.',
+    dur: 11000, height: 470,
     build: () => '<section class="commute"><div class="row1"><span class="lbl">On your way · first lesson 08:30</span><span class="tools"><span class="tt-tag on"><i class="ld"></i>Live</span></span></div>' +
-      '<div class="tour-swap" id="rd-txt"><p class="big ride">Bus 74 at 07:27<small>in 3 min · at the station 07:42</small></p></div>' +
-      '<p class="note">At school 08:22 · 8 min early</p>' +
-      journey([leg('walk', 'Walk', '07:24', 1), leg('bus', 'Bus 74', '07:27'), leg('train', 'Train', '07:49'), leg('bus', 'Bus 501', '08:16'), leg('flag', 'School', '08:22')]) +
-      '<button class="alt not-on" id="rd-not">Not on it? Leave 07:39 instead</button></section>',
+      '<div class="tour-swap" id="rd-txt"><p class="big ride">Bus 74 at 07:27<small>in 3 min · at the station 07:45</small></p></div>' +
+      '<div class="trows" id="rd-rows">' + trow('bus', 'Bus 74 · 07:27', own('יהודה הלוי/ שילה'), '07:45', 'at the station', '', '', 'now') +
+      trow('train', 'Train 07:49', 'Rosh HaAyin North → Herzliya', '08:11', 'in Herzliya', '') +
+      '<div class="trow hz2"><span class="tr-ic">' + ic('flag', 'sm') + '</span><span class="tr-main"><b>Herzliya → school</b></span><span class="tr-side"><b>08:22</b><span>at school</span></span></div></div>' +
+      '<button class="alt not-on" id="rd-not">Not on it? See the other buses</button></section>',
     play: async x => {
-      const steps = [['At the station 07:42', '7 min before the 07:49 train', 1], ['Train 07:49', 'leaves in 2 min · Herzliya 08:11', 2], ['Herzliya 08:11', 'then bus 501 (הליכה) at 08:16 · 5 min to get there (5-min walk)', 3], ['At school 08:22', '8 min early', 4]];
-      const legs = Array.from(x.screen.querySelectorAll('.leg'));
-      for (const s of steps) {
+      const steps = [['At the station 07:45', '4 min before the 07:49 train', 1], ['Train 07:49', 'leaves in 2 min · Herzliya 08:11', 1], ['Herzliya 08:11', 'then bus 501 (הליכה) at 08:16 · 5 min to get there (5-min walk)', 2], ['At school 08:22', '8 min early', 3]];
+      const rows = Array.from(x.screen.querySelectorAll('#rd-rows .trow'));
+      for (const st of steps) {
         await x.wait(1700);
-        await x.swap('#rd-txt', () => { x.$('#rd-txt').innerHTML = '<p class="big ride">' + s[0] + '<small>' + s[1] + '</small></p>'; legs.forEach((l, i) => l.classList.toggle('key', i === s[2])); });
+        await x.swap('#rd-txt', () => {
+          x.$('#rd-txt').innerHTML = '<p class="big ride">' + st[0] + '<small>' + st[1] + '</small></p>';
+          rows.forEach((r, i) => { r.classList.toggle('done', i < st[2]); r.classList.toggle('now', i === st[2]); });
+          const n = x.$('#rd-not'); if (n) n.textContent = st[2] >= 1 ? 'Not on it? See the other trains' : 'Not on it? See the other buses';
+        });
       }
-      await x.wait(1000);
-      await x.tap('#rd-not');
-      await x.swap('#rd-txt', () => { x.$('#rd-txt').innerHTML = '<p class="big ride">Bus 74 at 07:42<small>in 3 min · at the station 07:57</small></p>'; legs.forEach((l, i) => l.classList.toggle('key', i === 0)); });
+      await x.wait(2200);
+    } },
+
+  { key: 'habits', area: 'school', chip: 'Your habits', eb: 'Trip to school', h: 'It learns your habits',
+    p: 'Change the same thing twice and the card asks once: same as last time, or always? Habits you keep are listed in trip settings, and you can remove them there.',
+    dur: 8000, height: 330, minH: 330,
+    build: () => '<section class="commute"><div class="row1"><span class="lbl">To school · first lesson 08:30</span></div>' +
+      '<div><p class="big">Leave <span id="hb-leave">07:24</span></p><p class="note" id="hb-note">At school 08:22 · 8 min early</p></div>' +
+      '<div class="tsug" id="hb-q">' + ic('repeat', 'xs') + '<p>The last 2 times you had to be there by 08:30, you took the train before the suggested one.</p><div class="tsug-b"><span class="tsug-go btn-like">Same today</span><span class="btn-like" id="hb-always">Always</span></div></div></section>',
+    play: async x => {
+      await x.wait(1600);
+      await x.tap('#hb-always');
+      const q = x.$('#hb-q'); q.style.transition = 'opacity .3s, transform .3s'; q.style.opacity = 0; q.style.transform = 'scale(.96)';
+      await x.wait(320); q.remove();
+      x.$('#hb-leave').textContent = '07:09'; x.$('#hb-note').textContent = 'At school 08:07 · 23 min early';
+      x.toast('Saved as a habit · change it in trip settings');
       x.lift();
-      await x.wait(2000);
+      await x.wait(2400);
     } },
 
   { key: 'tt', area: 'school', chip: 'Timetable', eb: 'Timetable', h: 'Changes, the night before',

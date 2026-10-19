@@ -29,6 +29,7 @@ function mergeRepeats(a, b) {
 const dash = D.Row('dashboard', { merge: { repeats: mergeRepeats } });
 const school = D.Row('school', { readOnly: true });
 window.TODAY_SCHOOL_ROW = school; // social.js shares the trip from here too
+if (window.COMMUTE) window.COMMUTE.useRow(school); // your picks for the trip (train, bus) count here too
 const gym = D.Row('po-coach', { readOnly: true });
 const food = D.Row('food', { readOnly: true });
 

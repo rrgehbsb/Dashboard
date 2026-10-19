@@ -18,7 +18,7 @@
 const D = window.DASH, $ = D.$, esc = D.esc, ic = D.ic, hhmm = D.hhmm;
 const VAPID_PUBLIC = 'BPHqx3CLnpghjbbgLMSDvLK4nIpqN6Lp7DtDxUDbQ-B7zehrpiCLxcKHhUb-2w9FewCUiPboX5-Yo5cB5YHYxko';
 // kept per person on this device (D.ukey), so another account here never sees them
-const LS_ME = D.ukey('dash3:me'), LS_FR = D.ukey('dash3:friends'), LS_LOC = D.ukey('dash3:shareLoc'), LS_PUB = D.ukey('dash3:tripPub'), LS_CHOSEN = D.ukey('dash3:tripPick'), LS_KNOWN = D.ukey('dash3:knownFriends');
+const LS_ME = D.ukey('dash3:me'), LS_FR = D.ukey('dash3:friends'), LS_LOC = D.ukey('dash3:shareLoc'), LS_PUB = D.ukey('dash3:tripPub'), LS_KNOWN = D.ukey('dash3:knownFriends');
 const LOC_FRESH_MIN = 20;
 const MOMENTS = [['leave', 'Leaving'], ['station', 'At the station'], ['train', 'On the train'], ['arrive', 'Arrived']];
 const S = {
@@ -310,13 +310,9 @@ async function upsertOwn(table, fields) {
   try { await q(sb => sb.from(table).upsert(Object.assign({ user_id: D.uid(), updated_at: new Date().toISOString() }, fields))); return true; }
   catch (e) { return false; }
 }
-// The option you tapped on the School card (otherwise the planner's choice).
-function choose(dk, dir, train, leave) { D.writeJSON(LS_CHOSEN, { dk, dir, train, leave }); tick(); }
-function pickFor(opts, dk, dir, def) {
-  const ch = D.readJSON(LS_CHOSEN);
-  if (ch && ch.dk === dk && ch.dir === dir) { const o = (opts || []).find(x => (ch.leave != null ? x.leave === ch.leave : x.train === ch.train)); if (o) return o; }
-  return def;
-}
+// The plan follows what you pick on the School card (kept per day and synced, commute.js).
+function choose() { D.writeJSON(LS_PUB, null); tick(); }
+const tripDayRec = dk => { const row = window.SCHOOL_ROW || window.TODAY_SCHOOL_ROW, C = window.COMMUTE, a = row && C && row.get(C.DAYS_KEY); return (a && a[dk]) || {}; };
 function legTo(p) {
   const s = [[p.leave, 'walk', p.bus ? 'stop' : 'rh']];
   if (p.bus) s.push([p.bus.at, 'bus', String(p.bus.line)], [p.bus.off, 'station', 'rh']);
@@ -344,8 +340,7 @@ function planWeek(c) {
     if (c.offUntil && dk < c.offUntil) continue;
     if (!C.isSchoolDay(c, wd, dk)) continue;
     const m = C.morning(c, wd, dk), a = C.afternoon(c, wd, dk);
-    const p = m && pickFor(m.opts, dk, 'to', (off === 0 && ph && ph.kind === 'morning' && ph.pick) || m.best || m.opts[0]);
-    const h = a && pickFor(a.opts, dk, 'home', (off === 0 && ph && (ph.kind === 'school' || ph.kind === 'after') && ph.pick) || a.best);
+    const p = m && m.pick, h = a && a.pick;
     const day = {}; if (p) day.to = legTo(p); if (h) day.home = legHome(h);
     if (day.to || day.home) days[dk] = day;
   }
@@ -360,11 +355,12 @@ function myPlan() {
 // Today's legs stay as sent once they've started: the planner moves on to the next
 // bus when the leave time passes, but you're already on your way. Only a choice you
 // make yourself (tapping another option) replaces one.
-function keepUnderway(t, prev) {
+function keepUnderway(t, prev, prevAt) {
   const dk = D.todayKey(), P = prev && daysOf(prev) && daysOf(prev)[dk];
   if (!P || !t.days[dk]) return t;
-  const now = D.nowMin(), ch = D.readJSON(LS_CHOSEN), day = Object.assign({}, t.days[dk]);
-  const chosen = (dir, leg) => !!(ch && ch.dk === dk && ch.dir === dir && leg && trainOf(leg) === ch.train);
+  const now = D.nowMin(), rec = tripDayRec(dk), day = Object.assign({}, t.days[dk]);
+  // you picked something else after it was sent: that wins
+  const chosen = dir => !!(rec[dir] && (rec[dir].at || 0) > (prevAt || 0));
   ['to', 'home'].forEach(dir => { const p = P[dir]; if (validLeg(p) && p[0][0] <= now && !chosen(dir, day[dir])) day[dir] = p; });
   return { v: 3, days: Object.assign({}, t.days, { [dk]: day }) };
 }
@@ -372,7 +368,7 @@ function tick() {
   if (!shareTrip() || D.DEMO || S.needsSql || !D.uid()) return;
   let t = myPlan(); if (!t) return;
   const last = D.readJSON(LS_PUB);
-  t = keepUnderway(t, last && last.trip);
+  t = keepUnderway(t, last && last.trip, last && last.at);
   const key = JSON.stringify(t);
   if (last && last.key === key && Date.now() - last.at < 30 * 60e3) return; // unchanged: no need to send again
   upsertOwn('presence', { trip: t }).then(ok => { if (ok) D.writeJSON(LS_PUB, { key, at: Date.now(), trip: t }); });

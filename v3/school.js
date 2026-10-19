@@ -25,7 +25,16 @@ function mergeById(base, inc) {
   base.concat(inc).forEach(x => { if (!x || x.id == null || seen.has(x.id)) return; seen.add(x.id); out.push(m.get(x.id)); });
   return out;
 }
-const school = D.Row('school', { merge: { [K.subj]: mergeById, [K.as]: mergeById, [K.te]: mergeById, [K.gr]: mergeById } });
+// trip choices (commute.js tripDays): day by day, the newer change wins, so the phone
+// and the computer never undo each other's picks
+function mergeTripDays(a, b) {
+  if (!a || typeof a !== 'object') return b || {};
+  if (!b || typeof b !== 'object') return a;
+  const out = Object.assign({}, a);
+  Object.keys(b).forEach(dk => { if (!out[dk] || ((b[dk] && b[dk].at) || 0) >= ((out[dk] && out[dk].at) || 0)) out[dk] = b[dk]; });
+  return out;
+}
+const school = D.Row('school', { merge: { [K.subj]: mergeById, [K.as]: mergeById, [K.te]: mergeById, [K.gr]: mergeById, 'dashboard:school:v1:tripDays': mergeTripDays } });
 window.SCHOOL_ROW = school; // the trip card and its settings live in trip.js
 
 /* ---------- demo ---------- */

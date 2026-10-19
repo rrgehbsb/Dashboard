@@ -952,3 +952,66 @@ button.tt-note:active { transform:scale(.99); }
   @view-transition { navigation:none; }
   .skel i::after { animation:none; }
 }
+
+/* ---------- the trip card: the plan in three lines ---------- */
+.trows { display:flex; flex-direction:column; background:color-mix(in srgb, var(--hf) 10%, transparent); border-radius:18px; padding:2px 6px; }
+.trow { display:flex; align-items:center; gap:10px; min-height:58px; padding:8px 6px; width:100%; color:var(--hf); text-align:start; border-radius:14px; transition:background-color .15s, opacity .2s; }
+.trow + .trow { box-shadow:0 -1px 0 color-mix(in srgb, var(--hf) 16%, transparent); }
+button.trow:not([disabled]):active { background:color-mix(in srgb, var(--hf) 12%, transparent); }
+.trow[disabled] { cursor:default; }
+.tr-ic { width:32px; height:32px; border-radius:999px; display:grid; place-items:center; flex:none; background:color-mix(in srgb, var(--hf) 16%, transparent); }
+.tr-main { flex:1; min-width:0; display:flex; flex-direction:column; gap:1px; }
+.tr-main > b { font-size:16px; font-weight:800; font-variant-numeric:tabular-nums; }
+.tr-main > b s { opacity:.6; font-weight:600; font-size:14px; }
+.tr-sub { font-size:13px; opacity:.88; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.trow { flex-wrap:wrap; }
+.trow > .tr-chip { flex-basis:100%; display:flex; padding-inline-start:42px; margin-top:-2px; }
+.tr-side { display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex:none; text-align:end; }
+.tr-side > b { font-family:var(--f-display); font-weight:800; font-size:17px; font-variant-numeric:tabular-nums; }
+.tr-side > span:not(.sp):not(.st-b) { font-size:12px; opacity:.85; }
+.tr-chev { opacity:.6; flex:none; margin-inline-start:-4px; }
+.trow.done { opacity:.5; }
+.trow.now { background:color-mix(in srgb, var(--hf) 14%, transparent); box-shadow:none; }
+.trow.now .tr-ic { background:var(--hf); color:var(--hb); }
+/* minutes on the platform */
+.sp { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:800; padding:2px 8px; border-radius:999px; white-space:nowrap; background:color-mix(in srgb, currentColor 12%, transparent); }
+.sp i { width:7px; height:7px; border-radius:999px; flex:none; background:#2EE59D; }
+.sp.tight i { background:var(--amber); }
+.sp.miss { background:#FF5A6E; color:#fff; }
+.sp.miss i { background:#fff; }
+.commute .sp.tight { background:var(--amber); color:var(--on-amber); }
+.commute .sp.tight i { background:var(--on-amber); }
+/* Herzliya: החדש / הליכה / walk, one tap each */
+.trow.hz2 { flex-wrap:wrap; row-gap:8px; }
+.hzcs { flex-basis:100%; display:flex; gap:6px; }
+.hzc { position:relative; flex:1 1 0; min-width:0; display:inline-flex; align-items:center; justify-content:center; gap:5px; min-height:38px; padding:0 8px; border-radius:999px; font-size:14px; font-weight:800; color:var(--hf); background:color-mix(in srgb, var(--hf) 14%, transparent); white-space:nowrap; }
+.hzc small { font-size:12px; font-weight:700; opacity:.85; font-variant-numeric:tabular-nums; }
+.hzc[aria-pressed="true"] { background:var(--hf); color:var(--hb); }
+.hzc.fast::after { content:""; position:absolute; top:-2px; inset-inline-end:-2px; width:9px; height:9px; border-radius:999px; background:#2EE59D; box-shadow:0 0 0 2px var(--hb); }
+.trow.hz2 { cursor:default; }
+/* "same as last time?" */
+.tsug { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:10px 12px; border-radius:16px; background:var(--hf); color:var(--hb); animation:taskIn .3s both; }
+.tsug p { flex:1 1 180px; font-size:14px; font-weight:600; line-height:1.35; }
+.tsug-b { display:flex; gap:6px; align-items:center; margin-inline-start:auto; }
+.tsug-b button { min-height:36px; padding:0 12px; border-radius:999px; font-size:14px; font-weight:800; color:var(--hb); background:color-mix(in srgb, var(--hb) 12%, transparent); }
+.tsug-b .tsug-go { background:var(--hb); color:var(--hf); }
+.tsug-b .tsug-x { width:36px; padding:0; display:grid; place-items:center; background:transparent; }
+/* the lists behind each line */
+.plist { display:flex; flex-direction:column; background:var(--surface-2); border-radius:var(--r-m); overflow:hidden; margin:4px 0 8px; }
+.popt { display:flex; align-items:center; gap:10px; min-height:60px; padding:8px 12px 8px 14px; width:100%; text-align:start; transition:background-color .15s; }
+.popt + .popt { box-shadow:0 -1px 0 var(--line); }
+.popt:active { background:color-mix(in srgb, var(--ink) 6%, transparent); }
+.popt.on { background:color-mix(in srgb, var(--school) 10%, var(--surface-2)); }
+.po-main { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.po-main b { font-family:var(--f-display); font-size:17px; font-weight:800; font-variant-numeric:tabular-nums; }
+.po-main span { font-size:13px; color:var(--ink-3); display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.po-side { display:flex; flex-direction:column; align-items:flex-end; gap:4px; text-align:end; }
+.po-side b { font-size:14px; font-weight:800; font-variant-numeric:tabular-nums; }
+.po-side > span:not(.sp) { font-size:12px; color:var(--ink-3); }
+.po-ok { width:20px; flex:none; color:var(--school-ink); }
+.po-main .ptag, .ptag { color:var(--on-school); }
+.ptag { font-size:11px; font-weight:800; letter-spacing:.03em; text-transform:uppercase; padding:1px 7px; border-radius:999px; background:var(--school); color:var(--on-school); }
+[dir="rtl"] .ptag { letter-spacing:0; }
+.tp-prev { font-size:14px; font-weight:600; color:var(--ink-2); padding:8px 12px; border-radius:12px; background:var(--surface-2); margin:2px 0 6px; font-variant-numeric:tabular-nums; }
+.habit-row .grow { font-size:15px; font-weight:600; }
+.sheet-body > .link { display:block; margin:4px auto 0; }

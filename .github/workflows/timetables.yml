@@ -1,7 +1,7 @@
 # Refresh the bus and train timetables (v3/data/*.json) from the Ministry of
 # Transport GTFS feed twice a week. A commit to main makes Vercel redeploy, and the
 # app picks up the new data on its next open. No reminders needed.
-name: Refresh timetables
+name: Refresh timetables and bus delays
 
 on:
   schedule:
@@ -10,7 +10,7 @@ on:
   workflow_dispatch: {}     # "Run workflow" button on GitHub
   push:
     branches: [main]
-    paths: ['tools/gtfs/**', '.github/workflows/timetables.yml']
+    paths: ['tools/gtfs/**', 'tools/delays/**', '.github/workflows/timetables.yml']
 
 permissions:
   contents: write
@@ -32,11 +32,15 @@ jobs:
         run: curl -fsSL --retry 4 --retry-delay 20 -o /tmp/gtfs.zip https://gtfs.mot.gov.il/gtfsfiles/israel-public-transportation.zip && ls -la /tmp/gtfs.zip
       - name: Build rail.json and bus.json
         run: node tools/gtfs/build.js /tmp/gtfs.zip
+      # How late lines 71–74 really reach Rosh HaAyin North (the open-bus archive). Only the
+      # days it hasn't seen yet; if the archive is down, the old numbers stay.
+      - name: Measure bus delays
+        run: node tools/delays/build.js 28 || echo "Bus delays not updated this time."
       - name: Commit if anything changed
         run: |
-          if git diff --quiet -- v3/data; then echo "Timetables unchanged."; exit 0; fi
+          if git diff --quiet -- v3/data tools/delays; then echo "Timetables unchanged."; exit 0; fi
           git config user.name "timetable-bot"
           git config user.email "timetable-bot@users.noreply.github.com"
-          git add v3/data/rail.json v3/data/bus.json
-          git commit -m "timetables: refresh from the MOT GTFS feed ($(date -u +%F))"
+          git add v3/data/rail.json v3/data/bus.json v3/data/delays.json tools/delays/obs.json
+          git commit -m "timetables + bus delays: refresh from the MOT GTFS feed ($(date -u +%F))"
           git push
