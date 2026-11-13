@@ -529,5 +529,13 @@ window.I18N_HE = {
   'Your week is empty': 'השבוע עוד ריק', 'Write my week': 'לכתוב את השבוע', 'Week saved': 'השבוע נשמר', 'Hide the Week tab': 'להסתיר את לשונית השבוע',
   'Week tab is on for your account': 'לשונית השבוע פעילה בחשבון שלך', 'Check today’s school schedule': 'לבדוק את המערכת של היום',
   'Write it once, as plain text: a day, then one line per thing. Only your account can see it.': 'כותבים פעם אחת, כטקסט פשוט: יום, ואז שורה לכל דבר. רק החשבון שלך רואה את זה.',
-  'Only your account can see this.': 'רק החשבון שלך רואה את זה.', 'Types:': 'סוגים:', 'after {d}': 'אחרי {d}'
+  'Only your account can see this.': 'רק החשבון שלך רואה את זה.', 'Types:': 'סוגים:', 'after {d}': 'אחרי {d}',
+  /* ---------- friends: plans as plans, tomorrow's ride ---------- */
+  'Tomorrow’s ride': 'הנסיעה של מחר', 'This morning’s ride': 'הנסיעה של הבוקר', 'I’m on it': 'אני בפנים', 'Join': 'להצטרף', 'You': 'את/ה', 'with': 'עם',
+  'on it': 'בפנים', 'not confirmed': 'לא אושר', '= on it': '= בפנים', '? = the app’s plan, not confirmed yet': '? = התוכנית של האפליקציה, עוד לא אושר',
+  'Planned: {x}': 'מתוכנן: {x}', 'no live update': 'אין עדכון חי', 'planned': 'מתוכנן', 'Leaves school {t}': 'יציאה מבית הספר {t}', '{t} train ✓': 'רכבת {t} ✓',
+  'Friends will see you’re on the {t} train': 'החברים יראו שנוסעים ברכבת של {t}', 'You’re on the {t} train now': 'עכשיו ברכבת של {t}',
+  'At a station': 'בתחנה', 'Tell me (from their real location, never guessed):': 'התראה (לפי המיקום האמיתי, בלי ניחושים):',
+  'When they’re really at a station or at school, and tomorrow’s ride': 'כשהם באמת בתחנה או בבית הספר, והנסיעה של מחר',
+  'This is {s}’s plan, not where they are. Where they really are shows when they share their location with you and have the app open.': 'זו התוכנית של {s}, לא המקום שבו הם נמצאים. המיקום האמיתי מופיע כשהם משתפים איתך מיקום והאפליקציה פתוחה אצלם.'
 };

@@ -226,13 +226,18 @@ function renderWater() { $('#water-slot-today').innerHTML = D.waterChip('today')
 
 /* ---------- hero + tiles ---------- */
 // One line for the trip you'll take next, when there is one today or tomorrow.
+// friends on that morning's train (Tomorrow's ride, from social.js)
+function withFriends(dk, train) {
+  const n = window.SOCIAL && window.SOCIAL.rideWith ? window.SOCIAL.rideWith(dk, train) : [];
+  return n.length ? ' · with <bdi>' + esc(n.slice(0, 3).join(', ')) + '</bdi>' + (n.length > 3 ? ' +' + (n.length - 3) : '') : '';
+}
 function tripLine(cc, ph) {
   const CM = window.COMMUTE;
   if (!cc || !ph || !CM) return '';
   const go = p => 'Leave ' + CM.hhmm(p.leave) + ' · ' + (p.bus ? 'bus ' + esc(p.bus.line) + ' → ' + CM.hhmm(p.train) + ' train' : CM.hhmm(p.train) + ' train');
-  if (ph.kind === 'morning' && ph.pick) return D.ic('bus', 'xs') + 'To school · ' + go(ph.pick);
+  if (ph.kind === 'morning' && ph.pick) return D.ic('bus', 'xs') + 'To school · ' + go(ph.pick) + withFriends(D.todayKey(), ph.pick.train);
   if (ph.kind === 'school' && ph.a && ph.a.pick) return D.ic('train', 'xs') + 'Going home · Leave school by ' + CM.hhmm(ph.a.pick.leave) + ' · ' + CM.hhmm(ph.a.pick.train) + ' train';
-  if (ph.kind === 'next' && ph.off === 1 && ph.m && ph.m.best) return D.ic('bus', 'xs') + 'Tomorrow · ' + go(ph.m.best);
+  if (ph.kind === 'next' && ph.off === 1 && ph.m && ph.m.best) return D.ic('bus', 'xs') + 'Tomorrow · ' + go(ph.m.best) + withFriends(D.dk(D.dayAt(1)), ph.m.best.train);
   return '';
 }
 function heroModel() {
@@ -252,7 +257,7 @@ function heroModel() {
     const late = !ph.pick.ok || (lvw && lvw.miss);
     return { area: ph.mins <= 5 || late ? 'amber' : 'school', href: D.pageHref('school'), eyebrow: 'To school',
       big: ph.mins > 0 ? '<span class="lead">Leave in</span><span class="n">' + D.numEl('hero-min', ph.mins) + '</span><span class="u">min</span>' : '<span class="t">Leave now</span>',
-      sub: warn + (lvw && lvw.miss ? 'Bus is late · may miss the ' + CM.hhmm(ph.pick.train) + ' train' : CM.hhmm(lvw ? lvw.leave : ph.pick.leave) + ' · ' + (ph.pick.bus ? 'bus ' + esc(ph.pick.bus.line) + ' → ' : '') + CM.hhmm(ph.pick.train) + ' train' + (!ph.pick.ok ? ' · arrives ' + (-ph.pick.spare) + ' min late' : '')) + ' <span class="tag">' + (lvw && lvw.anyLive ? 'Live' : 'Scheduled') + '</span>',
+      sub: warn + (lvw && lvw.miss ? 'Bus is late · may miss the ' + CM.hhmm(ph.pick.train) + ' train' : CM.hhmm(lvw ? lvw.leave : ph.pick.leave) + ' · ' + (ph.pick.bus ? 'bus ' + esc(ph.pick.bus.line) + ' → ' : '') + CM.hhmm(ph.pick.train) + ' train' + withFriends(D.todayKey(), ph.pick.train) + (!ph.pick.ok ? ' · arrives ' + (-ph.pick.spare) + ' min late' : '')) + ' <span class="tag">' + (lvw && lvw.anyLive ? 'Live' : 'Scheduled') + '</span>',
       bar: D.clamp(ph.mins / 30, 0, 1), label: 'Leave in ' + ph.mins + ' minutes' };
   }
   if (ph && ph.kind === 'after' && ph.pick) {
@@ -274,7 +279,7 @@ function heroModel() {
     if (ph && ph.kind === 'next' && ph.off === 1 && ph.m && ph.m.best) {
       const ch = ttChanges(D.dk(D.dayAt(1)));
       return { area: 'school', href: D.pageHref('school'), eyebrow: 'Tomorrow · ' + D.dShort(D.dayAt(1)), big: '<span class="lead">Leave</span><span class="n">' + CM.hhmm(ph.m.best.leave) + '</span>',
-        sub: CM.hhmm(ph.m.best.train) + ' train' + (ch ? ' · ' + ch + ' timetable ' + D.plural(ch, 'change', 'changes') : ttWeeklyOnly(D.dk(D.dayAt(1))) ? ' · weekly plan, not updated yet' : '') + (tm.length ? ' · ' + tm.length + ' on your list' : ''), label: 'Tomorrow, leave ' + CM.hhmm(ph.m.best.leave) };
+        sub: CM.hhmm(ph.m.best.train) + ' train' + withFriends(D.dk(D.dayAt(1)), ph.m.best.train) + (ch ? ' · ' + ch + ' timetable ' + D.plural(ch, 'change', 'changes') : ttWeeklyOnly(D.dk(D.dayAt(1))) ? ' · weekly plan, not updated yet' : '') + (tm.length ? ' · ' + tm.length + ' on your list' : ''), label: 'Tomorrow, leave ' + CM.hhmm(ph.m.best.leave) };
     }
     return { area: 'todo', href: '#todo', eyebrow: 'Tomorrow · ' + D.dShort(D.dayAt(1)), big: tm.length ? '<span class="n">' + D.numEl('hero-tm', tm.length) + '</span><span class="u">planned</span>' : '<span class="t">Nothing planned yet</span>', sub: tm.length ? own(tm[0].text) + (tm.length > 1 ? ' · and ' + (tm.length - 1) + ' more' : '') : 'Flip the list below to Tomorrow to add things', label: 'Tomorrow' };
   }
@@ -591,6 +596,7 @@ if (window.COMMUTE) {
 D.settings.on(renderHeader);
 D.onWater(() => { renderWater(); if (D.sheetKind() === 'water') D.renderSheet(); });
 window.addEventListener('dash:name', renderHeader);
+window.addEventListener('dash:friends', () => renderHeroTiles());
 setInterval(() => {
   if (D.todayKey() !== lastDay) { lastDay = D.todayKey(); rolled = false; rollover(); placeRepeats(); rolled = true; renderAll(); }
   else { renderHeader(); renderHeroTiles(); }

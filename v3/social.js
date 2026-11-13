@@ -4,13 +4,16 @@
    • friends: requests by username, accept, remove
    • sharing — off until you switch it on, and you pick who:
        trip     — your planned trips for the coming school days, times only (walk → bus
-                  → train → school, and home). Friends' phones work out "On bus 72" /
-                  "At Rosh HaAyin North" by the clock, even while your app is closed.
+                  → train → school, and home). Friends see it as a PLAN ("planned: 07:19
+                  train"), never as where you are: the clock can't know you missed a bus.
                   Everyone, or only the friends you pick.
+                  Tomorrow's ride: friends' planned trains side by side, "I'm on it" (✓,
+                  sent with your plan as days[dk].ok) and Join (take their train).
        location — this phone only, only while the app is open, only to the friends you
-                  pick. They see the nearest stop and can open it in Maps.
-   • notifications (Web Push, sent by api/notify.js): when the friends you pick leave,
-     reach the station, get on the train, arrive — and tomorrow's timetable changes.
+                  pick. It's the only "where are they now": the nearest stop, how long ago.
+   • notifications (Web Push, sent by api/notify.js): when the friends you pick are really
+     at a station or at school (from their shared location), tomorrow's ride in the
+     evening and who switched trains, and tomorrow's timetable changes.
    Tables (supabase/friends-v3.sql + friends-v4.sql): profiles, friendships, presence
    (trip, trip_to), locations (share_to), push_subs, notify_prefs. */
 (function () {
@@ -20,7 +23,7 @@ const VAPID_PUBLIC = 'BPHqx3CLnpghjbbgLMSDvLK4nIpqN6Lp7DtDxUDbQ-B7zehrpiCLxcKHhU
 // kept per person on this device (D.ukey), so another account here never sees them
 const LS_ME = D.ukey('dash3:me'), LS_FR = D.ukey('dash3:friends'), LS_LOC = D.ukey('dash3:shareLoc'), LS_PUB = D.ukey('dash3:tripPub'), LS_KNOWN = D.ukey('dash3:knownFriends');
 const LOC_FRESH_MIN = 20;
-const MOMENTS = [['leave', 'Leaving'], ['station', 'At the station'], ['train', 'On the train'], ['arrive', 'Arrived']];
+const MOMENTS = [['station', 'At a station'], ['arrive', 'At school'], ['ride', 'Tomorrow’s ride']];
 const S = {
   me: D.readJSON(LS_ME), friends: D.readJSON(LS_FR) || [], reqIn: [], reqOut: [],
   loaded: false, needsSql: false, needsV4: false, err: null, add: '', removing: null,
@@ -69,7 +72,7 @@ function demo() {
   S.reqIn = [{ id: 'd4', fid: 4, username: 'yoav', display_name: 'Yoav', avatar: '' }];
   S.reqOut = [];
   S.tripTo = null; S.locTo = ['d2'];
-  S.prefs = S.prefs || { friends: ['d1'], moments: ['leave', 'station', 'arrive'], timetable: true };
+  S.prefs = S.prefs || { friends: ['d1'], moments: ['station', 'arrive', 'ride'], timetable: true };
   S.push = S.push === 'unknown' ? 'off' : S.push;
   S.loaded = true;
 }
@@ -95,6 +98,9 @@ function load() {
         S.tripTo = pr[0] ? pr[0].trip_to || null : null;
         S.locTo = lo[0] && Array.isArray(lo[0].share_to) ? lo[0].share_to : [];
         S.prefs = np[0] || null;
+        // saved before Nov 2026 (the clock moments "leaving", "on the train"): the real ones, and tomorrow's ride
+        const om = S.prefs && Array.isArray(S.prefs.moments) ? S.prefs.moments : null;
+        if (om && (om.indexOf('leave') >= 0 || om.indexOf('train') >= 0)) savePrefs({ moments: ['station', 'arrive', 'ride'].concat(om.filter(x => x !== 'leave' && x !== 'train' && x !== 'station' && x !== 'arrive')) });
       } catch (e) {
         if (!missingTable(e)) throw e;
         try { await q(sb => sb.from('presence').select('user_id').limit(1)); S.needsV4 = true; } catch (e2) { if (missingTable(e2)) S.needsSql = true; else throw e2; }
@@ -126,6 +132,7 @@ function load() {
 }
 const subs = [];
 function changed() {
+  try { window.dispatchEvent(new Event('dash:friends')); } catch (e) {} // Today's card shows who's on your train
   subs.forEach(f => { try { f(); } catch (e) {} });
   const k = D.sheetKind(), a = document.activeElement;
   if ((k === 'friends' || k === 'friend') && !(a && (a.id === 'fr-add-in'))) D.renderSheet();
@@ -253,14 +260,14 @@ function daysOf(t) {
 }
 const trainOf = s => { const x = s && s.find(y => y[1] === 'train'); return x ? x[0] : null; };
 const endOf = s => s[s.length - 1][0];
-// Where someone is on one leg of the trip, by the clock.
+// One leg of someone's PLAN, as a plan. Where they really are only comes from their
+// shared location (locStatus): the clock can't know they missed the bus.
+const planSum = s => { const tr = trainOf(s), b = s.find(x => x[1] === 'bus'); return tr != null ? hhmm(tr) + ' train' : b ? 'bus ' + b[2] + ' ' + hhmm(b[0]) : 'leaves ' + hhmm(s[0][0]); };
 function legStatus(s, dir, dk, now) {
-  const first = s[0][0], last = s[s.length - 1];
-  if (now < first) return { k: 'home', icon: 'home', text: 'Leaves home ' + hhmm(first), sub: first - now <= 60 ? 'in ' + (first - now) + ' min' : '', dir, train: trainOf(s), dk, leg: s };
-  let i = 0; s.forEach((x, j) => { if (x[0] <= now) i = j; });
-  const done = i === s.length - 1;
-  if (done && now - last[0] > 90) return null; // long over
-  return { k: s[i][1], icon: ICON[s[i][1]], text: segNow(s[i], dir), sub: done ? 'since ' + hhmm(last[0]) : (dir === 'to' ? 'at school ' : 'home ') + hhmm(last[0]), dir, train: trainOf(s), dk, leg: s, i };
+  const first = s[0][0], end = endOf(s);
+  if (now < first) return { k: 'plan', icon: 'clock', text: (dir === 'to' ? 'Leaves home ' : 'Leaves school ') + hhmm(first), sub: 'planned · ' + planSum(s), dir, train: trainOf(s), dk, leg: s };
+  if (now - end > 60) return null; // long over
+  return { k: 'plan', icon: 'clock', text: 'Planned: ' + planSum(s), sub: 'no live update', dir, train: trainOf(s), dk, leg: s };
 }
 function tripStatus(t, now) {
   const days = daysOf(t); if (!days) return null;
@@ -270,13 +277,13 @@ function tripStatus(t, now) {
     const to = validLeg(d.to) ? d.to : null, home = validLeg(d.home) ? d.home : null;
     let st = null;
     if (to && now < endOf(to)) st = legStatus(to, 'to', dk, now);
-    else if (home) st = now < home[0][0] ? { k: 'school', icon: 'school', text: 'At school', sub: 'leaves ' + hhmm(home[0][0]), dir: 'home', train: trainOf(home), dk, leg: home } : legStatus(home, 'home', dk, now);
+    else if (home) st = legStatus(home, 'home', dk, now);
     else if (to) st = legStatus(to, 'to', dk, now);
     if (st) return st;
   }
   // in the afternoon and evening, tomorrow's plan
   const tk = D.dk(D.dayAt(1)), tm = days[tk];
-  if (now >= 12 * 60 && tm && validLeg(tm.to)) return { k: 'plan', icon: 'clock', text: 'Tomorrow · leaves ' + hhmm(tm.to[0][0]), sub: trainOf(tm.to) != null ? hhmm(trainOf(tm.to)) + ' train' : '', dir: 'to', train: trainOf(tm.to), dk: tk, leg: tm.to };
+  if (now >= 12 * 60 && tm && validLeg(tm.to)) return { k: 'plan', icon: 'clock', text: 'Tomorrow · ' + planSum(tm.to) + (tm.ok ? ' ✓' : ''), sub: tm.ok ? 'on it' : 'planned', dir: 'to', train: trainOf(tm.to), dk: tk, leg: tm.to };
   return null;
 }
 function placeName(lat, lng) {
@@ -302,6 +309,15 @@ function locStatus(l) {
 const ago = m => m <= 0 ? 'just now' : m + ' min ago';
 
 /* ---------- sharing: your trip ---------- */
+// "I'm on it": the train you confirmed for a day (synced settings, so phone and PC agree)
+const rideOk = dk => { const r = D.settings.get('rideOk'); return r && typeof r === 'object' && typeof r[dk] === 'number' ? r[dk] : null; };
+function setRideOk(dk, train) {
+  const r = Object.assign({}, D.settings.get('rideOk') || {}), today = D.todayKey();
+  Object.keys(r).forEach(k => { if (k < today) delete r[k]; });
+  if (train == null) delete r[dk]; else r[dk] = train;
+  D.settings.set('rideOk', r);
+  D.writeJSON(LS_PUB, null); tick(); changed();
+}
 const shareTrip = () => D.settings.get('shareTrip') === true;
 const locOn = () => { try { return localStorage.getItem(LS_LOC) === '1'; } catch (e) { return false; } };
 async function upsertOwn(table, fields) {
@@ -342,6 +358,7 @@ function planWeek(c) {
     const m = C.morning(c, wd, dk), a = C.afternoon(c, wd, dk);
     const p = m && m.pick, h = a && a.pick;
     const day = {}; if (p) day.to = legTo(p); if (h) day.home = legHome(h);
+    if (day.to && rideOk(dk) === trainOf(day.to)) day.ok = 1; // "I'm on it" for this exact train
     if (day.to || day.home) days[dk] = day;
   }
   return Object.keys(days).length ? { v: 3, days } : null;
@@ -468,7 +485,7 @@ async function enablePush() {
     const j = sub.toJSON();
     await q(sb => sb.from('push_subs').upsert({ user_id: D.uid(), endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth }));
     // the first time: hear about every friend; you can turn people off one by one
-    if (!S.prefs) await savePrefs({ friends: S.friends.map(f => f.id), moments: ['leave', 'station', 'arrive'], timetable: true });
+    if (!S.prefs) await savePrefs({ friends: S.friends.map(f => f.id), moments: ['station', 'arrive', 'ride'], timetable: true });
     S.push = 'on'; changed();
     D.toast('Notifications are on');
     return true;
@@ -483,7 +500,7 @@ async function disablePush() {
   S.push = 'off'; changed(); D.toast('Notifications off on this device');
 }
 async function savePrefs(patch) {
-  S.prefs = Object.assign({ friends: [], moments: ['leave', 'station', 'arrive'], timetable: false }, S.prefs || {}, patch);
+  S.prefs = Object.assign({ friends: [], moments: ['station', 'arrive', 'ride'], timetable: false }, S.prefs || {}, patch);
   changed();
   if (D.DEMO) return true;
   return upsertOwn('notify_prefs', { friends: S.prefs.friends, moments: S.prefs.moments, timetable: !!S.prefs.timetable });
@@ -513,10 +530,11 @@ async function testPush(el) {
 /* ---------- sheets ---------- */
 const sw = (id, label, on, hint, act, extra) => '<div class="set-row"><span class="lbl">' + label + (hint ? '<small>' + hint + '</small>' : '') + '</span><span class="switch-hit"><button class="switch" id="' + id + '" role="switch" aria-checked="' + !!on + '" data-act="' + act + '"' + (extra || '') + ' aria-label="' + label + '"></button></span></div>';
 const chip = (id, label, on, act, data) => '<button class="pick" id="' + id + '" data-act="' + act + '"' + (data || '') + ' aria-pressed="' + !!on + '">' + label + '</button>';
+// Real first: where their phone last was (app open, shared with you). Then their plan, as a plan.
 function statusLine(f) {
   const t = tripStatus(f.pres && f.pres.trip), l = locStatus(f.loc);
+  if (l) return { icon: 'locate', text: l.place ? 'Near ' + l.place : 'Sharing location', sub: ago(l.age), t, l, live: true };
   if (t) return { icon: t.icon, text: t.text, sub: t.sub, t, l };
-  if (l) return { icon: 'locate', text: l.place ? 'Near ' + l.place : 'Sharing location', sub: ago(l.age), l };
   return null;
 }
 // Their train is your train (same day, same direction, same departure).
@@ -530,7 +548,7 @@ function friendRow(f, compact) {
   const same = st && sameTrain(st.t);
   return '<button class="fr-row" id="fr-' + esc(String(f.fid)) + '" data-act="sheet" data-sheet="friend" data-id="' + esc(String(f.id)) + '">' + avatar(f, compact ? 36 : 44) +
     '<span class="fr-main"><b><bdi>' + esc(nameOf(f)) + '</bdi></b><span class="fr-st">' + (st ? ic(st.icon, 'xs') + '<span>' + esc(st.text) + (st.sub ? ' · ' + esc(st.sub) : '') + '</span>' : '<span>' + (compact ? '' : 'Not sharing right now') + '</span>') + '</span></span>' +
-    (same ? '<span class="fr-same">Same train</span>' : st && st.l && st.t ? '<span class="fr-loc" title="Sharing location">' + ic('locate', 'xs') + '</span>' : '') + '</button>';
+    (same ? '<span class="fr-same">Same train</span>' : '') + '</button>';
 }
 function pushBlock() {
   const st = S.push;
@@ -585,7 +603,7 @@ D.SHEETS.friends = () => {
     h += '<p class="group-title">Notifications</p>' + pushBlock();
     if (S.push === 'on' || D.DEMO) {
       const P = S.prefs || { friends: [], moments: [], timetable: false };
-      h += '<p class="sheet-note">Tell me when a friend is:</p><div class="pick-row" role="group" aria-label="Moments">' + MOMENTS.map(m => chip('nm-' + m[0], m[1], P.moments.indexOf(m[0]) >= 0, 'nt-moment', ' data-m="' + m[0] + '"')).join('') + '</div>' +
+      h += '<p class="sheet-note">Tell me (from their real location, never guessed):</p><div class="pick-row" role="group" aria-label="Moments">' + MOMENTS.map(m => chip('nm-' + m[0], m[1], P.moments.indexOf(m[0]) >= 0, 'nt-moment', ' data-m="' + m[0] + '"')).join('') + '</div>' +
         (S.friends.length ? '<p class="sheet-note">About:</p><div class="pick-row" role="group" aria-label="Friends to hear about">' + S.friends.map(f => chip('nf-' + f.fid, '<bdi>' + esc(nameOf(f)) + '</bdi>', alertsFor(f.id), 'nt-friend', ' data-id="' + esc(f.id) + '"')).join('') + '</div>' : '') +
         sw('nt-tt', 'Tomorrow’s timetable changes', P.timetable, 'Around 20:00, when the school posts them: cancelled lessons and swaps', 'nt-tt');
     }
@@ -598,11 +616,11 @@ D.SHEETS.friend = a => {
   const st = tripStatus(f.pres && f.pres.trip), l = locStatus(f.loc);
   let h = '<div class="fr-hero">' + avatar(f, 64) + '<div><b><bdi>' + esc(nameOf(f)) + '</bdi></b><span><bdi>@' + esc(f.username) + '</bdi></span></div></div>';
   if (st) {
-    h += '<p class="fr-now">' + ic(st.icon, 'sm') + '<span><b>' + esc(st.text) + '</b>' + (st.sub ? ' · ' + esc(st.sub) : '') + '</span></p>';
+    if (!l) h += '<p class="fr-now">' + ic(st.icon, 'sm') + '<span><b>' + esc(st.text) + '</b>' + (st.sub ? ' · ' + esc(st.sub) : '') + '</span></p>';
     if (sameTrain(st)) h += '<p class="fr-same big">' + ic('train', 'xs') + 'Same train as you</p>';
     h += '<p class="group-title">' + (st.k === 'plan' ? 'Tomorrow' : st.dir === 'to' ? 'To school' : 'Going home') + '</p>' +
-      '<ol class="fr-plan">' + st.leg.map((x, j) => '<li class="' + (st.i == null ? '' : j < st.i ? 'past' : j === st.i ? 'now' : '') + '"><span class="t">' + hhmm(x[0]) + '</span>' + ic(ICON[x[1]], 'xs') + '<span>' + esc(segPlan(x, st.dir)) + '</span></li>').join('') + '</ol>';
-    h += '<p class="sheet-note">Worked out from ' + esc(nameOf(f)) + '’s planned trip by the clock, not tracked. If they miss a bus, this won’t know.</p>';
+      '<ol class="fr-plan">' + st.leg.map((x, j) => '<li class=""><span class="t">' + hhmm(x[0]) + '</span>' + ic(ICON[x[1]], 'xs') + '<span>' + esc(segPlan(x, st.dir)) + '</span></li>').join('') + '</ol>';
+    h += '<p class="sheet-note">This is ' + esc(nameOf(f)) + '’s plan, not where they are. Where they really are shows when they share their location with you and have the app open.</p>';
   } else h += '<p class="sheet-note">' + esc(nameOf(f)) + ' isn’t sharing a trip right now.</p>';
   if (l) h += '<a class="menu-item fr-map" id="fr-map" href="' + esc(l.url) + '" target="_blank" rel="noopener">' + ic('locate') + '<span class="grow">' + esc(l.place ? 'Near ' + l.place : 'Their location') + '<small>' + ago(l.age) + ' · open in Maps</small></span>' + ic('chev-r', 'sm') + '</a>';
   if (!S.needsV4) {
@@ -610,7 +628,7 @@ D.SHEETS.friend = a => {
     h += '<p class="group-title">With ' + nm + '</p>' +
       sw('ff-trip', 'Sees my trip', shareTrip() && seesTrip(f.id), shareTrip() ? '' : 'Your trip sharing is off', 'ff-trip', ' data-id="' + esc(f.id) + '"' + (shareTrip() ? '' : ' disabled')) +
       sw('ff-loc', 'Sees my location', S.locTo.indexOf(f.id) >= 0, locOn() ? 'While your app is open on this phone' : 'Only when your location sharing is on', 'ff-loc', ' data-id="' + esc(f.id) + '"') +
-      sw('ff-alert', 'Notify me about ' + nm, S.push === 'on' && alertsFor(f.id), S.push === 'on' ? 'When they leave, reach the station, arrive' : 'Turns on notifications for this device', 'ff-alert', ' data-id="' + esc(f.id) + '"');
+      sw('ff-alert', 'Notify me about ' + nm, S.push === 'on' && alertsFor(f.id), S.push === 'on' ? 'When they’re really at a station or at school, and tomorrow’s ride' : 'Turns on notifications for this device', 'ff-alert', ' data-id="' + esc(f.id) + '"');
   }
   h += S.removing === f.fid
     ? '<div class="confirm"><p>Remove ' + esc(nameOf(f)) + '? You’ll stop seeing each other’s trips.</p><div class="sheet-actions"><button class="btn ghost" id="fr-rm-no" data-act="fr-rm-no">Cancel</button><button class="btn primary" id="fr-rm-yes" data-act="fr-rm-yes" data-fid="' + f.fid + '">Remove</button></div></div>'
@@ -684,23 +702,76 @@ document.addEventListener('submit', e => {
 function renderSettingsAvatar() { const el = $('#set-av'); if (el && S.me && PHOTO_RE.test(S.me.avatar || '')) el.innerHTML = '<img src="' + S.me.avatar + '" alt="">'; }
 
 /* ---------- School page: friends on the way ---------- */
+/* ---------- tomorrow's ride: who takes which train (instead of the evening group chat) ---------- */
+// The morning it's about: today until you've left, then tomorrow from noon.
+function rideDay() {
+  const mine = myPlan(); if (!mine) return null;
+  const now = D.nowMin();
+  return Object.keys(mine.days).sort().find(dk => {
+    const d = mine.days[dk], off = D.daysFrom(dk);
+    if (!validLeg(d.to)) return false;
+    return off === 0 ? now < d.to[0][0] : off === 1 && now >= 12 * 60;
+  }) || null;
+}
+function rideModel() {
+  const dk = rideDay(); if (!dk) return null;
+  const mine = myPlan().days[dk].to, myT = trainOf(mine);
+  // ?demo: Noa on your train (confirmed), Dan a train later (not yet)
+  if (D.DEMO) S.friends.slice(0, 2).forEach((f, i) => { const d = daysOf(f.pres && f.pres.trip); if (d && !d[dk]) d[dk] = { to: mine.map(x => [x[0] + (i ? 15 : 0), x[1], x[2]]), ok: i ? 0 : 1 }; });
+  const people = [{ me: true, leg: mine, ok: rideOk(dk) === myT }];
+  S.friends.forEach(f => { const d = daysOf(f.pres && f.pres.trip), x = d && d[dk]; if (x && validLeg(x.to)) people.push({ f, leg: x.to, ok: !!x.ok }); });
+  if (people.length < 2) return null; // no friend has a plan for that morning: nothing to line up
+  const by = {};
+  people.forEach(p => { const t = trainOf(p.leg); if (t == null) return; (by[t] = by[t] || []).push(p); });
+  const groups = Object.keys(by).map(Number).sort((a, b) => a - b).map(t => ({ t, people: by[t], mine: t === myT }));
+  return { dk, myT, groups };
+}
+function rideHtml() {
+  const R = rideModel(); if (!R) return '';
+  const today = D.daysFrom(R.dk) === 0, canJoin = !!D.ACT['choose-train'];
+  const who = p => {
+    const b = p.leg.find(x => x[1] === 'bus');
+    return '<span class="ride-p' + (p.ok ? ' ok' : '') + '">' + (p.me ? avatar(S.me || {}, 28) : avatar(p.f, 28)) +
+      '<span><b>' + (p.me ? 'You' : '<bdi>' + esc(nameOf(p.f)) + '</bdi>') + '</b>' + (b ? '<small>bus ' + esc(String(b[2]).split(' ')[0]) + ' ' + hhmm(b[0]) + '</small>' : '') + '</span>' +
+      '<span class="ride-ok" aria-label="' + (p.ok ? 'on it' : 'not confirmed') + '">' + (p.ok ? ic('check', 'xs') : '?') + '</span></span>';
+  };
+  return '<section class="card ride-card" aria-label="' + (today ? 'This morning’s ride' : 'Tomorrow’s ride') + '"><div class="fr-head"><h2 class="card-title">' + (today ? 'This morning’s ride' : 'Tomorrow’s ride') + '</h2><span class="eyebrow">' + esc(D.DOW_L[D.parseDk(R.dk).getDay()]) + '</span></div>' +
+    R.groups.map(g => '<div class="ride-g' + (g.mine ? ' mine' : '') + '"><div class="ride-h">' + ic('train', 'xs') + '<b>' + hhmm(g.t) + ' train</b>' +
+      (g.mine ? (g.people[0].ok ? '<button class="btn-text" id="ride-undo" data-act="ride-ok" data-dk="' + R.dk + '" data-t="">Undo</button>' : '<button class="btn school sm" id="ride-ok" data-act="ride-ok" data-dk="' + R.dk + '" data-t="' + g.t + '">I’m on it</button>')
+        : canJoin ? '<button class="btn ghost sm" id="ride-join-' + g.t + '" data-act="ride-join" data-dk="' + R.dk + '" data-t="' + g.t + '">Join</button>' : '') + '</div>' +
+      '<div class="ride-ps">' + g.people.map(who).join('') + '</div></div>').join('') +
+    '<p class="sheet-note ride-note">' + ic('check', 'xs') + ' = on it · ? = the app’s plan, not confirmed yet</p></section>';
+}
+// For Today's hero: friends on that train ("with Noa, Dan").
+function rideWith(dk, train) {
+  return S.friends.filter(f => { const d = daysOf(f.pres && f.pres.trip), x = d && d[dk]; return x && validLeg(x.to) && trainOf(x.to) === train; }).map(nameOf);
+}
 function renderStrip() {
   const slot = $('#friends-slot'); if (!slot) return;
-  const active = S.friends.filter(f => statusLine(f));
-  if (!active.length) { slot.innerHTML = ''; return; }
-  slot.innerHTML = '<section class="card fr-card" aria-label="Friends"><div class="fr-head"><h2 class="card-title">Friends</h2><button class="btn-text sch" id="fr-all" data-act="sheet" data-sheet="friends">All</button></div>' +
-    '<div class="fr-list">' + active.slice(0, 4).map(f => friendRow(f, true)).join('') + '</div></section>';
+  const active = S.friends.filter(f => statusLine(f)), ride = rideHtml();
+  if (!active.length && !ride) { slot.innerHTML = ''; return; }
+  slot.innerHTML = ride + (active.length ? '<section class="card fr-card" aria-label="Friends"><div class="fr-head"><h2 class="card-title">Friends</h2><button class="btn-text sch" id="fr-all" data-act="sheet" data-sheet="friends">All</button></div>' +
+    '<div class="fr-list">' + active.slice(0, 4).map(f => friendRow(f, true)).join('') + '</div></section>' : '');
 }
+Object.assign(D.ACT, {
+  'ride-ok': el => { const t = el.dataset.t === '' ? null : +el.dataset.t; setRideOk(el.dataset.dk, t); if (t != null) D.toast('Friends will see you’re on the ' + hhmm(t) + ' train'); },
+  'ride-join': el => {
+    const dk = el.dataset.dk, t = +el.dataset.t;
+    D.ACT['choose-train']({ dataset: { dk, dir: 'to', t: String(t) } });
+    setRideOk(dk, t); D.toast('You’re on the ' + hhmm(t) + ' train now');
+  }
+});
 subs.push(renderStrip);
 
 /* ---------- boot ---------- */
-window.SOCIAL = { load, choose, refresh: () => { D.writeJSON(LS_PUB, null); tick(); }, avatar, tripStatus, plan: myPlan, me: () => S.me, friends: () => S.friends, renderSettingsAvatar };
+window.SOCIAL = { load, choose, refresh: () => { D.writeJSON(LS_PUB, null); tick(); }, avatar, tripStatus, plan: myPlan, rideWith, me: () => S.me, friends: () => S.friends, renderSettingsAvatar };
 if (D.DEMO) { demo(); }
 whenUid(() => {
-  if (D.DEMO) { renderStrip(); return; }
+  if (D.DEMO) { renderStrip(); if (window.COMMUTE) window.COMMUTE.load().then(renderStrip); return; }
   // School shows friends; sharing needs to know the tables are there. Otherwise wait until Friends opens.
   if ($('#friends-slot') || shareTrip() || locOn()) load().then(() => { tick(); startLoc(); });
   renderStrip();
+  if (window.COMMUTE) window.COMMUTE.load().then(renderStrip); // tomorrow's ride needs your plan, which needs the timetables
   // a notification tap can open School at #friends
   if (location.hash === '#friends') setTimeout(() => D.openSheet('friends'), 300);
   // friends' trips change by the minute; their rows refresh every minute while you look

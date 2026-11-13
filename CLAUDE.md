@@ -118,6 +118,11 @@ The `?v=` must be bumped with the version. Copy the `<head>` from `v3/index.html
 - Today's hero order: trip countdowns (leave ≤ 120 min, riding, going home) first, then Now / Next with a one-line bus/train strip (`tripLine` in today.js), then the old test/homework/evening cards.
 - Gym/FRC/VB starting ≤ 30 min after school moves the trip home to after them ("Going home · after FRC · 17:45").
 
+### Friends (social.js, api/notify.js): real, never guessed
+- A friend's shared trip is shown **as a plan** ("Planned: 07:19 train · no live update"). Never derive where someone is from the clock (the old "On bus 72" / "Leaving home about now" did, and was wrong when someone missed a bus). The only "where they are" is their shared location (app open; iPhone web apps can't send it in the background).
+- Notifications: a friend really at a station / at school (their fresh shared location, around their trip), tomorrow's ride at 20:30 (who's on which train), then a friend switching trains (until you leave). `api/notify.js` → `friendArrivals`, `rideAlerts`; keys in `notify_log` dedupe them.
+- Tomorrow's ride (School page, top of `#friends-slot`): friends' planned trains grouped; "I'm on it" = `settings.rideOk[dk] = train`, published as `trip.days[dk].ok`; Join = `choose-train` + I'm on it. Today's card adds "with Noa, Dan".
+
 ### v3 design rules (from the plan and the critique)
 - **Today:**
   - One saturated **hero** block per screen, chosen by rules and never repeated by a tile. Tiles show a calm line when empty, never "0/0".

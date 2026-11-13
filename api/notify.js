@@ -2,8 +2,11 @@
 // third-party service. Ways in:
 //
 //   POST from the Supabase scheduler every minute (Authorization: Bearer CRON_SECRET)
-//     • friends' trip moments that just happened (leaving, at the station, on the
-//       train, arrived), to the friends who asked for them
+//     • a friend REALLY at a station or at school: from the location they share with
+//       you (their app open), never from the clock: the clock can't know they missed
+//       the bus. To the friends who asked for them.
+//     • tomorrow's ride: at 20:30 who's on which train tomorrow; then, until the trip,
+//       when one of those friends switches trains
 //     • in the evening, tomorrow's timetable changes, to whoever asked for them
 //   POST with a signed-in user's access token:
 //     { test: true }                 a test notification to yourself
@@ -77,7 +80,8 @@ const M = {
     notListed: (s, t) => s + ' · ' + t + ' isn’t listed', more: n => '+' + n + ' more',
     ttTitle: d => 'Tomorrow’s timetable · ' + d,
     testTitle: 'Notifications are on', testBody: 'Your friends’ trips and timetable changes will show up here.',
-    reqTitle: 'Friend request', reqBody: w => w + ' wants to be friends', accBody: 'Accepted your friend request'
+    reqTitle: 'Friend request', reqBody: w => w + ' wants to be friends', accBody: 'Accepted your friend request',
+    rideTitle: d => 'Tomorrow’s ride · ' + d, you: t => 'you: ' + t, nowOn: tr => 'Now on the ' + tr, yourTrain: 'your train'
   },
   he: {
     dow: ['יום ראשון', 'יום שני', 'יום שלישי', 'יום רביעי', 'יום חמישי', 'יום שישי', 'שבת'],
@@ -93,7 +97,8 @@ const M = {
     notListed: (s, t) => s + ' · ' + t + ' לא ברשימה', more: n => '+' + n + ' נוספים',
     ttTitle: d => 'המערכת של מחר · ' + d,
     testTitle: 'ההתראות פועלות', testBody: 'נסיעות של חברים ושינויים במערכת יופיעו כאן.',
-    reqTitle: 'בקשת חברות', reqBody: w => w + ' רוצה להיות חברים', accBody: 'בקשת החברות שלך אושרה'
+    reqTitle: 'בקשת חברות', reqBody: w => w + ' רוצה להיות חברים', accBody: 'בקשת החברות שלך אושרה',
+    rideTitle: d => 'הנסיעה של מחר · ' + d, you: t => 'שלך: ' + t, nowOn: tr => 'עכשיו ב' + tr.replace(/^ה/, ''), yourTrain: 'הרכבת שלך'
   }
 };
 const W = lang => M[lang === 'he' ? 'he' : 'en'];
@@ -132,13 +137,13 @@ function dayOf(trip, dk) {
   return null;
 }
 const validLeg = s => Array.isArray(s) && s.length > 0 && s.length < 20 && s.every(x => Array.isArray(x) && typeof x[0] === 'number');
-function momentsOf(leg) {
-  const st = leg.find(x => x[1] === 'station'), tr = leg.find(x => x[1] === 'train');
-  const out = [{ m: 'leave', t: leg[0][0] }];
-  if (st) out.push({ m: 'station', t: st[0], where: st[2] });
-  if (tr) out.push({ m: 'train', t: tr[0] });
-  out.push({ m: 'arrive', t: leg[leg.length - 1][0] });
-  return out;
+const trainOf = leg => { const x = validLeg(leg) && leg.find(y => y[1] === 'train'); return x ? x[0] : null; };
+// Which notifications someone wants. Saved before Nov 2026 = the old clock moments: give
+// them the real ones, and tomorrow's ride.
+function wants(V) {
+  const m = Array.isArray(V.moments) ? V.moments : [];
+  if (!m.length || m.indexOf('leave') >= 0 || m.indexOf('train') >= 0) return ['station', 'arrive', 'ride'].concat(m.filter(x => x !== 'leave' && x !== 'train'));
+  return m;
 }
 function near(loc, place) {
   if (!loc || loc.lat == null || !loc.loc_at) return false;
@@ -147,30 +152,31 @@ function near(loc, place) {
   if (place === 'school') return SCHOOL_LL.some(s => dist(ll, s) < 250);
   return !!PLACE[place] && dist(ll, PLACE[place].ll) < PLACE[place].r;
 }
-function bodyFor(mo, dir, leg, loc, same, lang) {
-  const w = W(lang), tr = leg.find(x => x[1] === 'train'), bus = leg.find(x => x[1] === 'bus');
-  const train = tr ? w.train(hh(tr[0])) : '';
-  const busTxt = bus ? w.bus(String(bus[2] || ''), hh(bus[0])) : '';
-  let t = '';
-  if (mo.m === 'leave') t = (dir === 'to' ? w.leaveTo : w.leaveHome) + (dir === 'to' && busTxt ? ' · ' + busTxt : train ? ' · ' + train : '');
-  else if (mo.m === 'station') { const p = w.place[mo.where] || w.theStation; t = (near(loc, mo.where) ? w.at(p) : w.shouldBeAt(p)) + (train ? ' · ' + train : ''); }
-  else if (mo.m === 'train') t = w.onTrain(train, dir === 'to');
-  else t = dir === 'to' ? (near(loc, 'school') ? w.atSchool : w.shouldSchool) : w.shouldHome;
-  return t + (same && (mo.m === 'station' || mo.m === 'train') ? ' · ' + w.same : '');
+// where their shared location puts them on this trip (null: nowhere we can name)
+function placeOn(loc, dir) {
+  if (dir === 'to' && near(loc, 'school')) return 'school';
+  return near(loc, 'rh') ? 'rh' : near(loc, 'hz') ? 'hz' : null;
+}
+function arrivalBody(at, dir, leg, same, lang) {
+  const w = W(lang), tr = trainOf(leg);
+  if (at === 'school') return w.atSchool;
+  const boarding = (dir === 'to' && at === 'rh') || (dir === 'home' && at === 'hz');
+  return w.at(w.place[at]) + (boarding && tr != null ? ' · ' + w.train(hh(tr)) + (same ? ' · ' + w.same : '') : '');
 }
 
-async function friendMoments(C, D, now, prefs, subsBy) {
+async function friendArrivals(C, D, now, prefs, subsBy) {
   const viewers = prefs.filter(p => Array.isArray(p.friends) && p.friends.length && subsBy[p.user_id]);
   if (!viewers.length) return 0;
   const sharers = Array.from(new Set(viewers.reduce((a, p) => a.concat(p.friends), [])));
-  const [pres, fr, locs, profs] = await Promise.all([
-    D.get('presence?select=user_id,trip,trip_to&user_id=' + inList(sharers.concat(viewers.map(v => v.user_id)))),
+  const locs = await D.get('locations?select=user_id,lat,lng,loc_at,share_to&user_id=' + inList(sharers)).catch(() => []);
+  const L = {}; locs.forEach(l => { if (l.loc_at && (Date.now() - Date.parse(l.loc_at)) / 60e3 <= LOC_FRESH_MIN) L[l.user_id] = l; });
+  if (!Object.keys(L).length) return 0; // nobody is sharing a fresh location: nothing real to tell
+  const [pres, fr, profs] = await Promise.all([
+    D.get('presence?select=user_id,trip,trip_to&user_id=' + inList(Object.keys(L).concat(viewers.map(v => v.user_id)))),
     D.get('friendships?select=requester,addressee&status=eq.accepted&or=(requester.' + inList(sharers) + ',addressee.' + inList(sharers) + ')'),
-    D.get('locations?select=user_id,lat,lng,loc_at,share_to&user_id=' + inList(sharers)).catch(() => []),
-    D.get('profiles?select=id,username,display_name&id=' + inList(sharers))
+    D.get('profiles?select=id,username,display_name&id=' + inList(Object.keys(L)))
   ]);
   const P = {}; pres.forEach(p => { P[p.user_id] = p; });
-  const L = {}; locs.forEach(l => { L[l.user_id] = l; });
   const N = {}; profs.forEach(p => { N[p.id] = p.display_name || p.username || ''; });
   const LANG = await langsOf(D, viewers.map(v => v.user_id));
   const friends = new Set(fr.map(f => f.requester + '|' + f.addressee));
@@ -178,22 +184,21 @@ async function friendMoments(C, D, now, prefs, subsBy) {
 
   const jobs = [];
   viewers.forEach(V => {
-    const want = Array.isArray(V.moments) && V.moments.length ? V.moments : ['leave', 'station', 'arrive'];
+    const want = wants(V);
     const mine = dayOf(P[V.user_id] && P[V.user_id].trip, now.dk);
     V.friends.forEach(S => {
-      const pr = P[S];
-      if (!pr || !isFriend(V.user_id, S)) return;
-      if (Array.isArray(pr.trip_to) && pr.trip_to.indexOf(V.user_id) < 0) return; // not shared with this viewer
+      const loc = L[S], pr = P[S];
+      if (!loc || !pr || !isFriend(V.user_id, S)) return;
+      if (!Array.isArray(loc.share_to) || loc.share_to.indexOf(V.user_id) < 0) return; // location not shared with this viewer
+      if (Array.isArray(pr.trip_to) && pr.trip_to.indexOf(V.user_id) < 0) return; // nor the trip
       const day = dayOf(pr.trip, now.dk); if (!day) return;
-      const loc = L[S] && Array.isArray(L[S].share_to) && L[S].share_to.indexOf(V.user_id) >= 0 ? L[S] : null;
       ['to', 'home'].forEach(dir => {
         const leg = day[dir]; if (!validLeg(leg)) return;
-        const myTrain = mine && validLeg(mine[dir]) ? (mine[dir].find(x => x[1] === 'train') || [])[0] : null;
-        const theirTrain = (leg.find(x => x[1] === 'train') || [])[0];
-        momentsOf(leg).forEach(mo => {
-          if (want.indexOf(mo.m) < 0 || now.min < mo.t || now.min > mo.t + WINDOW) return;
-          jobs.push({ key: ['f', S, V.user_id, now.dk, dir, mo.m].join(':'), to: V.user_id, payload: { title: N[S] || W(LANG[V.user_id]).friend, body: bodyFor(mo, dir, leg, loc, myTrain != null && myTrain === theirTrain, LANG[V.user_id]), tag: 'fr-' + S, url: '/v3/school.html' } });
-        });
+        if (now.min < leg[0][0] - 20 || now.min > leg[leg.length - 1][0] + 45) return; // only around that trip
+        const at = placeOn(loc, dir); if (!at) return;
+        if (want.indexOf(at === 'school' ? 'arrive' : 'station') < 0) return;
+        const same = trainOf(leg) != null && mine && trainOf(mine[dir]) === trainOf(leg);
+        jobs.push({ key: ['at', S, V.user_id, now.dk, dir, at].join(':'), to: V.user_id, payload: { title: N[S] || W(LANG[V.user_id]).friend, body: arrivalBody(at, dir, leg, same, LANG[V.user_id]), tag: 'fr-' + S, url: '/v3/school.html#friends' } });
       });
     });
   });
@@ -201,6 +206,63 @@ async function friendMoments(C, D, now, prefs, subsBy) {
   const fresh = await D.claim(jobs.map(j => j.key));
   let sent = 0;
   for (const j of jobs) if (fresh.has(j.key)) sent += await sendTo(C, D, subsBy[j.to], j.payload);
+  return sent;
+}
+
+/* ---------- tomorrow's ride: who's on which train ---------- */
+// "07:19: Noa ✓, Dan · 07:34: Maya · you: 07:19"
+function rideSummary(myTrain, list, lang) {
+  const w = W(lang), by = {};
+  list.forEach(f => { (by[f.train] = by[f.train] || []).push(f.name + (f.ok ? ' ✓' : '')); });
+  const parts = Object.keys(by).map(Number).sort((a, b) => a - b).map(t => hh(t) + ': ' + by[t].join(', '));
+  return parts.join(' · ') + (myTrain != null ? ' · ' + w.you(hh(myTrain)) : '');
+}
+// 20:30–23:00: tomorrow's ride, then switches. 05:00–07:30: switches for this morning.
+async function rideAlerts(C, D, now, prefs, subsBy) {
+  const evening = now.min >= 20 * 60 + 30 && now.min <= 23 * 60, morning = now.min >= 5 * 60 && now.min <= 7 * 60 + 30;
+  if (!evening && !morning) return 0;
+  const dk = evening ? addDays(now.dk, 1) : now.dk, wd = weekday(dk);
+  if (wd === 5 || wd === 6) return 0;
+  const viewers = prefs.filter(p => Array.isArray(p.friends) && p.friends.length && subsBy[p.user_id] && wants(p).indexOf('ride') >= 0);
+  if (!viewers.length) return 0;
+  const sharers = Array.from(new Set(viewers.reduce((a, p) => a.concat(p.friends), [])));
+  const [pres, fr, profs] = await Promise.all([
+    D.get('presence?select=user_id,trip,trip_to&user_id=' + inList(sharers.concat(viewers.map(v => v.user_id)))),
+    D.get('friendships?select=requester,addressee&status=eq.accepted&or=(requester.' + inList(sharers) + ',addressee.' + inList(sharers) + ')'),
+    D.get('profiles?select=id,username,display_name&id=' + inList(sharers))
+  ]);
+  const P = {}; pres.forEach(p => { P[p.user_id] = p; });
+  const N = {}; profs.forEach(p => { N[p.id] = p.display_name || p.username || ''; });
+  const LANG = await langsOf(D, viewers.map(v => v.user_id));
+  const friends = new Set(fr.map(f => f.requester + '|' + f.addressee));
+  const isFriend = (a, b) => friends.has(a + '|' + b) || friends.has(b + '|' + a);
+  let sent = 0;
+  for (const V of viewers) {
+    const lang = LANG[V.user_id], w = W(lang);
+    const md = dayOf(P[V.user_id] && P[V.user_id].trip, dk), myTrain = md ? trainOf(md.to) : null;
+    if (!evening && md && validLeg(md.to) && now.min >= md.to[0][0]) continue; // you've left: no more switches
+    const list = [];
+    V.friends.forEach(S => {
+      const pr = P[S]; if (!pr || !isFriend(V.user_id, S)) return;
+      if (Array.isArray(pr.trip_to) && pr.trip_to.indexOf(V.user_id) < 0) return;
+      const d = dayOf(pr.trip, dk), t = d ? trainOf(d.to) : null;
+      if (t != null) list.push({ id: S, name: N[S] || w.friend, train: t, ok: !!d.ok });
+    });
+    if (!list.length) continue;
+    const base = ['ride', V.user_id, dk].join(':'), seen = list.map(f => ['rs', V.user_id, f.id, dk, f.train].join(':'));
+    if (evening && (await D.claim([base])).has(base)) {
+      await D.claim(seen); // where everyone is now: later changes are switches
+      sent += await sendTo(C, D, subsBy[V.user_id], { title: w.rideTitle(w.dow[wd]), body: rideSummary(myTrain, list, lang), tag: 'ride-' + dk, url: '/v3/school.html#friends' });
+      continue;
+    }
+    const had = await D.get('notify_log?select=key&key=eq.' + encodeURIComponent(base)).catch(() => []);
+    if (!had.length) continue; // no summary that night: nothing to compare with
+    const fresh = await D.claim(seen);
+    for (const f of list) {
+      if (!fresh.has(['rs', V.user_id, f.id, dk, f.train].join(':'))) continue;
+      sent += await sendTo(C, D, subsBy[V.user_id], { title: f.name, body: w.nowOn(w.train(hh(f.train))) + (f.train === myTrain ? ' · ' + w.yourTrain : ''), tag: 'ride-' + f.id, url: '/v3/school.html#friends' });
+    }
+  }
   return sent;
 }
 
@@ -310,9 +372,10 @@ module.exports = async function handler(req, res) {
       const ids = prefs.map(p => p.user_id);
       const subs = ids.length ? await D.get('push_subs?select=user_id,endpoint,p256dh,auth&user_id=' + inList(ids)) : [];
       const subsBy = {}; subs.forEach(s => { (subsBy[s.user_id] = subsBy[s.user_id] || []).push(s); });
-      const a = await friendMoments(C, D, now, prefs, subsBy);
+      const a = await friendArrivals(C, D, now, prefs, subsBy);
       const b = await timetableAlerts(C, D, now, prefs, subsBy);
-      return res.status(200).json({ ok: true, at: now, sent: a + b });
+      const c = await rideAlerts(C, D, now, prefs, subsBy);
+      return res.status(200).json({ ok: true, at: now, sent: a + b + c });
     }
 
     // a signed-in user
@@ -352,4 +415,4 @@ module.exports = async function handler(req, res) {
 };
 
 // for tests
-module.exports._test = { israelNow, momentsOf, bodyFor, changesFor, dayOf, addDays };
+module.exports._test = { israelNow, arrivalBody, placeOn, rideSummary, rideAlerts, friendArrivals, wants, changesFor, dayOf, addDays };

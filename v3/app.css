@@ -1075,3 +1075,19 @@ button.trow:not([disabled]):active { background:color-mix(in srgb, var(--hf) 12%
   [data-t="free"] .wk-bt { color:var(--wk-free-ink); }
 }
 .tab[data-view="week"][aria-current="page"] .tab-ic { background:var(--todo-soft); color:var(--todo-ink); }
+
+/* ---------- Tomorrow's ride (social.js) ---------- */
+.ride-card { display:flex; flex-direction:column; gap:12px; }
+.ride-g { border-radius:var(--r-m); background:var(--surface-2); padding:12px; display:flex; flex-direction:column; gap:10px; }
+.ride-g.mine { background:var(--school-soft); }
+.ride-h { display:flex; align-items:center; gap:8px; min-height:40px; }
+.ride-h b { flex:1; font-family:var(--f-display); font-size:20px; font-weight:800; font-variant-numeric:tabular-nums; }
+.ride-g.mine .ride-h { color:var(--school-ink); }
+.ride-ps { display:flex; flex-wrap:wrap; gap:8px; }
+.ride-p { display:inline-flex; align-items:center; gap:8px; padding:4px 10px 4px 4px; border-radius:999px; background:var(--surface); min-height:36px; }
+.ride-p > span:nth-child(2) { display:flex; flex-direction:column; line-height:1.15; }
+.ride-p b { font-size:14px; font-weight:700; }
+.ride-p small { font-size:13px; color:var(--ink-3); font-variant-numeric:tabular-nums; }
+.ride-ok { width:20px; height:20px; border-radius:999px; display:grid; place-items:center; font-size:13px; font-weight:800; background:var(--surface-2); color:var(--ink-3); }
+.ride-p.ok .ride-ok { background:var(--school); color:var(--on-school); }
+.ride-note { font-size:13px; display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
