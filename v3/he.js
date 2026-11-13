@@ -521,5 +521,13 @@ window.I18N_HE = {
   'Language: Settings → English / עברית': 'שפה: הגדרות → English / עברית',
   'If you ever forget your password, this code lets you set a new one.': 'אם שוכחים את הסיסמה, הקוד הזה מאפשר לקבוע חדשה.',
   'No connection': 'אין חיבור', 'Your changes are saved on this phone': 'השינויים נשמרים בטלפון', 'Synced': 'מסונכרן', 'Back online: everything is up to date': 'החיבור חזר: הכול מעודכן',
-  'That’s it': 'זהו', 'You’re all set': 'הכול מוכן', 'You can watch this again any time in Settings.': 'אפשר לצפות בזה שוב מתי שרוצים, בהגדרות.'
+  'That’s it': 'זהו', 'You’re all set': 'הכול מוכן', 'You can watch this again any time in Settings.': 'אפשר לצפות בזה שוב מתי שרוצים, בהגדרות.',
+  /* ---------- Week ---------- */
+  'Week · Dashboard': 'שבוע · Dashboard', 'Edit week': 'עריכת השבוע', 'Now': 'עכשיו', 'Free now': 'פנוי עכשיו', 'Free': 'פנוי', 'until {t}': 'עד {t}',
+  'in {n} h {m} min': 'בעוד {n} ש׳ {m} דק׳', 'in {n} h': 'בעוד {n} ש׳', 'Nothing planned': 'אין תוכנית', 'Nothing planned.': 'אין תוכנית.',
+  'Commute': 'נסיעה', 'VB': 'כדורעף', 'FRC': 'FRC', 'Wake up': 'השכמה',
+  'Your week is empty': 'השבוע עוד ריק', 'Write my week': 'לכתוב את השבוע', 'Week saved': 'השבוע נשמר', 'Hide the Week tab': 'להסתיר את לשונית השבוע',
+  'Week tab is on for your account': 'לשונית השבוע פעילה בחשבון שלך', 'Check today’s school schedule': 'לבדוק את המערכת של היום',
+  'Write it once, as plain text: a day, then one line per thing. Only your account can see it.': 'כותבים פעם אחת, כטקסט פשוט: יום, ואז שורה לכל דבר. רק החשבון שלך רואה את זה.',
+  'Only your account can see this.': 'רק החשבון שלך רואה את זה.', 'Types:': 'סוגים:', 'after {d}': 'אחרי {d}'
 };

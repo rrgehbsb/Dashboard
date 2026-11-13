@@ -7,7 +7,7 @@
 (function () {
 'use strict';
 
-const VERSION = '2.9.16';
+const VERSION = '2.9.17';
 const SB_URL = 'https://mtuoqwbrujxutofhyahb.supabase.co';
 const SB_KEY = 'sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
 const DEMO = /[?&]demo\b/.test(location.search);
@@ -589,13 +589,16 @@ async function newRecoveryCode() {
 
 /* ================= Nav ================= */
 // Pages that exist in the new design. The others still open the classic page.
-const LIVE_PAGES = ['today', 'gym', 'school', 'food'];
-const TABS = [['today', 'Today', 'sun', '/v3/'], ['gym', 'Gym', 'gym', '/gym.html'], ['school', 'School', 'school', '/school.html'], ['food', 'Food', 'food', '/food.html']];
+const LIVE_PAGES = ['today', 'gym', 'school', 'food', 'week'];
+const TABS = [['today', 'Today', 'sun', '/v3/'], ['gym', 'Gym', 'gym', '/gym.html'], ['school', 'School', 'school', '/school.html'], ['food', 'Food', 'food', '/food.html'], ['week', 'Week', 'cal', '/v3/week.html']];
+// the Week tab only for an account that turned it on (see week.js)
+const tabsNow = current => TABS.filter(t => t[0] !== 'week' || current === 'week' || (!DEMO && settings.get('weekOn') === true));
 const pageHref = key => { const t = TABS.find(x => x[0] === key); if (!t) return '/v3/'; return LIVE_PAGES.indexOf(key) >= 0 ? '/v3/' + (key === 'today' ? '' : key + '.html') : t[3]; };
 function renderNav(current) {
   const el = $('#tabs');
   if (!el) return;
-  el.innerHTML = '<div class="tabs-in">' + TABS.map(t => {
+  const tabs = tabsNow(current);
+  el.innerHTML = '<div class="tabs-in' + (tabs.length > 4 ? ' n5' : '') + '">' + tabs.map(t => {
     const href = pageHref(t[0]);
     return '<a class="tab" id="tab-' + t[0] + '" data-view="' + t[0] + '" href="' + href + '"' + (t[0] === current ? ' aria-current="page"' : '') + '><span class="tab-ic">' + ic(t[2]) + '</span>' + t[1] + '</a>';
   }).join('') + '</div>';
@@ -694,6 +697,7 @@ async function boot(page) {
   if (DEMO && /[?&]tour\b/.test(location.search)) setTimeout(() => ACT.tour(), 300);
   let tourOffered = false;
   settings.on(() => {
+    renderNav(page);
     if (page === 'today' && !tourOffered && settings.get('tourPending') === true) { tourOffered = true; settings.set('tourPending', false); setTimeout(() => ACT.tour(), 900); }
     setTheme(theme()); if (!DEMO) retireClassicOnce();
     const l = settings.get('lang');

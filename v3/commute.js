@@ -93,6 +93,12 @@ function cfg(row) {
 let dayTimesFn = null;
 function setDayTimes(fn) { dayTimesFn = fn; }
 function times(c, wd, dk) {
+  const r = times0(c, wd, dk);
+  // your own week (week.js): gym, FRC or VB right after school moves the trip home to after it
+  const x = r && window.WEEK ? window.WEEK.afterSchool(wd, r.end) : null;
+  return x ? Object.assign(r, { end: x.end, after: x.what }) : r;
+}
+function times0(c, wd, dk) {
   const t = dayTimesFn && dk ? dayTimesFn(dk) : null;
   if (t && t.none) return null;
   if (t && t.start != null) return { start: t.start, end: t.end, by: t.by != null ? t.by : t.start, hasBy: t.by != null, auto: true, published: !!t.published };
@@ -298,7 +304,7 @@ function afternoon(c, wd, dk, over) {
   const b = buses ? buses[bi] : null;
   const pick = { leave: t.h.leave, ent: t.h.ent, hzWalk: t.h.walk, train: t.dep, trainArr: t.arr, trainNo: t.no, bus: b, home: b ? b.off + L.walk1 : t.arr + 5 + L.bus1 + L.walk1 };
   if (t.h.hz) pick.hz = t.h.hz;
-  return { dir: 'home', wd, dk, end, key, endChanged: over ? over.end != null && over.end !== T.end : rec.end != null, auto: T.auto,
+  return { dir: 'home', wd, dk, end, key, endChanged: over ? over.end != null && over.end !== T.end : rec.end != null, auto: T.auto, after: T.after || null,
     trains, ti, tsug, traw: 0, buses, bi, bsug: buses ? 0 : -1, braw: 0, pick, best: pick, opts: [pick], legs: L, chose: { train: ti !== tsug, bus: buses ? bi !== 0 : false } };
 }
 

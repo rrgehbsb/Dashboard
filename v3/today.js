@@ -225,6 +225,16 @@ function renderHeader() {
 function renderWater() { $('#water-slot-today').innerHTML = D.waterChip('today'); D.animate($('#water-slot-today')); }
 
 /* ---------- hero + tiles ---------- */
+// One line for the trip you'll take next, when there is one today or tomorrow.
+function tripLine(cc, ph) {
+  const CM = window.COMMUTE;
+  if (!cc || !ph || !CM) return '';
+  const go = p => 'Leave ' + CM.hhmm(p.leave) + ' · ' + (p.bus ? 'bus ' + esc(p.bus.line) + ' → ' + CM.hhmm(p.train) + ' train' : CM.hhmm(p.train) + ' train');
+  if (ph.kind === 'morning' && ph.pick) return D.ic('bus', 'xs') + 'To school · ' + go(ph.pick);
+  if (ph.kind === 'school' && ph.a && ph.a.pick) return D.ic('train', 'xs') + 'Going home · Leave school by ' + CM.hhmm(ph.a.pick.leave) + ' · ' + CM.hhmm(ph.a.pick.train) + ' train';
+  if (ph.kind === 'next' && ph.off === 1 && ph.m && ph.m.best) return D.ic('bus', 'xs') + 'Tomorrow · ' + go(ph.m.best);
+  return '';
+}
 function heroModel() {
   const n = D.nowMin();
   // The trip to school comes first while it matters: leaving soon, or heading home.
@@ -251,6 +261,9 @@ function heroModel() {
       sub: warn + 'Leave school by ' + CM.hhmm(lvw ? lvw.leave : ph.pick.leave) + (ph.mins > 0 ? ' · in ' + ph.mins + ' min' : ' · now') + ' <span class="tag">' + (lvw && lvw.anyLive ? 'Live' : 'Scheduled') + '</span>',
       bar: D.clamp(ph.mins / 30, 0, 1), label: 'Train home ' + CM.hhmm(ph.pick.train) };
   }
+  // your own week (if you turned it on): Now / Next, with the bus/train line under it
+  const wk = window.WEEK && window.WEEK.hero();
+  if (wk) { const trip = tripLine(cc, ph); if (trip) wk.sub += '<span class="hero-trip">' + trip + '</span>'; return wk; }
   const soon = schoolSoon(2);
   const test = soon.find(x => x.kind === 'test');
   if (test) return { area: 'school', href: D.pageHref('school'), eyebrow: 'Coming up', big: '<span class="t"><bdi>' + esc(test.title) + '</bdi></span>', sub: dayWord(test.d) + (test.subj ? ' · ' + esc(test.subj) : ''), label: test.title + ', ' + dayWord(test.d) };

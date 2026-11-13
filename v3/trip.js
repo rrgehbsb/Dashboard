@@ -31,7 +31,7 @@ const ttOn = () => { const T = window.TIMETABLE, s = T ? T.settings(school) : {}
 const wpNote = m => m && m.auto && !m.published && !m.byChanged ? '<p class="note wp">' + ic('clock', 'xs') + 'From the weekly plan: the school hasn’t posted this day’s update yet, so a cancelled first lesson won’t show.</p>' : '';
 // "first lesson 07:45 · by 08:00" / "at school by 10:00 · your change"
 const startLbl = m => m.byChanged ? 'at school by ' + hh(m.by) + ' · your change' : m.auto ? 'first lesson ' + hh(m.start) + (m.hasBy ? ' · by ' + hh(m.by) : '') : (m.hasBy ? 'arrive by ' + hh(m.by) : 'starts ' + hh(m.start));
-const endLbl = a => a.endChanged ? 'leaving school ' + hh(a.end) + ' · your change' : (a.auto ? 'last lesson ends ' : 'school ends ') + hh(a.end);
+const endLbl = a => a.endChanged ? 'leaving school ' + hh(a.end) + ' · your change' : a.after ? 'after ' + a.after + ' · ' + hh(a.end) : (a.auto ? 'last lesson ends ' : 'school ends ') + hh(a.end);
 const earlyTxt = sp => sp > 0 ? sp + ' min early' : sp === 0 ? 'right on time' : (-sp) + ' min late';
 const dayWord = dk => { const d = D.daysFrom(dk); return d === 0 ? 'today' : d === 1 ? 'tomorrow' : D.DOW_L[D.parseDk(dk).getDay()]; };
 // minutes on the platform before the train: green (your minutes or more), amber (fewer), red (you'd miss it)
@@ -308,7 +308,7 @@ D.SHEETS.tripplan = a => {
       '<div class="set-row"><span class="lbl">At school by<small>' + (T.auto ? 'first lesson ' + hh(T.start) : 'usually ' + hh(T.by)) + '</small></span>' + stepper('tp-by', a.by) + '</div>' +
       '<p class="tp-prev">' + (mp ? 'Leave ' + hh(mp.leave) + (mp.bus ? ' · bus ' + esc(mp.bus.line) + ' ' + hh(mp.bus.at) : '') + ' · ' + hh(mp.train) + ' train · at school ' + hh(mp.arrive) : 'No train gets you there by then.') + '</p>' +
       '<p class="group-title">Going home</p>' +
-      '<div class="set-row"><span class="lbl">Leave school at<small>' + (T.auto ? 'last lesson ends ' : 'school ends ') + hh(T.end) + '</small></span>' + stepper('tp-end', a.end) + '</div>' +
+      '<div class="set-row"><span class="lbl">Leave school at<small>' + (T.after ? 'after ' + T.after + ' · ' : T.auto ? 'last lesson ends ' : 'school ends ') + hh(T.end) + '</small></span>' + stepper('tp-end', a.end) + '</div>' +
       '<p class="tp-prev">' + (hp ? 'Leave ' + hh(hp.leave) + ' · ' + hh(hp.train) + ' train · home about ' + hh(hp.home) : 'No more trains home that day.') + '</p>' +
       '<div class="sheet-actions">' + (rec.by != null || rec.end != null ? '<button class="btn ghost" data-act="tp-reset">Back to the timetable</button>' : '') +
       '<button class="btn school" data-act="tp-save"' + (changed ? '' : ' disabled') + '>Save for ' + esc(dayWord(a.dk)) + '</button></div>'

@@ -76,6 +76,9 @@ v3/core.js     window.DASH: session/auth guard, Row() merge-safe synced rows, se
                bottom nav (TABS + DASH_V3_PAGES), Settings sheet, boot().
 v3/index.html  Today page shell (icon <symbol> sprite, header, hero/tiles slots, to-do card).
 v3/today.js    Today logic: rollover, to-do actions, hero/tile models.
+v3/week.js     Week (owner opt-in): plan parser, Now / Next for Today's hero, after-school
+               activities for the trip home (WEEK.afterSchool, used by commute.js times()),
+               and the /v3/week.html page (colour grid + day list + "Edit week" sheet).
 ```
 Every v3 page includes, in this order:
 1. the Supabase CDN
@@ -100,7 +103,7 @@ The `?v=` must be bumped with the version. Copy the `<head>` from `v3/index.html
 | `uid:po-coach` | `dashboard:gym:v1:template` (array of days `{id, name, exercises:[{id, name}]}`), `…:logs` (`{date:{exId:{set1:"82.5x6", …}}}`), `…:activeDay` | gym.html syncs these through a prototype-level localStorage override (iOS needs it). Logs need **entry-level merge** (see `mergeLogs` in gym.html). |
 | `uid:food` | `days[YYYY-MM-DD].entries[]` (`nutrients.kcal/protein_g/…`, `group`), `custom` (targets), `library` | food.html merges days entry-level by id. |
 | `uid:health` | `po_water_v1` (water), `po_coach_weights` (bodyweight) | The **health row embeds base64 progress photos**, so never `select('data')` it on Today. Use a JSON-path select (`data->po_water_v1`), as `core.js` does. |
-| `uid:settings` | `name`, `ui`, `v3Theme`, plus all the classic fields | v3 only adds keys; it never removes classic ones. |
+| `uid:settings` | `name`, `ui`, `v3Theme`, `weekOn`, `weekText`, plus all the classic fields | v3 only adds keys; it never removes classic ones. `weekOn`/`weekText` = the Week tab (below). |
 
 - **`Row(area)`** in `core.js` is the v3 sync primitive. Its rules are in the comment at the top of that file. Each row:
   - mirrors itself to localStorage `dash3:row:<area>`
@@ -108,6 +111,12 @@ The `?v=` must be bumped with the version. Copy the `<head>` from `v3/index.html
 - **Rollover** (`today.js`) moves unfinished past tasks onto today and writes each past day as `[]`. It **must not delete** past keys: a deleted key comes straight back from the cloud on the next merge-push. That was the classic "zombie tasks" bug.
 - Tasks carried from more than 7 days ago are folded into one "N older tasks · Review" row (Keep for later / Clear all, with Undo). They never flood today.
 - **Demo mode:** add `?demo` to any v3 URL for sample data, no login and **no storage writes**. Use it for screenshots.
+
+### Week tab (personal, off for everyone by default)
+- Turned on per account by opening `/v3/week.html?on` once (`?off` turns it off, or "Hide the Week tab" in Edit week). Only then does the nav show a 5th "Week" tab and Today's hero switch to Now / Next.
+- The plan is plain text in `uid:settings.weekText` (one line per thing: `07:45-15:20 school`, types school/commute/gym/vb/frc/study/food/free). **Never put anyone's schedule in the code or repo: the repo and site are public.**
+- Today's hero order: trip countdowns (leave ≤ 120 min, riding, going home) first, then Now / Next with a one-line bus/train strip (`tripLine` in today.js), then the old test/homework/evening cards.
+- Gym/FRC/VB starting ≤ 30 min after school moves the trip home to after them ("Going home · after FRC · 17:45").
 
 ### v3 design rules (from the plan and the critique)
 - **Today:**
