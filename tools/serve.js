@@ -1,5 +1,5 @@
 const http = require('http'), fs = require('fs'), path = require('path');
-const ROOT = process.argv[2];
+const ROOT = path.resolve(process.argv[2] || '.');
 const T = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml' };
 http.createServer((q, s) => {
   let p = decodeURIComponent(q.url.split('?')[0]);

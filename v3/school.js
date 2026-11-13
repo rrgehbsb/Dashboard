@@ -229,9 +229,9 @@ function findSubject(word) {
 function parseQuick(text) {
   // two-word Hebrew terms become one word first
   const words = String(text).replace(/שיעורי\s+בית/g, 'שיעורי-בית').replace(/דף\s+עבודה/g, 'דף-עבודה').replace(/מדעי\s+המחשב/g, 'מדמח').replace(/חינוך\s+גופני/g, 'חנג').split(/\s+/).filter(Boolean);
-  let subj = null, type = null, off = null, newSubj = null;
+  let subj = null, type = null, off = null, newSubj = null, typeAt = -1, restAt0 = -1;
   const rest = [];
-  words.forEach(raw => {
+  words.forEach((raw, wi) => {
     const w = raw.toLowerCase().replace(/[.,!?]/g, '');
     let m;
     if (HEBR.test(w)) {
@@ -240,14 +240,14 @@ function parseQuick(text) {
       // a school subject you don't have yet: add it under its proper name ("בתנך" → תנ״ך)
       const key = HE_SUBJ[h] || HE_SUBJ[u], def = key && DEF_SUBJ.find(n => norm(n) === key);
       if (!subj && !newSubj && def) { newSubj = D.t(def); return; }
-      if (!type && (m = HE_TYPES.find(t => t[0].test(h) || t[0].test(u)))) { type = m[1]; return; }
+      if (!type && (m = HE_TYPES.find(t => t[0].test(h) || t[0].test(u)))) { type = m[1]; typeAt = wi; return; }
       if (off == null && (HE_DAYS[h] != null || HE_DAYS[u] != null)) { off = (((HE_DAYS[h] != null ? HE_DAYS[h] : HE_DAYS[u]) - D.dayAt(0).getDay()) + 7) % 7 || 7; return; }
       if (off == null && /^(היום|הערב)$/.test(h)) { off = 0; return; }
       if (off == null && /^(מחר|למחר)$/.test(h)) { off = 1; return; }
       if (/^(ביום|יום|עד|ל|ב|של)$/.test(h)) return; // "ביום חמישי", "עד מחר"
     }
     if (!subj && (m = findSubject(w))) { subj = m; return; }
-    if (!type && (m = TYPES.find(t => t[0].test(w)))) { type = m[1]; return; }
+    if (!type && (m = TYPES.find(t => t[0].test(w)))) { type = m[1]; typeAt = wi; return; }
     if (off == null && Object.prototype.hasOwnProperty.call(DAYW, w)) { off = ((DAYW[w] - D.dayAt(0).getDay()) + 7) % 7 || 7; return; }
     if (off == null && w === 'today') { off = 0; return; }
     if (off == null && /^(tomorrow|tmr|tmrw)$/.test(w)) { off = 1; return; }
@@ -256,9 +256,12 @@ function parseQuick(text) {
       if (d < now) d = new Date(now.getFullYear() + 1, +m[2] - 1, +m[1], 12);
       off = Math.round((d - now) / 864e5); return;
     }
+    if (!rest.length) restAt0 = wi;
     rest.push(raw);
   });
-  if (!subj && !newSubj && type && rest.length && rest[0].length >= 2) newSubj = D.cap(rest.shift());
+  // an unknown word just before the type is a new subject ("bio worksheet"); words after it
+  // are the task itself ("read chapter 3" is not a subject called "Chapter")
+  if (!subj && !newSubj && type && rest.length && rest[0].length >= 2 && (restAt0 < typeAt || HEBR.test(rest[0]))) { const w0 = rest.shift(); newSubj = HEBR.test(w0) ? unprefix(heNorm(w0)) : D.cap(w0); }
   if (!subj && !newSubj && !type && off == null) return null;
   const isTest = type === 'TEST' || type === 'QUIZ';
   const sname = subj ? subj.name : newSubj || '';

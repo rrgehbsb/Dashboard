@@ -163,7 +163,9 @@ function schoolSoon(maxDays) {
   sch('tests').forEach(t => { if (!t || t.deleted) return; const d = D.daysFrom(t.testDate); if (d == null || d < 0 || d > maxDays) return; out.push({ kind: 'test', title: t.name, subj: subjName(t.subjectId), d: d }); });
   // tests on the school calendar (the School page shows them the same way)
   if (TT) { const s = TT.settings(school); if (s.cls) TT.upcoming(s, sch('tests'), maxDays).forEach(t => out.push({ kind: 'test', title: t.title, subj: 'School calendar', d: t.d, he: true })); }
-  return out.sort((a, b) => a.d - b.d || (a.kind === 'test' ? -1 : 1));
+  // from 17:00, today's tests and homework are behind you
+  const late = D.nowMin() >= 17 * 60;
+  return out.filter(x => x.d > 0 || !late).sort((a, b) => a.d - b.d || (a.kind === 'test' ? -1 : 1));
 }
 // Changes to tomorrow's lessons, once the school posts them (around 20:00).
 function ttChanges(dk) { if (!TT) return 0; const s = TT.settings(school); return s.cls ? TT.changes(dk, s) || 0 : 0; }

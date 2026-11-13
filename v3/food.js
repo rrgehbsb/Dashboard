@@ -180,6 +180,7 @@ async function askAi(text) {
     const s = await D.sb().auth.getSession();
     const token = (s.data && s.data.session && s.data.session.access_token) || '';
     const r = await fetch('/api/food', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, token }) });
+    if (r.status >= 500) throw new Error('server ' + r.status); // the service is down, not the wording
     const j = await r.json();
     if (!j.ok || !Array.isArray(j.items) || !j.items.length) { S.ai = { state: 'error', msg: (j && j.message) || 'Couldn’t work that out. Try describing it a bit differently.' }; }
     else S.ai = { state: 'done', group: autoGroup(), items: j.items };

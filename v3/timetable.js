@@ -183,7 +183,7 @@ function demoData(cls) {
   const week = { 0: [], 1: [], 2: [], 3: [], 4: [] };
   [0, 1, 2, 3, 4].forEach(wd => { week[wd] = [{ n: 1, start: '08:30', end: '09:15', items: ['מתמטיקה'] }, { n: 2, start: '09:15', end: '10:00', items: ['אנגלית'] }, { n: 3, start: '10:15', end: '11:00', items: grp.map(g => g.replace(/ \d$/, '')) }, { n: 4, start: '11:00', end: '11:45', items: ['ספרות'] }, { n: 5, start: '12:10', end: '12:55', items: ['היסטוריה'] }]; });
   return {
-    ok: true, cls, name: 'יא3', days: {
+    ok: true, cls, name: 'יא3', days: D.dayAt(0).getDay() > 4 ? {} : { // like the real school: no posted day on Friday/Saturday
       [t]: { published: true, uploadedAt: new Date(Date.now() - 14 * 3600e3).toISOString(), notes: [], periods: [per(0, '07:45', '08:30', ['פיזיקה'], 'added'), per(1, '08:30', '09:15', [{ subject: 'מתמטיקה', teacher: 'בראל מאיה' }, { subject: 'מתמטיקה טכניונית', teacher: 'שפיר גיל' }]), per(2, '09:15', '10:00', ['תנ"ך'], 'changed', ['אנגלית']), per(3, '10:15', '11:00', grp), per(4, '11:00', '11:45', ['ספרות']), per(5, '12:10', '12:55', [], 'cancelled', ['היסטוריה'])] },
       [tm1]: { published: false }
     },

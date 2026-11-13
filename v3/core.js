@@ -7,7 +7,7 @@
 (function () {
 'use strict';
 
-const VERSION = '2.9.15';
+const VERSION = '2.9.16';
 const SB_URL = 'https://mtuoqwbrujxutofhyahb.supabase.co';
 const SB_KEY = 'sb_publishable_tYgBycEksvhfB-2sBenWHA_dLTeVO9F';
 const DEMO = /[?&]demo\b/.test(location.search);
@@ -303,7 +303,7 @@ function setTheme(v) {
   const t = (v === 'light' || v === 'dark') ? v : 'system';
   if (t === 'system') document.documentElement.removeAttribute('data-theme');
   else document.documentElement.setAttribute('data-theme', t);
-  try { localStorage.setItem('dash3:theme', t); } catch (e) {} // read before the page paints
+  if (!DEMO) try { localStorage.setItem('dash3:theme', t); } catch (e) {} // read before the page paints
   return t;
 }
 const theme = () => settings.get('v3Theme') || 'system';

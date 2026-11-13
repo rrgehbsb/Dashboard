@@ -80,7 +80,7 @@ function render() {
         rowsTo(c, m, p, lv, ar, stageTo(ar, now)) +
         '<button class="alt not-on" id="not-on" data-act="sheet" data-sheet="' + (onBus ? 'buses' : 'trains') + '"' + planData(m.dk, 'to') + '>' + (onBus ? 'Not on it? See the other buses' : 'Not on it? See the other trains') + '</button>';
     } else {
-      const mins = next ? null : lv.mins;
+      const mins = next || lv.mins >= 120 ? null : lv.mins; // hours away (e.g. just after midnight): the time alone says it
       h += '<div><p class="big">Leave ' + hh(next ? p.leave : lv.leave) + (mins != null ? '<small>' + (mins > 0 ? 'in ' + mins + ' min' : mins === 0 ? 'now' : (-mins) + ' min ago') + '</small>' : '') + '</p>' +
         '<p class="note">' + (lv && lv.miss ? 'Your bus is running late and may miss the ' + hh(p.train) + ' train. Check the other buses.' : 'At school ' + hh(ar.arrive) + ' · ' + earlyTxt(m.by - ar.arrive) + ' · ' + entName(ar.alt ? ar.alt.ent : p.ent)) + '</p>' + wpNote(m) + '</div>' +
         habitHtml(m) + rowsTo(c, m, p, lv, ar, -1);
@@ -98,7 +98,7 @@ function render() {
           rowsHome(c, a, p, lv, ar, stageHome(ar, now)) +
           '<button class="alt not-on" id="not-on" data-act="sheet" data-sheet="' + (beforeTrain ? 'trains' : 'buses') + '"' + planData(a.dk, 'home') + '>' + (beforeTrain ? 'Not on it? See the other trains' : 'Not on it? See the other buses') + '</button>';
       } else {
-        const mins = lv ? lv.mins : null;
+        const mins = lv && lv.mins < 120 ? lv.mins : null;
         h += '<div><p class="big">Leave ' + hh(lv ? lv.leave : p.leave) + (mins != null ? '<small>' + (mins > 0 ? 'in ' + mins + ' min' : 'now') + '</small>' : '') + '</p>' +
           '<p class="note">' + hh(p.train) + ' train · home about ' + hh(ar.home) + '</p></div>' + habitHtml(a) + rowsHome(c, a, p, lv, ar, -1);
       }

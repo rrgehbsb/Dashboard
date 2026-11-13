@@ -338,6 +338,8 @@ function tapPill(exId, key) {
   if (String(el[key] || '').trim()) { D.openSheet('set', { ex: exId, c: key }); return; }
   const wasAll = cells(ex).every(x => String(el[cellKey(x)] || '').trim());
   const p = ghostFor(ex, c, el, prescription(ex, prevSession(ex, sk), sk));
+  // a weighted lift with no weight to go on yet (first time, no target): ask, don't log reps alone
+  if (!ex.bw && p.w == null) { D.openSheet('set', { ex: exId, c: key }); return; }
   writeCell(ex, day, c, fillText(ex, p.w, p.r));
   D.buzz();
   S.pop = ex.id + ':' + key;
@@ -349,13 +351,13 @@ D.SHEETS.set = a => {
   const { day, ex } = findEx(a.ex); if (!ex) return { title: 'Set', body: '' };
   const sk = sessionKey(day), el = (logs()[sk] || {})[ex.id] || {}, c = cellOf(ex, a.c);
   const logged = parseSet(el[a.c]);
-  if (a.w === undefined) { const p = logged || ghostFor(ex, c, el, prescription(ex, prevSession(ex, sk), sk)); a.w = p.w; a.r = p.r; }
+  if (a.w === undefined) { const p = logged || ghostFor(ex, c, el, prescription(ex, prevSession(ex, sk), sk)); a.w = p.w; a.r = p.r; if (!ex.bw && a.w == null) a.w = 0; }
   const reps = []; for (let r = Math.max(1, rMin(ex) - 3); r <= rMax(ex) + 4; r++) reps.push(r);
   if (reps.indexOf(a.r) < 0) { reps.push(a.r); reps.sort((x, y) => x - y); }
   return {
     title: ex.name + ' · ' + D.t('Set ' + (c.i + 1)) + (c.tag ? ' ' + c.tag : ''), own: true,
     body: (ex.bw || a.w == null ? '' : '<p class="field-label">Weight</p><div class="stepper"><button class="step-btn" id="set-wm" data-act="set-w" data-d="-1" aria-label="Less weight">−</button>' +
-      '<span class="val" aria-live="polite"><span class="num">' + trim(a.w) + '</span><small>' + unit(ex) + '</small></span>' +
+      '<span class="val"><input class="num set-w-in" id="set-w-in" type="text" inputmode="decimal" value="' + trim(a.w) + '" aria-label="Weight in ' + unit(ex) + '" oninput="DASH.sheetArg().w=Math.max(0,parseFloat(this.value.replace(\',\',\'.\'))||0)" onfocus="this.select()"><small>' + unit(ex) + '</small></span>' +
       '<button class="step-btn" id="set-wp" data-act="set-w" data-d="1" aria-label="More weight">+</button></div>') +
       '<p class="field-label">Reps</p><div class="rep-grid" role="radiogroup" aria-label="Reps">' +
       reps.map(r => '<button class="rep" id="rep-' + r + '" role="radio" data-act="set-r" data-r="' + r + '" aria-checked="' + (a.r === r) + '">' + r + '</button>').join('') + '</div>' +
@@ -493,7 +495,7 @@ Object.assign(D.ACT, {
     const a = D.sheetArg(), { day, ex } = findEx(a.ex); if (!ex) return;
     const sk = sessionKey(day), el = (logs()[sk] || {})[ex.id] || {}, wasAll = cells(ex).every(x => String(el[cellKey(x)] || '').trim());
     const was = String(el[a.c] || '').trim();
-    writeCell(ex, day, cellOf(ex, a.c), fillText(ex, a.w, a.r));
+    writeCell(ex, day, cellOf(ex, a.c), fillText(ex, a.w > 0 ? a.w : null, a.r));
     S.pop = ex.id + ':' + a.c;
     D.closeSheet();
     if (was) render(); else afterLog(ex, day, wasAll);
