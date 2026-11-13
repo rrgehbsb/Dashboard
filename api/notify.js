@@ -14,6 +14,10 @@
 //     { event: 'accepted', to }      tell someone you accepted their request
 //     (both events are checked against the friendships table first)
 //   GET  → { ok, ready } (is the server configured? never shows any key)
+//   GET ?checkin=<key>&at=rh|hz|school  an auto check-in from the phone (iPhone Shortcuts
+//        "Arrive" automation, app closed): your location is set to that place, so the
+//        friends who see your location see you there and get the notification. Only
+//        while "Auto check-ins" is on in your settings (key and switch in uid:settings).
 //
 // Tables (supabase/friends-v4.sql): push_subs, notify_prefs, notify_log, presence,
 // locations, friendships, profiles; app_state for your class (timetable alerts).
@@ -335,6 +339,22 @@ async function timetableAlerts(C, D, now, prefs, subsBy) {
   return sent;
 }
 
+/* ---------- auto check-ins (a link opened by the phone, app closed) ---------- */
+const CHECKIN_LL = { rh: PLACE.rh.ll, hz: PLACE.hz.ll, school: SCHOOL_LL[0] };
+async function checkin(C, res, key, at) {
+  if (!/^[A-Za-z0-9]{20,40}$/.test(key) || !CHECKIN_LL[at]) return res.status(400).json({ ok: false, error: 'This link isn’t complete. Copy it again from the app.' });
+  if (!C.url || !C.key) return res.status(500).json({ ok: false, error: 'Not set up on the server.' });
+  const D = db(C);
+  const rows = await D.get('app_state?select=key,on:data->>autoCheckin&key=like.*%3Asettings&data->>checkinKey=eq.' + key);
+  if (rows.length !== 1) return res.status(404).json({ ok: false, error: 'This link isn’t active anymore. Make a new one in the app.' });
+  if (rows[0].on !== 'true') return res.status(200).json({ ok: false, off: true, error: 'Auto check-ins are off in the app.' });
+  const uid = rows[0].key.split(':')[0], ll = CHECKIN_LL[at];
+  const r = await fetch(C.url + '/rest/v1/locations?on_conflict=user_id', { method: 'POST', headers: { apikey: C.key, Authorization: 'Bearer ' + C.key, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
+    body: JSON.stringify({ user_id: uid, lat: ll[0], lng: ll[1], loc_at: new Date().toISOString(), updated_at: new Date().toISOString() }) });
+  if (!r.ok) return res.status(500).json({ ok: false, error: 'Couldn’t save it. Try again.' });
+  return res.status(200).json({ ok: true, at });
+}
+
 /* ---------- requests from a signed-in user ---------- */
 async function userFrom(C, req) {
   const tok = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
@@ -349,6 +369,8 @@ module.exports = async function handler(req, res) {
   const C = cfg();
   const ready = !!(C.url && C.key && C.pub && C.priv);
   if (req.method === 'GET') {
+    const qs = req.query || {};
+    if (qs.checkin) { try { return await checkin(C, res, String(qs.checkin), String(qs.at || '')); } catch (e) { return res.status(500).json({ ok: false, error: 'Couldn’t save it. Try again.' }); } }
     const out = { ok: true, ready, scheduler: !!C.cron };
     // with the scheduler secret: when did the scheduler last call? (proves it runs)
     if (C.cron && String(req.headers.authorization || '') === 'Bearer ' + C.cron && ready) {
@@ -415,4 +437,4 @@ module.exports = async function handler(req, res) {
 };
 
 // for tests
-module.exports._test = { israelNow, arrivalBody, placeOn, rideSummary, rideAlerts, friendArrivals, wants, changesFor, dayOf, addDays };
+module.exports._test = { checkin, israelNow, arrivalBody, placeOn, rideSummary, rideAlerts, friendArrivals, wants, changesFor, dayOf, addDays };

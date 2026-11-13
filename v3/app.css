@@ -1091,3 +1091,19 @@ button.trow:not([disabled]):active { background:color-mix(in srgb, var(--hf) 12%
 .ride-ok { width:20px; height:20px; border-radius:999px; display:grid; place-items:center; font-size:13px; font-weight:800; background:var(--surface-2); color:var(--ink-3); }
 .ride-p.ok .ride-ok { background:var(--school); color:var(--on-school); }
 .ride-note { font-size:13px; display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
+
+/* friends: are you seeing their real location? */
+.fr-name { display:flex; align-items:center; gap:8px; min-width:0; }
+.lv { flex:none; display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:800; letter-spacing:.02em; padding:2px 8px; border-radius:999px; background:var(--surface-2); color:var(--ink-3); }
+.lv.on { background:#DDF7EA; color:#0B7A47; }
+.lv.on i { width:7px; height:7px; border-radius:50%; background:#12B76A; box-shadow:0 0 0 0 rgba(18,183,106,.5); animation:lvPulse 2s ease-out infinite; }
+@keyframes lvPulse { to { box-shadow:0 0 0 6px rgba(18,183,106,0); } }
+@media (prefers-reduced-motion: reduce) { .lv.on i { animation:none; } }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lv.on { background:#0E3A27; color:#5BE3A3; } }
+:root[data-theme="dark"] .lv.on { background:#0E3A27; color:#5BE3A3; }
+.lv-line { display:flex; align-items:flex-start; gap:8px; font-size:14px; color:var(--ink-2); margin:4px 0 10px; }
+.lv-line .lv { margin-top:1px; }
+.auto-steps { margin:4px 0 8px; padding-inline-start:20px; display:flex; flex-direction:column; gap:6px; font-size:15px; }
+.auto-link { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:var(--r-m); background:var(--surface-2); margin-bottom:8px; }
+.auto-link > span { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.auto-link code { font-size:13px; color:var(--ink-3); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; direction:ltr; text-align:left; }

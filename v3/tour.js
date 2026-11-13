@@ -1,5 +1,5 @@
 /* Dashboard v3 — the tour (Settings → Take the tour; offered once to new accounts).
-   Fourteen short chapters. Each one plays a live demo built from the app's real cards
+   Short chapters (Week only for accounts that turned it on). Each one plays a live demo built from the app's real cards
    (the same classes, so it looks exactly like the app), with a "finger" that taps,
    types and presses the way you would, next to a short plain explanation.
    • Next / Back, swipe, or the arrow keys; × or Escape closes. Demos replay on a loop.
@@ -424,25 +424,47 @@ const CH = [
       await x.wait(2200);
     } },
 
-  { key: 'friends', area: 'school', chip: 'Friends', eb: 'Friends', h: 'See who’s on your train',
-    p: 'Share your trip with the friends you choose. See where they are on the way, and get a notification when they leave or arrive.',
-    tips: [['Location stays off unless you turn it on, and only the friends you pick can see it', '#2EE59D']],
-    dur: 10000, height: 320, minH: 0,
-    build: () => '<section class="card"><h2 class="card-title" style="margin-bottom:6px">Friends</h2><div class="fr-list">' +
-      [[L('Noa', 'נועה'), 'nb', 'home', 'Leaves home 07:10', 'in 6 min'], [L('Dan', 'דן'), 'db', 'bus', 'On bus 72', 'at school 07:53'], [L('Maya', 'מאיה'), 'mb', 'school', 'At school', 'since 07:40']].map(f =>
-        '<div class="fr-row">' + avatar(f[0], 44) + '<span class="fr-main"><b>' + own(f[0]) + '</b><span class="fr-st" id="fr-' + f[1] + '">' + ic(f[2], 'xs') + '<span>' + f[3] + ' · ' + f[4] + '</span></span></span></div>').join('') + '</div></section>' +
-      '<div class="tour-notif" id="fr-n"><img src="/apple-touch-icon.png?v=3" alt=""><div style="flex:1;min-width:0"><b>' + own(L('Noa', 'נועה')) + '<small>now</small></b><span>On the 07:19 train · same train as you</span></div></div>',
+  { key: 'friends', area: 'school', chip: 'Friends', eb: 'Friends', h: 'Real, never guessed',
+    p: 'Live means you’re seeing a friend’s real location. Plan means it’s only their plan. In the evening, see who’s on which train tomorrow: tap I’m on it, or Join theirs.',
+    tips: [['Notifications only when they’re really at the station or school', '#2EE59D'], ['iPhone: auto check-ins tell friends you arrived, even with the app closed', 'school']],
+    dur: 11000, height: 470, minH: 0,
+    build: () => {
+      const row = (n, live, text) => '<div class="fr-row">' + avatar(n, 40) + '<span class="fr-main"><span class="fr-name"><b>' + own(n) + '</b>' + (live ? '<span class="lv on"><i></i>Live</span>' : '<span class="lv">Plan</span>') + '</span><span class="fr-st">' + ic(live ? 'locate' : 'clock', 'xs') + '<span>' + text + '</span></span></span></div>';
+      const who = (n, ok, id) => '<span class="ride-p' + (ok ? ' ok' : '') + '"' + (id ? ' id="' + id + '"' : '') + '>' + avatar(n, 28) + '<span><b>' + (n === 'You' ? n : own(n)) + '</b></span><span class="ride-ok">' + (ok ? ic('check', 'xs') : '?') + '</span></span>';
+      return '<section class="card"><div class="fr-list">' + row(L('Noa', 'נועה'), true, 'Near Rosh HaAyin North station · just now') + row(L('Dan', 'דן'), false, 'Planned: 07:34 train · no live update') + '</div></section>' +
+        '<section class="card ride-card"><h2 class="card-title">Tomorrow’s ride</h2>' +
+        '<div class="ride-g mine"><div class="ride-h">' + ic('train', 'xs') + '<b>07:19 train</b><button class="btn school sm" id="tf-ok">I’m on it</button></div><div class="ride-ps">' + who('You', false, 'tf-me') + who(L('Noa', 'נועה'), true) + '</div></div>' +
+        '<div class="ride-g"><div class="ride-h">' + ic('train', 'xs') + '<b>07:34 train</b><button class="btn ghost sm">Join</button></div><div class="ride-ps">' + who(L('Dan', 'דן'), false) + '</div></div></section>' +
+        '<div class="tour-notif" id="fr-n"><img src="/apple-touch-icon.png?v=3" alt=""><div style="flex:1;min-width:0"><b>' + own(L('Noa', 'נועה')) + '<small>now</small></b><span>At Rosh HaAyin North · 07:19 train · same train as you</span></div></div>';
+    },
     play: async x => {
-      await x.wait(1500);
-      const nb = x.$('#fr-nb'); nb.innerHTML = ic('bus', 'xs') + '<span>On bus 74 · at school 07:53</span>'; nb.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 400 });
-      await x.wait(1300);
-      nb.innerHTML = ic('train', 'xs') + '<span>At Rosh HaAyin North station · at school 07:53</span>';
-      const row = nb.closest('.fr-row'); row.insertAdjacentHTML('beforeend', '<span class="fr-same">Same train</span>');
-      await x.wait(900);
+      await x.wait(1600);
+      await x.tap('#tf-ok');
+      const me = x.$('#tf-me'); me.classList.add('ok'); me.querySelector('.ride-ok').innerHTML = ic('check', 'xs');
+      x.$('#tf-ok').outerHTML = '<button class="btn-text">Undo</button>';
+      x.lift();
+      await x.wait(1400);
       x.$('#fr-n').classList.add('on');
-      await x.wait(2800);
+      await x.wait(3000);
       x.$('#fr-n').classList.remove('on');
       await x.wait(900);
+    } },
+
+  { key: 'week', area: 'school', chip: 'Week', eb: 'Week', h: 'Your week, at a glance',
+    only: () => D.settings.get('weekOn') === true,
+    p: 'Your week as colours, and the big card on Today shows what you’re doing now and what’s next. Tap the pencil to change a time. Only your account can see it.',
+    tips: [['Gym or FRC after school? The trip home starts after it', 'school']],
+    dur: 7000, height: 300, minH: 0,
+    build: () => '<div class="wk-strip" data-t="school" id="tw-strip"><div><span class="k">Now</span><b>School</b><span class="v" id="tw-until">until 15:20</span></div><div><span class="k">Next</span><b id="tw-next">Gym</b><span class="v" id="tw-at">15:30</span></div></div>' +
+      '<section class="card"><ul class="wk-list">' + [['school', '07:45–15:20', 'School'], ['gym', '15:30–17:00', 'Gym'], ['food', '18:00–18:30', 'Food'], ['vb', '20:00–22:00', 'VB']].map((r, i) =>
+        '<li id="tw-r' + i + '"' + (i === 0 ? ' class="now"' : '') + '><span class="wk-dot" data-t="' + r[0] + '"></span><span class="wk-time">' + r[1] + '</span><span class="wk-what">' + r[2] + '</span></li>').join('') + '</ul></section>',
+    play: async x => {
+      await x.wait(2200);
+      const st = x.$('#tw-strip'); st.dataset.t = 'gym';
+      st.querySelector('b').textContent = 'Gym'; x.$('#tw-until').textContent = 'until 17:00'; x.$('#tw-next').textContent = 'Food'; x.$('#tw-at').textContent = '18:00';
+      x.$('#tw-r0').classList.remove('now'); x.$('#tw-r0').classList.add('past'); x.$('#tw-r1').classList.add('now');
+      st.animate([{ transform: 'scale(.97)' }, { transform: 'none' }], { duration: 350 });
+      await x.wait(3000);
     } },
 
   { key: 'safe', area: 'todo', chip: 'Your account', eb: 'Your account', h: 'Safe, even offline',
@@ -473,7 +495,7 @@ const CH = [
     build: () => '<div class="tour-done"><svg class="big" viewBox="0 0 150 150" aria-hidden="true"><circle class="r" cx="75" cy="75" r="68"/><path class="c" d="M46 77l20 20 38-42"/></svg>' +
       Array.from({ length: 14 }, (_, i) => { const a = i / 14 * Math.PI * 2, d = 90 + (i % 3) * 22, col = ['var(--todo)', 'var(--gym)', 'var(--school)', 'var(--food)', 'var(--water)'][i % 5]; return '<i style="background:' + col + ';--x:' + Math.round(Math.cos(a) * d) + 'px;--y:' + Math.round(Math.sin(a) * d) + 'px"></i>'; }).join('') + '</div>',
     play: async x => { await x.wait(2600); } }
-];
+].filter(c => !c.only || c.only());
 const N = CH.length;
 
 /* ---------- the player ---------- */

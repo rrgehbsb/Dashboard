@@ -307,6 +307,15 @@ function locStatus(l) {
   return { place: placeName(+l.lat, +l.lng), age, url: 'https://maps.google.com/?q=' + (+l.lat).toFixed(5) + ',' + (+l.lng).toFixed(5) };
 }
 const ago = m => m <= 0 ? 'just now' : m + ' min ago';
+// Are you seeing this friend's real location? live = a fresh reading; shared = they share
+// it with you but nothing recent came (their app is closed); none = they don't share it.
+function liveOf(f) {
+  const l = f && f.loc;
+  if (!l || !l.loc_at || l.lat == null) return { k: 'none' };
+  const age = Math.max(0, Math.round((Date.now() - Date.parse(l.loc_at)) / 60e3));
+  return age <= LOC_FRESH_MIN ? { k: 'live', age } : { k: 'shared', age };
+}
+const liveTag = f => liveOf(f).k === 'live' ? '<span class="lv on"><i></i>Live</span>' : '<span class="lv">Plan</span>';
 
 /* ---------- sharing: your trip ---------- */
 // "I'm on it": the train you confirmed for a day (synced settings, so phone and PC agree)
@@ -448,7 +457,7 @@ function stopLoc() { if (locTimer) { clearInterval(locTimer); locTimer = null; }
 function setLoc(on) {
   try { localStorage.setItem(LS_LOC, on ? '1' : '0'); } catch (e) {}
   lastLoc = null;
-  if (on) locCheck(); else { stopLoc(); upsertOwn('locations', { lat: null, lng: null, loc_at: null }); }
+  if (on) locCheck(); else { stopLoc(); upsertOwn('locations', { lat: null, lng: null, loc_at: null }); if (D.settings.get('autoCheckin') === true) D.settings.set('autoCheckin', false); }
   changed();
 }
 function setLocMode(m) { try { localStorage.setItem(LS_LOCMODE, m); } catch (e) {} locCheck(); changed(); }
@@ -547,7 +556,7 @@ function friendRow(f, compact) {
   const st = statusLine(f);
   const same = st && sameTrain(st.t);
   return '<button class="fr-row" id="fr-' + esc(String(f.fid)) + '" data-act="sheet" data-sheet="friend" data-id="' + esc(String(f.id)) + '">' + avatar(f, compact ? 36 : 44) +
-    '<span class="fr-main"><b><bdi>' + esc(nameOf(f)) + '</bdi></b><span class="fr-st">' + (st ? ic(st.icon, 'xs') + '<span>' + esc(st.text) + (st.sub ? ' · ' + esc(st.sub) : '') + '</span>' : '<span>' + (compact ? '' : 'Not sharing right now') + '</span>') + '</span></span>' +
+    '<span class="fr-main"><span class="fr-name"><b><bdi>' + esc(nameOf(f)) + '</bdi></b>' + (st ? liveTag(f) : '') + '</span><span class="fr-st">' + (st ? ic(st.icon, 'xs') + '<span>' + esc(st.text) + (st.sub ? ' · ' + esc(st.sub) : '') + '</span>' : '<span>' + (compact ? '' : 'Not sharing right now') + '</span>') + '</span></span>' +
     (same ? '<span class="fr-same">Same train</span>' : '') + '</button>';
 }
 function pushBlock() {
@@ -587,16 +596,17 @@ D.SHEETS.friends = () => {
   if (S.needsV4) h += '<p class="problem">' + ic('info', 'xs') + '<span>Choosing who sees what, location and notifications need one more database update: run <b>supabase/friends-v4.local.sql</b> in Supabase.</span></p>';
   // what friends see
   h += '<p class="group-title">What friends see</p>' +
-    sw('fr-share-trip', 'Share my trip', shareTrip(), 'When you leave, your bus and train, when you get there. Worked out from your plan, so it works with the app closed.', 'fr-share-trip');
+    sw('fr-share-trip', 'Share my trip', shareTrip(), 'Your planned bus and train for the coming days. Friends see it as your plan, not as where you are.', 'fr-share-trip');
   // the chips show who sees it; "Everyone" also covers friends you add later
   if (shareTrip() && S.friends.length && !S.needsV4) h += '<div class="pick-row fr-who" role="group" aria-label="Who sees your trip">' + chip('tt-all', 'Everyone', S.tripTo == null, 'fr-trip-all') + S.friends.map(f => chip('tw-' + f.fid, '<bdi>' + esc(nameOf(f)) + '</bdi>', seesTrip(f.id), 'fr-trip-who', ' data-id="' + esc(f.id) + '"')).join('') + '</div>' +
     (S.tripTo != null && !S.tripTo.length ? '<p class="sheet-note warn">Nobody can see your trip right now. Pick friends, or tap Everyone.</p>' : '');
   if (!S.needsV4) {
-    h += sw('fr-share-loc', 'Share my location', locOn(), 'From this phone, only to the friends you pick. They see the nearest stop and can open it in Maps.', 'fr-share-loc');
+    h += sw('fr-share-loc', 'Share my location', locOn(), 'From this phone, only to the friends you pick. They see the nearest stop, marked Live, and can open it in Maps.', 'fr-share-loc');
     if (locOn() && S.friends.length) h += '<div class="pick-row fr-who" role="group" aria-label="Who sees your location">' + S.friends.map(f => chip('lw-' + f.fid, '<bdi>' + esc(nameOf(f)) + '</bdi>', S.locTo.indexOf(f.id) >= 0, 'fr-loc-who', ' data-id="' + esc(f.id) + '"')).join('') + '</div>' +
       (S.locTo.length ? '' : '<p class="sheet-note warn">Pick who can see it. Right now nobody can.</p>') +
       '<div class="seg sm loc-when" role="radiogroup" aria-label="When to share">' + [['trip', 'During my trips'], ['open', 'Whenever the app is open']].map(o => '<button id="lm-' + o[0] + '" role="radio" data-act="fr-loc-mode" data-v="' + o[0] + '" aria-checked="' + (locMode() === o[0]) + '">' + o[1] + '</button>').join('') + '</div>' +
-      '<p class="sheet-note">Only while the app is open: phones don’t let web apps use location in the background. ' + (locMode() === 'trip' ? 'During your trips means from 15 minutes before you leave until you arrive, both ways. ' : '') + 'It takes one rough reading every 3 minutes instead of keeping GPS on, so it barely uses battery.</p>';
+      '<p class="sheet-note">Only while the app is open: phones don’t let web apps use location in the background. ' + (locMode() === 'trip' ? 'During your trips means from 15 minutes before you leave until you arrive, both ways. ' : '') + 'It takes one rough reading every 3 minutes instead of keeping GPS on, so it barely uses battery.</p>' +
+      (locOn() ? '<button class="menu-item" id="fr-auto" data-act="sheet" data-sheet="autocheck">' + ic('locate') + '<span class="grow">Update friends with the app closed<small>iPhone: tell them when you reach the station or school, automatically</small></span>' + ic('chev-r', 'sm') + '</button>' : '');
   }
   // notifications
   if (!S.needsV4) {
@@ -610,15 +620,56 @@ D.SHEETS.friends = () => {
   }
   return { title: 'Friends', body: h };
 };
+/* ---------- auto check-ins (app closed) ----------
+   iPhone Shortcuts can open a link when you arrive somewhere, with the app closed. Your
+   personal link (a secret key in your synced settings) tells the server "I'm at the
+   station" — the same as your location being shared from there, to the same friends. */
+const SITE = location.origin;
+function checkinKey() {
+  let k = D.settings.get('checkinKey');
+  if (typeof k !== 'string' || k.length < 20) {
+    const a = new Uint8Array(18); crypto.getRandomValues(a);
+    k = Array.from(a, b => 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'[b % 56]).join('');
+    if (!D.DEMO) D.settings.set('checkinKey', k);
+  }
+  return k;
+}
+const autoOn = () => D.settings.get('autoCheckin') === true;
+const AUTO_PLACES = [['rh', 'Rosh HaAyin North station'], ['hz', 'Herzliya station'], ['school', 'School']];
+D.SHEETS.autocheck = () => {
+  const k = checkinKey(), url = at => SITE + '/api/notify?checkin=' + k + '&at=' + at;
+  return {
+    title: 'Update friends with the app closed', own: true,
+    body: '<p class="sheet-note">Your phone can tell the app when you arrive somewhere, even with the app closed. Friends who see your location then see you there, marked Live, and get the notification.</p>' +
+      sw('ac-on', 'Auto check-ins', autoOn(), autoOn() ? 'On: the links below update your friends' : 'Off: the links do nothing', 'ac-on') +
+      '<p class="group-title">On iPhone, once for each place</p><ol class="auto-steps">' +
+      '<li>Open <b>Shortcuts</b> → <b>Automation</b> → <b>+</b> → <b>Arrive</b></li>' +
+      '<li>Pick the place (search for it), then <b>Run Immediately</b></li>' +
+      '<li>Add the action <b>Get Contents of URL</b> and paste that place’s link</li></ol>' +
+      AUTO_PLACES.map(p => '<div class="auto-link"><span><b>' + esc(p[1]) + '</b><code translate="no">' + esc(url(p[0]).replace(/^https?:\/\//, '')) + '</code></span><button class="btn ghost sm" id="ac-' + p[0] + '" data-act="ac-copy" data-u="' + esc(url(p[0])) + '">Copy</button></div>').join('') +
+      '<p class="sheet-note">On Android, an automation app (for example MacroDroid, free) can open the same links when you arrive. Keep these links to yourself: they post as you. ' +
+      '<button class="btn-text sch" id="ac-new" data-act="ac-new">Make new links</button></p>'
+  };
+};
+Object.assign(D.ACT, {
+  'ac-copy': async el => { try { await navigator.clipboard.writeText(el.dataset.u); D.toast('Link copied'); } catch (e) { D.toast('Couldn’t copy. Press and hold the link to copy it.'); } },
+  'ac-on': () => { D.settings.set('autoCheckin', !autoOn()); D.renderSheet(); },
+  'ac-new': () => { if (!D.DEMO) D.settings.set('checkinKey', null); D.renderSheet(); D.toast('New links made. The old ones stopped working.'); }
+});
+
 D.SHEETS.friend = a => {
   const f = S.friends.find(x => String(x.id) === String(a.id));
   if (!f) return { title: 'Friend', body: '<p class="sheet-note">Not on your friends list anymore.</p>' };
   const st = tripStatus(f.pres && f.pres.trip), l = locStatus(f.loc);
   let h = '<div class="fr-hero">' + avatar(f, 64) + '<div><b><bdi>' + esc(nameOf(f)) + '</bdi></b><span><bdi>@' + esc(f.username) + '</bdi></span></div></div>';
+  const lv = liveOf(f);
+  h += '<p class="lv-line ' + lv.k + '">' + (lv.k === 'live' ? '<span class="lv on"><i></i>Live</span><span>Their real location · ' + esc(ago(lv.age)) + '</span>'
+    : lv.k === 'shared' ? '<span class="lv">Plan</span><span>Shares their location with you, but nothing came for ' + lv.age + ' min: their app is closed. Below is their plan.</span>'
+    : '<span class="lv">Plan</span><span>Doesn’t share their location with you. You see their plan only.</span>') + '</p>';
   if (st) {
     if (!l) h += '<p class="fr-now">' + ic(st.icon, 'sm') + '<span><b>' + esc(st.text) + '</b>' + (st.sub ? ' · ' + esc(st.sub) : '') + '</span></p>';
     if (sameTrain(st)) h += '<p class="fr-same big">' + ic('train', 'xs') + 'Same train as you</p>';
-    h += '<p class="group-title">' + (st.k === 'plan' ? 'Tomorrow' : st.dir === 'to' ? 'To school' : 'Going home') + '</p>' +
+    h += '<p class="group-title">' + (st.dk !== D.todayKey() ? 'Tomorrow' : st.dir === 'to' ? 'To school' : 'Going home') + '</p>' +
       '<ol class="fr-plan">' + st.leg.map((x, j) => '<li class=""><span class="t">' + hhmm(x[0]) + '</span>' + ic(ICON[x[1]], 'xs') + '<span>' + esc(segPlan(x, st.dir)) + '</span></li>').join('') + '</ol>';
     h += '<p class="sheet-note">This is ' + esc(nameOf(f)) + '’s plan, not where they are. Where they really are shows when they share their location with you and have the app open.</p>';
   } else h += '<p class="sheet-note">' + esc(nameOf(f)) + ' isn’t sharing a trip right now.</p>';
