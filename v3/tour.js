@@ -452,8 +452,8 @@ const CH = [
 
   { key: 'week', area: 'school', chip: 'Week', eb: 'Week', h: 'Your week, at a glance',
     only: () => D.settings.get('weekOn') === true,
-    p: 'Your week as colours, and the big card on Today shows what you’re doing now and what’s next. Tap the pencil to change a time. Only your account can see it.',
-    tips: [['Gym or FRC after school? The trip home starts after it', 'school']],
+    p: 'Your week as colours, with every time on it. Tap any block for details, and change it right there. The big card on Today shows what’s now and next.',
+    tips: [['Tap a block: its times, the live bus and train plan, or that day’s lessons', 'school'], ['Gym or FRC after school? The trip home starts after it', 'school']],
     dur: 7000, height: 300, minH: 0,
     build: () => '<div class="wk-strip" data-t="school" id="tw-strip"><div><span class="k">Now</span><b>School</b><span class="v" id="tw-until">until 15:20</span></div><div><span class="k">Next</span><b id="tw-next">Gym</b><span class="v" id="tw-at">15:30</span></div></div>' +
       '<section class="card"><ul class="wk-list">' + [['school', '07:45–15:20', 'School'], ['gym', '15:30–17:00', 'Gym'], ['food', '18:00–18:30', 'Food'], ['vb', '20:00–22:00', 'VB']].map((r, i) =>

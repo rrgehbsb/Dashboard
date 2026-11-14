@@ -116,7 +116,8 @@ The `?v=` must be bumped with the version. Copy the `<head>` from `v3/index.html
 - Turned on per account by opening `/v3/week.html?on` once (`?off` turns it off, or "Hide the Week tab" in Edit week). Only then does the nav show a 5th "Week" tab and Today's hero switch to Now / Next.
 - The plan is plain text in `uid:settings.weekText` (one line per thing: `07:45-15:20 school`, types school/commute/gym/vb/frc/study/food/free). **Never put anyone's schedule in the code or repo: the repo and site are public.**
 - Today's hero order: trip countdowns (leave ≤ 120 min, riding, going home) first, then Now / Next with a one-line bus/train strip (`tripLine` in today.js), then the old test/homework/evening cards.
-- Gym/FRC/VB starting ≤ 30 min after school moves the trip home to after them ("Going home · after FRC · 17:45").
+- Gym/FRC/VB starting ≤ 30 min after school (short "walk to gym" commute blocks are looked past; the week's own school end counts if it's later than the timetable's) moves the trip home to after them ("Going home · after FRC · 17:45").
+- Week page: Day view (default on phone: day chips, Wake/Leave/School/Home/Sleep line, a timeline where every block shows its times) and Week grid. Tapping any block opens the `wkitem` sheet: times, before/after, the live trip plan (commute) or that day's lessons (school), and "Change it" (start/end ±5, title, kind, delete), which rewrites that one line of `weekText`. Kinds: school commute gym vb frc study food routine free sleep.
 
 ### Friends (social.js, api/notify.js): real, never guessed
 - A friend's shared trip is shown **as a plan** ("Planned: 07:19 train · no live update"). Never derive where someone is from the clock (the old "On bus 72" / "Leaving home about now" did, and was wrong when someone missed a bus). The only "where they are" is their shared location (app open; iPhone web apps can't send it in the background).
