@@ -134,7 +134,7 @@ const dur = m => m < 60 ? m + ' min' : Math.floor(m / 60) + ' h' + (m % 60 ? ' '
 const offOf = wd => ((wd - D.dayAt(0).getDay()) + 7) % 7; // days from today to that weekday
 const dkOf = wd => D.dk(D.dayAt(offOf(wd)));
 // the grid's hours: from your earliest start to your latest end (at least 06:00–23:00)
-const range = () => { const all = plan().days.flat().filter(x => x.type !== 'wake'); return [Math.min(GRID_FROM, Math.floor(Math.min.apply(null, all.map(x => x.s).concat([GRID_FROM])) / 60) * 60), Math.max(GRID_TO, Math.min(1440, Math.ceil(Math.max.apply(null, all.map(x => x.e).concat([GRID_TO])) / 60) * 60))]; };
+const range = () => { const all = plan().days.flat().filter(x => x.type !== 'wake'); return [Math.min(GRID_FROM, Math.floor(Math.min.apply(null, all.map(x => x.s).concat([GRID_FROM])) / 30) * 30), Math.max(GRID_TO, Math.min(1440, Math.ceil(Math.max.apply(null, all.map(x => x.e).concat([GRID_TO])) / 30) * 30))]; };
 let R = [GRID_FROM, GRID_TO];
 const y = m => ((Math.max(R[0], Math.min(R[1], m)) - R[0]) / (R[1] - R[0]) * 100).toFixed(2) + '%';
 
@@ -142,9 +142,9 @@ function renderNow() {
   const el = $('#wk-now');
   if (!has()) { el.innerHTML = ''; return; }
   const { cur, next, off, n } = nowNext();
-  el.innerHTML = '<div class="wk-strip" data-t="' + (cur ? cur.type : 'free') + '">' +
-    '<div><span class="k">Now</span><b>' + (cur ? name(cur) : esc('Free')) + '</b>' + (cur ? '<span class="v">until ' + hh(cur.e) + '</span>' : '') + '</div>' +
-    '<div><span class="k">Next</span><b>' + (next ? name(next) : '–') + '</b>' + (next ? '<span class="v">' + (off === 0 ? hh(next.s) + ' · ' + inTxt(next.s - n) : dayWord(off) + ' ' + hh(next.s)) + '</span>' : '') + '</div></div>';
+  const row = (lbl, t, nm, v) => '<div class="nn-row"><span class="nn-l">' + lbl + '</span><i class="nn-dot" data-t="' + t + '"></i><b>' + nm + '</b><span class="nn-v">' + v + '</span></div>';
+  el.innerHTML = '<div class="wk-nn">' + row('Now', cur ? cur.type : 'free', cur ? name(cur) : esc('Free'), cur ? 'until ' + hh(cur.e) : '') +
+    (next ? row('Next', next.type, name(next), off === 0 ? hh(next.s) + ' · ' + inTxt(next.s - n) : esc(dayWord(off)) + ' ' + hh(next.s)) : '') + '</div>';
 }
 // One day at a glance: wake, leave, school, home, sleep.
 function glance(list) {
@@ -154,23 +154,26 @@ function glance(list) {
   const sleep = real.find(x => x.type === 'sleep'), wake = list[0];
   const parts = [['sun', 'Wake', wake && wake.type !== 'sleep' ? wake.s : null], ['bus', 'Leave', leave ? leave.s : null], ['school', 'School', sch ? sch.s : null],
     ['home', 'Home', ride ? ride.e : null], ['clock', 'Sleep', sleep ? sleep.s : null]].filter(p => p[2] != null);
-  return parts.length < 2 ? '' : '<div class="wk-glance">' + parts.map(p => '<span>' + ic(p[0], 'xs') + '<small>' + p[1] + '</small><b>' + hh(p[2]) + '</b></span>').join('') + '</div>';
+  return parts.length < 2 ? '' : '<div class="wk-glance" style="--n:' + parts.length + '">' + parts.map(p => '<span><small>' + p[1] + '</small><b>' + hh(p[2]) + '</b></span>').join('') + '</div>';
 }
-// The day, top to bottom: every block shows its times; longer things are taller.
+// The day, top to bottom: start time on the left, what and how long on the card; longer
+// things are taller; a trip (bus, wait, train, walk) is one card with its legs.
 function timeline(wd) {
   const list = plan().days[wd], isToday = offOf(wd) === 0, n = D.nowMin();
   if (!list.length) return '<p class="sheet-note wk-none">Nothing planned for ' + esc(D.DOW_L[wd]) + '.</p>';
   let h = '<ol class="tl">', lastEnd = null;
-  list.forEach((x, i) => {
-    if (x.type === 'wake') { h += '<li class="tl-mark"><span class="tl-t">' + hh(x.s) + '</span><span>' + ic('sun', 'xs') + name(x) + '</span></li>'; return; }
-    const gap = lastEnd == null ? 0 : x.s - lastEnd;
+  blocksOf(list).forEach(k => {
+    const gap = lastEnd == null ? 0 : k.s - lastEnd;
     if (gap >= 20) h += '<li class="tl-gap"><span>' + esc(dur(gap)) + ' open</span></li>';
-    const d = x.e - x.s, now = isToday && x.s <= n && n < x.e, past = isToday && x.e <= n;
-    h += '<li class="tl-it' + (now ? ' now' : past ? ' past' : '') + (lastEnd != null && x.s < lastEnd ? ' ov' : '') + '" data-t="' + x.type + '" style="--h:' + Math.round(D.clamp(d * 1.2, 40, 210)) + 'px">' +
-      '<span class="tl-t">' + hh(x.s) + '</span><button class="tl-b" id="tl-' + wd + '-' + i + '" data-act="wk-item" data-d="' + wd + '" data-i="' + i + '">' +
-      '<b>' + name(x) + '</b><span class="tl-r">' + hh(x.s) + '–' + hh(x.e) + ' · ' + esc(dur(d)) + '</span>' +
-      (now ? '<span class="tl-now" style="top:' + ((n - x.s) / d * 100).toFixed(1) + '%"></span>' : '') + '</button></li>';
-    lastEnd = Math.max(lastEnd || 0, x.e);
+    const d = k.e - k.s, now = isToday && k.s <= n && n < k.e, past = isToday && k.e <= n;
+    const legs = k.n > 1 ? list.slice(k.i, k.i + k.n) : null, x = list[k.i];
+    h += '<li class="tl-it' + (now ? ' now' : past ? ' past' : '') + (lastEnd != null && k.s < lastEnd ? ' ov' : '') + '" data-t="' + k.type + '" style="--h:' + Math.round(D.clamp(d * 1.1, legs ? 52 : 38, 150)) + 'px">' +
+      '<span class="tl-t">' + hh(k.s) + '</span><button class="tl-b" id="tl-' + wd + '-' + k.i + '" data-act="wk-item" data-d="' + wd + '" data-i="' + k.i + '" data-n="' + k.n + '">' +
+      '<span class="tl-l1"><b>' + k.label + '</b><span class="tl-d">' + esc(dur(d)) + '</span></span>' +
+      (legs ? '<span class="tl-legs">' + legs.map(z => '<span>' + hh(z.s) + ' ' + esc(z.title || TNAME.commute) + '</span>').join('') + '</span>'
+        : d >= 60 ? '<span class="tl-r">until ' + hh(k.e) + '</span>' : '') +
+      (now ? '<span class="tl-prog"><i style="width:' + ((n - k.s) / d * 100).toFixed(1) + '%"></i></span>' : '') + '</button></li>';
+    lastEnd = Math.max(lastEnd || 0, k.e);
   });
   return h + '</ol>';
 }
@@ -195,21 +198,23 @@ function blocksOf(list) {
   }
   return out;
 }
-const HOUR_PX = 54; // the grid on a computer: an hour this tall, so a 30-minute block fits a line
+// the grid's hour height on a computer: the whole day fits the window (34–56 px an hour)
+const hourPx = () => D.clamp(Math.floor((innerHeight - 196) / ((R[1] - R[0]) / 60)), 30, 56);
 function grid() {
   const days = plan().days, today = D.dayAt(0).getDay(), n = D.nowMin();
-  R = range();
+  R = range(); const HP = hourPx();
   let h = '<div class="wk-head"><span></span>' + D.DOW.map((d, i) => '<button class="wk-dh' + (i === today ? ' today' : '') + '" data-act="wk-open-day" data-d="' + i + '">' + esc(d) + '</button>').join('') + '</div>' +
-    '<div class="wk-body" style="--gh:' + Math.round((R[1] - R[0]) / 60 * HOUR_PX) + 'px"><div class="wk-axis">';
-  for (let m = R[0] + 60; m < R[1]; m += 60) h += '<span class="' + (m % 120 ? 'odd' : '') + '" style="top:' + y(m) + '">' + hh(m) + '</span>';
+    '<div class="wk-body" style="--gh:' + Math.round((R[1] - R[0]) / 60 * HP) + 'px"><div class="wk-axis">';
+  for (let m = Math.ceil((R[0] + 1) / 60) * 60; m < R[1]; m += 60) h += '<span class="' + (m % 120 ? 'odd' : '') + '" style="top:' + y(m) + '">' + hh(m) + '</span>';
   h += '</div>';
   days.forEach((list, wd) => {
     h += '<div class="wk-col' + (wd === today ? ' today' : '') + '">';
     blocksOf(list).forEach(k => {
       if (k.e <= R[0] || k.s >= R[1]) return;
-      const px = (Math.min(k.e, R[1]) - Math.max(k.s, R[0])) / 60 * HOUR_PX, sz = px < 20 ? 'xs' : px < 38 ? 's' : px < 64 ? 'm' : 'l';
+      const px = (Math.min(k.e, R[1]) - Math.max(k.s, R[0])) / 60 * HP, sz = px < 20 ? 'xs' : px < 38 ? 's' : px < 64 ? 'm' : 'l';
       const tip = hh(k.s) + '–' + hh(k.e) + ' ' + k.plain;
       h += '<button class="wk-b sz-' + sz + (wd === today && k.s <= n && n < k.e ? ' now' : '') + '" data-t="' + k.type + '" data-act="wk-item" data-d="' + wd + '" data-i="' + k.i + '" data-n="' + k.n + '" style="top:calc(' + y(k.s) + ' + 1px);height:calc(' + y(k.e) + ' - ' + y(k.s) + ' - 2px)" title="' + esc(tip) + '" aria-label="' + esc(tip) + '">' +
+        (k.e - k.s >= 80 && k.type !== 'free' && TNAME[k.type].length <= 5 ? '<span class="wk-sh">' + esc(TNAME[k.type]) + '</span>' : '') + // the phone's narrow columns: just the kind
         (sz === 'xs' ? '' : '<span class="wk-bt"><span class="nm">' + k.label + '</span>' + (sz === 'm' || sz === 'l' ? '<small>' + hh(k.s) + '–' + hh(k.e) + '</small>' : '') + '</span>') + '</button>';
     });
     if (wd === today && n >= R[0] && n <= R[1]) h += '<span class="wk-now-line" style="top:' + y(n) + '"></span>';
@@ -218,26 +223,42 @@ function grid() {
   const used = TYPES.filter(t => days.some(l => l.some(x => x.type === t)));
   return h + '</div><div class="wk-legend">' + used.map(t => '<span><i data-t="' + t + '"></i>' + esc(TNAME[t]) + '</span>').join('') + '</div><p class="sheet-note wk-hint">Tap any block for its times and details.</p>';
 }
+function renderActs() {
+  $('#wk-acts').innerHTML = !has() ? '' : '<div class="seg sm wk-mode" role="tablist" aria-label="Show">' + [['day', 'Day'], ['week', 'Week']].map(m => '<button id="wm-' + m[0] + '" role="tab" data-act="wk-mode" data-v="' + m[0] + '" aria-selected="' + (S.mode === m[0]) + '">' + m[1] + '</button>').join('') + '</div>' +
+    (S.mode === 'day' ? '<button class="icon-btn" id="wk-add" data-act="wk-add" aria-label="Add to ' + esc(D.DOW_L[S.day]) + '">' + ic('plus') + '</button>' : '');
+  view.classList.toggle('is-day', S.mode === 'day');
+}
 function renderGrid() {
   const el = $('#wk-grid');
+  renderActs();
   if (!has()) {
     el.innerHTML = '<div class="card wk-empty"><h2 class="card-title">Your week is empty</h2><p class="sheet-note">Write it once, as plain text: a day, then one line per thing. Only your account can see it.</p>' +
       '<button class="btn school block" id="wk-start" data-act="sheet" data-sheet="weekedit">' + ic('edit', 'sm') + 'Write my week</button></div>';
     return;
   }
-  const seg = '<div class="seg sm wk-mode" role="tablist" aria-label="Show">' + [['day', 'Day'], ['week', 'Week']].map(m => '<button id="wm-' + m[0] + '" role="tab" data-act="wk-mode" data-v="' + m[0] + '" aria-selected="' + (S.mode === m[0]) + '" aria-checked="' + (S.mode === m[0]) + '">' + m[1] + '</button>').join('') + '</div>';
-  if (S.mode === 'week') { el.innerHTML = '<section class="card wk-card"><div class="wk-bar">' + seg + '</div>' + grid() + '</section>'; return; }
+  if (S.mode === 'week') { el.innerHTML = '<section class="card wk-card">' + grid() + '</section>'; return; }
   const chips = [0, 1, 2, 3, 4, 5, 6].map(o => { const d = D.dayAt(o), wd = d.getDay(); return '<button class="wk-chip' + (wd === S.day ? ' on' : '') + '" id="wd-' + wd + '" data-act="wk-day" data-d="' + wd + '" aria-pressed="' + (wd === S.day) + '"><small>' + esc(o === 0 ? 'Today' : D.DOW[wd]) + '</small><b>' + d.getDate() + '</b></button>'; }).join('');
-  const list = plan().days[S.day];
-  el.innerHTML = '<section class="card wk-card wk-dayc"><div class="wk-bar">' + seg + '<button class="icon-btn flat" id="wk-add" data-act="wk-add" aria-label="Add to ' + esc(D.DOW_L[S.day]) + '">' + ic('plus') + '</button></div>' +
-    '<div class="wk-chips">' + chips + '</div>' + glance(list) + timeline(S.day) +
+  el.innerHTML = '<section class="card wk-card wk-dayc"><div class="wk-chips">' + chips + '</div>' + glance(plan().days[S.day]) + timeline(S.day) +
     '<a class="wk-link" href="https://handasaim.co.il/schedule" target="_blank" rel="noopener">' + ic('school', 'xs') + 'Check today’s school schedule' + ic('go', 'xs') + '</a></section>';
 }
+// opening the page on today: bring what you're doing now into view
+let scrolledToNow = false;
+function toNow() {
+  if (scrolledToNow || S.mode !== 'day' || offOf(S.day) !== 0) return;
+  const el = view.querySelector('.tl-it.now') || view.querySelector('.tl-it:not(.past)');
+  if (!el) return;
+  scrolledToNow = true;
+  const top = el.getBoundingClientRect().top + scrollY;
+  if (top > innerHeight * 0.6) window.scrollTo({ top: Math.max(0, top - innerHeight * 0.3), behavior: D.reduced() ? 'auto' : 'smooth' });
+}
 function render() {
-  $('#week-date').textContent = D.dLong(D.dayAt(0));
+  $('#week-date').textContent = (matchMedia('(min-width: 600px)').matches ? D.dLong : D.dShort)(D.dayAt(0)); // short on a phone: the header also holds Day / Week, + and edit
   renderNow(); renderGrid(); $('#wk-day').innerHTML = '';
   D.animate(view);
+  setTimeout(toNow, 350);
 }
+let rz = null;
+window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (S.mode === 'week') renderGrid(); }, 200); });
 
 /* ---------- one block: details, and change it right there ---------- */
 const ctxRow = (icon, b, s) => '<div class="wi-ctx">' + ic(icon, 'sm') + '<span><b>' + b + '</b>' + (s ? '<small>' + s + '</small>' : '') + '</span></div>';

@@ -1190,3 +1190,58 @@ button.trow:not([disabled]):active { background:color-mix(in srgb, var(--hf) 12%
 .wi-legs .tl-b { --wk:var(--wk-commute); }
 @media (min-width: 900px) { .wk-axis span.odd { display:block; } }
 @media (min-width: 900px) { .wk-dayc { width:100%; max-width:720px; align-self:center; } }
+
+/* ---------- Week, round 3 (tested on iPhone SE / 14 / Pro Max and 13–16" laptops) ---------- */
+.wk-acts { display:flex; align-items:center; gap:8px; }
+#wk-acts { display:flex; align-items:center; gap:8px; }
+.wk-acts .seg button { min-height:40px; }
+/* Now / Next: one slim card, two rows */
+.wk-nn { background:var(--surface); border-radius:var(--r-l); box-shadow:var(--shadow); padding:6px 16px; display:flex; flex-direction:column; }
+.nn-row { display:flex; align-items:center; gap:10px; min-height:44px; min-width:0; }
+.nn-row + .nn-row { border-top:1px solid var(--line); }
+.nn-l { flex:none; width:42px; font-size:13px; font-weight:700; color:var(--ink-3); letter-spacing:.02em; }
+.nn-dot { flex:none; width:10px; height:10px; border-radius:3px; background:var(--wk); }
+.nn-row b { flex:1; min-width:0; font-size:16px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.nn-v { flex:none; font-size:14px; font-weight:600; color:var(--ink-2); font-variant-numeric:tabular-nums; }
+/* the at-a-glance line: always one row */
+.wk-glance { display:grid; grid-template-columns:repeat(var(--n, 5), minmax(0, 1fr)); gap:6px; overflow:visible; margin:0 0 14px; padding:0; }
+.wk-glance span { display:flex; flex-direction:column; align-items:center; gap:1px; min-width:0; padding:8px 2px; }
+.wk-glance small { font-size:13px; }
+.wk-glance b { font-size:17px; }
+/* the day: a crisp colour bar, stronger colour, one line per block */
+.tl { gap:6px; }
+.tl-it { grid-template-columns:44px 1fr; }
+.tl-t { padding-top:11px; }
+.tl-b { box-shadow:none !important; padding:9px 12px 9px 18px; background:color-mix(in srgb, var(--wk) 14%, var(--surface)); justify-content:flex-start; gap:4px; }
+[dir="rtl"] .tl-b { padding:9px 18px 9px 12px; }
+.tl-b::before { content:""; position:absolute; inset-inline-start:6px; top:7px; bottom:7px; width:4px; border-radius:2px; background:var(--wk); }
+.tl-it[data-t="free"] .tl-b { background:transparent; border:1px dashed var(--line); }
+.tl-it[data-t="free"] .tl-b::before { background:var(--line); }
+.tl-l1 { display:flex; align-items:baseline; gap:8px; width:100%; min-width:0; }
+.tl-l1 b { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tl-d { flex:none; font-size:13px; font-weight:600; color:var(--ink-3); font-variant-numeric:tabular-nums; }
+.tl-r { font-size:13px; }
+.tl-legs { display:flex; flex-wrap:wrap; gap:4px 10px; font-size:13px; font-weight:600; color:var(--ink-2); font-variant-numeric:tabular-nums; }
+.tl-it.now .tl-b { outline:2px solid var(--wk); outline-offset:1px; }
+.tl-it.now .tl-t { color:var(--ink); }
+.tl-prog { position:absolute; inset-inline:18px 12px; bottom:6px; height:3px; border-radius:2px; background:color-mix(in srgb, var(--wk) 25%, transparent); }
+.tl-prog i { display:block; height:100%; border-radius:inherit; background:var(--wk); }
+.tl-it.past .tl-b { opacity:.5; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tl-b { background:color-mix(in srgb, var(--wk) 26%, var(--surface)); } }
+:root[data-theme="dark"] .tl-b { background:color-mix(in srgb, var(--wk) 26%, var(--surface)); }
+/* the phone's week grid: a short name on long blocks */
+.wk-sh { position:absolute; top:6px; inset-inline:0; text-align:center; font-size:13px; font-weight:800; color:#fff; overflow:hidden; text-overflow:clip; white-space:nowrap; pointer-events:none; }
+.wk-b[data-t="free"] .wk-sh { color:var(--ink-3); }
+/* the edit panel fits small phones */
+.wi-steps { grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; }
+.wi-step { min-width:0; padding:8px; }
+.wi-step > div { gap:2px; }
+.wi-step .step-btn { width:40px; height:40px; font-size:22px; }
+.wi-step b { font-size:21px; }
+@media (min-width: 900px) {
+  .wk-sh { display:none; }
+  .wk-view.col.is-day { max-width:820px; }
+  .wk-dayc { max-width:none; align-self:stretch; }
+  .wk-glance b { font-size:19px; }
+}
+@media (min-width: 900px) { .wk-view:not(.is-day) #wk-now { display:none; } } /* the grid outlines what's now */
