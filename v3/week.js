@@ -174,17 +174,43 @@ function timeline(wd) {
   });
   return h + '</ol>';
 }
+// A run of bus / wait / train / walk is one trip in the grid: "Bus → Train".
+function tripLabel(legs) {
+  const w = [];
+  legs.forEach(x => { const m = String(x.title || '').match(/bus|train/i); if (m) { const k = m[0].charAt(0).toUpperCase() + m[0].slice(1).toLowerCase(); if (w[w.length - 1] !== k) w.push(k); } });
+  return w.length ? w.join(' → ') : legs.length === 1 && legs[0].title ? legs[0].title : TNAME.commute;
+}
+function blocksOf(list) {
+  const out = [];
+  for (let i = 0; i < list.length; i++) {
+    const x = list[i];
+    if (x.type === 'wake') continue;
+    if (x.type === 'commute') {
+      let j = i, e = x.e;
+      while (j + 1 < list.length && list[j + 1].type === 'commute' && list[j + 1].s <= e + 10) { j++; e = Math.max(e, list[j].e); }
+      out.push({ type: 'commute', s: x.s, e, i, n: j - i + 1, label: esc(tripLabel(list.slice(i, j + 1))), plain: tripLabel(list.slice(i, j + 1)) });
+      i = j; continue;
+    }
+    out.push({ type: x.type, s: x.s, e: x.e, i, n: 1, label: name(x), plain: x.title || TNAME[x.type] });
+  }
+  return out;
+}
+const HOUR_PX = 54; // the grid on a computer: an hour this tall, so a 30-minute block fits a line
 function grid() {
   const days = plan().days, today = D.dayAt(0).getDay(), n = D.nowMin();
   R = range();
-  let h = '<div class="wk-head"><span></span>' + D.DOW.map((d, i) => '<button class="wk-dh' + (i === today ? ' today' : '') + '" data-act="wk-open-day" data-d="' + i + '">' + esc(d) + '</button>').join('') + '</div><div class="wk-body"><div class="wk-axis">';
-  for (let m = R[0] + 60; m < R[1]; m += 120) h += '<span style="top:' + y(m) + '">' + hh(m) + '</span>';
+  let h = '<div class="wk-head"><span></span>' + D.DOW.map((d, i) => '<button class="wk-dh' + (i === today ? ' today' : '') + '" data-act="wk-open-day" data-d="' + i + '">' + esc(d) + '</button>').join('') + '</div>' +
+    '<div class="wk-body" style="--gh:' + Math.round((R[1] - R[0]) / 60 * HOUR_PX) + 'px"><div class="wk-axis">';
+  for (let m = R[0] + 60; m < R[1]; m += 60) h += '<span class="' + (m % 120 ? 'odd' : '') + '" style="top:' + y(m) + '">' + hh(m) + '</span>';
   h += '</div>';
   days.forEach((list, wd) => {
     h += '<div class="wk-col' + (wd === today ? ' today' : '') + '">';
-    list.forEach((x, i) => {
-      if (x.type === 'wake' || x.e <= R[0] || x.s >= R[1]) return;
-      h += '<button class="wk-b" data-t="' + x.type + '" data-act="wk-item" data-d="' + wd + '" data-i="' + i + '" style="top:' + y(x.s) + ';height:calc(' + y(x.e) + ' - ' + y(x.s) + ')" aria-label="' + esc((x.title || TNAME[x.type]) + ', ' + hh(x.s) + '–' + hh(x.e)) + '"><span class="wk-bt">' + name(x) + '<small>' + hh(x.s) + '–' + hh(x.e) + '</small></span></button>';
+    blocksOf(list).forEach(k => {
+      if (k.e <= R[0] || k.s >= R[1]) return;
+      const px = (Math.min(k.e, R[1]) - Math.max(k.s, R[0])) / 60 * HOUR_PX, sz = px < 20 ? 'xs' : px < 38 ? 's' : px < 64 ? 'm' : 'l';
+      const tip = hh(k.s) + '–' + hh(k.e) + ' ' + k.plain;
+      h += '<button class="wk-b sz-' + sz + (wd === today && k.s <= n && n < k.e ? ' now' : '') + '" data-t="' + k.type + '" data-act="wk-item" data-d="' + wd + '" data-i="' + k.i + '" data-n="' + k.n + '" style="top:calc(' + y(k.s) + ' + 1px);height:calc(' + y(k.e) + ' - ' + y(k.s) + ' - 2px)" title="' + esc(tip) + '" aria-label="' + esc(tip) + '">' +
+        (sz === 'xs' ? '' : '<span class="wk-bt"><span class="nm">' + k.label + '</span>' + (sz === 'm' || sz === 'l' ? '<small>' + hh(k.s) + '–' + hh(k.e) + '</small>' : '') + '</span>') + '</button>';
     });
     if (wd === today && n >= R[0] && n <= R[1]) h += '<span class="wk-now-line" style="top:' + y(n) + '"></span>';
     h += '</div>';
@@ -203,7 +229,7 @@ function renderGrid() {
   if (S.mode === 'week') { el.innerHTML = '<section class="card wk-card"><div class="wk-bar">' + seg + '</div>' + grid() + '</section>'; return; }
   const chips = [0, 1, 2, 3, 4, 5, 6].map(o => { const d = D.dayAt(o), wd = d.getDay(); return '<button class="wk-chip' + (wd === S.day ? ' on' : '') + '" id="wd-' + wd + '" data-act="wk-day" data-d="' + wd + '" aria-pressed="' + (wd === S.day) + '"><small>' + esc(o === 0 ? 'Today' : D.DOW[wd]) + '</small><b>' + d.getDate() + '</b></button>'; }).join('');
   const list = plan().days[S.day];
-  el.innerHTML = '<section class="card wk-card"><div class="wk-bar">' + seg + '<button class="icon-btn flat" id="wk-add" data-act="wk-add" aria-label="Add to ' + esc(D.DOW_L[S.day]) + '">' + ic('plus') + '</button></div>' +
+  el.innerHTML = '<section class="card wk-card wk-dayc"><div class="wk-bar">' + seg + '<button class="icon-btn flat" id="wk-add" data-act="wk-add" aria-label="Add to ' + esc(D.DOW_L[S.day]) + '">' + ic('plus') + '</button></div>' +
     '<div class="wk-chips">' + chips + '</div>' + glance(list) + timeline(S.day) +
     '<a class="wk-link" href="https://handasaim.co.il/schedule" target="_blank" rel="noopener">' + ic('school', 'xs') + 'Check today’s school schedule' + ic('go', 'xs') + '</a></section>';
 }
@@ -233,8 +259,19 @@ function context(x, wd) {
   return h;
 }
 const step = (k, v) => '<div class="wi-step"><small>' + (k === 's' ? 'Starts' : 'Ends') + '</small><div><button class="step-btn" id="wi-' + k + 'm" data-act="wi-t" data-k="' + k + '" data-d="-5" aria-label="5 minutes earlier">−</button><b>' + hh(v) + '</b><button class="step-btn" id="wi-' + k + 'p" data-act="wi-t" data-k="' + k + '" data-d="5" aria-label="5 minutes later">+</button></div></div>';
+function tripSheet(a, legs, list) {
+  const s0 = legs[0].s, e0 = Math.max.apply(null, legs.map(z => z.e)), x = { s: s0, e: e0, type: 'commute', title: tripLabel(legs) };
+  const prev = list.slice(0, +a.i).filter(z => z.type !== 'wake').pop(), next = list.slice(+a.i + legs.length).find(z => z.type !== 'wake');
+  return { title: tripLabel(legs), own: true, body:
+    '<div class="wi-top" data-t="commute"><span class="wi-kind"><i data-t="commute"></i>' + esc(TNAME.commute) + ' · ' + esc(D.DOW_L[+a.d]) + '</span><b class="wi-time">' + hh(s0) + ' – ' + hh(e0) + '</b><span class="wi-dur">' + esc(dur(e0 - s0)) + '</span></div>' +
+    '<ul class="wi-legs">' + legs.map((z, k) => '<li><button class="tl-b" data-t="commute" id="leg-' + k + '" data-act="wk-item" data-d="' + a.d + '" data-i="' + (+a.i + k) + '" data-n="1"><b>' + name(z) + '</b><span class="tl-r">' + hh(z.s) + '–' + hh(z.e) + ' · ' + esc(dur(z.e - z.s)) + '</span></button></li>').join('') + '</ul>' +
+    '<div class="wi-around">' + (prev ? '<span><small>Before · ' + hh(prev.s) + '</small><b>' + name(prev) + '</b></span>' : '') + (next ? '<span><small>After · ' + hh(next.s) + '</small><b>' + name(next) + '</b></span>' : '') + '</div>' +
+    context(x, +a.d) + '<p class="sheet-note">Tap a part of the trip to change it.</p>' };
+}
 D.SHEETS.wkitem = a => {
-  const list = plan().days[+a.d] || [], x = a.add ? null : list[+a.i];
+  const list = plan().days[+a.d] || [], legs = !a.add && +a.n > 1 ? list.slice(+a.i, +a.i + (+a.n)) : null;
+  if (legs && legs.length > 1) return tripSheet(a, legs, list);
+  const x = a.add ? null : list[+a.i];
   if (!a.add && !x) return { title: 'Week', body: '<p class="sheet-note">This changed in the meantime. Close and tap it again.</p>' };
   if (a.s == null) {
     const n = D.nowMin(), soon = Math.ceil((n + 1) / 30) * 30; // today: the next half hour; another day: 17:00
@@ -274,7 +311,7 @@ Object.assign(D.ACT, {
   'wk-mode': el => { S.mode = el.dataset.v; renderGrid(); },
   'wk-day': el => { S.day = +el.dataset.d; renderGrid(); },
   'wk-open-day': el => { S.day = +el.dataset.d; S.mode = 'day'; renderGrid(); window.scrollTo(0, 0); },
-  'wk-item': el => D.openSheet('wkitem', { d: el.dataset.d, i: el.dataset.i }),
+  'wk-item': el => D.openSheet('wkitem', { d: el.dataset.d, i: el.dataset.i, n: el.dataset.n || '1' }),
   'wk-add': () => D.openSheet('wkitem', { d: String(S.day), add: true }),
   'wi-change': () => { D.sheetArg().edit = true; D.renderSheet(); },
   'wi-t': el => { const a = D.sheetArg(), k = el.dataset.k; a[k] = D.clamp(a[k] + (+el.dataset.d), 0, 23 * 60 + 55); if (a.e <= a.s) { if (k === 's') a.e = Math.min(1440, a.s + 5); else a.s = Math.max(0, a.e - 5); } D.renderSheet(); },
